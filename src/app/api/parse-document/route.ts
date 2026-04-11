@@ -1,0 +1,77 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { parseDocument } from '@/lib/document-parser';
+import { questionStore } from '@/lib/quiz-store';
+
+export async function POST(request: NextRequest) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    
+    if (!file) {
+      return NextResponse.json(
+        { error: '未提供文件' },
+        { status: 400 }
+      );
+    }
+    
+    const fileName = file.name.toLowerCase();
+    const buffer = Buffer.from(await file.arrayBuffer());
+    
+    let fileType: 'pdf' | 'docx';
+    let questions;
+    
+    if (fileName.endsWith('.docx')) {
+      fileType = 'docx';
+      questions = await parseDocument(buffer, fileType);
+    } else if (fileName.endsWith('.pdf')) {
+      fileType = 'pdf';
+      questions = await parseDocument(buffer, fileType);
+    } else {
+      return NextResponse.json(
+        { error: '仅支持 PDF 或 DOCX 格式文件' },
+        { status: 400 }
+      );
+    }
+    
+    if (questions.length === 0) {
+      return NextResponse.json(
+        { 
+          error: '未能从文档中提取到题目，请确保文档格式正确',
+          suggestions: [
+            '题目编号格式：1. 题目内容 或 【题目1】',
+            '选项格式：A. 选项内容',
+            '答案格式：答案：A 或 答：A',
+            '每个题目之间用空行分隔'
+          ]
+        },
+        { status: 400 }
+      );
+    }
+    
+    // 保存到数据库
+    questionStore.addMultiple(questions);
+    
+    // 统计各类型题目数量
+    const typeStats = {
+      single: questions.filter((q: { type: string }) => q.type === 'single').length,
+      multiple: questions.filter((q: { type: string }) => q.type === 'multiple').length,
+      'true-false': questions.filter((q: { type: string }) => q.type === 'true-false').length,
+      'fill-blank': questions.filter((q: { type: string }) => q.type === 'fill-blank').length,
+    };
+    
+    return NextResponse.json({
+      success: true,
+      message: `成功从文档中提取并导入 ${questions.length} 道题目`,
+      questions,
+      total: questions.length,
+      typeStats,
+      fileType,
+    });
+  } catch (error) {
+    console.error('文档解析错误:', error);
+    return NextResponse.json(
+      { error: `解析失败: ${error instanceof Error ? error.message : '未知错误'}` },
+      { status: 500 }
+    );
+  }
+}

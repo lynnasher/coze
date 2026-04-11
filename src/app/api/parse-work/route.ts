@@ -2,9 +2,39 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseWorkBank } from '@/lib/work-parser';
 import { questionStore } from '@/lib/quiz-store';
 
+interface WorkQuestionItem {
+  id?: string | number;
+  question?: string;
+  content?: string;
+  title?: string;
+  options?: Record<string, string>;
+  choice?: Record<string, string>;
+  answer?: string | string[] | number;
+  correct?: string | string[] | number;
+  answers?: string | string[] | number;
+  type?: string;
+  typeName?: string;
+  explain?: string;
+  explanation?: string;
+  tags?: string[];
+  difficulty?: string;
+}
+
+interface ParsedWorkQuestion {
+  id: string;
+  type: string;
+  content: string;
+  options?: Array<{ id: string; text: string }>;
+  answer: string | string[];
+  explanation?: string;
+  tags: string[];
+  difficulty: string;
+  createdAt: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    let questions: any[] = [];
+    let questions: ParsedWorkQuestion[] = [];
     let isJson = false;
     let textContent = '';
     
@@ -22,12 +52,12 @@ export async function POST(request: NextRequest) {
         isJson = true;
       } else if (Array.isArray(body)) {
         // 直接发送的是数组
-        questions = body.map((item: any) => {
-          const q: any = {
+        questions = body.map((item: WorkQuestionItem): ParsedWorkQuestion => {
+          const q: ParsedWorkQuestion = {
             id: item.id ? String(item.id) : `q-${Date.now()}-${Math.random()}`,
             type: item.type || 'single',
             content: item.content || item.question || item.title || '',
-            options: item.options ? Object.entries(item.options).map(([key, value]: [string, any]) => ({
+            options: item.options ? Object.entries(item.options).map(([key, value]: [string, string]) => ({
               id: key.toLowerCase(),
               text: String(value)
             })) : undefined,
@@ -38,7 +68,7 @@ export async function POST(request: NextRequest) {
             createdAt: Date.now(),
           };
           return q;
-        }).filter((q: any) => q.content);
+        }).filter((q: ParsedWorkQuestion) => q.content) as ParsedWorkQuestion[];
       } else if (body.text) {
         // body 包含 text 字段
         textContent = typeof body.text === 'string' ? body.text : JSON.stringify(body.text);

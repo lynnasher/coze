@@ -181,6 +181,44 @@ export default function QuizApp() {
     }
   };
 
+  // 文档导入（PDF/DOCX）
+  const handleDocumentImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const fileName = file.name.toLowerCase();
+    if (!fileName.endsWith('.pdf') && !fileName.endsWith('.docx')) {
+      alert('仅支持 PDF 或 DOCX 格式文件');
+      e.target.value = '';
+      return;
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/parse-document', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        loadQuestions();
+        setImportModalOpen(false);
+        alert(`成功从文档中提取并导入 ${result.total} 道题目！\n\n题目类型统计：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
+      } else {
+        alert(result.error || '导入失败');
+      }
+    } catch (error) {
+      console.error('文档导入错误:', error);
+      alert('导入失败，请检查文件格式是否正确');
+    }
+    
+    e.target.value = '';
+  };
+
   // PDF 导入
   const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -531,10 +569,9 @@ export default function QuizApp() {
                   <DialogTitle>导入题库</DialogTitle>
                 </DialogHeader>
                 <Tabs defaultValue="text">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="text">文本导入</TabsTrigger>
-                    <TabsTrigger value="work">WORK 题库</TabsTrigger>
-                    <TabsTrigger value="pdf">PDF 导入</TabsTrigger>
+                    <TabsTrigger value="doc">文档导入</TabsTrigger>
                   </TabsList>
                   <TabsContent value="text" className="space-y-4">
                     <div>
@@ -562,55 +599,43 @@ D. Java"
                       开始导入
                     </Button>
                   </TabsContent>
-                  <TabsContent value="work" className="space-y-4">
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-orange-800">
-                        <strong>WORK 题库格式说明：</strong>
-                        <br />
-                        支持驾考类题库（如驾校宝典、科目一/科目四等）的 JSON 格式文件导入。
-                        <br />
-                        常见字段：question、options、answer、type 等。
-                      </p>
+                  <TabsContent value="doc" className="space-y-4">
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 mb-4">
+                      <h4 className="font-medium text-blue-800 mb-2">支持的文档格式</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-red-500" />
+                          <span>PDF 文档</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-blue-500" />
+                          <span>Word 文档 (.docx)</span>
+                        </div>
+                      </div>
                     </div>
+                    
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <FileText className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">选择 WORK/JSON 题库文件</p>
+                      <FileText className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-2">选择 PDF 或 Word 文档</p>
+                      <p className="text-sm text-gray-500 mb-4">自动提取题目并生成标准题库</p>
                       <Input
                         type="file"
-                        accept=".json,.work,.txt"
-                        onChange={handleWorkImport}
+                        accept=".pdf,.docx"
+                        onChange={handleDocumentImport}
                         className="max-w-xs mx-auto"
                       />
                     </div>
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <p className="text-sm text-gray-600 mb-2">或者粘贴 JSON 题库文本：</p>
-                      <Textarea
-                        id="import-work-text"
-                        value={importText}
-                        onChange={(e) => setImportText(e.target.value)}
-                        placeholder='粘贴 JSON 格式题库...
-[{"question": "题目内容", "options": {"A": "选项A", "B": "选项B"}, "answer": "a"}]'
-                        className="min-h-[120px] text-sm"
-                      />
-                      <Button onClick={handleWorkTextImport} className="w-full mt-2" variant="secondary">
-                        导入 WORK 题库
-                      </Button>
+                    
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="font-medium text-gray-700 mb-2 text-sm">题目格式说明</h4>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li>题目编号格式：<code className="bg-gray-200 px-1 rounded">1. 题目内容</code></li>
+                        <li>选项格式：<code className="bg-gray-200 px-1 rounded">A. 选项内容</code></li>
+                        <li>答案格式：<code className="bg-gray-200 px-1 rounded">答案：A</code></li>
+                        <li>判断题：选项为&quot;正确/错误&quot;</li>
+                        <li>多选题：题目中包含&quot;多选&quot;或&quot;哪些&quot;</li>
+                      </ul>
                     </div>
-                  </TabsContent>
-                  <TabsContent value="pdf" className="space-y-4">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">选择 PDF 文件导入题库</p>
-                      <Input
-                        type="file"
-                        accept=".pdf"
-                        onChange={handlePdfImport}
-                        className="max-w-xs mx-auto"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 text-center">
-                      支持从教材、试卷等 PDF 文档中提取题目
-                    </p>
                   </TabsContent>
                 </Tabs>
               </DialogContent>
