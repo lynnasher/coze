@@ -773,49 +773,73 @@ export default function QuizApp() {
 
                 {/* 底部固定操作栏 */}
                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* 左侧：答题卡 */}
+                  <div className="flex items-center justify-between gap-2">
+                    {/* 左侧：上一题 */}
                     <Button
                       variant="outline"
-                      onClick={() => setShowAnswerSheet(true)}
-                      className="flex-col gap-1 h-auto py-2 px-3 border-gray-300"
+                      onClick={() => {
+                        if (quizState.currentIndex > 0) {
+                          prevQuestion();
+                          setTimeout(() => {
+                            questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 50);
+                        }
+                      }}
+                      disabled={quizState.currentIndex === 0}
+                      className="h-11 px-3 border-gray-300"
                     >
-                      <Grid3X3 className="w-5 h-5" />
-                      <span className="text-xs">答题卡</span>
+                      <ChevronLeft className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline">上一题</span>
+                      <span className="sm:hidden">上一</span>
                     </Button>
                     
-                    {/* 右侧：下一题按钮 */}
-                    <Button
-                      onClick={() => {
-                        if (!quizState.showResult) {
-                          if (!currentAnswer) return;
-                          submitAnswer();
-                        } else {
-                          if (quizState.currentIndex === quizState.questions.length - 1) {
-                            // 最后一题，完成练习
-                            finishQuiz();
-                          } else {
+                    {/* 中间：显示答案与解析（答题后显示） */}
+                    {!quizState.showResult && currentAnswer && (
+                      <Button
+                        variant="outline"
+                        onClick={submitAnswer}
+                        className="h-11 px-3 border-amber-300 text-amber-700 hover:bg-amber-50"
+                      >
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        <span>查看答案</span>
+                      </Button>
+                    )}
+                    
+                    {/* 右侧：下一题 / 交卷 */}
+                    {quizState.showResult ? (
+                      // 答题后：显示下一题或交卷
+                      quizState.currentIndex === quizState.questions.length - 1 ? (
+                        <Button
+                          onClick={() => finishQuiz()}
+                          className="h-11 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-sm"
+                        >
+                          <FileCheck className="w-4 h-4 mr-1" />
+                          交卷
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
                             nextQuestion();
                             setTimeout(() => {
                               questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                             }, 50);
-                          }
-                        }
-                      }}
-                      disabled={!quizState.showResult && !currentAnswer}
-                      className={`flex-1 max-w-[200px] h-12 text-base font-medium shadow-sm ${
-                        quizState.showResult 
-                          ? 'bg-blue-500 hover:bg-blue-600' 
-                          : 'bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300'
-                      }`}
-                    >
-                      {quizState.showResult 
-                        ? (quizState.currentIndex === quizState.questions.length - 1 ? '完成' : '下一题')
-                        : '提交答案'}
-                      {quizState.showResult && (
-                        <ChevronRight className="w-5 h-5 ml-1" />
-                      )}
-                    </Button>
+                          }}
+                          className="h-11 px-4 bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
+                        >
+                          <span>下一题</span>
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      )
+                    ) : (
+                      // 未答题
+                      <Button
+                        disabled
+                        className="h-11 px-4 bg-gray-300 text-gray-500 cursor-not-allowed"
+                      >
+                        <span>下一题</span>
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
