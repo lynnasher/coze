@@ -460,12 +460,17 @@ export default function QuizApp() {
                 className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleMultiSelect(option.id, !isSelected)}
               >
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(checked) => handleMultiSelect(option.id, !!checked)}
-                  disabled={quizState.showResult}
-                  className={`w-5 h-5 mr-4 ${isSelected ? 'text-blue-500' : ''}`}
-                />
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 font-semibold text-sm ${
+                  isSelected 
+                    ? quizState.showResult 
+                      ? isCorrectAnswer 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-rose-500 text-white'
+                      : 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {option.id.toUpperCase()}
+                </div>
                 <span className="flex-1 text-base font-medium">{option.text}</span>
                 {quizState.showResult && isCorrectAnswer && (
                   <Check className="w-6 h-6 text-emerald-500" />

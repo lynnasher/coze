@@ -240,10 +240,13 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       continue;
     }
 
-    // 独立的答案行（支持 A-Z）
-    const pureAnswerMatch = trimmed.match(/^(正确答案|答案|答|参考答案)[：:]\s*([A-Za-z])\s*$/i);
+    // 独立的答案行（支持多选答案如 "DE"、"ABD"）
+    const pureAnswerMatch = trimmed.match(/^(正确答案|答案|答|参考答案)[：:]\s*([A-Za-z,，\s]+)\s*$/i);
     if (pureAnswerMatch) {
-      answer = pureAnswerMatch[2].toLowerCase();
+      const answerStr = pureAnswerMatch[2].toLowerCase();
+      // 解析多选题答案（可能是 "A,B,C" 或 "ABC" 或 "A B C"）
+      const answerLetters = answerStr.replace(/[,，\s]/g, '').split('').filter(Boolean);
+      answer = answerLetters.length > 1 ? answerLetters : answerLetters[0] || 'a';
       // 保存当前选项
       if (currentOption && currentOption.text) {
         addOption(currentOption);
@@ -261,22 +264,26 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       }
       currentOption = { id: optionMatch[1].toLowerCase(), text: optionMatch[2] };
       
-      // 检查选项内是否包含答案
-      const inlineAnswerMatch = currentOption.text.match(/\s*(正确答案|答案|答)[：:]\s*([A-Za-z])\s*$/i);
+      // 检查选项内是否包含答案（支持多选）
+      const inlineAnswerMatch = currentOption.text.match(/\s*(正确答案|答案|答)[：:]\s*([A-Za-z,，\s]+)\s*$/i);
       if (inlineAnswerMatch) {
-        currentOption.text = currentOption.text.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Za-z]\s*$/i, '').trim();
-        answer = inlineAnswerMatch[2].toLowerCase();
+        currentOption.text = currentOption.text.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Za-z,，\s]+\s*$/i, '').trim();
+        const answerStr = inlineAnswerMatch[2].toLowerCase();
+        const answerLetters = answerStr.replace(/[,，\s]/g, '').split('').filter(Boolean);
+        answer = answerLetters.length > 1 ? answerLetters : answerLetters[0] || 'a';
       }
       continue;
     }
 
     // 继续收集当前选项内容（可能是跨行的选项内容）
     if (currentOption) {
-      // 检查行末是否有答案格式（支持 A-Z）
-      const endAnswerMatch = trimmed.match(/(.*?)\s*(正确答案|答案|答)[：:]\s*([A-Za-z])\s*$/i);
+      // 检查行末是否有答案格式（支持多选）
+      const endAnswerMatch = trimmed.match(/(.*?)\s*(正确答案|答案|答)[：:]\s*([A-Za-z,，\s]+)\s*$/i);
       if (endAnswerMatch) {
         currentOption.text += ' ' + endAnswerMatch[1].trim();
-        answer = endAnswerMatch[3].toLowerCase();
+        const answerStr = endAnswerMatch[3].toLowerCase();
+        const answerLetters = answerStr.replace(/[,，\s]/g, '').split('').filter(Boolean);
+        answer = answerLetters.length > 1 ? answerLetters : answerLetters[0] || 'a';
       } else {
         currentOption.text += ' ' + trimmed;
       }
