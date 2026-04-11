@@ -144,7 +144,7 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   }
 
   // 2. 提取题目内容 - 从找到的起始行开始
-  let contentLines: string[] = [];
+  const contentLines: string[] = [];
   let foundOption = false;
   let explicitType: QuestionType | null = null;
   
@@ -195,7 +195,7 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
 
   // 3. 提取选项
   const options: QuizOption[] = [];
-  let answer = 'a';
+  let answer: string | string[] = 'a';
   let explanation = '';
   let currentOption: { id: string; text: string } | null = null;
   let inExplanation = false;
