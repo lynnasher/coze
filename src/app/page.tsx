@@ -77,6 +77,9 @@ export default function QuizApp() {
   const [editingBankName, setEditingBankName] = useState('');
   const [showBankQuestions, setShowBankQuestions] = useState(false);
   
+  // 练习模式状态
+  const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
+  
   // 加载题库
   const banks = useMemo(() => bankStore.getAll(), [questions]);
   
@@ -855,48 +858,88 @@ export default function QuizApp() {
               </Card>
             ) : questions.length > 0 ? (
               /* 未开始练习 - 显示选择模式 */
-              <Card className="shadow-lg max-w-2xl mx-auto">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-blue-500" />
-                    选择练习模式
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-center text-gray-600 mb-4">
-                    题库中共有 <strong>{questions.length}</strong> 道题目
-                  </p>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <Button
-                      variant="outline"
-                      className="h-auto py-6 flex-col gap-2"
-                      onClick={() => startQuiz('sequential')}
-                    >
-                      <Target className="w-8 h-8 text-blue-500" />
-                      <span>顺序练习</span>
-                      <span className="text-xs text-gray-500">按题目顺序</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-auto py-6 flex-col gap-2"
-                      onClick={() => startQuiz('random')}
-                    >
-                      <RefreshCw className="w-8 h-8 text-purple-500" />
-                      <span>随机练习</span>
-                      <span className="text-xs text-gray-500">打乱题目顺序</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="h-auto py-6 flex-col gap-2"
-                      onClick={() => startQuiz('wrong')}
-                    >
-                      <Star className="w-8 h-8 text-orange-500" />
-                      <span>错题重练</span>
-                      <span className="text-xs text-gray-500">专攻错题</span>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="max-w-2xl mx-auto space-y-6">
+                {/* 题库选择 */}
+                {banks.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Library className="w-4 h-4" />
+                        选择题库
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant={practiceBankId === null ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPracticeBankId(null)}
+                        >
+                          全部题目 ({questions.length})
+                        </Button>
+                        {banks.map((bank) => {
+                          const bankQuestions = questions.filter(q => q.bankId === bank.id);
+                          return (
+                            <Button
+                              key={bank.id}
+                              variant={practiceBankId === bank.id ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setPracticeBankId(bank.id)}
+                              disabled={bankQuestions.length === 0}
+                            >
+                              {bank.name} ({bankQuestions.length})
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+                
+                {/* 练习模式选择 */}
+                <Card className="shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-blue-500" />
+                      选择练习模式
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-center text-gray-600">
+                      共 <strong>{practiceBankId ? questions.filter(q => q.bankId === practiceBankId).length : questions.length}</strong> 道题目
+                    </p>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <Button
+                        variant="outline"
+                        className="h-auto py-6 flex-col gap-2"
+                        onClick={() => startQuiz('sequential', practiceBankId)}
+                      >
+                        <Target className="w-8 h-8 text-blue-500" />
+                        <span>顺序练习</span>
+                        <span className="text-xs text-gray-500">按题目顺序</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-auto py-6 flex-col gap-2"
+                        onClick={() => startQuiz('random', practiceBankId)}
+                      >
+                        <RefreshCw className="w-8 h-8 text-purple-500" />
+                        <span>随机练习</span>
+                        <span className="text-xs text-gray-500">打乱题目顺序</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-auto py-6 flex-col gap-2"
+                        onClick={() => startQuiz('wrong', practiceBankId)}
+                      >
+                        <Star className="w-8 h-8 text-orange-500" />
+                        <span>错题重练</span>
+                        <span className="text-xs text-gray-500">专攻错题</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             ) : (
               /* 题库为空 */
               <Card className="shadow-lg max-w-2xl mx-auto">

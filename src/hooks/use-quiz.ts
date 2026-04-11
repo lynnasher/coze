@@ -41,18 +41,27 @@ export function useQuiz() {
   }, []);
 
   // 开始练习
-  const startQuiz = useCallback((mode: PracticeMode = 'sequential') => {
+  const startQuiz = useCallback((mode: PracticeMode = 'sequential', bankId?: string | null) => {
     let questions = questionStore.getAll();
+    
+    // 按题库筛选
+    if (bankId) {
+      questions = questions.filter(q => q.bankId === bankId);
+    }
     
     if (mode === 'random') {
       questions = [...questions].sort(() => Math.random() - 0.5);
     } else if (mode === 'wrong') {
       const wrongIds = recordStore.getWrongQuestionIds();
       if (wrongIds.length > 0) {
+        // 错题重练也要考虑题库筛选
         questions = questions.filter(q => wrongIds.includes(q.id));
       }
       if (questions.length === 0) {
-        questions = questionStore.getAll();
+        // 如果没有错题，使用筛选后的全部题目
+        questions = bankId 
+          ? questionStore.getAll().filter(q => q.bankId === bankId)
+          : questionStore.getAll();
       }
     }
 

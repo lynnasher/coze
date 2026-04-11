@@ -16,8 +16,26 @@ const cleanText = (text: string): string => {
   return text
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\t/g, ' ')
+    .replace(/\u3000/g, ' ') // 全角空格
     .trim();
+};
+
+// 判断是否为选项行
+const isOptionLine = (line: string): boolean => {
+  // 匹配常见的选项格式: A、B、C、D 开头
+  // 支持: A. B. A、 B、 A: B: 等格式
+  return /^[A-Da-d][.、:：\s]/.test(line.trim());
+};
+
+// 判断是否为答案行
+const isAnswerLine = (line: string): boolean => {
+  return /^(正确答案|答案|答|参考答案)[：:]/.test(line.trim());
+};
+
+// 判断是否为解析行
+const isExplanationLine = (line: string): boolean => {
+  return /^(名师解析|解析|答案解析)[：:]/.test(line.trim());
 };
 
 // 从文本提取题目的解析器 - 银行题库格式
@@ -25,22 +43,48 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
   const cleaned = cleanText(text);
   const questions: ParsedQuestion[] = [];
 
-  // 按题目分隔：匹配纯数字开头的行（题目编号）
-  // 格式: "1假设某银行..." 或 "1、一般来说..."
-  const questionBlocks = cleaned.split(/(?=^\d+[^\d])/m);
+  // 1. 先将文本按空行分割成块
+  const blocks = cleaned.split(/\n\s*\n/).filter(b => b.trim());
 
-  for (const block of questionBlocks) {
+  for (const block of blocks) {
     const trimmed = block.trim();
     if (!trimmed) continue;
-
-    // 跳过标题、非题目内容
-    if (/^[^\d]/.test(trimmed)) continue;
-    if (/目\s*录|索\s*引|前\s*言|附\s*录|^第.*章|^第.*部分/i.test(trimmed)) continue;
-    if (trimmed.length < 20) continue;
 
     const question = parseQuestionBlock(trimmed);
     if (question) {
       questions.push(question);
+    }
+  }
+
+  // 如果按空行分割没找到题目，尝试按编号分割
+  if (questions.length === 0) {
+    const lines = cleaned.split('\n');
+    let currentBlock = '';
+    const questionBlocks: string[] = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // 检测新题目开始：数字编号开头
+      if (/^\d+[.、)]\s*\S/.test(trimmed)) {
+        if (currentBlock.trim()) {
+          questionBlocks.push(currentBlock.trim());
+        }
+        currentBlock = trimmed;
+      } else if (currentBlock) {
+        currentBlock += '\n' + trimmed;
+      }
+    }
+
+    // 添加最后一块
+    if (currentBlock.trim()) {
+      questionBlocks.push(currentBlock.trim());
+    }
+
+    for (const block of questionBlocks) {
+      const question = parseQuestionBlock(block);
+      if (question) {
+        questions.push(question);
+      }
     }
   }
 
@@ -52,41 +96,119 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   const lines = block.split('\n').map(l => l.trim()).filter(l => l);
   if (lines.length < 2) return null;
 
-  // 1. 提取题目内容（第一行，去掉开头的编号）
-  const content = lines[0].replace(/^\d+[.、)]\s*/, '').trim();
-  if (!content) return null;
-
-  // 2. 提取选项
-  const options: QuizOption[] = [];
-  let currentOption = '';
-  let currentOptionId = '';
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-
-    // 匹配选项开始: A、B、C、D (可能带有各种分隔符)
-    const optionMatch = line.match(/^([A-Da-d])[.、:、]\s*(.+)/);
-    if (optionMatch) {
-      // 保存上一个选项
-      if (currentOptionId && currentOption) {
-        options.push({ id: currentOptionId, text: currentOption });
-      }
-      currentOptionId = optionMatch[1].toLowerCase();
-      currentOption = optionMatch[2];
-    } else if (currentOptionId) {
-      // 继续收集选项内容（选项内容可能跨行）
-      currentOption += ' ' + line;
-    }
-
-    // 如果遇到"正确答案"或"名师解析"，停止收集选项
-    if (/^(正确答案|名师解析|答[案]?[:：])/i.test(line)) {
-      break;
-    }
+  // 跳过标题行
+  const skipPatterns = [
+    /^目\s*录/, /^索\s*引/, /^前\s*言/, /^附\s*录/,
+    /^第.*章$/, /^第.*部分$/, /^练习题$/, /^测试题$/,
+    /^题\s*目/, /^单\s*选/, /^多\s*选/, /^判\s*断/
+  ];
+  
+  if (skipPatterns.some(p => p.test(lines[0]))) {
+    return null;
   }
 
+  // 1. 提取题目内容 - 从第一行开始收集，直到遇到选项
+  const contentLines: string[] = [];
+  let contentComplete = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // 如果遇到选项，停止收集题目内容
+    if (isOptionLine(line) || isAnswerLine(line) || isExplanationLine(line)) {
+      contentComplete = true;
+      break;
+    }
+    
+    // 检查这一行是否同时包含选项信息（选项和题目内容混在一起）
+    const mixedContent = line.match(/^([A-Da-d])[.、:：]\s*(.+)/);
+    if (mixedContent) {
+      // 这是一个混合行：D 发展时期 答案: A
+      // 提取字母部分作为选项，内容作为题目
+      contentLines.push(mixedContent[2]);
+      contentComplete = true;
+      break;
+    }
+    
+    // 检查是否只有单个字母选项（跨行选项）
+    if (/^[A-Da-d]$/.test(line)) {
+      // 这是一个单独的字母，可能与下一行合并
+      // 继续收集下一行作为选项内容
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+        // 检查下一行是否是答案或解析
+        if (isAnswerLine(nextLine) || isExplanationLine(nextLine)) {
+          // 单独的字母可能就是答案的一部分
+          contentLines.push(line);
+        } else {
+          // 下一行是选项内容
+          contentLines.push(line);
+          contentComplete = true;
+        }
+      }
+      continue;
+    }
+    
+    contentLines.push(line);
+  }
+
+  // 构建题目内容
+  let content = contentLines.join(' ').trim();
+  
+  // 去掉开头的编号
+  content = content.replace(/^\d+[.、)]\s*/, '').trim();
+  
+  if (!content || content.length < 5) {
+    return null;
+  }
+
+  // 2. 提取选项 - 从识别到的选项行开始
+  const options: QuizOption[] = [];
+  let optionBuffer = { id: '', text: '' };
+  
+  for (let i = contentLines.length; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // 遇到答案或解析行，停止收集选项
+    if (isAnswerLine(line) || isExplanationLine(line)) {
+      // 保存当前缓冲的选项
+      if (optionBuffer.id && optionBuffer.text) {
+        options.push({ id: optionBuffer.id, text: optionBuffer.text.trim() });
+      }
+      break;
+    }
+    
+    // 检查是否是混合行（选项 + 内容混在一起）
+    const mixedLine = line.match(/^([A-Da-d])[.、:：]\s*(.+)/);
+    if (mixedLine) {
+      // 保存之前的选项
+      if (optionBuffer.id && optionBuffer.text) {
+        options.push({ id: optionBuffer.id, text: optionBuffer.text.trim() });
+      }
+      // 开始新选项
+      optionBuffer = { id: mixedLine[1].toLowerCase(), text: mixedLine[2] };
+      continue;
+    }
+    
+    // 检查是否是纯选项字母
+    if (/^[A-Da-d]$/.test(line)) {
+      // 保存之前的选项
+      if (optionBuffer.id && optionBuffer.text) {
+        options.push({ id: optionBuffer.id, text: optionBuffer.text.trim() });
+      }
+      optionBuffer = { id: line.toLowerCase(), text: '' };
+      continue;
+    }
+    
+    // 其他行，可能是选项内容的延续
+    if (optionBuffer.id) {
+      optionBuffer.text += ' ' + line;
+    }
+  }
+  
   // 保存最后一个选项
-  if (currentOptionId && currentOption) {
-    options.push({ id: currentOptionId, text: currentOption });
+  if (optionBuffer.id && optionBuffer.text) {
+    options.push({ id: optionBuffer.id, text: optionBuffer.text.trim() });
   }
 
   // 3. 提取答案
@@ -94,7 +216,8 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   const answerPatterns = [
     /正确答案[：:]\s*([A-Da-d])/i,
     /答案[：:]\s*([A-Da-d])/i,
-    /答[案]?[：:]\s*([A-Da-d])/i,
+    /答[：:]\s*([A-Da-d])/i,
+    /^([A-Da-d])$/,
   ];
 
   for (const line of lines) {
@@ -110,17 +233,10 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
 
   // 4. 提取解析
   let explanation = '';
-  const explanationPatterns = [
-    /名师解析[：:]\s*([\s\S]+?)(?=^\d+[^\d]|$)/m,
-    /解析[：:]\s*([\s\S]+?)(?=^\d+[^\d]|$)/m,
-  ];
-
-  // 合并所有行来匹配解析
-  const fullText = lines.join('\n');
-  for (const pattern of explanationPatterns) {
-    const match = fullText.match(pattern);
+  for (const line of lines) {
+    const match = line.match(/^(名师解析|解析|答案解析)[：:]\s*(.+)/i);
     if (match) {
-      explanation = match[1].trim();
+      explanation = match[2].trim();
       break;
     }
   }
@@ -130,11 +246,10 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
 
   // 6. 判断题答案转换
   if (type === 'true-false') {
-    // 判断题默认假设选项0是正确
     answer = options.length > 0 ? 'true' : 'true';
   }
 
-  // 7. 识别难度（根据关键词）
+  // 7. 识别难度
   const difficulty = identifyDifficulty(content);
 
   return {
