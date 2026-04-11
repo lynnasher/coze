@@ -643,15 +643,29 @@ export default function QuizApp() {
                       </h2>
                     </div>
                     
-                    {/* 右侧：答题卡 */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowAnswerSheet(true)}
-                      className="text-white hover:bg-white/20 px-2 -mr-2"
-                    >
-                      <Grid3X3 className="w-5 h-5" />
-                    </Button>
+                    {/* 右侧：答题卡 + 交卷 */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowAnswerSheet(true)}
+                        className="text-white hover:bg-white/20 px-2"
+                      >
+                        <Grid3X3 className="w-5 h-5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const answeredCount = Object.keys(quizState.answers).length;
+                          if (confirm(`已回答 ${answeredCount}/${quizState.questions.length} 道题目，确定要交卷吗？`)) {
+                            finishQuiz();
+                          }
+                        }}
+                        className="bg-white/20 hover:bg-white/30 text-white text-xs px-3 h-8 font-medium"
+                      >
+                        交卷
+                      </Button>
+                    </div>
                   </div>
                   
                   {/* 进度信息 */}
@@ -775,8 +789,8 @@ export default function QuizApp() {
                 </div>
 
                 {/* 底部固定操作栏 */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg p-3 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none rounded-t-2xl sm:rounded-none">
-                  <div className="flex items-center justify-between gap-3 max-w-2xl mx-auto">
+                <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-lg p-3 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none rounded-t-2xl sm:rounded-none">
+                  <div className="flex items-center justify-between gap-2 max-w-2xl mx-auto">
                     {/* 左侧：上一题 */}
                     <Button
                       variant="outline"
@@ -789,41 +803,57 @@ export default function QuizApp() {
                         }
                       }}
                       disabled={quizState.currentIndex === 0}
-                      className="h-11 px-4 border-gray-300"
+                      className="flex-1 h-11 border-gray-200"
                     >
                       <ChevronLeft className="w-4 h-4 mr-1" />
-                      <span className="hidden sm:inline">上一题</span>
-                      <span className="sm:hidden">上一</span>
+                      <span>上一题</span>
                     </Button>
                     
-                    {/* 中间：查看答案与解析（答题后显示） */}
-                    {currentAnswer && (
+                    {/* 中间：查看解析（答题后显示） */}
+                    {currentAnswer && !quizState.showResult && (
                       <Button
                         variant="outline"
                         onClick={submitAnswer}
-                        className="h-11 px-3 border-amber-300 text-amber-700 hover:bg-amber-50"
+                        className="flex-1 h-11 border-amber-200 text-amber-700 hover:bg-amber-50"
                       >
                         <BookOpen className="w-4 h-4 mr-1" />
                         <span>查看解析</span>
                       </Button>
                     )}
                     
+                    {/* 中间：答题进度提示（答题后且显示结果时） */}
+                    {quizState.showResult && (
+                      <div className={`flex-1 h-11 flex items-center justify-center rounded-lg px-3 ${
+                        isAnswerCorrect 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      }`}>
+                        {isAnswerCorrect ? (
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            <span>回答正确</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 mr-1" />
+                            <span>回答错误</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
                     {/* 右侧：下一题 / 交卷 */}
                     {quizState.currentIndex === quizState.questions.length - 1 ? (
-                      // 最后一道题：显示交卷（更突出）
                       <Button
                         onClick={() => finishQuiz()}
-                        disabled={!currentAnswer}
-                        className="h-12 px-6 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold shadow-lg shadow-emerald-500/30 disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none rounded-xl text-base"
+                        className="flex-1 h-12 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold shadow-lg shadow-emerald-500/30 rounded-xl"
                       >
                         <FileCheck className="w-5 h-5 mr-2" />
                         交卷
                       </Button>
                     ) : (
-                      // 非最后一道题：下一题
                       <Button
                         onClick={() => {
-                          // 如果选了答案但未提交，自动提交
                           if (currentAnswer && !quizState.showResult) {
                             submitAnswer();
                           }
@@ -832,7 +862,7 @@ export default function QuizApp() {
                             questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                           }, 50);
                         }}
-                        className="h-11 px-4 bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
+                        className="flex-1 h-11 bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
                       >
                         <span>下一题</span>
                         <ChevronRight className="w-4 h-4 ml-1" />
