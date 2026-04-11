@@ -1001,165 +1001,39 @@ export default function QuizApp() {
 
           {/* 题库页面 */}
           <TabsContent value="library">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold">题库管理</h2>
+            {/* 移动端：紧凑的头部布局 */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                <Library className="w-5 h-5" />
+                <span className="hidden sm:inline">题库管理</span>
+                <span className="sm:hidden">题库 ({banks.length})</span>
+              </h2>
+              <div className="flex items-center gap-2">
                 {banks.length > 0 && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleClearAll}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 gap-1"
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 text-xs px-2"
                   >
-                    <Trash2 className="w-4 h-4" />
-                    清空全部
+                    <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">清空</span>
                   </Button>
                 )}
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={() => setImportModalOpen(true)} className="gap-2">
-                  <Upload className="w-4 h-4" />
-                  导入题库
+                <Button onClick={() => setImportModalOpen(true)} size="sm" className="gap-1">
+                  <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">导入题库</span>
+                  <span className="sm:hidden">导入</span>
                 </Button>
-                <Dialog open={addQuestionOpen} onOpenChange={setAddQuestionOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      添加题目
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                      <DialogTitle>添加新题目</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label>题目类型</Label>
-                        <Select
-                          value={newQuestion.type}
-                          onValueChange={(v) => setNewQuestion({ ...newQuestion, type: v as QuestionType })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="single">单选题</SelectItem>
-                            <SelectItem value="multiple">多选题</SelectItem>
-                            <SelectItem value="true-false">判断题</SelectItem>
-                            <SelectItem value="fill-blank">填空题</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div>
-                        <Label>题目内容</Label>
-                        <Textarea
-                          value={newQuestion.content}
-                          onChange={(e) => setNewQuestion({ ...newQuestion, content: e.target.value })}
-                          placeholder="请输入题目内容..."
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      {newQuestion.type !== 'fill-blank' && (
-                        <div className="space-y-2">
-                          <Label>选项</Label>
-                          {newQuestion.options?.map((opt, idx) => (
-                            <div key={`new-opt-${idx}-${opt.id}`} className="flex gap-2">
-                              <span className="w-6 py-2 text-gray-500">{opt.id.toUpperCase()}.</span>
-                              <Input
-                                value={opt.text}
-                                onChange={(e) => {
-                                  const opts = [...(newQuestion.options || [])];
-                                  opts[idx] = { ...opts[idx], text: e.target.value };
-                                  setNewQuestion({ ...newQuestion, options: opts });
-                                }}
-                                placeholder={`选项 ${opt.id.toUpperCase()}`}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <div>
-                        <Label>正确答案</Label>
-                        {newQuestion.type === 'fill-blank' ? (
-                          <Input
-                            value={newQuestion.answer as string}
-                            onChange={(e) => setNewQuestion({ ...newQuestion, answer: e.target.value })}
-                            placeholder="输入正确答案"
-                            className="mt-1"
-                          />
-                        ) : newQuestion.type === 'multiple' ? (
-                          <div className="flex gap-4 mt-2">
-                            {['a', 'b', 'c', 'd'].map((opt) => (
-                              <label key={opt} className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={(newQuestion.answer as string[])?.includes(opt)}
-                                  onCheckedChange={(checked) => {
-                                    const current = (newQuestion.answer as string[]) || [];
-                                    if (checked) {
-                                      setNewQuestion({ ...newQuestion, answer: [...current, opt] });
-                                    } else {
-                                      setNewQuestion({ ...newQuestion, answer: current.filter(a => a !== opt) });
-                                    }
-                                  }}
-                                />
-                                <span>{opt.toUpperCase()}</span>
-                              </label>
-                            ))}
-                          </div>
-                        ) : (
-                          <Select
-                            value={newQuestion.answer as string}
-                            onValueChange={(v) => setNewQuestion({ ...newQuestion, answer: v })}
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="选择正确答案" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {newQuestion.options?.map((opt, idx) => (
-                                <SelectItem key={`select-opt-${idx}-${opt.id}`} value={opt.id}>
-                                  {opt.id.toUpperCase()}. {opt.text}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                      
-                      <div>
-                        <Label>难度</Label>
-                        <Select
-                          value={newQuestion.difficulty}
-                          onValueChange={(v) => setNewQuestion({ ...newQuestion, difficulty: v as Difficulty })}
-                        >
-                          <SelectTrigger className="mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="easy">简单</SelectItem>
-                            <SelectItem value="medium">中等</SelectItem>
-                            <SelectItem value="hard">困难</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <Button onClick={handleAddQuestion} className="w-full">
-                        保存题目
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button variant="outline" size="sm" onClick={() => setAddQuestionOpen(true)} className="gap-1">
+                  <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">添加题目</span>
+                </Button>
               </div>
             </div>
 
             {/* 题库列表 */}
-            <div className="mb-8">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Library className="w-5 h-5" />
-                题库列表 ({banks.length})
-              </h3>
+            <div className="mb-6 sm:mb-8">
               {banks.length === 0 ? (
                 <Card className="bg-gray-50 border-dashed">
                   <CardContent className="py-8 text-center">
@@ -1172,18 +1046,20 @@ export default function QuizApp() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                /* 题库列表 - 移动端垂直列表，桌面端网格 */
+                <div className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                   {banks.map((bank) => (
-                    <Card key={bank.id} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-3">
+                    <Card key={bank.id} className="sm:hover:shadow-md transition-shadow">
+                      <CardContent className="p-3 sm:p-4">
+                        {/* 题库名称行 */}
+                        <div className="flex items-start gap-2 mb-2">
                           <div className="flex-1 min-w-0">
                             {editingBankId === bank.id ? (
                               <div className="flex gap-2">
                                 <Input
                                   value={editingBankName}
                                   onChange={(e) => setEditingBankName(e.target.value)}
-                                  className="h-8"
+                                  className="h-8 text-sm"
                                   autoFocus
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleSaveBankName();
@@ -1193,94 +1069,95 @@ export default function QuizApp() {
                                 <Button size="sm" onClick={handleSaveBankName}>保存</Button>
                               </div>
                             ) : (
-                              <h4 
-                                className="font-semibold text-gray-900 truncate cursor-pointer hover:text-blue-600"
+                              <div 
+                                className="cursor-pointer group"
                                 onClick={() => handleViewBankQuestions(bank.id)}
                               >
-                                {bank.name}
-                              </h4>
+                                <h4 className="font-medium text-gray-900 text-sm sm:text-base leading-tight line-clamp-2 group-hover:text-blue-600">
+                                  {bank.name}
+                                </h4>
+                              </div>
                             )}
                           </div>
-                          <div className="flex gap-1 ml-2">
+                          <div className="flex gap-0.5 sm:gap-1 flex-shrink-0">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-7 w-7 sm:h-8 sm:w-8"
                               onClick={() => handleStartEditBank(bank)}
                             >
-                              <FileText className="w-4 h-4 text-gray-400" />
+                              <FileText className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              className="h-7 w-7 sm:h-8 sm:w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                               onClick={() => handleDeleteBank(bank.id)}
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">{bank.questionIds.length} 道题目</span>
-                          <span className="text-gray-400 text-xs">
-                            {new Date(bank.createdAt).toLocaleDateString()}
-                          </span>
+                        
+                        {/* 题库信息 */}
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                          <span>{bank.questionIds.length} 道题目</span>
+                          <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
                         </div>
-                        <div className="flex flex-col gap-2 mt-3">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => handleViewBankQuestions(bank.id)}
-                            >
-                              查看题目
-                            </Button>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="flex-1 text-xs h-8 bg-blue-500 hover:bg-blue-600"
-                              onClick={() => {
-                                setPracticeBankId(bank.id);
-                                setActiveTab('practice');
-                                setTimeout(() => startQuiz('sequential', bank.id), 100);
-                              }}
-                              disabled={bank.questionIds.length === 0}
-                            >
-                              <Target className="w-3 h-3 mr-1" />
-                              顺序
-                            </Button>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="flex-1 text-xs h-8 bg-purple-500 hover:bg-purple-600"
-                              onClick={() => {
-                                setPracticeBankId(bank.id);
-                                setActiveTab('practice');
-                                setTimeout(() => startQuiz('random', bank.id), 100);
-                              }}
-                              disabled={bank.questionIds.length === 0}
-                            >
-                              <RefreshCw className="w-3 h-3 mr-1" />
-                              随机
-                            </Button>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="flex-1 text-xs h-8 bg-orange-500 hover:bg-orange-600"
-                              onClick={() => {
-                                setPracticeBankId(bank.id);
-                                setActiveTab('practice');
-                                setTimeout(() => startQuiz('wrong', bank.id), 100);
-                              }}
-                              disabled={bank.questionIds.length === 0}
-                            >
-                              <Star className="w-3 h-3 mr-1" />
-                              错题
-                            </Button>
-                          </div>
+                        
+                        {/* 操作按钮 - 移动端紧凑布局 */}
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-8 text-xs"
+                            onClick={() => handleViewBankQuestions(bank.id)}
+                          >
+                            <Library className="w-3 h-3 mr-1" />
+                            题目
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1 h-8 text-xs bg-blue-500 hover:bg-blue-600"
+                            onClick={() => {
+                              setPracticeBankId(bank.id);
+                              setActiveTab('practice');
+                              setTimeout(() => startQuiz('sequential', bank.id), 100);
+                            }}
+                            disabled={bank.questionIds.length === 0}
+                          >
+                            <Target className="w-3 h-3 mr-0.5" />
+                            顺序
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1 h-8 text-xs bg-purple-500 hover:bg-purple-600"
+                            onClick={() => {
+                              setPracticeBankId(bank.id);
+                              setActiveTab('practice');
+                              setTimeout(() => startQuiz('random', bank.id), 100);
+                            }}
+                            disabled={bank.questionIds.length === 0}
+                          >
+                            <RefreshCw className="w-3 h-3 mr-0.5" />
+                            随机
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1 h-8 text-xs bg-orange-500 hover:bg-orange-600"
+                            onClick={() => {
+                              setPracticeBankId(bank.id);
+                              setActiveTab('practice');
+                              setTimeout(() => startQuiz('wrong', bank.id), 100);
+                            }}
+                            disabled={bank.questionIds.length === 0}
+                          >
+                            <Star className="w-3 h-3 mr-0.5" />
+                            错题
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -1291,11 +1168,13 @@ export default function QuizApp() {
 
             {/* 题库内题目列表 */}
             {showBankQuestions && selectedBankId && (
-              <div className="border-t pt-6 mt-6">
+              <div className="border-t pt-4 sm:pt-6 mt-4 sm:mt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    题库题目 ({questions.filter(q => q.bankId === selectedBankId).length})
+                  <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="hidden sm:inline">题库题目</span>
+                    <span className="sm:hidden">题目</span>
+                    ({questions.filter(q => q.bankId === selectedBankId).length})
                   </h3>
                   <Button variant="outline" size="sm" onClick={() => setShowBankQuestions(false)}>
                     关闭
@@ -1303,30 +1182,30 @@ export default function QuizApp() {
                 </div>
                 <Card>
                   <CardContent className="p-0">
-                    <div className="divide-y max-h-[500px] overflow-y-auto">
+                    <div className="divide-y max-h-[60vh] overflow-y-auto">
                       {questions
                         .filter(q => q.bankId === selectedBankId)
                         .map((q, idx) => (
-                          <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
+                          <div key={q.id} className="p-3 sm:p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 sm:mb-2 flex-wrap">
+                                  <span className="text-xs sm:text-sm font-medium text-gray-500">#{idx + 1}</span>
                                   {renderTypeBadge(q.type)}
                                 </div>
-                                <p className="font-medium text-gray-900 mb-2">{q.content}</p>
+                                <p className="font-medium text-gray-900 mb-2 text-sm sm:text-base line-clamp-2">{q.content}</p>
                                 {q.options && (
-                                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                                  <div className="grid grid-cols-2 gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
                                     {q.options.map((opt, optIdx) => (
                                       <div key={`opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
                                         <span className="font-medium">{opt.id.toUpperCase()}.</span>
-                                        <span>{opt.text}</span>
+                                        <span className="truncate">{opt.text}</span>
                                       </div>
                                     ))}
                                   </div>
                                 )}
-                                <div className="mt-2 text-sm">
-                                  <span className="text-gray-500">正确答案：</span>
+                                <div className="mt-1 sm:mt-2 text-xs sm:text-sm">
+                                  <span className="text-gray-500">答案：</span>
                                   <span className="font-medium text-green-600">
                                     {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
                                   </span>
@@ -1336,7 +1215,7 @@ export default function QuizApp() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleDeleteQuestion(q.id)}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 flex-shrink-0"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1345,7 +1224,7 @@ export default function QuizApp() {
                         ))}
                     </div>
                     {questions.filter(q => q.bankId === selectedBankId).length === 0 && (
-                      <div className="p-12 text-center">
+                      <div className="p-8 sm:p-12 text-center">
                         <p className="text-gray-500">该题库暂无题目</p>
                       </div>
                     )}
@@ -1368,22 +1247,22 @@ export default function QuizApp() {
                         <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
                                 {renderTypeBadge(q.type)}
                                 {q.bankId && banks.find(b => b.id === q.bankId) && (
-                                  <Badge variant="secondary" className="text-xs">
+                                  <Badge variant="secondary" className="text-xs line-clamp-1 max-w-[150px]">
                                     {banks.find(b => b.id === q.bankId)?.name}
                                   </Badge>
                                 )}
                               </div>
-                              <p className="font-medium text-gray-900 mb-2">{q.content}</p>
+                              <p className="font-medium text-gray-900 mb-2 line-clamp-2">{q.content}</p>
                               {q.options && (
                                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
                                   {q.options.map((opt, optIdx) => (
                                     <div key={`q-opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
                                       <span className="font-medium">{opt.id.toUpperCase()}.</span>
-                                      <span>{opt.text}</span>
+                                      <span className="truncate">{opt.text}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1416,6 +1295,132 @@ export default function QuizApp() {
                 </Card>
               </div>
             )}
+
+            {/* 添加题目弹窗 */}
+            <Dialog open={addQuestionOpen} onOpenChange={setAddQuestionOpen}>
+              <DialogContent className="max-w-[calc(100%-32px)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>添加新题目</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>题目类型</Label>
+                    <Select
+                      value={newQuestion.type}
+                      onValueChange={(v) => setNewQuestion({ ...newQuestion, type: v as QuestionType })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">单选题</SelectItem>
+                        <SelectItem value="multiple">多选题</SelectItem>
+                        <SelectItem value="true-false">判断题</SelectItem>
+                        <SelectItem value="fill-blank">填空题</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label>题目内容</Label>
+                    <Textarea
+                      value={newQuestion.content}
+                      onChange={(e) => setNewQuestion({ ...newQuestion, content: e.target.value })}
+                      placeholder="请输入题目内容..."
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  {newQuestion.type !== 'fill-blank' && (
+                    <div className="space-y-2">
+                      <Label>选项</Label>
+                      {newQuestion.options?.map((opt, idx) => (
+                        <div key={`new-opt-${idx}-${opt.id}`} className="flex gap-2">
+                          <span className="w-6 py-2 text-gray-500">{opt.id.toUpperCase()}.</span>
+                          <Input
+                            value={opt.text}
+                            onChange={(e) => {
+                              const opts = [...(newQuestion.options || [])];
+                              opts[idx] = { ...opts[idx], text: e.target.value };
+                              setNewQuestion({ ...newQuestion, options: opts });
+                            }}
+                            placeholder={`选项 ${opt.id.toUpperCase()}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div>
+                    <Label>正确答案</Label>
+                    {newQuestion.type === 'fill-blank' ? (
+                      <Input
+                        value={newQuestion.answer as string}
+                        onChange={(e) => setNewQuestion({ ...newQuestion, answer: e.target.value })}
+                        placeholder="输入正确答案"
+                        className="mt-1"
+                      />
+                    ) : newQuestion.type === 'multiple' ? (
+                      <div className="flex gap-4 mt-2">
+                        {['a', 'b', 'c', 'd'].map((opt) => (
+                          <label key={opt} className="flex items-center gap-2">
+                            <Checkbox
+                              checked={(newQuestion.answer as string[])?.includes(opt)}
+                              onCheckedChange={(checked) => {
+                                const current = (newQuestion.answer as string[]) || [];
+                                if (checked) {
+                                  setNewQuestion({ ...newQuestion, answer: [...current, opt] });
+                                } else {
+                                  setNewQuestion({ ...newQuestion, answer: current.filter(a => a !== opt) });
+                                }
+                              }}
+                            />
+                            <span>{opt.toUpperCase()}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <Select
+                        value={newQuestion.answer as string}
+                        onValueChange={(v) => setNewQuestion({ ...newQuestion, answer: v })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="选择正确答案" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {newQuestion.options?.map((opt, idx) => (
+                            <SelectItem key={`select-opt-${idx}-${opt.id}`} value={opt.id}>
+                              {opt.id.toUpperCase()}. {opt.text}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label>难度</Label>
+                    <Select
+                      value={newQuestion.difficulty}
+                      onValueChange={(v) => setNewQuestion({ ...newQuestion, difficulty: v as Difficulty })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="easy">简单</SelectItem>
+                        <SelectItem value="medium">中等</SelectItem>
+                        <SelectItem value="hard">困难</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <Button onClick={handleAddQuestion} className="w-full">
+                    保存题目
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* 统计页面 */}
