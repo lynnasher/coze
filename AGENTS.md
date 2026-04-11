@@ -1,56 +1,199 @@
-# 项目上下文
+# 刷题网页 - 项目规范
 
-### 版本技术栈
+## 1. 项目概述
 
-- **Framework**: Next.js 16 (App Router)
-- **Core**: React 19
-- **Language**: TypeScript 5
-- **UI 组件**: shadcn/ui (基于 Radix UI)
-- **Styling**: Tailwind CSS 4
+- **项目名称**: 智能刷题助手
+- **项目类型**: 单页应用 (SPA)
+- **核心功能**: 支持 PDF 导入题库的智能刷题练习系统
+- **目标用户**: 学生、备考人员、自学者
 
-## 目录结构
+## 2. 功能清单
+
+### 2.1 题库管理
+- PDF 文件导入题库
+- 题目列表展示（支持筛选、搜索）
+- 题目标签管理
+- 题目分类（按科目、章节）
+
+### 2.2 题目练习
+- 多种题型支持：选择题（单选/多选）、判断题、填空题
+- 随机练习模式
+- 顺序练习模式
+- 错题重练模式
+- 答题计时功能
+
+### 2.3 答题反馈
+- 实时答案校验
+- 正确答案高亮显示
+- 题目解析展示
+- 答题进度显示
+
+### 2.4 统计与追踪
+- 正确率统计
+- 练习历史记录
+- 错题本功能
+- 学习进度可视化
+
+## 3. 技术架构
+
+### 3.1 前端框架
+- Next.js 16 (App Router)
+- React 19
+- TypeScript 5
+- Tailwind CSS 4
+- shadcn/ui 组件库
+
+### 3.2 状态管理
+- React useState/useReducer
+- localStorage 本地持久化
+
+### 3.3 PDF 解析
+- pdfjs-dist 库
+- 后端 API 辅助解析
+
+### 3.4 数据存储
+- 浏览器 localStorage
+- 可扩展至 Supabase
+
+## 4. 目录结构
 
 ```
-├── public/                 # 静态资源
-├── scripts/                # 构建与启动脚本
-│   ├── build.sh            # 构建脚本
-│   ├── dev.sh              # 开发环境启动脚本
-│   ├── prepare.sh          # 预处理脚本
-│   └── start.sh            # 生产环境启动脚本
-├── src/
-│   ├── app/                # 页面路由与布局
-│   ├── components/ui/      # Shadcn UI 组件库
-│   ├── hooks/              # 自定义 Hooks
-│   ├── lib/                # 工具库
-│   │   └── utils.ts        # 通用工具函数 (cn)
-│   └── server.ts           # 自定义服务端入口
-├── next.config.ts          # Next.js 配置
-├── package.json            # 项目依赖管理
-└── tsconfig.json           # TypeScript 配置
+src/
+├── app/
+│   ├── page.tsx                 # 主页面
+│   ├── layout.tsx               # 布局组件
+│   └── globals.css              # 全局样式
+├── components/
+│   ├── ui/                      # shadcn/ui 组件
+│   ├── quiz/                    # 刷题相关组件
+│   │   ├── QuizCard.tsx         # 题目卡片
+│   │   ├── QuizOption.tsx       # 选项组件
+│   │   ├── QuizProgress.tsx     # 进度组件
+│   │   ├── QuizResult.tsx       # 结果组件
+│   │   └── QuizControls.tsx     # 控制组件
+│   ├── library/                 # 题库管理组件
+│   │   ├── QuestionList.tsx     # 题目列表
+│   │   ├── ImportModal.tsx      # 导入弹窗
+│   │   └── QuestionForm.tsx     # 题目表单
+│   └── stats/                   # 统计组件
+│       └── StatsCard.tsx        # 统计卡片
+├── lib/
+│   ├── utils.ts                 # 工具函数
+│   ├── quiz-store.ts            # 刷题状态管理
+│   ├── pdf-parser.ts            # PDF 解析工具
+│   └── types.ts                 # 类型定义
+└── hooks/
+    └── use-quiz.ts              # 刷题 Hook
 ```
 
-- 项目文件（如 app 目录、pages 目录、components 等）默认初始化到 `src/` 目录下。
+## 5. 数据模型
 
-## 包管理规范
+### 5.1 题目 (Question)
+```typescript
+interface Question {
+  id: string;
+  type: 'single' | 'multiple' | 'true-false' | 'fill-blank';
+  content: string;
+  options?: { id: string; text: string }[];
+  answer: string | string[];
+  explanation?: string;
+  tags: string[];
+  difficulty: 'easy' | 'medium' | 'hard';
+  createdAt: number;
+}
+```
 
-**仅允许使用 pnpm** 作为包管理器，**严禁使用 npm 或 yarn**。
-**常用命令**：
-- 安装依赖：`pnpm add <package>`
-- 安装开发依赖：`pnpm add -D <package>`
-- 安装所有依赖：`pnpm install`
-- 移除依赖：`pnpm remove <package>`
+### 5.2 练习记录 (PracticeRecord)
+```typescript
+interface PracticeRecord {
+  id: string;
+  questionId: string;
+  isCorrect: boolean;
+  selectedAnswer: string | string[];
+  timestamp: number;
+}
+```
 
-## 开发规范
+### 5.3 题库 (QuestionBank)
+```typescript
+interface QuestionBank {
+  id: string;
+  name: string;
+  description?: string;
+  questionIds: string[];
+  createdAt: number;
+}
+```
 
-### Hydration 问题防范
+## 6. 页面布局
 
-1. 严禁在 JSX 渲染逻辑中直接使用 typeof window、Date.now()、Math.random() 等动态数据。**必须使用 'use client' 并配合 useEffect + useState 确保动态内容仅在客户端挂载后渲染**；同时严禁非法 HTML 嵌套（如 <p> 嵌套 <div>）。
-2. **禁止使用 head 标签**，优先使用 metadata，详见文档：https://nextjs.org/docs/app/api-reference/functions/generate-metadata
-   1. 三方 CSS、字体等资源可在 `globals.css` 中顶部通过 `@import` 引入或使用 next/font
-   2. preload, preconnect, dns-prefetch 通过 ReactDOM 的 preload、preconnect、dns-prefetch 方法引入
-   3. json-ld 可阅读 https://nextjs.org/docs/app/guides/json-ld
+### 6.1 顶部导航栏
+- Logo/标题
+- 导航菜单（练习/题库/统计）
+- 导入按钮
 
-## UI 设计与组件规范 (UI & Styling Standards)
+### 6.2 主内容区
+- 左侧边栏：题库列表、标签筛选
+- 中间主区：题目展示、答题区域
+- 右侧边栏：进度统计、快捷操作
 
-- 模板默认预装核心组件库 `shadcn/ui`，位于`src/components/ui/`目录下
-- Next.js 项目**必须默认**采用 shadcn/ui 组件、风格和规范，**除非用户指定用其他的组件和规范。**
+### 6.3 底部工具栏
+- 上一题/下一题
+- 提交答案
+- 退出练习
+
+## 7. 样式规范
+
+### 7.1 主题色彩
+- 主色: #3B82F6 (蓝色)
+- 成功: #10B981 (绿色)
+- 错误: #EF4444 (红色)
+- 警告: #F59E0B (橙色)
+- 背景: #F8FAFC (浅灰白)
+- 文字: #1E293B (深灰)
+
+### 7.2 字体
+- 主字体: Inter
+- 代码: JetBrains Mono
+
+### 7.3 间距
+- 基础单位: 4px
+- 常用间距: 8px, 12px, 16px, 24px, 32px
+
+## 8. 交互规范
+
+### 8.1 动画
+- 页面切换: 300ms ease-out
+- 按钮悬停: 150ms ease
+- 答题反馈: 200ms ease-in-out
+
+### 8.2 响应式
+- 桌面端: > 1024px
+- 平板端: 768px - 1024px
+- 移动端: < 768px
+
+## 9. API 接口
+
+### 9.1 PDF 解析接口
+```
+POST /api/parse-pdf
+Request: FormData { file: File }
+Response: { questions: Question[] }
+```
+
+### 9.2 题库接口
+```
+GET /api/questions
+POST /api/questions
+DELETE /api/questions/:id
+```
+
+## 10. 测试清单
+
+- [ ] PDF 导入功能
+- [ ] 题目展示正确
+- [ ] 答题交互流畅
+- [ ] 答案校验准确
+- [ ] 进度统计正确
+- [ ] 数据持久化正常
+- [ ] 响应式布局正常
