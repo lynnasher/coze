@@ -48,10 +48,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 保存到数据库
-    questionStore.addMultiple(questions);
-    
-    // 统计各类型题目数量
+    // 返回解析后的题目列表（由前端保存到 localStorage）
+    // 注意：服务端无法访问浏览器的 localStorage，所以必须返回给前端处理
     const typeStats = {
       single: questions.filter((q: { type: string }) => q.type === 'single').length,
       multiple: questions.filter((q: { type: string }) => q.type === 'multiple').length,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseWorkBank } from '@/lib/work-parser';
 import { questionStore } from '@/lib/quiz-store';
+import { Question } from '@/lib/types';
 
 interface WorkQuestionItem {
   id?: string | number;
@@ -20,21 +21,9 @@ interface WorkQuestionItem {
   difficulty?: string;
 }
 
-interface ParsedWorkQuestion {
-  id: string;
-  type: string;
-  content: string;
-  options?: Array<{ id: string; text: string }>;
-  answer: string | string[];
-  explanation?: string;
-  tags: string[];
-  difficulty: string;
-  createdAt: number;
-}
-
 export async function POST(request: NextRequest) {
   try {
-    let questions: ParsedWorkQuestion[] = [];
+    let questions: Question[] = [];
     let isJson = false;
     let textContent = '';
     
@@ -52,23 +41,23 @@ export async function POST(request: NextRequest) {
         isJson = true;
       } else if (Array.isArray(body)) {
         // 直接发送的是数组
-        questions = body.map((item: WorkQuestionItem): ParsedWorkQuestion => {
-          const q: ParsedWorkQuestion = {
+        questions = body.map((item: WorkQuestionItem): Question => {
+          const q: Question = {
             id: item.id ? String(item.id) : `q-${Date.now()}-${Math.random()}`,
-            type: item.type || 'single',
+            type: (item.type || 'single') as Question['type'],
             content: item.content || item.question || item.title || '',
             options: item.options ? Object.entries(item.options).map(([key, value]: [string, string]) => ({
               id: key.toLowerCase(),
               text: String(value)
             })) : undefined,
-            answer: item.answer || item.correct || item.answers || 'a',
+            answer: String(item.answer || item.correct || item.answers || 'a'),
             explanation: item.explain || item.explanation,
             tags: item.tags || [],
-            difficulty: item.difficulty || 'medium',
+            difficulty: (item.difficulty || 'medium') as Question['difficulty'],
             createdAt: Date.now(),
           };
           return q;
-        }).filter((q: ParsedWorkQuestion) => q.content) as ParsedWorkQuestion[];
+        }).filter((q: Question) => q.content) as Question[];
       } else if (body.text) {
         // body 包含 text 字段
         textContent = typeof body.text === 'string' ? body.text : JSON.stringify(body.text);
@@ -118,15 +107,13 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 保存到数据库
-    questionStore.addMultiple(questions);
-    
+    // 返回解析后的题目列表（由前端保存到 localStorage）
     // 统计各类型题目数量
     const typeStats = {
-      single: questions.filter((q: { type: string }) => q.type === 'single').length,
-      multiple: questions.filter((q: { type: string }) => q.type === 'multiple').length,
-      'true-false': questions.filter((q: { type: string }) => q.type === 'true-false').length,
-      'fill-blank': questions.filter((q: { type: string }) => q.type === 'fill-blank').length,
+      single: questions.filter((q: Question) => q.type === 'single').length,
+      multiple: questions.filter((q: Question) => q.type === 'multiple').length,
+      'true-false': questions.filter((q: Question) => q.type === 'true-false').length,
+      'fill-blank': questions.filter((q: Question) => q.type === 'fill-blank').length,
     };
     
     return NextResponse.json({

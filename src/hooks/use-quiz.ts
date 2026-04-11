@@ -16,6 +16,7 @@ export function useQuiz() {
   });
 
   const [isLoading, setIsLoading] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
 
   // 初始化加载题目
   useEffect(() => {
@@ -55,6 +56,7 @@ export function useQuiz() {
       }
     }
 
+    setHasStarted(true); // 标记已开始练习
     setQuizState({
       questions,
       currentIndex: 0,
@@ -197,6 +199,7 @@ export function useQuiz() {
     currentAnswer,
     isAnswerCorrect,
     isLoading,
+    hasStarted,
     startQuiz,
     selectAnswer,
     nextQuestion,

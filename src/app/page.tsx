@@ -44,6 +44,7 @@ export default function QuizApp() {
     currentAnswer,
     isAnswerCorrect,
     isLoading,
+    hasStarted,
     startQuiz,
     selectAnswer,
     nextQuestion,
@@ -205,6 +206,10 @@ export default function QuizApp() {
       const result = await response.json();
       
       if (result.success) {
+        // 将解析的题目保存到 localStorage
+        if (result.questions && result.questions.length > 0) {
+          questionStore.addMultiple(result.questions);
+        }
         loadQuestions();
         setImportModalOpen(false);
         alert(`成功从文档中提取并导入 ${result.total} 道题目！\n\n题目类型统计：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
@@ -266,6 +271,10 @@ export default function QuizApp() {
       const result = await response.json();
       
       if (result.success) {
+        // 将解析的题目保存到 localStorage
+        if (result.questions && result.questions.length > 0) {
+          questionStore.addMultiple(result.questions);
+        }
         loadQuestions();
         setImportModalOpen(false);
         alert(`成功导入 ${result.total} 道题目！\n\n题目类型统计：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
@@ -292,6 +301,10 @@ export default function QuizApp() {
       .then(res => res.json())
       .then(result => {
         if (result.success) {
+          // 将解析的题目保存到 localStorage
+          if (result.questions && result.questions.length > 0) {
+            questionStore.addMultiple(result.questions);
+          }
           loadQuestions();
           setImportText('');
           setImportModalOpen(false);
@@ -664,54 +677,11 @@ D. Java"
 
           {/* 练习页面 */}
           <TabsContent value="practice">
-            {!quizState.isComplete && quizState.questions.length > 0 ? (
+            {!quizState.isComplete && quizState.questions.length > 0 && hasStarted ? (
               <div className="grid lg:grid-cols-3 gap-6">
                 {/* 题目区域 */}
                 <div className="lg:col-span-2 space-y-6">
-                  {/* 开始练习选择 */}
-                  {!quizState.questions.length || (quizState.questions.length > 0 && quizState.currentIndex === 0 && !quizState.answers[quizState.questions[0]?.id]) ? (
-                    <Card className="shadow-lg">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <BookOpen className="w-5 h-5 text-blue-500" />
-                          选择练习模式
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid sm:grid-cols-3 gap-4">
-                          <Button
-                            variant="outline"
-                            className="h-auto py-6 flex-col gap-2"
-                            onClick={() => startQuiz('sequential')}
-                          >
-                            <Target className="w-8 h-8 text-blue-500" />
-                            <span>顺序练习</span>
-                            <span className="text-xs text-gray-500">按题目顺序</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="h-auto py-6 flex-col gap-2"
-                            onClick={() => startQuiz('random')}
-                          >
-                            <RefreshCw className="w-8 h-8 text-purple-500" />
-                            <span>随机练习</span>
-                            <span className="text-xs text-gray-500">打乱题目顺序</span>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="h-auto py-6 flex-col gap-2"
-                            onClick={() => startQuiz('wrong')}
-                          >
-                            <Star className="w-8 h-8 text-orange-500" />
-                            <span>错题重练</span>
-                            <span className="text-xs text-gray-500">专攻错题</span>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      {/* 进度条 */}
+                  {/* 进度条 */}
                       <Card>
                         <CardContent className="pt-6">
                           <div className="flex items-center justify-between mb-2">
@@ -841,11 +811,9 @@ D. Java"
                           </div>
                         </CardContent>
                       </Card>
-                    </>
-                  )}
-                </div>
+                    </div>
 
-                {/* 侧边栏 */}
+                  {/* 侧边栏 */}
                 <div className="space-y-6">
                   {/* 快捷操作 */}
                   <Card>
@@ -903,7 +871,7 @@ D. Java"
                   </Card>
                 </div>
               </div>
-            ) : (
+            ) : quizState.isComplete ? (
               /* 完成页面 */
               <Card className="shadow-lg max-w-2xl mx-auto">
                 <CardContent className="pt-8 pb-8 text-center">
@@ -959,10 +927,52 @@ D. Java"
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* 空状态 */}
-            {questions.length === 0 && (
+            ) : questions.length > 0 ? (
+              /* 未开始练习 - 显示选择模式 */
+              <Card className="shadow-lg max-w-2xl mx-auto">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-500" />
+                    选择练习模式
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-center text-gray-600 mb-4">
+                    题库中共有 <strong>{questions.length}</strong> 道题目
+                  </p>
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <Button
+                      variant="outline"
+                      className="h-auto py-6 flex-col gap-2"
+                      onClick={() => startQuiz('sequential')}
+                    >
+                      <Target className="w-8 h-8 text-blue-500" />
+                      <span>顺序练习</span>
+                      <span className="text-xs text-gray-500">按题目顺序</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-auto py-6 flex-col gap-2"
+                      onClick={() => startQuiz('random')}
+                    >
+                      <RefreshCw className="w-8 h-8 text-purple-500" />
+                      <span>随机练习</span>
+                      <span className="text-xs text-gray-500">打乱题目顺序</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="h-auto py-6 flex-col gap-2"
+                      onClick={() => startQuiz('wrong')}
+                    >
+                      <Star className="w-8 h-8 text-orange-500" />
+                      <span>错题重练</span>
+                      <span className="text-xs text-gray-500">专攻错题</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* 题库为空 */
               <Card className="shadow-lg max-w-2xl mx-auto">
                 <CardContent className="pt-12 pb-12 text-center">
                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">

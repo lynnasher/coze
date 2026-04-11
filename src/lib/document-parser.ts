@@ -19,10 +19,11 @@ const cleanText = (text: string): string => {
     .trim();
 };
 
-// 解析选项
+// 解析选项 - 支持更多格式
 const parseOptions = (lines: string[]): QuizOption[] => {
   const options: QuizOption[] = [];
-  const optionRegex = /^([A-Da-d])[.、)]\s*(.+)/;
+  // 支持 A. B. C. D. 或 A、 B、 C、 D、 或 A) B) C) D) 或 A: B: C: D:
+  const optionRegex = /^([A-Da-d])[.、):]\s*(.+)/;
   
   for (const line of lines) {
     const trimmed = line.trim();
@@ -110,29 +111,67 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   const options = parseOptions(optionLines);
   const type = identifyType(content, options);
   
-  // 提取答案（通常在题目末尾或解析后）
+  // 提取答案（支持更多格式）
   let answer: string | string[] = 'a';
   
-  // 尝试从内容中提取答案
-  const answerMatch = content.match(/答案[：:]\s*([A-Da-d]+)/i) ||
-                      content.match(/答[：:]\s*([A-Da-d]+)/i) ||
-                      content.match(/ANS[:\s]+([A-Da-d]+)/i);
+  // 多种答案格式
+  const answerPatterns = [
+    // 答案：A 或 答案:A
+    /答案[：:]\s*([A-Da-d]+)/i,
+    // 答：A 或 答:A
+    /答[：:]\s*([A-Da-d]+)/i,
+    // ANS: A 或 ANS A
+    /ANS[:\s]+([A-Da-d]+)/i,
+    // 正确答案：A
+    /正确答案[：:]\s*([A-Da-d]+)/i,
+    // (A) 格式
+    /\(([A-Da-d])\)/,
+    // 【答案】A
+    /【答案】\s*([A-Da-d]+)/i,
+    // 正确答案是：A
+    /正确答案是[：:]\s*([A-Da-d]+)/i,
+  ];
+  
+  let answerMatch = null;
+  for (const pattern of answerPatterns) {
+    answerMatch = content.match(pattern);
+    if (answerMatch) break;
+  }
   
   if (answerMatch) {
     answer = answerMatch[1].toLowerCase();
   }
   
-  // 多选题答案
-  if (type === 'multiple' && answerMatch) {
-    answer = answer.split('').filter(c => /[a-d]/.test(c));
-  }
-  
   // 判断题答案转换
   if (type === 'true-false') {
-    if (answer === 'a' || answer === 'true' || answer === '对' || answer === '正确') {
+    const trueFalsePatterns = [
+      /答案[：:]\s*(正确|对|是|true|yes|√)/i,
+      /答[：:]\s*(正确|对|是|true|yes|√)/i,
+      /正确答案是[：:]\s*(正确|对|是|true|yes|√)/i,
+    ];
+    
+    let trueFalseMatch = null;
+    for (const pattern of trueFalsePatterns) {
+      trueFalseMatch = content.match(pattern);
+      if (trueFalseMatch) break;
+    }
+    
+    if (trueFalseMatch) {
       answer = 'true';
-    } else {
+    } else if (answerMatch) {
       answer = 'false';
+    } else {
+      // 默认假设第一个选项是正确
+      answer = options.length > 0 ? options[0].id : 'true';
+    }
+  }
+  
+  // 多选题答案 - 提取所有选项字母
+  if (type === 'multiple' && answerMatch) {
+    const multiAnswerPattern = /[A-Da-d]/g;
+    const matches = answer.match(multiAnswerPattern);
+    if (matches) {
+      answer = [...new Set(matches.map(m => m.toLowerCase()))];
     }
   }
   
@@ -150,16 +189,20 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
   const cleaned = cleanText(text);
   const questions: ParsedQuestion[] = [];
   
-  // 多种题目分隔模式
+  // 多种题目分隔模式 - 支持更多格式
   const separators = [
-    // 模式1: 数字编号 + 句号/顿号/括号
+    // 模式1: 纯数字编号 + 句号/顿号/括号
     /(?=\n?\d{1,3}[.、)]\s*[^\n])/,
     // 模式2: "题目" 关键词
     /(?=\n?【?题目\s*\d+【?)/i,
-    // 模式3: "第X题" 模式
-    /(?=\n?第\s*\d+\s*题)/,
+    // 模式3: "第X题" 模式（支持中文数字）
+    /(?=\n?第\s*[一二三四五六七八九十百千万\d]+\s*题)/,
     // 模式4: "Question" 英文
     /(?=\n?Question\s*\d+)/i,
+    // 模式5: 括号包裹的编号 (1)
+    /(?=\n?\(\d+\)\s*[^\n])/,
+    // 模式6: 中括号编号 [1]
+    /(?=\n?\[\d+\]\s*[^\n])/,
   ];
   
   // 尝试每种分隔模式
@@ -187,7 +230,7 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
       continue;
     }
     
-    const question = parseQuestionBlock(block, i + 1);
+    const question = parseQuestionBlock(block);
     if (question && question.content) {
       questions.push(question);
     }
