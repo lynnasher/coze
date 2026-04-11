@@ -181,6 +181,46 @@ export function useQuiz() {
     startQuiz(quizState.mode);
   }, [quizState.mode, startQuiz]);
 
+  // 直接完成练习（提交试卷）
+  const finishQuiz = useCallback(() => {
+    // 记录当前题目答案（如果已选但未提交）
+    const currentQ = quizState.questions[quizState.currentIndex];
+    if (currentQ && quizState.answers[currentQ.id] && !quizState.showResult) {
+      const selectedAnswer = quizState.answers[currentQ.id];
+      const isCorrect = checkAnswer(currentQ, selectedAnswer);
+      
+      const record: PracticeRecord = {
+        id: generateId(),
+        questionId: currentQ.id,
+        isCorrect,
+        selectedAnswer: selectedAnswer || '',
+        timestamp: Date.now(),
+      };
+      
+      recordStore.add(record);
+    }
+    
+    // 将所有未作答题目标记为错误
+    quizState.questions.forEach((q, idx) => {
+      if (!quizState.answers[q.id]) {
+        const record: PracticeRecord = {
+          id: generateId(),
+          questionId: q.id,
+          isCorrect: false,
+          selectedAnswer: '',
+          timestamp: Date.now(),
+        };
+        recordStore.add(record);
+      }
+    });
+    
+    setQuizState(prev => ({
+      ...prev,
+      isComplete: true,
+      showResult: true,
+    }));
+  }, [quizState]);
+
   // 获取当前题目
   const currentQuestion = quizState.questions[quizState.currentIndex];
   const currentAnswer = currentQuestion ? quizState.answers[currentQuestion.id] : undefined;
@@ -214,6 +254,7 @@ export function useQuiz() {
     nextQuestion,
     prevQuestion,
     submitAnswer,
+    finishQuiz,
     goToQuestion,
     restartQuiz,
     getStats,

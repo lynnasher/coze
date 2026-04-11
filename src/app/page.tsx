@@ -31,7 +31,8 @@ import {
   RefreshCw,
   Plus,
   Trash2,
-  FileText
+  FileText,
+  FileCheck
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, QuestionBank } from '@/lib/types';
@@ -49,6 +50,7 @@ export default function QuizApp() {
     nextQuestion,
     prevQuestion,
     submitAnswer,
+    finishQuiz,
     goToQuestion,
     restartQuiz,
     getStats,
@@ -378,9 +380,17 @@ export default function QuizApp() {
     };
     
     if (currentQuestion.type === 'true-false') {
+      // 判断题：如果没有选项，默认提供"正确/错误"选项
+      const defaultOptions = currentQuestion.options?.length === 2 
+        ? currentQuestion.options 
+        : [
+            { id: 'a', text: '正确' },
+            { id: 'b', text: '错误' }
+          ];
+      
       return (
         <div className="space-y-2 sm:space-y-3">
-          {currentQuestion.options?.map((option, index) => {
+          {defaultOptions.map((option, index) => {
             const isCorrectAnswer = currentQuestion.answer === option.id;
             const isSelected = currentAnswer === option.id;
             
@@ -602,24 +612,49 @@ export default function QuizApp() {
                 {/* 进度条 - 移动端固定在顶部 */}
                 <Card className="border-0 shadow-sm bg-white/80 backdrop-blur sticky top-16 z-10">
                   <CardContent className="py-3 px-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 sm:gap-3">
                         <span className="text-sm font-medium text-gray-700">
                           {quizState.currentIndex + 1} / {quizState.questions.length}
                         </span>
                         {currentQuestion && (
-                          <div className="flex items-center gap-1">
-                            {renderTypeBadge(currentQuestion.type)}
-                          </div>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                            {currentQuestion.type === 'single' ? '单选' : 
+                             currentQuestion.type === 'multiple' ? '多选' : 
+                             currentQuestion.type === 'true-false' ? '判断' : '填空'}
+                          </span>
                         )}
                       </div>
-                      <span className="text-sm font-semibold text-blue-600">
-                        {Math.round(((quizState.currentIndex + 1) / quizState.questions.length) * 100)}%
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-blue-600">
+                          {Math.round(((quizState.currentIndex + 1) / quizState.questions.length) * 100)}%
+                        </span>
+                        {/* 提交试卷按钮 */}
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            // 计算已答题目数量
+                            const answeredCount = Object.keys(quizState.answers).length;
+                            if (answeredCount === 0) {
+                              alert('请先作答至少一道题目');
+                              return;
+                            }
+                            // 直接提交并显示结果
+                            if (confirm(`已回答 ${answeredCount} 道题目，确定要提交试卷吗？`)) {
+                              finishQuiz();
+                            }
+                          }}
+                          className="text-xs h-7 px-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                        >
+                          <FileCheck className="w-3 h-3 mr-1" />
+                          提交试卷
+                        </Button>
+                      </div>
                     </div>
                     <Progress 
                       value={((quizState.currentIndex + 1) / quizState.questions.length) * 100} 
-                      className="h-1.5 bg-gray-100 mt-2"
+                      className="h-1.5 bg-gray-100"
                     />
                   </CardContent>
                 </Card>
@@ -628,11 +663,16 @@ export default function QuizApp() {
                 {currentQuestion && (
                   <Card ref={questionCardRef} className="border border-gray-200 shadow-sm" tabIndex={-1}>
                     <CardContent className="p-4 sm:p-6 lg:p-8">
-                      <p className="text-lg sm:text-xl font-medium text-gray-900 leading-relaxed mb-6">
-                        {currentQuestion.content}
-                      </p>
+                      <div className="flex items-start gap-2 mb-4 sm:mb-6">
+                        <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm sm:text-base font-semibold">
+                          {quizState.currentIndex + 1}
+                        </span>
+                        <p className="text-base sm:text-xl font-medium text-gray-900 leading-relaxed flex-1">
+                          {currentQuestion.content}
+                        </p>
+                      </div>
                       
-                      <div className="space-y-2 sm:space-y-3">
+                      <div className="space-y-2 sm:space-y-3 ml-0 sm:ml-10">
                         {renderOptions()}
                       </div>
                       
@@ -684,51 +724,64 @@ export default function QuizApp() {
                 )}
 
                 {/* 操作按钮 - 移动端固定底部 */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:relative sm:bg-transparent sm:border-0 sm:p-0 sm:flex sm:items-center sm:justify-between">
-                  <Button
-                    variant="ghost"
-                    onClick={prevQuestion}
-                    disabled={quizState.currentIndex === 0}
-                    className="gap-1 sm:gap-2 text-gray-600 hover:text-gray-900 px-2 sm:px-4"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">上一题</span>
-                  </Button>
-                  
-                  <div className="flex gap-2 sm:gap-3">
-                    {!quizState.showResult ? (
-                      <Button
-                        onClick={submitAnswer}
-                        disabled={!currentAnswer}
-                        className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[120px] shadow-sm"
-                      >
-                        提交答案
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => {
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:relative sm:bg-transparent sm:border-0 sm:p-0">
+                  <div className="flex items-center justify-between gap-2">
+                    {/* 左侧：上一题 */}
+                    <Button
+                      variant="ghost"
+                      onClick={prevQuestion}
+                      disabled={quizState.currentIndex === 0}
+                      className="gap-1 text-gray-600 hover:text-gray-900 px-2 min-w-[60px]"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">上一题</span>
+                    </Button>
+                    
+                    {/* 中间：答案与解析按钮 */}
+                    <Button
+                      variant="outline"
+                      onClick={submitAnswer}
+                      disabled={!currentAnswer}
+                      className="flex-1 max-w-[160px] sm:max-w-[200px] text-sm h-9 shadow-sm border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                    >
+                      {quizState.showResult ? (
+                        <>
+                          <BookOpen className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">查看解析</span>
+                          <span className="sm:hidden">解析</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 mr-1" />
+                          提交答案
+                        </>
+                      )}
+                    </Button>
+                    
+                    {/* 右侧：下一题 */}
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        if (quizState.showResult) {
                           nextQuestion();
                           setTimeout(() => {
                             questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                             questionCardRef.current?.focus();
                           }, 50);
-                        }}
-                        className="flex-1 sm:flex-none min-w-[100px] sm:min-w-[120px] shadow-sm"
-                      >
-                        {quizState.currentIndex === quizState.questions.length - 1 ? '完成' : '下一题'}
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    )}
+                        } else {
+                          submitAnswer();
+                        }
+                      }}
+                      className="gap-1 text-gray-600 hover:text-gray-900 px-2 min-w-[60px]"
+                    >
+                      <span className="hidden sm:inline">
+                        {quizState.showResult 
+                          ? (quizState.currentIndex === quizState.questions.length - 1 ? '完成' : '下一题')
+                          : '提交'}
+                      </span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
                   </div>
-                  
-                  <Button
-                    variant="ghost"
-                    onClick={restartQuiz}
-                    className="gap-1 sm:gap-2 text-gray-600 hover:text-gray-900 px-2 sm:px-4"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span className="hidden sm:inline">重新开始</span>
-                  </Button>
                 </div>
 
                 {/* 题目导航 */}
