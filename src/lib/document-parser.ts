@@ -30,10 +30,10 @@ const cleanOptionText = (text: string): string => {
   return cleaned.trim();
 };
 
-// 识别题目类型标记
+// 识别题目类型标记（支持编号后的标记，如 "1. [单选]"）
 const extractTypeTag = (text: string): { content: string; type: QuestionType | null } => {
-  // 匹配 [单选]、[多选]、[判断]、[填空] 等标记
-  const match = text.match(/^\[?(单选|多选|判断|填空|单选題|多选題|判断題|填空題)\]?\s*/i);
+  // 匹配编号后的类型标记，如 "1. [单选]" 或 "1、单选"
+  const match = text.match(/^\d+[.、)]\s*\[?(单选|多选|判断|填空|单选題|多选題|判断題|填空題)\]?\s*/i);
   if (match) {
     const tag = match[1].toLowerCase();
     let type: QuestionType | null = null;
@@ -47,6 +47,23 @@ const extractTypeTag = (text: string): { content: string; type: QuestionType | n
       type
     };
   }
+  
+  // 匹配行首的类型标记，如 "[单选] 题目内容"
+  const matchStart = text.match(/^\[?(单选|多选|判断|填空|单选題|多选題|判断題|填空題)\]?\s*/i);
+  if (matchStart) {
+    const tag = matchStart[1].toLowerCase();
+    let type: QuestionType | null = null;
+    if (/单选/.test(tag)) type = 'single';
+    else if (/多选/.test(tag)) type = 'multiple';
+    else if (/判断/.test(tag)) type = 'true-false';
+    else if (/填空/.test(tag)) type = 'fill-blank';
+    
+    return {
+      content: text.slice(matchStart[0].length),
+      type
+    };
+  }
+  
   return { content: text, type: null };
 };
 
@@ -145,8 +162,8 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       continue;
     }
     
-    // 如果遇到选项行，停止收集题目内容
-    if (/^[A-Da-d][.、:：]/.test(trimmed)) {
+    // 如果遇到选项行，停止收集题目内容（支持 A-Z）
+    if (/^[A-Za-z][.、:：]/.test(trimmed)) {
       foundOption = true;
       break;
     }
@@ -157,9 +174,9 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
     }
     
     // 如果是纯字母选项（如只有 "C"），可能是选项的一部分
-    if (/^[A-Da-d]$/.test(trimmed) && i + 1 < lines.length) {
+    if (/^[A-Za-z]$/.test(trimmed) && i + 1 < lines.length) {
       const nextLine = lines[i + 1].trim();
-      if (/^[A-Da-d][.、:：]/.test(nextLine)) {
+      if (/^[A-Za-z][.、:：]/.test(nextLine)) {
         continue; // 跳过单独的字母
       }
     }
@@ -223,8 +240,8 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       continue;
     }
 
-    // 独立的答案行
-    const pureAnswerMatch = trimmed.match(/^(正确答案|答案|答|参考答案)[：:]\s*([A-Da-d])\s*$/i);
+    // 独立的答案行（支持 A-Z）
+    const pureAnswerMatch = trimmed.match(/^(正确答案|答案|答|参考答案)[：:]\s*([A-Za-z])\s*$/i);
     if (pureAnswerMatch) {
       answer = pureAnswerMatch[2].toLowerCase();
       // 保存当前选项
@@ -235,8 +252,8 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       continue;
     }
 
-    // 选项行
-    const optionMatch = trimmed.match(/^([A-Da-d])[.、:：]\s*(.*)$/);
+    // 选项行（支持 A-Z）
+    const optionMatch = trimmed.match(/^([A-Za-z])[.、:：]\s*(.*)$/);
     if (optionMatch) {
       // 保存之前的选项
       if (currentOption && currentOption.text) {
@@ -245,9 +262,9 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       currentOption = { id: optionMatch[1].toLowerCase(), text: optionMatch[2] };
       
       // 检查选项内是否包含答案
-      const inlineAnswerMatch = currentOption.text.match(/\s*(正确答案|答案|答)[：:]\s*([A-Da-d])\s*$/i);
+      const inlineAnswerMatch = currentOption.text.match(/\s*(正确答案|答案|答)[：:]\s*([A-Za-z])\s*$/i);
       if (inlineAnswerMatch) {
-        currentOption.text = currentOption.text.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Da-d]\s*$/i, '').trim();
+        currentOption.text = currentOption.text.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Za-z]\s*$/i, '').trim();
         answer = inlineAnswerMatch[2].toLowerCase();
       }
       continue;
@@ -255,8 +272,8 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
 
     // 继续收集当前选项内容（可能是跨行的选项内容）
     if (currentOption) {
-      // 检查行末是否有答案格式
-      const endAnswerMatch = trimmed.match(/(.*?)\s*(正确答案|答案|答)[：:]\s*([A-Da-d])\s*$/i);
+      // 检查行末是否有答案格式（支持 A-Z）
+      const endAnswerMatch = trimmed.match(/(.*?)\s*(正确答案|答案|答)[：:]\s*([A-Za-z])\s*$/i);
       if (endAnswerMatch) {
         currentOption.text += ' ' + endAnswerMatch[1].trim();
         answer = endAnswerMatch[3].toLowerCase();
