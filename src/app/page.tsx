@@ -793,48 +793,43 @@ export default function QuizApp() {
                       <span className="sm:hidden">上一</span>
                     </Button>
                     
-                    {/* 中间：显示答案与解析（答题后显示） */}
-                    {!quizState.showResult && currentAnswer && (
+                    {/* 中间：查看答案与解析（答题后显示） */}
+                    {currentAnswer && (
                       <Button
                         variant="outline"
                         onClick={submitAnswer}
                         className="h-11 px-3 border-amber-300 text-amber-700 hover:bg-amber-50"
                       >
                         <BookOpen className="w-4 h-4 mr-1" />
-                        <span>查看答案</span>
+                        <span>查看解析</span>
                       </Button>
                     )}
                     
                     {/* 右侧：下一题 / 交卷 */}
-                    {quizState.showResult ? (
-                      // 答题后：显示下一题或交卷
-                      quizState.currentIndex === quizState.questions.length - 1 ? (
-                        <Button
-                          onClick={() => finishQuiz()}
-                          className="h-11 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-sm"
-                        >
-                          <FileCheck className="w-4 h-4 mr-1" />
-                          交卷
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => {
-                            nextQuestion();
-                            setTimeout(() => {
-                              questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 50);
-                          }}
-                          className="h-11 px-4 bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
-                        >
-                          <span>下一题</span>
-                          <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                      )
-                    ) : (
-                      // 未答题
+                    {quizState.currentIndex === quizState.questions.length - 1 ? (
+                      // 最后一道题：显示交卷
                       <Button
-                        disabled
-                        className="h-11 px-4 bg-gray-300 text-gray-500 cursor-not-allowed"
+                        onClick={() => finishQuiz()}
+                        disabled={!currentAnswer}
+                        className="h-11 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      >
+                        <FileCheck className="w-4 h-4 mr-1" />
+                        交卷
+                      </Button>
+                    ) : (
+                      // 非最后一道题：下一题
+                      <Button
+                        onClick={() => {
+                          // 如果选了答案但未提交，自动提交
+                          if (currentAnswer && !quizState.showResult) {
+                            submitAnswer();
+                          }
+                          nextQuestion();
+                          setTimeout(() => {
+                            questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 50);
+                        }}
+                        className="h-11 px-4 bg-blue-500 hover:bg-blue-600 text-white shadow-sm"
                       >
                         <span>下一题</span>
                         <ChevronRight className="w-4 h-4 ml-1" />
