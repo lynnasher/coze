@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +53,7 @@ export default function QuizApp() {
     restartQuiz,
     getStats,
   } = useQuiz();
+  const questionCardRef = useRef<HTMLDivElement>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('practice');
@@ -655,7 +656,7 @@ export default function QuizApp() {
 
                 {/* 题目卡片 */}
                 {currentQuestion && (
-                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <Card ref={questionCardRef} className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow" tabIndex={-1}>
                     <CardContent className="p-8">
                       <p className="text-xl font-medium text-gray-900 leading-relaxed mb-8">
                         {currentQuestion.content}
@@ -735,7 +736,14 @@ export default function QuizApp() {
                       </Button>
                     ) : (
                       <Button
-                        onClick={nextQuestion}
+                        onClick={() => {
+                          nextQuestion();
+                          // 滚动到题目卡片并设置焦点
+                          setTimeout(() => {
+                            questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            questionCardRef.current?.focus();
+                          }, 50);
+                        }}
                         className="min-w-[120px] shadow-sm"
                       >
                         {quizState.currentIndex === quizState.questions.length - 1 ? '完成练习' : '下一题'}
