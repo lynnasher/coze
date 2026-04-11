@@ -211,6 +211,63 @@ export default function QuizApp() {
     e.target.value = '';
   };
 
+  // WORK 题库导入
+  const handleWorkImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/parse-work', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        loadQuestions();
+        setImportModalOpen(false);
+        alert(`成功导入 ${result.total} 道题目！\n\n题目类型统计：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
+      } else {
+        alert(result.error || '导入失败');
+      }
+    } catch (error) {
+      console.error('WORK 题库导入错误:', error);
+      alert('导入失败，请检查文件格式是否正确');
+    }
+    
+    e.target.value = '';
+  };
+
+  // WORK 文本导入
+  const handleWorkTextImport = () => {
+    if (!importText.trim()) return;
+    
+    fetch('/api/parse-work', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: importText }),
+    })
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          loadQuestions();
+          setImportText('');
+          setImportModalOpen(false);
+          alert(`成功导入 ${result.total} 道题目！`);
+        } else {
+          alert(result.error || '导入失败');
+        }
+      })
+      .catch(err => {
+        console.error('WORK 文本导入错误:', err);
+        alert('导入失败，请检查格式是否正确');
+      });
+  };
+
   // 添加题目
   const handleAddQuestion = () => {
     if (!newQuestion.content || !newQuestion.answer) {
@@ -474,8 +531,9 @@ export default function QuizApp() {
                   <DialogTitle>导入题库</DialogTitle>
                 </DialogHeader>
                 <Tabs defaultValue="text">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="text">文本导入</TabsTrigger>
+                    <TabsTrigger value="work">WORK 题库</TabsTrigger>
                     <TabsTrigger value="pdf">PDF 导入</TabsTrigger>
                   </TabsList>
                   <TabsContent value="text" className="space-y-4">
@@ -503,6 +561,41 @@ D. Java"
                     <Button onClick={handleTextImport} className="w-full">
                       开始导入
                     </Button>
+                  </TabsContent>
+                  <TabsContent value="work" className="space-y-4">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                      <p className="text-sm text-orange-800">
+                        <strong>WORK 题库格式说明：</strong>
+                        <br />
+                        支持驾考类题库（如驾校宝典、科目一/科目四等）的 JSON 格式文件导入。
+                        <br />
+                        常见字段：question、options、answer、type 等。
+                      </p>
+                    </div>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                      <FileText className="w-12 h-12 text-orange-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-4">选择 WORK/JSON 题库文件</p>
+                      <Input
+                        type="file"
+                        accept=".json,.work,.txt"
+                        onChange={handleWorkImport}
+                        className="max-w-xs mx-auto"
+                      />
+                    </div>
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <p className="text-sm text-gray-600 mb-2">或者粘贴 JSON 题库文本：</p>
+                      <Textarea
+                        id="import-work-text"
+                        value={importText}
+                        onChange={(e) => setImportText(e.target.value)}
+                        placeholder='粘贴 JSON 格式题库...
+[{"question": "题目内容", "options": {"A": "选项A", "B": "选项B"}, "answer": "a"}]'
+                        className="min-h-[120px] text-sm"
+                      />
+                      <Button onClick={handleWorkTextImport} className="w-full mt-2" variant="secondary">
+                        导入 WORK 题库
+                      </Button>
+                    </div>
                   </TabsContent>
                   <TabsContent value="pdf" className="space-y-4">
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
