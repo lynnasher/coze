@@ -420,6 +420,19 @@ export default function QuizApp() {
     setSelectedBankId(bankId);
     setShowBankQuestions(true);
   };
+  
+  // 清空所有题库和题目
+  const handleClearAll = () => {
+    if (confirm('确定要清空所有题库和题目吗？\n此操作不可恢复！')) {
+      questionStore.clear();
+      bankStore.clear();
+      recordStore.clear();
+      loadQuestions();
+      setSelectedBankId(null);
+      setShowBankQuestions(false);
+      alert('已清空所有题库和题目');
+    }
+  };
 
   // 渲染选项
   const renderOptions = () => {
@@ -584,20 +597,6 @@ export default function QuizApp() {
     );
   };
 
-  // 渲染难度标签
-  const renderDifficultyBadge = (difficulty: Difficulty) => {
-    const config: Record<Difficulty, { label: string; color: string }> = {
-      easy: { label: '简单', color: 'bg-green-100 text-green-700' },
-      medium: { label: '中等', color: 'bg-yellow-100 text-yellow-700' },
-      hard: { label: '困难', color: 'bg-red-100 text-red-700' },
-    };
-    return (
-      <Badge variant="outline" className={config[difficulty].color}>
-        {config[difficulty].label}
-      </Badge>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -745,7 +744,6 @@ D. Java"
                         {currentQuestion && (
                           <div className="flex items-center gap-1">
                             {renderTypeBadge(currentQuestion.type)}
-                            {renderDifficultyBadge(currentQuestion.difficulty)}
                           </div>
                         )}
                       </div>
@@ -1039,7 +1037,20 @@ D. Java"
           {/* 题库页面 */}
           <TabsContent value="library">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">题库管理</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold">题库管理</h2>
+                {banks.length > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleClearAll}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 gap-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    清空全部
+                  </Button>
+                )}
+              </div>
               <div className="flex gap-2">
                 <Button onClick={() => setImportModalOpen(true)} className="gap-2">
                   <Upload className="w-4 h-4" />
@@ -1289,7 +1300,6 @@ D. Java"
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
                                   {renderTypeBadge(q.type)}
-                                  {renderDifficultyBadge(q.difficulty)}
                                 </div>
                                 <p className="font-medium text-gray-900 mb-2">{q.content}</p>
                                 {q.options && (
@@ -1348,7 +1358,6 @@ D. Java"
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
                                 {renderTypeBadge(q.type)}
-                                {renderDifficultyBadge(q.difficulty)}
                                 {q.bankId && banks.find(b => b.id === q.bankId) && (
                                   <Badge variant="secondary" className="text-xs">
                                     {banks.find(b => b.id === q.bankId)?.name}
