@@ -47,7 +47,7 @@ const extractTypeTag = (text: string): { content: string; type: QuestionType | n
       type
     };
   }
-  return { content, type: null };
+  return { content: text, type: null };
 };
 
 // 从文本提取题目的解析器

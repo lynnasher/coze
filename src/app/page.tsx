@@ -1191,14 +1191,62 @@ export default function QuizApp() {
                             {new Date(bank.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full mt-3"
-                          onClick={() => handleViewBankQuestions(bank.id)}
-                        >
-                          查看题目
-                        </Button>
+                        <div className="flex flex-col gap-2 mt-3">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => handleViewBankQuestions(bank.id)}
+                            >
+                              查看题目
+                            </Button>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1 text-xs h-8 bg-blue-500 hover:bg-blue-600"
+                              onClick={() => {
+                                setPracticeBankId(bank.id);
+                                setActiveTab('practice');
+                                setTimeout(() => startQuiz('sequential', bank.id), 100);
+                              }}
+                              disabled={bank.questionIds.length === 0}
+                            >
+                              <Target className="w-3 h-3 mr-1" />
+                              顺序
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1 text-xs h-8 bg-purple-500 hover:bg-purple-600"
+                              onClick={() => {
+                                setPracticeBankId(bank.id);
+                                setActiveTab('practice');
+                                setTimeout(() => startQuiz('random', bank.id), 100);
+                              }}
+                              disabled={bank.questionIds.length === 0}
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              随机
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-1 text-xs h-8 bg-orange-500 hover:bg-orange-600"
+                              onClick={() => {
+                                setPracticeBankId(bank.id);
+                                setActiveTab('practice');
+                                setTimeout(() => startQuiz('wrong', bank.id), 100);
+                              }}
+                              disabled={bank.questionIds.length === 0}
+                            >
+                              <Star className="w-3 h-3 mr-1" />
+                              错题
+                            </Button>
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
