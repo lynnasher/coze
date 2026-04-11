@@ -1,7 +1,7 @@
 import { Question, QuestionType, Difficulty, QuizOption } from './types';
 import { generateId } from './quiz-store';
 
-// 从文本提取题目的解析器
+// 银行题库格式专用解析器
 export interface ParsedQuestion {
   type: QuestionType;
   content: string;
@@ -14,229 +14,178 @@ export interface ParsedQuestion {
 // 清理文本
 const cleanText = (text: string): string => {
   return text
-    .replace(/[\r\n]+/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 };
 
-// 解析选项 - 支持更多格式
-const parseOptions = (lines: string[]): QuizOption[] => {
-  const options: QuizOption[] = [];
-  // 支持 A. B. C. D. 或 A、 B、 C、 D、 或 A) B) C) D) 或 A: B: C: D:
-  const optionRegex = /^([A-Da-d])[.、):]\s*(.+)/;
-  
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const match = trimmed.match(optionRegex);
-    if (match) {
-      options.push({
-        id: match[1].toLowerCase(),
-        text: match[2].trim(),
-      });
+// 从文本提取题目的解析器 - 银行题库格式
+export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
+  const cleaned = cleanText(text);
+  const questions: ParsedQuestion[] = [];
+
+  // 按题目分隔：匹配纯数字开头的行（题目编号）
+  // 格式: "1假设某银行..." 或 "1、一般来说..."
+  const questionBlocks = cleaned.split(/(?=^\d+[^\d])/m);
+
+  for (const block of questionBlocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+
+    // 跳过标题、非题目内容
+    if (/^[^\d]/.test(trimmed)) continue;
+    if (/目\s*录|索\s*引|前\s*言|附\s*录|^第.*章|^第.*部分/i.test(trimmed)) continue;
+    if (trimmed.length < 20) continue;
+
+    const question = parseQuestionBlock(trimmed);
+    if (question) {
+      questions.push(question);
     }
   }
-  
-  return options;
+
+  return questions;
+};
+
+// 解析单个题目块
+const parseQuestionBlock = (block: string): ParsedQuestion | null => {
+  const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length < 2) return null;
+
+  // 1. 提取题目内容（第一行，去掉开头的编号）
+  let content = lines[0].replace(/^\d+[.、)]\s*/, '').trim();
+  if (!content) return null;
+
+  // 2. 提取选项
+  const options: QuizOption[] = [];
+  let currentOption = '';
+  let currentOptionId = '';
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+
+    // 匹配选项开始: A、B、C、D (可能带有各种分隔符)
+    const optionMatch = line.match(/^([A-Da-d])[.、:、]\s*(.+)/);
+    if (optionMatch) {
+      // 保存上一个选项
+      if (currentOptionId && currentOption) {
+        options.push({ id: currentOptionId, text: currentOption });
+      }
+      currentOptionId = optionMatch[1].toLowerCase();
+      currentOption = optionMatch[2];
+    } else if (currentOptionId) {
+      // 继续收集选项内容（选项内容可能跨行）
+      currentOption += ' ' + line;
+    }
+
+    // 如果遇到"正确答案"或"名师解析"，停止收集选项
+    if (/^(正确答案|名师解析|答[案]?[:：])/i.test(line)) {
+      break;
+    }
+  }
+
+  // 保存最后一个选项
+  if (currentOptionId && currentOption) {
+    options.push({ id: currentOptionId, text: currentOption });
+  }
+
+  // 3. 提取答案
+  let answer = 'a';
+  const answerPatterns = [
+    /正确答案[：:]\s*([A-Da-d])/i,
+    /答案[：:]\s*([A-Da-d])/i,
+    /答[案]?[：:]\s*([A-Da-d])/i,
+  ];
+
+  for (const line of lines) {
+    for (const pattern of answerPatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        answer = match[1].toLowerCase();
+        break;
+      }
+    }
+    if (answer !== 'a') break;
+  }
+
+  // 4. 提取解析
+  let explanation = '';
+  const explanationPatterns = [
+    /名师解析[：:]\s*([\s\S]+?)(?=^\d+[^\d]|$)/m,
+    /解析[：:]\s*([\s\S]+?)(?=^\d+[^\d]|$)/m,
+  ];
+
+  // 合并所有行来匹配解析
+  const fullText = lines.join('\n');
+  for (const pattern of explanationPatterns) {
+    const match = fullText.match(pattern);
+    if (match) {
+      explanation = match[1].trim();
+      break;
+    }
+  }
+
+  // 5. 识别题目类型
+  const type = identifyQuestionType(content, options);
+
+  // 6. 判断题答案转换
+  if (type === 'true-false') {
+    // 判断题默认假设选项0是正确
+    answer = options.length > 0 ? 'true' : 'true';
+  }
+
+  // 7. 识别难度（根据关键词）
+  const difficulty = identifyDifficulty(content);
+
+  return {
+    type,
+    content,
+    options: options.length > 0 ? options : undefined,
+    answer,
+    explanation: explanation || undefined,
+    difficulty,
+  };
 };
 
 // 识别题目类型
-const identifyType = (content: string, options: QuizOption[]): QuestionType => {
+const identifyQuestionType = (content: string, options: QuizOption[]): QuestionType => {
   const lowerContent = content.toLowerCase();
-  
-  // 类型关键词判断
-  if (/对错|判断|正确.*错误|true.*false|是.*非/i.test(lowerContent)) {
-    return 'true-false';
-  }
-  if (/多选|哪些|选出|选择.*以下|以下.*正确/i.test(lowerContent)) {
-    return 'multiple';
-  }
-  if (/填空|填写|补全/i.test(lowerContent)) {
-    return 'fill-blank';
-  }
-  
-  // 判断题特征：只有两个选项且包含正确/错误
+
+  // 判断题特征：只有两个选项，且内容包含判断相关词汇
   if (options.length === 2) {
-    const firstOption = options[0].text.toLowerCase();
-    if (/正确|对|是|true|yes/i.test(firstOption) || 
-        /错误|错|否|false|no/i.test(firstOption)) {
+    const optionTexts = options.map(o => o.text.toLowerCase());
+    if (
+      optionTexts.some(t => /正确|对|是|true|yes|√/.test(t)) ||
+      optionTexts.some(t => /错误|错|否|false|no|×/.test(t))
+    ) {
       return 'true-false';
     }
   }
-  
+
+  // 多选题特征
+  if (/多选|哪些|选出|选择.*以下|以下.*正确|下列.*正确的/i.test(lowerContent)) {
+    return 'multiple';
+  }
+
+  // 填空题特征
+  if (/填空|填写|补全|完成句子/i.test(lowerContent)) {
+    return 'fill-blank';
+  }
+
+  // 默认单选题
   return 'single';
 };
 
 // 识别难度
 const identifyDifficulty = (content: string): Difficulty => {
   const lowerContent = content.toLowerCase();
-  
-  if (/困难|很难|很难|hard|难点/i.test(lowerContent)) {
+  if (/困难|很难|hard|难点|复杂/i.test(lowerContent)) {
     return 'hard';
   }
-  if (/简单|容易|easy|基础/i.test(lowerContent)) {
+  if (/简单|容易|easy|基础|基本/i.test(lowerContent)) {
     return 'easy';
   }
-  
   return 'medium';
-};
-
-// 解析单个题目块
-const parseQuestionBlock = (block: string): ParsedQuestion | null => {
-  const lines = block.split('\n').map(l => l.trim()).filter(l => l);
-  
-  if (lines.length === 0) return null;
-  
-  // 提取题目内容（第一行或前几行直到遇到选项）
-  const contentLines: string[] = [];
-  const optionLines: string[] = [];
-  let inOptions = false;
-  
-  for (const line of lines) {
-    // 检测选项开始
-    if (/^[A-Da-d][.、)]\s*/.test(line)) {
-      inOptions = true;
-      optionLines.push(line);
-    } else if (inOptions) {
-      // 继续收集选项行
-      optionLines.push(line);
-    } else {
-      contentLines.push(line);
-    }
-  }
-  
-  const content = contentLines.join(' ').replace(/^\d+[.、)]\s*/, '').trim();
-  
-  if (!content) return null;
-  
-  const options = parseOptions(optionLines);
-  const type = identifyType(content, options);
-  
-  // 提取答案（支持更多格式）
-  let answer: string | string[] = 'a';
-  
-  // 多种答案格式
-  const answerPatterns = [
-    // 答案：A 或 答案:A
-    /答案[：:]\s*([A-Da-d]+)/i,
-    // 答：A 或 答:A
-    /答[：:]\s*([A-Da-d]+)/i,
-    // ANS: A 或 ANS A
-    /ANS[:\s]+([A-Da-d]+)/i,
-    // 正确答案：A
-    /正确答案[：:]\s*([A-Da-d]+)/i,
-    // (A) 格式
-    /\(([A-Da-d])\)/,
-    // 【答案】A
-    /【答案】\s*([A-Da-d]+)/i,
-    // 正确答案是：A
-    /正确答案是[：:]\s*([A-Da-d]+)/i,
-  ];
-  
-  let answerMatch = null;
-  for (const pattern of answerPatterns) {
-    answerMatch = content.match(pattern);
-    if (answerMatch) break;
-  }
-  
-  if (answerMatch) {
-    answer = answerMatch[1].toLowerCase();
-  }
-  
-  // 判断题答案转换
-  if (type === 'true-false') {
-    const trueFalsePatterns = [
-      /答案[：:]\s*(正确|对|是|true|yes|√)/i,
-      /答[：:]\s*(正确|对|是|true|yes|√)/i,
-      /正确答案是[：:]\s*(正确|对|是|true|yes|√)/i,
-    ];
-    
-    let trueFalseMatch = null;
-    for (const pattern of trueFalsePatterns) {
-      trueFalseMatch = content.match(pattern);
-      if (trueFalseMatch) break;
-    }
-    
-    if (trueFalseMatch) {
-      answer = 'true';
-    } else if (answerMatch) {
-      answer = 'false';
-    } else {
-      // 默认假设第一个选项是正确
-      answer = options.length > 0 ? options[0].id : 'true';
-    }
-  }
-  
-  // 多选题答案 - 提取所有选项字母
-  if (type === 'multiple' && answerMatch) {
-    const multiAnswerPattern = /[A-Da-d]/g;
-    const matches = answer.match(multiAnswerPattern);
-    if (matches) {
-      answer = [...new Set(matches.map(m => m.toLowerCase()))];
-    }
-  }
-  
-  return {
-    type,
-    content: content.replace(/答案[：:]\s*[A-Da-d]+/gi, '').trim(),
-    options: options.length > 0 ? options : undefined,
-    answer,
-    difficulty: identifyDifficulty(content),
-  };
-};
-
-// 主解析函数 - 从文本提取题目
-export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
-  const cleaned = cleanText(text);
-  const questions: ParsedQuestion[] = [];
-  
-  // 多种题目分隔模式 - 支持更多格式
-  const separators = [
-    // 模式1: 纯数字编号 + 句号/顿号/括号
-    /(?=\n?\d{1,3}[.、)]\s*[^\n])/,
-    // 模式2: "题目" 关键词
-    /(?=\n?【?题目\s*\d+【?)/i,
-    // 模式3: "第X题" 模式（支持中文数字）
-    /(?=\n?第\s*[一二三四五六七八九十百千万\d]+\s*题)/,
-    // 模式4: "Question" 英文
-    /(?=\n?Question\s*\d+)/i,
-    // 模式5: 括号包裹的编号 (1)
-    /(?=\n?\(\d+\)\s*[^\n])/,
-    // 模式6: 中括号编号 [1]
-    /(?=\n?\[\d+\]\s*[^\n])/,
-  ];
-  
-  // 尝试每种分隔模式
-  let blocks: string[] = [];
-  
-  for (const separator of separators) {
-    blocks = cleaned.split(separator).filter(b => b.trim());
-    if (blocks.length > 1) break;
-  }
-  
-  // 如果没有找到明确的分隔符，按段落分割
-  if (blocks.length <= 1) {
-    blocks = cleaned.split(/\n\n+/).filter(b => b.trim());
-  }
-  
-  // 解析每个块
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i].trim();
-    
-    // 跳过太短的块（可能是标题或说明）
-    if (block.length < 10) continue;
-    
-    // 跳过目录、索引等非题目内容
-    if (/目\s*录|索\s*引|前\s*言|附\s*录|章节|第\s*\d+\s*[章节部]/i.test(block)) {
-      continue;
-    }
-    
-    const question = parseQuestionBlock(block);
-    if (question && question.content) {
-      questions.push(question);
-    }
-  }
-  
-  return questions;
 };
 
 // 将解析结果转换为完整题目
@@ -254,7 +203,7 @@ export const convertToQuestions = (parsed: ParsedQuestion[]): Question[] => {
   }));
 };
 
-// 从文件内容解析题目（PDF 或 DOCX 的文本内容）
+// 从文件内容解析题目
 export const parseDocumentText = (text: string): Question[] => {
   const parsed = extractQuestionsFromText(text);
   return convertToQuestions(parsed);
@@ -288,16 +237,16 @@ export const parsePdf = async (buffer: Buffer): Promise<string> => {
 
 // 根据文件类型解析文档
 export const parseDocument = async (
-  buffer: Buffer, 
+  buffer: Buffer,
   fileType: 'pdf' | 'docx'
 ): Promise<Question[]> => {
   let text: string;
-  
+
   if (fileType === 'docx') {
     text = await parseDocx(buffer);
   } else {
     text = await parsePdf(buffer);
   }
-  
+
   return parseDocumentText(text);
 };
