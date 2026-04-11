@@ -17,45 +17,37 @@ const cleanText = (text: string): string => {
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\t/g, ' ')
-    .replace(/\u3000/g, ' ') // 全角空格
+    .replace(/\u3000/g, ' ')
     .trim();
 };
 
 // 清理选项文本 - 去掉答案、解析等后缀
 const cleanOptionText = (text: string): string => {
-  // 去掉答案后缀，如 "xxx 答案: A" 或 "xxx 正确答案: B"
+  // 去掉答案后缀
   let cleaned = text.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Da-d].*$/i, '');
   // 去掉解析后缀
   cleaned = cleaned.replace(/\s*(名师解析|解析|答案解析)[：:].*$/i, '');
   return cleaned.trim();
 };
 
-// 判断是否为答案行
-const isAnswerLine = (line: string): boolean => {
-  const trimmed = line.trim();
-  // 如果整行都是答案格式（如 "正确答案: A" 或 "答案: B"），返回true
-  if (/^(正确答案|答案|答|参考答案)[：:]\s*[A-Da-d]\s*$/.test(trimmed)) {
-    return true;
+// 识别题目类型标记
+const extractTypeTag = (text: string): { content: string; type: QuestionType | null } => {
+  // 匹配 [单选]、[多选]、[判断]、[填空] 等标记
+  const match = text.match(/^\[?(单选|多选|判断|填空|单选題|多选題|判断題|填空題)\]?\s*/i);
+  if (match) {
+    const tag = match[1].toLowerCase();
+    let type: QuestionType | null = null;
+    if (/单选/.test(tag)) type = 'single';
+    else if (/多选/.test(tag)) type = 'multiple';
+    else if (/判断/.test(tag)) type = 'true-false';
+    else if (/填空/.test(tag)) type = 'fill-blank';
+    
+    return {
+      content: text.slice(match[0].length),
+      type
+    };
   }
-  // 如果行末包含答案格式，前面是选项内容
-  if (/\s*(正确答案|答案|答)[：:]\s*[A-Da-d]\s*$/.test(trimmed)) {
-    return true;
-  }
-  return false;
-};
-
-// 判断是否为解析行
-const isExplanationLine = (line: string): boolean => {
-  const trimmed = line.trim();
-  // 如果整行是解析格式
-  if (/^(名师解析|解析|答案解析)[：:]/.test(trimmed)) {
-    return true;
-  }
-  // 如果行末包含解析格式
-  if (/\s*(名师解析|解析|答案解析)[：:]/.test(trimmed)) {
-    return true;
-  }
-  return false;
+  return { content, type: null };
 };
 
 // 从文本提取题目的解析器
@@ -85,7 +77,7 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
     for (const line of lines) {
       const trimmed = line.trim();
       // 检测新题目开始：数字编号开头
-      if (/^\d+[.、)]\s*\S/.test(trimmed)) {
+      if (/^\d+[.、)]\s*\S/.test(trimmed) || /^\[?(单选|多选|判断|填空)/.test(trimmed)) {
         if (currentBlock.trim()) {
           questionBlocks.push(currentBlock.trim());
         }
@@ -112,70 +104,112 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
 
 // 解析单个题目块
 const parseQuestionBlock = (block: string): ParsedQuestion | null => {
-  const lines = block.split('\n').map(l => l.trim()).filter(l => l);
+  // 先按行分割
+  const rawLines = block.split('\n');
+  const lines = rawLines.map(l => l.trim()).filter(l => l);
+  
   if (lines.length < 2) return null;
 
   // 跳过标题行
   const skipPatterns = [
     /^目\s*录/, /^索\s*引/, /^前\s*言/, /^附\s*录/,
     /^第.*章$/, /^第.*部分$/, /^练习题$/, /^测试题$/,
-    /^题\s*目/, /^单\s*选/, /^多\s*选/, /^判\s*断/
+    /^题\s*目/
   ];
   
-  if (skipPatterns.some(p => p.test(lines[0]))) {
-    return null;
+  // 找到内容开始的第一行（可能是题目行）
+  let startIndex = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (!skipPatterns.some(p => p.test(lines[i]))) {
+      startIndex = i;
+      break;
+    }
   }
 
-  // 1. 提取题目内容
+  // 2. 提取题目内容 - 从找到的起始行开始
   let contentLines: string[] = [];
-  let foundOptions = false;
+  let foundOption = false;
+  let explicitType: QuestionType | null = null;
   
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = startIndex; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
     
-    // 如果遇到独立的答案行或解析行，停止收集题目内容
-    if (/^(正确答案|答案|答|参考答案)[：:]\s*[A-Da-d]/.test(trimmed) && !line.includes('、') && !line.includes('.')) {
-      foundOptions = true;
-      break;
-    }
-    if (/^(名师解析|解析|答案解析)[：:]/.test(trimmed)) {
-      break;
+    // 检查是否包含类型标记
+    const typeResult = extractTypeTag(trimmed);
+    if (typeResult.type) {
+      explicitType = typeResult.type;
+      if (typeResult.content) {
+        contentLines.push(typeResult.content);
+      }
+      continue;
     }
     
-    // 如果是选项行（以 A、B、C、D 开头，且有多个选项候选）
+    // 如果遇到选项行，停止收集题目内容
     if (/^[A-Da-d][.、:：]/.test(trimmed)) {
-      foundOptions = true;
+      foundOption = true;
       break;
     }
     
-    contentLines.push(line);
+    // 如果遇到答案或解析行，停止
+    if (/^(正确答案|答案|答|名师解析|解析)[：:]/.test(trimmed)) {
+      break;
+    }
+    
+    // 如果是纯字母选项（如只有 "C"），可能是选项的一部分
+    if (/^[A-Da-d]$/.test(trimmed) && i + 1 < lines.length) {
+      const nextLine = lines[i + 1].trim();
+      if (/^[A-Da-d][.、:：]/.test(nextLine)) {
+        continue; // 跳过单独的字母
+      }
+    }
+    
+    contentLines.push(trimmed);
   }
 
   // 构建题目内容
   let content = contentLines.join(' ').trim();
-  // 去掉开头的编号
+  // 去掉开头的编号（如 "1." 或 "1、"）
   content = content.replace(/^\d+[.、)]\s*/, '').trim();
   
   if (!content || content.length < 5) {
     return null;
   }
 
-  // 2. 提取选项和答案
+  // 3. 提取选项
   const options: QuizOption[] = [];
   let answer = 'a';
   let explanation = '';
   let currentOption: { id: string; text: string } | null = null;
-  let collectingExplanation = false;
-  let explanationBuffer = '';
+  let inExplanation = false;
+  
+  // 辅助函数：添加选项到数组
+  const addOption = (opt: { id: string; text: string }) => {
+    const cleanedText = cleanOptionText(opt.text);
+    if (!cleanedText) return;
+    
+    // 检查是否已有相同 id 的选项
+    const existingIndex = options.findIndex(o => o.id === opt.id);
+    if (existingIndex >= 0) {
+      // 合并文本（保留更长的版本）
+      if (cleanedText.length > options[existingIndex].text.length) {
+        options[existingIndex].text = cleanedText;
+      }
+    } else {
+      options.push({ id: opt.id, text: cleanedText });
+    }
+  };
+  
+  // 选项收集的起始索引
+  const optionStartIndex = contentLines.length + startIndex;
 
-  for (let i = contentLines.length; i < lines.length; i++) {
+  for (let i = optionStartIndex; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // 开始收集解析
+    // 解析开始
     if (/^(名师解析|解析|答案解析)[：:]/.test(trimmed)) {
-      collectingExplanation = true;
+      inExplanation = true;
       const match = trimmed.match(/^(名师解析|解析|答案解析)[：:]\s*(.+)/i);
       if (match) {
         explanation = match[2].trim();
@@ -183,50 +217,49 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
       continue;
     }
     
-    // 继续收集解析内容
-    if (collectingExplanation) {
+    // 继续收集解析
+    if (inExplanation) {
       explanation += ' ' + trimmed;
       continue;
     }
 
-    // 检查是否是答案行（独立的答案行，如 "正确答案: A"）
-    const answerMatch = trimmed.match(/^(正确答案|答案|答|参考答案)[：:]\s*([A-Da-d])\s*$/i);
-    if (answerMatch) {
-      answer = answerMatch[2].toLowerCase();
+    // 独立的答案行
+    const pureAnswerMatch = trimmed.match(/^(正确答案|答案|答|参考答案)[：:]\s*([A-Da-d])\s*$/i);
+    if (pureAnswerMatch) {
+      answer = pureAnswerMatch[2].toLowerCase();
       // 保存当前选项
       if (currentOption && currentOption.text) {
-        options.push({ id: currentOption.id, text: cleanOptionText(currentOption.text) });
+        addOption(currentOption);
+        currentOption = null;
       }
       continue;
     }
 
-    // 检查是否是选项行
+    // 选项行
     const optionMatch = trimmed.match(/^([A-Da-d])[.、:：]\s*(.*)$/);
     if (optionMatch) {
       // 保存之前的选项
       if (currentOption && currentOption.text) {
-        options.push({ id: currentOption.id, text: cleanOptionText(currentOption.text) });
+        addOption(currentOption);
       }
       currentOption = { id: optionMatch[1].toLowerCase(), text: optionMatch[2] };
       
-      // 检查选项后面是否有答案（如 "A、xxx 答案: B"）
-      const answerInOption = currentOption.text.match(/\s*(正确答案|答案|答)[：:]\s*([A-Da-d])\s*$/i);
-      if (answerInOption) {
-        // 去掉答案部分
+      // 检查选项内是否包含答案
+      const inlineAnswerMatch = currentOption.text.match(/\s*(正确答案|答案|答)[：:]\s*([A-Da-d])\s*$/i);
+      if (inlineAnswerMatch) {
         currentOption.text = currentOption.text.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Da-d]\s*$/i, '').trim();
-        answer = answerInOption[2].toLowerCase();
+        answer = inlineAnswerMatch[2].toLowerCase();
       }
       continue;
     }
 
-    // 继续收集当前选项内容
+    // 继续收集当前选项内容（可能是跨行的选项内容）
     if (currentOption) {
-      // 检查这一行是否包含答案格式
-      const inlineAnswerMatch = trimmed.match(/\s*(正确答案|答案|答)[：:]\s*([A-Da-d])\s*$/i);
-      if (inlineAnswerMatch) {
-        // 去掉答案部分，只保留选项内容
-        currentOption.text += ' ' + trimmed.replace(/\s*(正确答案|答案|答)[：:]\s*[A-Da-d]\s*$/i, '').trim();
-        answer = inlineAnswerMatch[2].toLowerCase();
+      // 检查行末是否有答案格式
+      const endAnswerMatch = trimmed.match(/(.*?)\s*(正确答案|答案|答)[：:]\s*([A-Da-d])\s*$/i);
+      if (endAnswerMatch) {
+        currentOption.text += ' ' + endAnswerMatch[1].trim();
+        answer = endAnswerMatch[3].toLowerCase();
       } else {
         currentOption.text += ' ' + trimmed;
       }
@@ -235,21 +268,25 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
 
   // 保存最后一个选项
   if (currentOption && currentOption.text) {
-    options.push({ id: currentOption.id, text: cleanOptionText(currentOption.text) });
+    addOption(currentOption);
   }
 
   // 清理解析
   explanation = explanation.replace(/\s+/g, ' ').trim();
 
-  // 3. 识别题目类型
-  const type = identifyQuestionType(content, options);
+  // 4. 识别题目类型
+  let type = identifyQuestionType(content, options);
+  // 如果有明确的类型标记，优先使用
+  if (explicitType) {
+    type = explicitType;
+  }
 
-  // 4. 判断题答案转换
+  // 5. 判断题答案转换
   if (type === 'true-false') {
     answer = 'true';
   }
 
-  // 5. 识别难度
+  // 6. 识别难度
   const difficulty = identifyDifficulty(content);
 
   return {
@@ -266,7 +303,7 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
 const identifyQuestionType = (content: string, options: QuizOption[]): QuestionType => {
   const lowerContent = content.toLowerCase();
 
-  // 判断题特征：只有两个选项，且内容包含判断相关词汇
+  // 判断题特征
   if (options.length === 2) {
     const optionTexts = options.map(o => o.text.toLowerCase());
     if (
@@ -287,7 +324,6 @@ const identifyQuestionType = (content: string, options: QuizOption[]): QuestionT
     return 'fill-blank';
   }
 
-  // 默认单选题
   return 'single';
 };
 

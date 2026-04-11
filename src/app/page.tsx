@@ -409,13 +409,13 @@ export default function QuizApp() {
     if (currentQuestion.type === 'true-false') {
       return (
         <div className="space-y-3">
-          {currentQuestion.options?.map((option) => {
+          {currentQuestion.options?.map((option, index) => {
             const isCorrectAnswer = currentQuestion.answer === option.id;
             const isSelected = currentAnswer === option.id;
             
             return (
               <div
-                key={option.id}
+                key={`tf-${index}-${option.id}`}
                 className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleTrueFalseSelect(option.id)}
               >
@@ -447,7 +447,7 @@ export default function QuizApp() {
     if (currentQuestion.type === 'multiple') {
       return (
         <div className="space-y-3">
-          {currentQuestion.options?.map((option) => {
+          {currentQuestion.options?.map((option, index) => {
             const correctAnswers = Array.isArray(currentQuestion.answer) 
               ? currentQuestion.answer 
               : [currentQuestion.answer];
@@ -456,7 +456,7 @@ export default function QuizApp() {
             
             return (
               <div
-                key={option.id}
+                key={`multi-${index}-${option.id}`}
                 className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleMultiSelect(option.id, !isSelected)}
               >
@@ -484,13 +484,13 @@ export default function QuizApp() {
     // 单选题
     return (
       <div className="space-y-3">
-        {currentQuestion.options?.map((option) => {
+        {currentQuestion.options?.map((option, index) => {
           const isCorrectAnswer = currentQuestion.answer === option.id;
           const isSelected = currentAnswer === option.id;
           
           return (
             <div
-              key={option.id}
+              key={`single-${index}-${option.id}`}
               className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
               onClick={() => !quizState.showResult && handleSingleSelect(option.id)}
             >
@@ -1030,7 +1030,7 @@ export default function QuizApp() {
                         <div className="space-y-2">
                           <Label>选项</Label>
                           {newQuestion.options?.map((opt, idx) => (
-                            <div key={opt.id} className="flex gap-2">
+                            <div key={`new-opt-${idx}-${opt.id}`} className="flex gap-2">
                               <span className="w-6 py-2 text-gray-500">{opt.id.toUpperCase()}.</span>
                               <Input
                                 value={opt.text}
@@ -1083,8 +1083,8 @@ export default function QuizApp() {
                               <SelectValue placeholder="选择正确答案" />
                             </SelectTrigger>
                             <SelectContent>
-                              {newQuestion.options?.map((opt) => (
-                                <SelectItem key={opt.id} value={opt.id}>
+                              {newQuestion.options?.map((opt, idx) => (
+                                <SelectItem key={`select-opt-${idx}-${opt.id}`} value={opt.id}>
                                   {opt.id.toUpperCase()}. {opt.text}
                                 </SelectItem>
                               ))}
@@ -1234,8 +1234,8 @@ export default function QuizApp() {
                                 <p className="font-medium text-gray-900 mb-2">{q.content}</p>
                                 {q.options && (
                                   <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                                    {q.options.map((opt) => (
-                                      <div key={opt.id} className="flex items-center gap-1">
+                                    {q.options.map((opt, optIdx) => (
+                                      <div key={`opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
                                         <span className="font-medium">{opt.id.toUpperCase()}.</span>
                                         <span>{opt.text}</span>
                                       </div>
@@ -1297,8 +1297,8 @@ export default function QuizApp() {
                               <p className="font-medium text-gray-900 mb-2">{q.content}</p>
                               {q.options && (
                                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                                  {q.options.map((opt) => (
-                                    <div key={opt.id} className="flex items-center gap-1">
+                                  {q.options.map((opt, optIdx) => (
+                                    <div key={`q-opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
                                       <span className="font-medium">{opt.id.toUpperCase()}.</span>
                                       <span>{opt.text}</span>
                                     </div>
