@@ -249,6 +249,7 @@ export function useQuiz() {
     isAnswerCorrect,
     isLoading,
     hasStarted,
+    setHasStarted,
     startQuiz,
     selectAnswer,
     nextQuestion,
