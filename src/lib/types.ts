@@ -19,6 +19,7 @@ export interface Question {
   tags: string[];
   difficulty: Difficulty;
   createdAt: number;
+  bankId?: string; // 关联的题库ID
 }
 
 export interface PracticeRecord {
@@ -33,8 +34,11 @@ export interface QuestionBank {
   id: string;
   name: string;
   description?: string;
+  sourceFile?: string; // 来源文件名
   questionIds: string[];
   createdAt: number;
+  updatedAt: number;
+  totalQuestions?: number; // 缓存的题目数量
 }
 
 export interface QuizState {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,9 +33,8 @@ import {
   Trash2,
   FileText
 } from 'lucide-react';
-import { questionStore, recordStore, generateId } from '@/lib/quiz-store';
-import { Question, QuestionType, Difficulty } from '@/lib/types';
-import { useEffect } from 'react';
+import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
+import { Question, QuestionType, Difficulty, QuestionBank } from '@/lib/types';
 
 export default function QuizApp() {
   const {
@@ -72,7 +71,16 @@ export default function QuizApp() {
     difficulty: 'medium',
     tags: [],
   });
-
+  
+  // 题库管理状态
+  const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
+  const [editingBankId, setEditingBankId] = useState<string | null>(null);
+  const [editingBankName, setEditingBankName] = useState('');
+  const [showBankQuestions, setShowBankQuestions] = useState(false);
+  
+  // 加载题库
+  const banks = useMemo(() => bankStore.getAll(), [questions]);
+  
   // 加载题目
   const loadQuestions = useCallback(() => {
     setQuestions(questionStore.getAll());
@@ -194,9 +202,13 @@ export default function QuizApp() {
       return;
     }
     
+    // 从文件名提取题库名称（去掉扩展名）
+    const bankName = file.name.replace(/\.(pdf|docx)$/i, '');
+    
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('bankName', bankName);
       
       const response = await fetch('/api/parse-document', {
         method: 'POST',
@@ -206,13 +218,23 @@ export default function QuizApp() {
       const result = await response.json();
       
       if (result.success) {
-        // 将解析的题目保存到 localStorage
+        // 将解析的题目保存到 localStorage，并关联题库ID
         if (result.questions && result.questions.length > 0) {
-          questionStore.addMultiple(result.questions);
+          // 添加题库ID到每道题目（由服务端生成的bankId）
+          const questionsWithBankId = result.questions.map((q: Question) => ({
+            ...q,
+            bankId: result.bankId,
+          }));
+          questionStore.addMultiple(questionsWithBankId);
+          
+          // 创建题库
+          const bank = bankStore.createWithId(result.bankId, result.bankName || bankName, file.name);
+          bank.questionIds = questionsWithBankId.map((q: Question) => q.id);
+          bankStore.update(bank);
         }
         loadQuestions();
         setImportModalOpen(false);
-        alert(`成功从文档中提取并导入 ${result.total} 道题目！\n\n题目类型统计：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
+        alert(`成功导入题库「${result.bankName || bankName}」\n共 ${result.total} 道题目\n\n题目类型：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
       } else {
         alert(result.error || '导入失败');
       }
@@ -360,6 +382,44 @@ export default function QuizApp() {
     questionStore.remove(id);
     loadQuestions();
   };
+  
+  // 删除题库（同时删除题库内的所有题目）
+  const handleDeleteBank = (bankId: string) => {
+    const bank = bankStore.getById(bankId);
+    if (!bank) return;
+    
+    if (confirm(`确定要删除题库「${bank.name}」吗？\n这将同时删除该题库中的 ${bank.questionIds.length} 道题目。`)) {
+      // 删除题库内的所有题目
+      bank.questionIds.forEach(qId => {
+        questionStore.remove(qId);
+      });
+      // 删除题库
+      bankStore.remove(bankId);
+      loadQuestions();
+      setSelectedBankId(null);
+    }
+  };
+  
+  // 开始编辑题库名称
+  const handleStartEditBank = (bank: QuestionBank) => {
+    setEditingBankId(bank.id);
+    setEditingBankName(bank.name);
+  };
+  
+  // 保存题库名称
+  const handleSaveBankName = () => {
+    if (editingBankId && editingBankName.trim()) {
+      bankStore.rename(editingBankId, editingBankName.trim());
+      setEditingBankId(null);
+      setEditingBankName('');
+    }
+  };
+  
+  // 查看题库内的题目
+  const handleViewBankQuestions = (bankId: string) => {
+    setSelectedBankId(bankId);
+    setShowBankQuestions(true);
+  };
 
   // 渲染选项
   const renderOptions = () => {
@@ -373,20 +433,34 @@ export default function QuizApp() {
             value={(currentAnswer as string) || ''}
             onChange={(e) => handleFillBlankChange(e.target.value)}
             disabled={quizState.showResult}
-            className="min-h-[100px]"
+            className="min-h-[100px] border-gray-200 focus:border-blue-300"
           />
         </div>
       );
     }
     
+    // 选项样式配置
+    const getOptionStyle = (isSelected: boolean, isCorrectAnswer: boolean, showResult: boolean) => {
+      if (showResult) {
+        if (isSelected && isCorrectAnswer) {
+          return 'border-emerald-400 bg-emerald-50 shadow-sm';
+        }
+        if (isSelected && !isCorrectAnswer) {
+          return 'border-rose-400 bg-rose-50 shadow-sm';
+        }
+        if (isCorrectAnswer) {
+          return 'border-emerald-400 bg-emerald-50/50';
+        }
+      }
+      if (isSelected) {
+        return 'border-blue-400 bg-blue-50 shadow-sm';
+      }
+      return 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50';
+    };
+    
     if (currentQuestion.type === 'true-false') {
       return (
-        <RadioGroup
-          value={(currentAnswer as string) || ''}
-          onValueChange={handleTrueFalseSelect}
-          disabled={quizState.showResult}
-          className="space-y-3"
-        >
+        <div className="space-y-3">
           {currentQuestion.options?.map((option) => {
             const isCorrectAnswer = currentQuestion.answer === option.id;
             const isSelected = currentAnswer === option.id;
@@ -394,33 +468,31 @@ export default function QuizApp() {
             return (
               <div
                 key={option.id}
-                className={`flex items-center p-4 rounded-lg border transition-all cursor-pointer ${
+                className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                onClick={() => !quizState.showResult && handleTrueFalseSelect(option.id)}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 font-semibold text-sm ${
                   isSelected 
                     ? quizState.showResult 
                       ? isCorrectAnswer 
-                        ? 'border-green-500 bg-green-50' 
-                        : 'border-red-500 bg-red-50'
-                      : 'border-blue-500 bg-blue-50'
-                    : quizState.showResult && isCorrectAnswer
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleTrueFalseSelect(option.id)}
-              >
-                <RadioGroupItem value={option.id} id={option.id} className="mr-3" />
-                <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                  {option.text}
-                </Label>
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-rose-500 text-white'
+                      : 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {option.id.toUpperCase()}
+                </div>
+                <span className="flex-1 text-base font-medium">{option.text}</span>
                 {quizState.showResult && isCorrectAnswer && (
-                  <Check className="w-5 h-5 text-green-500" />
+                  <Check className="w-6 h-6 text-emerald-500" />
                 )}
                 {quizState.showResult && isSelected && !isCorrectAnswer && (
-                  <X className="w-5 h-5 text-red-500" />
+                  <X className="w-6 h-6 text-rose-500" />
                 )}
               </div>
             );
           })}
-        </RadioGroup>
+        </div>
       );
     }
     
@@ -437,48 +509,33 @@ export default function QuizApp() {
             return (
               <div
                 key={option.id}
-                className={`flex items-center p-4 rounded-lg border transition-all cursor-pointer ${
-                  isSelected 
-                    ? quizState.showResult 
-                      ? isCorrectAnswer 
-                        ? 'border-green-500 bg-green-50' 
-                        : 'border-red-500 bg-red-50'
-                      : 'border-blue-500 bg-blue-50'
-                    : quizState.showResult && isCorrectAnswer
-                      ? 'border-green-500 bg-green-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => handleMultiSelect(option.id, !isSelected)}
+                className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                onClick={() => !quizState.showResult && handleMultiSelect(option.id, !isSelected)}
               >
                 <Checkbox
                   checked={isSelected}
                   onCheckedChange={(checked) => handleMultiSelect(option.id, !!checked)}
                   disabled={quizState.showResult}
-                  className="mr-3"
+                  className={`w-5 h-5 mr-4 ${isSelected ? 'text-blue-500' : ''}`}
                 />
-                <span className="flex-1">{option.text}</span>
+                <span className="flex-1 text-base font-medium">{option.text}</span>
                 {quizState.showResult && isCorrectAnswer && (
-                  <Check className="w-5 h-5 text-green-500" />
+                  <Check className="w-6 h-6 text-emerald-500" />
                 )}
                 {quizState.showResult && isSelected && !isCorrectAnswer && (
-                  <X className="w-5 h-5 text-red-500" />
+                  <X className="w-6 h-6 text-rose-500" />
                 )}
               </div>
             );
           })}
-          <p className="text-sm text-gray-500">* 此题为多选题</p>
+          <p className="text-sm text-gray-400 mt-2">* 此题为多选题，可选择多个答案</p>
         </div>
       );
     }
     
     // 单选题
     return (
-      <RadioGroup
-        value={(currentAnswer as string) || ''}
-        onValueChange={handleSingleSelect}
-        disabled={quizState.showResult}
-        className="space-y-3"
-      >
+      <div className="space-y-3">
         {currentQuestion.options?.map((option) => {
           const isCorrectAnswer = currentQuestion.answer === option.id;
           const isSelected = currentAnswer === option.id;
@@ -486,33 +543,31 @@ export default function QuizApp() {
           return (
             <div
               key={option.id}
-              className={`flex items-center p-4 rounded-lg border transition-all cursor-pointer ${
+              className={`flex items-center p-5 rounded-xl border-2 transition-all cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+              onClick={() => !quizState.showResult && handleSingleSelect(option.id)}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 font-semibold text-sm ${
                 isSelected 
                   ? quizState.showResult 
                     ? isCorrectAnswer 
-                      ? 'border-green-500 bg-green-50' 
-                      : 'border-red-500 bg-red-50'
-                    : 'border-blue-500 bg-blue-50'
-                  : quizState.showResult && isCorrectAnswer
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => handleSingleSelect(option.id)}
-            >
-              <RadioGroupItem value={option.id} id={option.id} className="mr-3" />
-              <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                {option.text}
-              </Label>
+                      ? 'bg-emerald-500 text-white' 
+                      : 'bg-rose-500 text-white'
+                    : 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {option.id.toUpperCase()}
+              </div>
+              <span className="flex-1 text-base font-medium">{option.text}</span>
               {quizState.showResult && isCorrectAnswer && (
-                <Check className="w-5 h-5 text-green-500" />
+                <Check className="w-6 h-6 text-emerald-500" />
               )}
               {quizState.showResult && isSelected && !isCorrectAnswer && (
-                <X className="w-5 h-5 text-red-500" />
+                <X className="w-6 h-6 text-rose-500" />
               )}
             </div>
           );
         })}
-      </RadioGroup>
+      </div>
     );
   };
 
@@ -678,198 +733,184 @@ D. Java"
           {/* 练习页面 */}
           <TabsContent value="practice">
             {!quizState.isComplete && quizState.questions.length > 0 && hasStarted ? (
-              <div className="grid lg:grid-cols-3 gap-6">
-                {/* 题目区域 */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* 进度条 */}
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">
-                              进度 {quizState.currentIndex + 1} / {quizState.questions.length}
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              {Math.round(((quizState.currentIndex + 1) / quizState.questions.length) * 100)}%
-                            </span>
+              <div className="max-w-3xl mx-auto space-y-6">
+                {/* 进度条 */}
+                <Card className="border-0 shadow-sm bg-white/80 backdrop-blur">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-700">
+                          进度 {quizState.currentIndex + 1} / {quizState.questions.length}
+                        </span>
+                        {currentQuestion && (
+                          <div className="flex items-center gap-1">
+                            {renderTypeBadge(currentQuestion.type)}
+                            {renderDifficultyBadge(currentQuestion.difficulty)}
                           </div>
-                          <Progress 
-                            value={((quizState.currentIndex + 1) / quizState.questions.length) * 100} 
-                            className="h-2"
-                          />
-                        </CardContent>
-                      </Card>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold text-blue-600">
+                        {Math.round(((quizState.currentIndex + 1) / quizState.questions.length) * 100)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={((quizState.currentIndex + 1) / quizState.questions.length) * 100} 
+                      className="h-1.5 bg-gray-100"
+                    />
+                  </CardContent>
+                </Card>
 
-                      {/* 题目卡片 */}
-                      {currentQuestion && (
-                        <Card className="shadow-lg">
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                {renderTypeBadge(currentQuestion.type)}
-                                {renderDifficultyBadge(currentQuestion.difficulty)}
-                              </div>
-                              <span className="text-sm text-gray-500">
-                                第 {quizState.currentIndex + 1} 题
-                              </span>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-6">
-                            <p className="text-lg font-medium leading-relaxed">
-                              {currentQuestion.content}
-                            </p>
-                            
-                            {renderOptions()}
-                            
-                            {/* 解析 */}
-                            {quizState.showResult && currentQuestion.explanation && (
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                                <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
-                                  <BookOpen className="w-4 h-4" />
-                                  题目解析
-                                </h4>
-                                <p className="text-blue-700">{currentQuestion.explanation}</p>
-                              </div>
+                {/* 题目卡片 */}
+                {currentQuestion && (
+                  <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-8">
+                      <p className="text-xl font-medium text-gray-900 leading-relaxed mb-8">
+                        {currentQuestion.content}
+                      </p>
+                      
+                      <div className="space-y-3">
+                        {renderOptions()}
+                      </div>
+                      
+                      {/* 答案反馈 */}
+                      {quizState.showResult && (
+                        <div className={`mt-6 p-4 rounded-xl ${
+                          isAnswerCorrect 
+                            ? 'bg-emerald-50 border border-emerald-200' 
+                            : 'bg-rose-50 border border-rose-200'
+                        }`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            {isAnswerCorrect ? (
+                              <>
+                                <Check className="w-5 h-5 text-emerald-600" />
+                                <span className="font-semibold text-emerald-700">回答正确</span>
+                              </>
+                            ) : (
+                              <>
+                                <X className="w-5 h-5 text-rose-600" />
+                                <span className="font-semibold text-rose-700">回答错误</span>
+                              </>
                             )}
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* 操作按钮 */}
-                      <div className="flex items-center justify-between">
-                        <Button
-                          variant="outline"
-                          onClick={prevQuestion}
-                          disabled={quizState.currentIndex === 0}
-                          className="gap-2"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                          上一题
-                        </Button>
-                        
-                        <div className="flex gap-2">
-                          {!quizState.showResult ? (
-                            <Button
-                              onClick={submitAnswer}
-                              disabled={!currentAnswer}
-                              className="gap-2"
-                            >
-                              提交答案
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={nextQuestion}
-                              className="gap-2"
-                            >
-                              {quizState.currentIndex === quizState.questions.length - 1 ? '完成练习' : '下一题'}
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
+                          </div>
+                          {!isAnswerCorrect && (
+                            <p className="text-sm text-rose-600">
+                              正确答案：
+                              <span className="font-semibold ml-1">
+                                {Array.isArray(currentQuestion.answer) 
+                                  ? currentQuestion.answer.map(a => a.toUpperCase()).join(', ')
+                                  : currentQuestion.answer.toUpperCase()}
+                              </span>
+                            </p>
                           )}
                         </div>
-                      </div>
-
-                      {/* 题目导航 */}
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">题目导航</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-10 gap-2">
-                            {quizState.questions.map((q, idx) => {
-                              const answered = !!quizState.answers[q.id];
-                              const isCurrent = idx === quizState.currentIndex;
-                              
-                              return (
-                                <button
-                                  key={q.id}
-                                  onClick={() => goToQuestion(idx)}
-                                  className={`w-10 h-10 rounded-lg font-medium text-sm transition-all ${
-                                    isCurrent
-                                      ? 'bg-blue-500 text-white'
-                                      : answered
-                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                  }`}
-                                >
-                                  {idx + 1}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <div className="flex items-center gap-4 mt-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded bg-gray-100"></div>
-                              <span className="text-gray-500">未答</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded bg-green-100"></div>
-                              <span className="text-gray-500">已答</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded bg-blue-500"></div>
-                              <span className="text-gray-500">当前</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                  {/* 侧边栏 */}
-                <div className="space-y-6">
-                  {/* 快捷操作 */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">快捷操作</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          setActiveTab('library');
-                        }}
-                      >
-                        <Library className="w-4 h-4 mr-2" />
-                        查看题库
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={restartQuiz}
-                      >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        重新开始
-                      </Button>
+                      )}
+                      
+                      {/* 解析 */}
+                      {quizState.showResult && currentQuestion.explanation && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mt-4">
+                          <h4 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
+                            <BookOpen className="w-4 h-4" />
+                            题目解析
+                          </h4>
+                          <p className="text-amber-700 text-sm leading-relaxed">{currentQuestion.explanation}</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
+                )}
 
-                  {/* 今日统计 */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-yellow-500" />
-                        今日统计
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="text-center">
-                          <p className="text-3xl font-bold text-blue-600">{getStats().accuracy}%</p>
-                          <p className="text-sm text-gray-500">正确率</p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-3 bg-green-50 rounded-lg">
-                            <p className="text-2xl font-bold text-green-600">{getStats().correctCount}</p>
-                            <p className="text-xs text-gray-500">正确</p>
-                          </div>
-                          <div className="text-center p-3 bg-red-50 rounded-lg">
-                            <p className="text-2xl font-bold text-red-600">{getStats().wrongCount}</p>
-                            <p className="text-xs text-gray-500">错误</p>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                {/* 操作按钮 */}
+                <div className="flex items-center justify-between py-4">
+                  <Button
+                    variant="ghost"
+                    onClick={prevQuestion}
+                    disabled={quizState.currentIndex === 0}
+                    className="gap-2 text-gray-600 hover:text-gray-900"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    上一题
+                  </Button>
+                  
+                  <div className="flex gap-3">
+                    {!quizState.showResult ? (
+                      <Button
+                        onClick={submitAnswer}
+                        disabled={!currentAnswer}
+                        className="min-w-[120px] shadow-sm"
+                      >
+                        提交答案
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={nextQuestion}
+                        className="min-w-[120px] shadow-sm"
+                      >
+                        {quizState.currentIndex === quizState.questions.length - 1 ? '完成练习' : '下一题'}
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    onClick={restartQuiz}
+                    className="gap-2 text-gray-600 hover:text-gray-900"
+                  >
+                    重新开始
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
                 </div>
+
+                {/* 题目导航 */}
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardContent className="p-4">
+                    <p className="text-sm font-medium text-gray-500 mb-3">题目导航</p>
+                    <div className="flex flex-wrap gap-2">
+                      {quizState.questions.map((q, idx) => {
+                        const answered = !!quizState.answers[q.id];
+                        const isCurrent = idx === quizState.currentIndex;
+                        const record = recordStore.getByQuestionId(q.id);
+                        const isWrong = record.length > 0 && !record[record.length - 1].isCorrect;
+                        
+                        return (
+                          <button
+                            key={q.id}
+                            onClick={() => goToQuestion(idx)}
+                            className={`w-9 h-9 rounded-lg font-medium text-sm transition-all ${
+                              isCurrent
+                                ? 'bg-blue-500 text-white shadow-md'
+                                : answered
+                                  ? isWrong
+                                    ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {idx + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-6 mt-4 pt-4 border-t border-gray-100 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-gray-100 border border-gray-200"></div>
+                        <span className="text-gray-500">未答</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200"></div>
+                        <span className="text-gray-500">正确</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-rose-100 border border-rose-200"></div>
+                        <span className="text-gray-500">错误</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded bg-blue-500"></div>
+                        <span className="text-gray-500">当前</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             ) : quizState.isComplete ? (
               /* 完成页面 */
@@ -1000,9 +1041,13 @@ D. Java"
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">题库管理</h2>
               <div className="flex gap-2">
+                <Button onClick={() => setImportModalOpen(true)} className="gap-2">
+                  <Upload className="w-4 h-4" />
+                  导入题库
+                </Button>
                 <Dialog open={addQuestionOpen} onOpenChange={setAddQuestionOpen}>
                   <DialogTrigger asChild>
-                    <Button className="gap-2">
+                    <Button variant="outline" className="gap-2">
                       <Plus className="w-4 h-4" />
                       添加题目
                     </Button>
@@ -1133,55 +1178,222 @@ D. Java"
               </div>
             </div>
 
-            <Card>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {questions.map((q, idx) => (
-                    <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
-                            {renderTypeBadge(q.type)}
-                            {renderDifficultyBadge(q.difficulty)}
+            {/* 题库列表 */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Library className="w-5 h-5" />
+                题库列表 ({banks.length})
+              </h3>
+              {banks.length === 0 ? (
+                <Card className="bg-gray-50 border-dashed">
+                  <CardContent className="py-8 text-center">
+                    <Library className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                    <p className="text-gray-500 mb-4">暂无题库，请导入文档创建题库</p>
+                    <Button onClick={() => setImportModalOpen(true)} className="gap-2">
+                      <Upload className="w-4 h-4" />
+                      导入题库
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {banks.map((bank) => (
+                    <Card key={bank.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1 min-w-0">
+                            {editingBankId === bank.id ? (
+                              <div className="flex gap-2">
+                                <Input
+                                  value={editingBankName}
+                                  onChange={(e) => setEditingBankName(e.target.value)}
+                                  className="h-8"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveBankName();
+                                    if (e.key === 'Escape') setEditingBankId(null);
+                                  }}
+                                />
+                                <Button size="sm" onClick={handleSaveBankName}>保存</Button>
+                              </div>
+                            ) : (
+                              <h4 
+                                className="font-semibold text-gray-900 truncate cursor-pointer hover:text-blue-600"
+                                onClick={() => handleViewBankQuestions(bank.id)}
+                              >
+                                {bank.name}
+                              </h4>
+                            )}
                           </div>
-                          <p className="font-medium text-gray-900 mb-2">{q.content}</p>
-                          {q.options && (
-                            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                              {q.options.map((opt) => (
-                                <div key={opt.id} className="flex items-center gap-1">
-                                  <span className="font-medium">{opt.id.toUpperCase()}.</span>
-                                  <span>{opt.text}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <div className="mt-2 text-sm">
-                            <span className="text-gray-500">正确答案：</span>
-                            <span className="font-medium text-green-600">
-                              {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
-                            </span>
+                          <div className="flex gap-1 ml-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleStartEditBank(bank)}
+                            >
+                              <FileText className="w-4 h-4 text-gray-400" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => handleDeleteBank(bank.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-500">{bank.questionIds.length} 道题目</span>
+                          <span className="text-gray-400 text-xs">
+                            {new Date(bank.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteQuestion(q.id)}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          variant="outline"
+                          size="sm"
+                          className="w-full mt-3"
+                          onClick={() => handleViewBankQuestions(bank.id)}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          查看题目
                         </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
-                {questions.length === 0 && (
-                  <div className="p-12 text-center">
-                    <p className="text-gray-500">暂无题目，请先导入或添加题目</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              )}
+            </div>
+
+            {/* 题库内题目列表 */}
+            {showBankQuestions && selectedBankId && (
+              <div className="border-t pt-6 mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    题库题目 ({questions.filter(q => q.bankId === selectedBankId).length})
+                  </h3>
+                  <Button variant="outline" size="sm" onClick={() => setShowBankQuestions(false)}>
+                    关闭
+                  </Button>
+                </div>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="divide-y max-h-[500px] overflow-y-auto">
+                      {questions
+                        .filter(q => q.bankId === selectedBankId)
+                        .map((q, idx) => (
+                          <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
+                                  {renderTypeBadge(q.type)}
+                                  {renderDifficultyBadge(q.difficulty)}
+                                </div>
+                                <p className="font-medium text-gray-900 mb-2">{q.content}</p>
+                                {q.options && (
+                                  <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                                    {q.options.map((opt) => (
+                                      <div key={opt.id} className="flex items-center gap-1">
+                                        <span className="font-medium">{opt.id.toUpperCase()}.</span>
+                                        <span>{opt.text}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="mt-2 text-sm">
+                                  <span className="text-gray-500">正确答案：</span>
+                                  <span className="font-medium text-green-600">
+                                    {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
+                                  </span>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteQuestion(q.id)}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {questions.filter(q => q.bankId === selectedBankId).length === 0 && (
+                      <div className="p-12 text-center">
+                        <p className="text-gray-500">该题库暂无题目</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* 所有题目列表 */}
+            {!showBankQuestions && (
+              <div>
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  所有题目 ({questions.length})
+                </h3>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="divide-y max-h-[500px] overflow-y-auto">
+                      {questions.map((q, idx) => (
+                        <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-medium text-gray-500">#{idx + 1}</span>
+                                {renderTypeBadge(q.type)}
+                                {renderDifficultyBadge(q.difficulty)}
+                                {q.bankId && banks.find(b => b.id === q.bankId) && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {banks.find(b => b.id === q.bankId)?.name}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="font-medium text-gray-900 mb-2">{q.content}</p>
+                              {q.options && (
+                                <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                                  {q.options.map((opt) => (
+                                    <div key={opt.id} className="flex items-center gap-1">
+                                      <span className="font-medium">{opt.id.toUpperCase()}.</span>
+                                      <span>{opt.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="mt-2 text-sm">
+                                <span className="text-gray-500">正确答案：</span>
+                                <span className="font-medium text-green-600">
+                                  {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteQuestion(q.id)}
+                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {questions.length === 0 && (
+                      <div className="p-12 text-center">
+                        <p className="text-gray-500">暂无题目，请先导入或添加题目</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           {/* 统计页面 */}

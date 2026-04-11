@@ -115,7 +115,12 @@ export const bankStore = {
     if (typeof window === 'undefined') return [];
     try {
       const data = localStorage.getItem(STORAGE_KEYS.BANKS);
-      return data ? JSON.parse(data) : [];
+      const banks = data ? JSON.parse(data) : [];
+      // 更新每个题库的题目数量
+      return banks.map((bank: QuestionBank) => ({
+        ...bank,
+        totalQuestions: bank.questionIds.length,
+      }));
     } catch {
       return [];
     }
@@ -130,17 +135,150 @@ export const bankStore = {
     }
   },
 
-  add: (bank: QuestionBank) => {
+  getById: (id: string): QuestionBank | undefined => {
+    return bankStore.getAll().find(b => b.id === id);
+  },
+
+  create: (name: string, sourceFile?: string): QuestionBank => {
+    const bank: QuestionBank = {
+      id: generateId(),
+      name,
+      sourceFile,
+      questionIds: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      totalQuestions: 0,
+    };
     const banks = bankStore.getAll();
     banks.push(bank);
     bankStore.save(banks);
     return bank;
   },
 
+  // 创建题库（使用指定的ID）
+  createWithId: (id: string, name: string, sourceFile?: string): QuestionBank => {
+    const bank: QuestionBank = {
+      id,
+      name,
+      sourceFile,
+      questionIds: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      totalQuestions: 0,
+    };
+    const banks = bankStore.getAll();
+    banks.push(bank);
+    bankStore.save(banks);
+    return bank;
+  },
+
+  // 更新题库
+  update: (bank: QuestionBank): QuestionBank => {
+    const banks = bankStore.getAll();
+    const bankIndex = banks.findIndex(b => b.id === bank.id);
+    if (bankIndex === -1) {
+      // 如果不存在则添加
+      banks.push({ ...bank, updatedAt: Date.now() });
+    } else {
+      banks[bankIndex] = { ...bank, updatedAt: Date.now() };
+    }
+    bankStore.save(banks);
+    return bank;
+  },
+
+  addQuestions: (bankId: string, questionIds: string[]): QuestionBank | undefined => {
+    const banks = bankStore.getAll();
+    const bankIndex = banks.findIndex(b => b.id === bankId);
+    if (bankIndex === -1) return undefined;
+    
+    // 添加题目ID，去重
+    const existingIds = new Set(banks[bankIndex].questionIds);
+    questionIds.forEach(id => existingIds.add(id));
+    
+    banks[bankIndex] = {
+      ...banks[bankIndex],
+      questionIds: Array.from(existingIds),
+      updatedAt: Date.now(),
+      totalQuestions: Array.from(existingIds).length,
+    };
+    bankStore.save(banks);
+    return banks[bankIndex];
+  },
+
   remove: (id: string) => {
+    // 删除题库时同时删除关联的题目
+    const bank = bankStore.getById(id);
+    if (bank) {
+      const questions = questionStore.getAll();
+      const filteredQuestions = questions.filter(q => !bank.questionIds.includes(q.id));
+      questionStore.save(filteredQuestions);
+    }
     const banks = bankStore.getAll().filter(b => b.id !== id);
     bankStore.save(banks);
     return banks;
+  },
+
+  removeQuestions: (bankId: string, questionIds: string[]) => {
+    const banks = bankStore.getAll();
+    const bankIndex = banks.findIndex(b => b.id === bankId);
+    if (bankIndex === -1) return undefined;
+    
+    const questionIdSet = new Set(questionIds);
+    const remainingIds = banks[bankIndex].questionIds.filter(id => !questionIdSet.has(id));
+    
+    // 同时删除题目
+    const questions = questionStore.getAll();
+    const filteredQuestions = questions.filter(q => !questionIdSet.has(q.id));
+    questionStore.save(filteredQuestions);
+    
+    banks[bankIndex] = {
+      ...banks[bankIndex],
+      questionIds: remainingIds,
+      updatedAt: Date.now(),
+      totalQuestions: remainingIds.length,
+    };
+    bankStore.save(banks);
+    return banks[bankIndex];
+  },
+
+  merge: (sourceBankId: string, targetBankId: string): QuestionBank | undefined => {
+    const sourceBank = bankStore.getById(sourceBankId);
+    const targetBank = bankStore.getById(targetBankId);
+    if (!sourceBank || !targetBank) return undefined;
+    
+    // 将源题库的题目合并到目标题库
+    const existingIds = new Set(targetBank.questionIds);
+    sourceBank.questionIds.forEach(id => existingIds.add(id));
+    
+    const banks = bankStore.getAll();
+    const targetIndex = banks.findIndex(b => b.id === targetBankId);
+    
+    banks[targetIndex] = {
+      ...banks[targetIndex],
+      questionIds: Array.from(existingIds),
+      updatedAt: Date.now(),
+      totalQuestions: Array.from(existingIds).length,
+    };
+    bankStore.save(banks);
+    
+    // 删除源题库
+    bankStore.remove(sourceBankId);
+    
+    return banks[targetIndex];
+  },
+
+  rename: (id: string, newName: string): QuestionBank | undefined => {
+    const banks = bankStore.getAll();
+    const bankIndex = banks.findIndex(b => b.id === id);
+    if (bankIndex === -1) return undefined;
+    
+    banks[bankIndex] = {
+      ...banks[bankIndex],
+      name: newName,
+      updatedAt: Date.now(),
+    };
+    bankStore.save(banks);
+    return banks[bankIndex];
   },
 
   clear: () => {

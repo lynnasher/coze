@@ -53,7 +53,7 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   if (lines.length < 2) return null;
 
   // 1. 提取题目内容（第一行，去掉开头的编号）
-  let content = lines[0].replace(/^\d+[.、)]\s*/, '').trim();
+  const content = lines[0].replace(/^\d+[.、)]\s*/, '').trim();
   if (!content) return null;
 
   // 2. 提取选项
