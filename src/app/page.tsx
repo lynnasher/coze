@@ -618,7 +618,7 @@ export default function QuizApp() {
               <div className="min-h-screen bg-gray-100 -mx-4 sm:mx-0">
                 {/* 顶部蓝色导航栏 */}
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-4 sticky top-0 z-20">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     {/* 左侧：返回按钮 */}
                     <Button
                       variant="ghost"
@@ -629,7 +629,7 @@ export default function QuizApp() {
                           setPracticeBankId(null);
                         }
                       }}
-                      className="text-white hover:bg-white/20 px-2"
+                      className="text-white hover:bg-white/20 px-2 -ml-2"
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </Button>
@@ -643,33 +643,36 @@ export default function QuizApp() {
                       </h2>
                     </div>
                     
-                    {/* 右侧：提交试卷 */}
+                    {/* 右侧：答题卡 */}
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => {
-                        const answeredCount = Object.keys(quizState.answers).length;
-                        if (confirm(`已回答 ${answeredCount}/${quizState.questions.length} 道题目，确定要提交试卷吗？`)) {
-                          finishQuiz();
-                        }
-                      }}
-                      className="text-white hover:bg-white/20 text-xs px-2"
+                      onClick={() => setShowAnswerSheet(true)}
+                      className="text-white hover:bg-white/20 px-2 -mr-2"
                     >
-                      交卷
+                      <Grid3X3 className="w-5 h-5" />
                     </Button>
                   </div>
                   
                   {/* 进度信息 */}
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <span>答题进度 {Object.keys(quizState.answers).length} / {quizState.questions.length}</span>
-                    <span className="flex items-center gap-1">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <div className="flex items-center gap-3">
+                      <span>答题 {Object.keys(quizState.answers).length}/{quizState.questions.length}</span>
+                      <button 
+                        onClick={() => setShowAnswerSheet(true)}
+                        className="underline underline-offset-2 hover:text-white/80"
+                      >
+                        答题卡
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}
-                    </span>
+                      <span>{Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, '0')}</span>
+                    </div>
                   </div>
                   
                   {/* 进度条 */}
-                  <div className="mt-2 h-1.5 bg-blue-400 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-blue-400 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-white rounded-full transition-all duration-300"
                       style={{ width: `${(Object.keys(quizState.answers).length / quizState.questions.length) * 100}%` }}
@@ -772,8 +775,8 @@ export default function QuizApp() {
                 </div>
 
                 {/* 底部固定操作栏 */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0">
-                  <div className="flex items-center justify-between gap-2">
+                <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 shadow-lg p-3 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none rounded-t-2xl sm:rounded-none">
+                  <div className="flex items-center justify-between gap-3 max-w-2xl mx-auto">
                     {/* 左侧：上一题 */}
                     <Button
                       variant="outline"
@@ -786,7 +789,7 @@ export default function QuizApp() {
                         }
                       }}
                       disabled={quizState.currentIndex === 0}
-                      className="h-11 px-3 border-gray-300"
+                      className="h-11 px-4 border-gray-300"
                     >
                       <ChevronLeft className="w-4 h-4 mr-1" />
                       <span className="hidden sm:inline">上一题</span>
@@ -807,13 +810,13 @@ export default function QuizApp() {
                     
                     {/* 右侧：下一题 / 交卷 */}
                     {quizState.currentIndex === quizState.questions.length - 1 ? (
-                      // 最后一道题：显示交卷
+                      // 最后一道题：显示交卷（更突出）
                       <Button
                         onClick={() => finishQuiz()}
                         disabled={!currentAnswer}
-                        className="h-11 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="h-12 px-6 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-bold shadow-lg shadow-emerald-500/30 disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none rounded-xl text-base"
                       >
-                        <FileCheck className="w-4 h-4 mr-1" />
+                        <FileCheck className="w-5 h-5 mr-2" />
                         交卷
                       </Button>
                     ) : (
