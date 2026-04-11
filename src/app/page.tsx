@@ -54,7 +54,6 @@ export default function QuizApp() {
     getStats,
   } = useQuiz();
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [importText, setImportText] = useState('');
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -123,74 +122,7 @@ export default function QuizApp() {
     }
   };
 
-  // 从文本导入
-  const handleTextImport = () => {
-    if (!importText.trim()) return;
-    
-    const lines = importText.split('\n').filter(l => l.trim());
-    const newQuestions: Question[] = [];
-    
-    let currentContent = '';
-    let currentOptions: { id: string; text: string }[] = [];
-    
-    lines.forEach((line, index) => {
-      const trimmed = line.trim();
-      
-      // 检测是否为新题目
-      if (/^\d+[.、)]/.test(trimmed) && currentContent) {
-        // 保存上一题
-        if (currentOptions.length > 0) {
-          newQuestions.push({
-            id: generateId(),
-            type: 'single',
-            content: currentContent.replace(/^\d+[.、)]\s*/, ''),
-            options: currentOptions,
-            answer: 'a',
-            difficulty: 'medium',
-            tags: [],
-            createdAt: Date.now(),
-          });
-        }
-        currentContent = trimmed;
-        currentOptions = [];
-      } else if (/^[A-D][.、)]/.test(trimmed)) {
-        const match = trimmed.match(/^([A-D])[.、)]\s*(.+)/i);
-        if (match) {
-          currentOptions.push({
-            id: match[1].toLowerCase(),
-            text: match[2].trim(),
-          });
-        }
-      } else if (currentContent && !/^[A-D]/.test(trimmed)) {
-        currentContent += ' ' + trimmed;
-      } else if (!currentContent) {
-        currentContent = trimmed;
-      }
-    });
-    
-    // 保存最后一题
-    if (currentContent && currentOptions.length > 0) {
-      newQuestions.push({
-        id: generateId(),
-        type: 'single',
-        content: currentContent.replace(/^\d+[.、)]\s*/, ''),
-        options: currentOptions,
-        answer: 'a',
-        difficulty: 'medium',
-        tags: [],
-        createdAt: Date.now(),
-      });
-    }
-    
-    if (newQuestions.length > 0) {
-      questionStore.addMultiple(newQuestions);
-      loadQuestions();
-      setImportText('');
-      setImportModalOpen(false);
-    }
-  };
-
-  // 文档导入（PDF/DOCX）
+  // 文档导入（Word 文档）
   const handleDocumentImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -635,76 +567,31 @@ export default function QuizApp() {
                 <DialogHeader>
                   <DialogTitle>导入题库</DialogTitle>
                 </DialogHeader>
-                <Tabs defaultValue="text">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="text">文本导入</TabsTrigger>
-                    <TabsTrigger value="doc">文档导入</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="text" className="space-y-4">
-                    <div>
-                      <Label htmlFor="import-text">粘贴题目文本</Label>
-                      <Textarea
-                        id="import-text"
-                        value={importText}
-                        onChange={(e) => setImportText(e.target.value)}
-                        placeholder="格式示例：
-1. 以下哪个是 JavaScript 的数据类型？
-A. String
-B. Integer
-C. Character
-D. Boolean
-
-2. React 使用什么语言编写？
-A. JavaScript
-B. TypeScript
-C. Python
-D. Java"
-                        className="min-h-[200px] mt-2"
-                      />
+                <div className="space-y-4">
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <FileText className="w-8 h-8 text-blue-600" />
                     </div>
-                    <Button onClick={handleTextImport} className="w-full">
-                      开始导入
-                    </Button>
-                  </TabsContent>
-                  <TabsContent value="doc" className="space-y-4">
-                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 mb-4">
-                      <h4 className="font-medium text-blue-800 mb-2">支持的文档格式</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-red-500" />
-                          <span>PDF 文档</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-blue-500" />
-                          <span>Word 文档 (.docx)</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                      <FileText className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-2">选择 PDF 或 Word 文档</p>
-                      <p className="text-sm text-gray-500 mb-4">自动提取题目并生成标准题库</p>
-                      <Input
-                        type="file"
-                        accept=".pdf,.docx"
-                        onChange={handleDocumentImport}
-                        className="max-w-xs mx-auto"
-                      />
-                    </div>
-                    
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-700 mb-2 text-sm">题目格式说明</h4>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        <li>题目编号格式：<code className="bg-gray-200 px-1 rounded">1. 题目内容</code></li>
-                        <li>选项格式：<code className="bg-gray-200 px-1 rounded">A. 选项内容</code></li>
-                        <li>答案格式：<code className="bg-gray-200 px-1 rounded">答案：A</code></li>
-                        <li>判断题：选项为&quot;正确/错误&quot;</li>
-                        <li>多选题：题目中包含&quot;多选&quot;或&quot;哪些&quot;</li>
-                      </ul>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">导入 Word 文档</h3>
+                    <p className="text-sm text-gray-500 mb-6">选择 .docx 格式的 Word 文档，系统将自动提取题目</p>
+                    <Input
+                      type="file"
+                      accept=".docx"
+                      onChange={handleDocumentImport}
+                      className="max-w-xs mx-auto"
+                    />
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-700 mb-2 text-sm">文档格式要求</h4>
+                    <ul className="text-xs text-gray-600 space-y-1">
+                      <li>题目编号格式：<code className="bg-gray-200 px-1 rounded">1. 题目内容</code></li>
+                      <li>选项格式：<code className="bg-gray-200 px-1 rounded">A. 选项内容</code></li>
+                      <li>答案格式：<code className="bg-gray-200 px-1 rounded">正确答案：B</code></li>
+                      <li>解析格式：<code className="bg-gray-200 px-1 rounded">名师解析：...</code></li>
+                    </ul>
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
