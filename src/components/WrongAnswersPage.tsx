@@ -308,15 +308,17 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-              <Star className="w-4 h-4" />
-            </div>
+            <img 
+              src="https://code.coze.cn/api/sandbox/coze_coding/file/proxy?expire_time=-1&file_path=assets%2Fimage.png&nonce=bc2e0f4c-de39-48cf-9d38-20a43bfc7403&project_id=7627388236024889398&sign=825d4212b0c347b0fa3190a3c738f8d9a0e3439cb0e9b73425ec607230854602" 
+              alt="Logo" 
+              className="w-8 h-8 rounded-xl object-contain"
+            />
             <div>
               <h1 className="text-base font-bold">错题本</h1>
               <p className="text-xs text-white/70">共 {stats.total} 道错题</p>
             </div>
           </div>
-          <div className="w-16"></div>
+          <div className="w-10"></div>
         </div>
       </div>
 
