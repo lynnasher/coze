@@ -52,6 +52,16 @@ export const questionStore = {
     return questionStore.getAll().find(q => q.id === id);
   },
 
+  update: (question: Question): Question => {
+    const questions = questionStore.getAll();
+    const index = questions.findIndex(q => q.id === question.id);
+    if (index !== -1) {
+      questions[index] = question;
+      questionStore.save(questions);
+    }
+    return question;
+  },
+
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.QUESTIONS);

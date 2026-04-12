@@ -121,28 +121,29 @@ export function useQuiz() {
 
   // 提交答案
   const submitAnswer = useCallback(() => {
-    setQuizState(prev => ({
-      ...prev,
-      showResult: true,
-    }));
-
-    // 记录答题结果
-    const currentQuestion = quizState.questions[quizState.currentIndex];
-    if (currentQuestion) {
-      const selectedAnswer = quizState.answers[currentQuestion.id];
-      const isCorrect = checkAnswer(currentQuestion, selectedAnswer);
+    setQuizState(prev => {
+      const currentQuestion = prev.questions[prev.currentIndex];
+      if (currentQuestion) {
+        const selectedAnswer = prev.answers[currentQuestion.id];
+        const isCorrect = checkAnswer(currentQuestion, selectedAnswer);
+        
+        const record: PracticeRecord = {
+          id: generateId(),
+          questionId: currentQuestion.id,
+          isCorrect,
+          selectedAnswer: selectedAnswer || '',
+          timestamp: Date.now(),
+        };
+        
+        recordStore.add(record);
+      }
       
-      const record: PracticeRecord = {
-        id: generateId(),
-        questionId: currentQuestion.id,
-        isCorrect,
-        selectedAnswer: selectedAnswer || '',
-        timestamp: Date.now(),
+      return {
+        ...prev,
+        showResult: true,
       };
-      
-      recordStore.add(record);
-    }
-  }, [quizState]);
+    });
+  }, []);
 
   // 检查答案是否正确
   const checkAnswer = (question: Question, selectedAnswer: string | string[] | undefined): boolean => {
