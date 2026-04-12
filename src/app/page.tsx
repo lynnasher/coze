@@ -151,27 +151,77 @@ export default function QuizApp() {
         return;
       }
       
-      // 提取题库名称（可选）
-      const bankName = data.bankName || file.name.replace(/\.json$/i, '') || '导入题库';
+      // 提取题库名称
+      const bankName = data.subjectName || data.bankName || file.name.replace(/\.json$/i, '') || '导入题库';
       
       // 生成题库 ID
       const bankId = generateId();
       
+      // 类型映射：数字 -> 字符串
+      const typeMap: Record<number, QuestionType> = {
+        1: 'single',
+        2: 'multiple',
+        3: 'true-false',
+        4: 'fill-blank',
+      };
+      
       // 处理每道题目
-      const questionsWithBankId = data.questions.map((q: Partial<Question>) => {
-        // 生成题目 ID
-        const questionId = generateId();
+      const questionsWithBankId = data.questions.map((q: Record<string, unknown>) => {
+        // 转换类型
+        let questionType: QuestionType = 'single';
+        const qType = q.type;
+        if (typeof qType === 'number') {
+          questionType = typeMap[qType as number] || 'single';
+        } else if (typeof qType === 'string') {
+          const t = qType.toLowerCase();
+          if (t.includes('多选')) questionType = 'multiple';
+          else if (t.includes('判断')) questionType = 'true-false';
+          else if (t.includes('填空')) questionType = 'fill-blank';
+          else questionType = 'single';
+        }
+        
+        // 转换选项：从对象格式 { "A": "选项A" } 转为数组格式
+        let options: { id: string; text: string }[] | undefined;
+        const qOptions = q.options;
+        if (qOptions && typeof qOptions === 'object') {
+          if (Array.isArray(qOptions)) {
+            options = qOptions as { id: string; text: string }[];
+          } else {
+            // 对象格式 { "A": "选项A", "B": "选项B" }
+            options = Object.entries(qOptions).map(([key, val]) => ({
+              id: key.toLowerCase(),
+              text: String(val),
+            })).sort((a, b) => a.id.localeCompare(b.id));
+          }
+        }
+        
+        // 处理答案
+        let answer: string | string[] = 'a';
+        const qAnswer = q.answer;
+        if (qAnswer) {
+          if (typeof qAnswer === 'string') {
+            // 多选题答案可能是 "ABC"
+            const ans = qAnswer.trim().toLowerCase();
+            if (ans.length > 1) {
+              answer = ans.split('');
+            } else {
+              answer = ans;
+            }
+          } else if (Array.isArray(qAnswer)) {
+            answer = qAnswer as string[];
+          }
+        }
         
         return {
-          id: questionId,
-          type: (q.type as QuestionType) || 'single',
-          content: q.content || '',
-          options: q.options,
-          answer: q.answer || 'a',
-          explanation: q.explanation,
+          id: generateId(),
+          type: questionType,
+          content: (q.question as string) || (q.content as string) || '',
+          options,
+          answer,
+          explanation: (q.explanation as string) || '',
           difficulty: (q.difficulty as Difficulty) || 'medium',
-          tags: q.tags || [],
-          bankId: bankId,
+          tags: (q.tags as string[]) || [],
+          bankId,
           createdAt: Date.now(),
         } as Question;
       });
@@ -537,23 +587,33 @@ export default function QuizApp() {
                   
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-medium text-gray-700 mb-2 text-sm">JSON 格式说明</h4>
-                    <pre className="text-xs text-gray-600 bg-gray-100 p-3 rounded-lg overflow-x-auto">{`{
-  "bankName": "题库名称（可选）",
-  "questions": [
-    {
-      "type": "single",  // single|multiple|true-false|fill-blank
-      "content": "题目内容",
-      "options": [
-        { "id": "a", "text": "选项A" },
-        { "id": "b", "text": "选项B" }
-      ],
-      "answer": "a",
-      "explanation": "解析内容（可选）",
-      "difficulty": "medium",  // easy|medium|hard
-      "tags": ["标签1"]  // 可选
-    }
-  ]
+                    <div className="text-xs text-gray-600 bg-gray-100 p-3 rounded-lg overflow-x-auto">
+                      <p className="font-medium mb-2">支持的两种格式：</p>
+                      
+                      <p className="font-medium mt-3 text-blue-600">格式一（推荐）：</p>
+                      <pre className="mt-1 mb-2">{`{
+  "bankName": "题库名称",
+  "questions": [{
+    "type": "single",
+    "content": "题目内容",
+    "options": [{"id":"a","text":"选项A"}],
+    "answer": "a",
+    "explanation": "解析"
+  }]
 }`}</pre>
+                      
+                      <p className="font-medium mt-3 text-green-600">格式二（导出格式）：</p>
+                      <pre className="mt-1">{`{
+  "subjectName": "科目名称",
+  "questions": [{
+    "type": 1,  // 1单选 2多选 3判断 4填空
+    "question": "题目内容",
+    "options": {"A":"选项A","B":"选项B"},
+    "answer": "A",
+    "explanation": "解析"
+  }]
+}`}</pre>
+                    </div>
                   </div>
                 </div>
               </DialogContent>
