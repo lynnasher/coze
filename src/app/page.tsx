@@ -163,10 +163,11 @@ export default function QuizApp() {
         2: 'multiple',
         3: 'true-false',
         4: 'fill-blank',
+        5: 'comprehensive',
       };
       
-      // 处理每道题目
-      const questionsWithBankId = data.questions.map((q: Record<string, unknown>) => {
+      // 递归处理题目（支持嵌套的 children）
+      const processQuestion = (q: Record<string, unknown>, parentId?: string): Question | null => {
         // 转换类型
         let questionType: QuestionType = 'single';
         const qType = q.type;
@@ -177,17 +178,17 @@ export default function QuizApp() {
           if (t.includes('多选')) questionType = 'multiple';
           else if (t.includes('判断')) questionType = 'true-false';
           else if (t.includes('填空')) questionType = 'fill-blank';
+          else if (t.includes('综合') || t.includes('案例')) questionType = 'comprehensive';
           else questionType = 'single';
         }
         
-        // 转换选项：从对象格式 { "A": "选项A" } 转为数组格式
+        // 转换选项
         let options: { id: string; text: string }[] | undefined;
         const qOptions = q.options;
         if (qOptions && typeof qOptions === 'object') {
           if (Array.isArray(qOptions)) {
             options = qOptions as { id: string; text: string }[];
           } else {
-            // 对象格式 { "A": "选项A", "B": "选项B" }
             options = Object.entries(qOptions).map(([key, val]) => ({
               id: key.toLowerCase(),
               text: String(val),
@@ -200,7 +201,6 @@ export default function QuizApp() {
         const qAnswer = q.answer;
         if (qAnswer) {
           if (typeof qAnswer === 'string') {
-            // 多选题答案可能是 "ABC"
             const ans = qAnswer.trim().toLowerCase();
             if (ans.length > 1) {
               answer = ans.split('');
@@ -212,8 +212,11 @@ export default function QuizApp() {
           }
         }
         
+        const questionId = generateId();
+        
         return {
-          id: generateId(),
+          id: questionId,
+          parentId: parentId, // 关联父题目
           type: questionType,
           content: (q.question as string) || (q.content as string) || '',
           options,
@@ -224,7 +227,28 @@ export default function QuizApp() {
           bankId,
           createdAt: Date.now(),
         } as Question;
-      });
+      };
+      
+      // 扁平化处理所有题目（包括嵌套的 children）
+      const flattenQuestions = (questions: Record<string, unknown>[], parentId?: string): Question[] => {
+        const result: Question[] = [];
+        for (const q of questions) {
+          const processed = processQuestion(q, parentId);
+          if (processed) {
+            result.push(processed);
+            
+            // 如果有 children，递归处理子题目
+            const children = q.children as Record<string, unknown>[] | undefined;
+            if (Array.isArray(children) && children.length > 0) {
+              const childQuestions = flattenQuestions(children, processed.id);
+              result.push(...childQuestions);
+            }
+          }
+        }
+        return result;
+      };
+      
+      const questionsWithBankId = flattenQuestions(data.questions);
       
       if (questionsWithBankId.length === 0) {
         alert('JSON 中没有有效的题目');
@@ -246,11 +270,12 @@ export default function QuizApp() {
         multiple: questionsWithBankId.filter((q: Question) => q.type === 'multiple').length,
         'true-false': questionsWithBankId.filter((q: Question) => q.type === 'true-false').length,
         'fill-blank': questionsWithBankId.filter((q: Question) => q.type === 'fill-blank').length,
+        comprehensive: questionsWithBankId.filter((q: Question) => q.type === 'comprehensive').length,
       };
       
       loadQuestions();
       setImportModalOpen(false);
-      alert(`成功导入题库「${bankName}」\n共 ${questionsWithBankId.length} 道题目\n\n题目类型：\n单选题: ${typeStats.single} 道\n多选题: ${typeStats.multiple} 道\n判断题: ${typeStats['true-false']} 道\n填空题: ${typeStats['fill-blank']} 道`);
+      alert(`成功导入题库「${bankName}」\n共 ${questionsWithBankId.length} 道题目\n\n题目类型：\n单选题: ${typeStats.single} 道\n多选题: ${typeStats.multiple} 道\n判断题: ${typeStats['true-false']} 道\n填空题: ${typeStats['fill-blank']} 道\n综合题: ${typeStats.comprehensive} 道`);
     } catch (error) {
       console.error('JSON 导入错误:', error);
       alert('导入失败，请检查 JSON 格式是否正确');
@@ -524,6 +549,7 @@ export default function QuizApp() {
       multiple: { label: '多选', color: 'bg-purple-100 text-purple-700 text-xs' },
       'true-false': { label: '判断', color: 'bg-orange-100 text-orange-700 text-xs' },
       'fill-blank': { label: '填空', color: 'bg-green-100 text-green-700 text-xs' },
+      comprehensive: { label: '综合', color: 'bg-red-100 text-red-700 text-xs' },
     };
     const safeType = type || 'single';
     const cfg = config[safeType] || { label: safeType, color: 'bg-gray-100 text-gray-700 text-xs' };
