@@ -19,6 +19,8 @@ import {
   Upload, 
   ChevronLeft, 
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Check,
   X,
   Trophy,
@@ -105,6 +107,9 @@ export default function QuizApp() {
   const [timeRemaining, setTimeRemaining] = useState(7200);
   
   // 练习模式状态
+  const [bankExpand, setBankExpand] = useState(false);
+  const [bankPage, setBankPage] = useState(1);
+  const bankPageSize = 4;
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
   
   const banks = useMemo(() => bankStore.getAll(), [questions]);
@@ -1075,76 +1080,137 @@ export default function QuizApp() {
             ) : questions.length > 0 ? (
               /* 练习开始页面 - 题库管理风格 */
               <div className="space-y-5">
-                {/* 题库选择区域 - 卡片列表 */}
+                {/* 题库选择区域 - 折叠/展开 */}
                 <div>
-                  <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                      <Library className="w-4 h-4 text-white" />
-                    </div>
-                    选择题库
-                  </h2>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* 全部题目卡片 */}
-                    <Card 
-                      className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                        practiceBankId === null ? 'ring-2 ring-blue-500' : ''
-                      }`}
-                      onClick={() => setPracticeBankId(null)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 mb-1">全部题目</h3>
-                            <div className="flex items-center gap-1 text-sm text-gray-400">
-                              <BookOpen className="w-3 h-3" />
-                              <span>{questions.length} 道题</span>
-                            </div>
-                          </div>
-                          {practiceBankId === null && (
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                              <Check className="w-4 h-4 text-white" />
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {/* 题库卡片 */}
-                    {banks.map((bank) => {
-                      const bankQuestions = questions.filter(q => q.bankId === bank.id);
-                      const isSelected = practiceBankId === bank.id;
-                      return (
-                        <Card 
-                          key={bank.id}
-                          className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                            isSelected ? 'ring-2 ring-blue-500' : ''
-                          }`}
-                          onClick={() => setPracticeBankId(bank.id)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{bank.name}</h3>
-                                <div className="flex items-center gap-3 text-sm text-gray-400">
-                                  <span className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3" />
-                                    {bankQuestions.length} 道题
-                                  </span>
-                                  <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                              {isSelected && (
-                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                                  <Check className="w-4 h-4 text-white" />
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
+                  {/* 标题行 */}
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-semibold flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                        <Library className="w-4 h-4 text-white" />
+                      </div>
+                      选择题库
+                      <span className="text-sm font-normal text-gray-400">
+                        {practiceBankId === null ? `全部 ${questions.length} 题` : banks.find(b => b.id === practiceBankId)?.name || '已选择'}
+                      </span>
+                    </h2>
+                    {banks.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setBankExpand(!bankExpand);
+                          if (!bankExpand) setBankPage(1);
+                        }}
+                        className="gap-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                      >
+                        {bankExpand ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" />
+                            收起
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" />
+                            查看题库 ({banks.length})
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
+                  
+                  {/* 全部题目卡片 - 始终显示 */}
+                  <Card 
+                    className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                      practiceBankId === null ? 'ring-2 ring-blue-500' : ''
+                    }`}
+                    onClick={() => setPracticeBankId(null)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-1">全部题目</h3>
+                          <div className="flex items-center gap-1 text-sm text-gray-400">
+                            <BookOpen className="w-3 h-3" />
+                            <span>{questions.length} 道题</span>
+                          </div>
+                        </div>
+                        {practiceBankId === null && (
+                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* 题库列表 - 折叠/展开 + 分页 */}
+                  {bankExpand && banks.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {banks
+                          .slice((bankPage - 1) * bankPageSize, bankPage * bankPageSize)
+                          .map((bank) => {
+                            const bankQuestions = questions.filter(q => q.bankId === bank.id);
+                            const isSelected = practiceBankId === bank.id;
+                            return (
+                              <Card 
+                                key={bank.id}
+                                className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                                  isSelected ? 'ring-2 ring-blue-500' : ''
+                                }`}
+                                onClick={() => setPracticeBankId(bank.id)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{bank.name}</h3>
+                                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                          <BookOpen className="w-3 h-3" />
+                                          {bankQuestions.length} 道题
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                        <Check className="w-4 h-4 text-white" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                      </div>
+                      
+                      {/* 分页 */}
+                      {banks.length > bankPageSize && (
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBankPage(p => Math.max(1, p - 1))}
+                            disabled={bankPage === 1}
+                            className="rounded-lg"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <span className="text-sm text-gray-500">
+                            {bankPage} / {Math.ceil(banks.length / bankPageSize)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setBankPage(p => Math.min(Math.ceil(banks.length / bankPageSize), p + 1))}
+                            disabled={bankPage >= Math.ceil(banks.length / bankPageSize)}
+                            className="rounded-lg"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {/* 练习模式选择 - 简约卡片 */}
