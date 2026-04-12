@@ -30,10 +30,12 @@ const cleanOptionText = (text: string): string => {
   return cleaned.trim();
 };
 
-// 识别题目类型标记（支持编号后的标记，如 "1. [单选]"）
+// 识别题目类型标记（支持编号后的标记，如 "1. [单选]"、"1.【单选题】"）
 const extractTypeTag = (text: string): { content: string; type: QuestionType | null } => {
-  // 匹配编号后的类型标记，如 "1. [单选]" 或 "1、单选"
-  const match = text.match(/^\d+[.、)]\s*\[?(单选|多选|判断|填空|单选題|多选題|判断題|填空題)\]?\s*/i);
+  // 匹配编号后的类型标记，如 "1. [单选]"、"1、【单选题】"、"1.【单选题】"
+  // 支持中文方括号【】和英文方括号[]
+  // 注意：需要匹配完整的中文类型词（单选题/多选题/判断题/填空题），避免截断
+  const match = text.match(/^\d+[.、)]\s*[\[【]?(单选题|多选题|判断题|填空题|单选|多选|判断|填空|单选題|多选題|判断題|填空題)[\]】]?\s*/i);
   if (match) {
     const tag = match[1].toLowerCase();
     let type: QuestionType | null = null;
@@ -48,8 +50,8 @@ const extractTypeTag = (text: string): { content: string; type: QuestionType | n
     };
   }
   
-  // 匹配行首的类型标记，如 "[单选] 题目内容"
-  const matchStart = text.match(/^\[?(单选|多选|判断|填空|单选題|多选題|判断題|填空題)\]?\s*/i);
+  // 匹配行首的类型标记，如 "[单选] 题目内容"、"【单选题】 题目内容"
+  const matchStart = text.match(/^[\[【]?(单选题|多选题|判断题|填空题|单选|多选|判断|填空|单选題|多选題|判断題|填空題)[\]】]?\s*/i);
   if (matchStart) {
     const tag = matchStart[1].toLowerCase();
     let type: QuestionType | null = null;
@@ -132,8 +134,9 @@ const splitComprehensiveQuestions = (text: string): string[] => {
   const isComprehensive = /综合[题案例]|案例[分析题]|计算题|论述题|简答题|分析题/i.test(text);
   
   if (!isComprehensive) {
-    // 非综合题，按空行分割
-    return text.split(/\n\s*\n/).filter(b => b.trim());
+    // 非综合题，直接返回原始块（不再按空行分割）
+    // 每个 block 已经是完整的题目
+    return [text];
   }
   
   // 综合题处理：按小题编号拆分
@@ -149,7 +152,8 @@ const splitComprehensiveQuestions = (text: string): string[] => {
     const trimmed = line.trim();
     
     // 检测大题标题（包含综合题字样，如 "114. 【综合案例题】"）
-    if (!foundMainTitle && /^\d+[.、)]\s*【?综合题|案例分析|计算题|论述题|简答题|分析题/i.test(trimmed)) {
+    // 支持：综合题、综合案例题、案例分析、计算题、论述题、简答题、分析题
+    if (!foundMainTitle && /^\d+[.、)]\s*【?.*?(综合题|案例分析|计算题|论述题|简答题|分析题)/i.test(trimmed)) {
       mainTitle = trimmed;
       foundMainTitle = true;
       continue;
@@ -205,7 +209,7 @@ const splitComprehensiveQuestions = (text: string): string[] => {
   }
   
   // 如果只有一个小题或没有拆分，按空行分割
-  return text.split(/\n\s*\n/).filter(b => b.trim());
+  return [text];
 };
 
 // 解析单个题目块
@@ -245,7 +249,9 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
     const typeResult = extractTypeTag(trimmed);
     if (typeResult.type) {
       explicitType = typeResult.type;
-      if (typeResult.content) {
+      // 只有当类型标记后有实际内容时才添加到 contentLines
+      // 如果类型标记后为空（如 "1.【单选题】" 后紧跟换行），则跳过该行
+      if (typeResult.content && typeResult.content.trim().length > 0) {
         contentLines.push(typeResult.content);
       }
       continue;
