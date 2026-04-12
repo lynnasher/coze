@@ -1073,103 +1073,148 @@ export default function QuizApp() {
                 </div>
               </div>
             ) : questions.length > 0 ? (
-              /* 练习开始页面 - Duolingo 风格 */
-              <div className="space-y-6">
-                {/* 题库选择 */}
-                {banks.length > 0 && (
-                  <Card className="overflow-hidden border-0 shadow-lg rounded-2xl">
-                    <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-cyan-50">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                          <Library className="w-4 h-4 text-white" />
-                        </div>
-                        选择题库
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant={practiceBankId === null ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setPracticeBankId(null)}
-                          className={`rounded-xl ${practiceBankId === null ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : ''}`}
-                        >
-                          全部 ({questions.length})
-                        </Button>
-                        {banks.map((bank) => {
-                          const bankQuestions = questions.filter(q => q.bankId === bank.id);
-                          return (
-                            <Button
-                              key={bank.id}
-                              variant={practiceBankId === bank.id ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setPracticeBankId(bank.id)}
-                              disabled={bankQuestions.length === 0}
-                              className={`rounded-xl ${practiceBankId === bank.id ? 'bg-gradient-to-r from-blue-500 to-cyan-500' : ''}`}
-                            >
-                              {bank.name} ({bankQuestions.length})
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                {/* 练习模式选择 - Duolingo 风格大卡片 */}
-                <Card className="overflow-hidden border-0 shadow-xl rounded-2xl">
-                  <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 via-pink-50 to-orange-50">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
-                        <Dumbbell className="w-5 h-5 text-white" />
-                      </div>
-                      选择练习模式
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-4">
-                    <p className="text-center text-gray-600">
-                      共 <strong className="text-purple-600">{practiceBankId ? questions.filter(q => q.bankId === practiceBankId).length : questions.length}</strong> 道题目
-                    </p>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {/* 顺序练习 */}
-                      <button
-                        onClick={() => startQuiz('sequential', practiceBankId)}
-                        className="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-5 border-2 border-blue-100 hover:border-blue-300 transition-all hover:shadow-lg hover:shadow-blue-100"
-                      >
-                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-blue-200">
-                          <Target className="w-7 h-7 text-white" />
-                        </div>
-                        <h3 className="font-bold text-gray-800 mb-1">顺序练习</h3>
-                        <p className="text-xs text-gray-500">按顺序逐一攻克</p>
-                      </button>
-                      
-                      {/* 随机练习 */}
-                      <button
-                        onClick={() => startQuiz('random', practiceBankId)}
-                        className="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border-2 border-purple-100 hover:border-purple-300 transition-all hover:shadow-lg hover:shadow-purple-100"
-                      >
-                        <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-purple-200">
-                          <RefreshCw className="w-7 h-7 text-white" />
-                        </div>
-                        <h3 className="font-bold text-gray-800 mb-1">随机练习</h3>
-                        <p className="text-xs text-gray-500">打乱顺序挑战自我</p>
-                      </button>
-                      
-                      {/* 错题重练 */}
-                      <button
-                        onClick={() => startQuiz('wrong', practiceBankId)}
-                        className="group relative overflow-hidden bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-5 border-2 border-orange-100 hover:border-orange-300 transition-all hover:shadow-lg hover:shadow-orange-100"
-                      >
-                        <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-orange-200">
-                          <Star className="w-7 h-7 text-white" />
-                        </div>
-                        <h3 className="font-bold text-gray-800 mb-1">错题重练</h3>
-                        <p className="text-xs text-gray-500">专攻易错题目</p>
-                      </button>
+              /* 练习开始页面 - 题库管理风格 */
+              <div className="space-y-5">
+                {/* 题库选择区域 - 卡片列表 */}
+                <div>
+                  <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                      <Library className="w-4 h-4 text-white" />
                     </div>
-                  </CardContent>
-                </Card>
+                    选择题库
+                  </h2>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* 全部题目卡片 */}
+                    <Card 
+                      className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                        practiceBankId === null ? 'ring-2 ring-blue-500' : ''
+                      }`}
+                      onClick={() => setPracticeBankId(null)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 mb-1">全部题目</h3>
+                            <div className="flex items-center gap-1 text-sm text-gray-400">
+                              <BookOpen className="w-3 h-3" />
+                              <span>{questions.length} 道题</span>
+                            </div>
+                          </div>
+                          {practiceBankId === null && (
+                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* 题库卡片 */}
+                    {banks.map((bank) => {
+                      const bankQuestions = questions.filter(q => q.bankId === bank.id);
+                      const isSelected = practiceBankId === bank.id;
+                      return (
+                        <Card 
+                          key={bank.id}
+                          className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                            isSelected ? 'ring-2 ring-blue-500' : ''
+                          }`}
+                          onClick={() => setPracticeBankId(bank.id)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{bank.name}</h3>
+                                <div className="flex items-center gap-3 text-sm text-gray-400">
+                                  <span className="flex items-center gap-1">
+                                    <BookOpen className="w-3 h-3" />
+                                    {bankQuestions.length} 道题
+                                  </span>
+                                  <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                  <Check className="w-4 h-4 text-white" />
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* 练习模式选择 - 简约卡片 */}
+                <div>
+                  <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                      <Play className="w-4 h-4 text-white" />
+                    </div>
+                    选择练习模式
+                    <span className="text-sm font-normal text-gray-400 ml-2">
+                      共 {practiceBankId ? questions.filter(q => q.bankId === practiceBankId).length : questions.length} 道题
+                    </span>
+                  </h2>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* 顺序练习 */}
+                    <Card 
+                      className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
+                      onClick={() => startQuiz('sequential', practiceBankId)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Target className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">顺序练习</h3>
+                            <p className="text-xs text-gray-400">按顺序逐一攻克</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* 随机练习 */}
+                    <Card 
+                      className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
+                      onClick={() => startQuiz('random', practiceBankId)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <RefreshCw className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">随机练习</h3>
+                            <p className="text-xs text-gray-400">打乱顺序挑战自我</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    {/* 错题重练 */}
+                    <Card 
+                      className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
+                      onClick={() => startQuiz('wrong', practiceBankId)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Star className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">错题重练</h3>
+                            <p className="text-xs text-gray-400">专攻易错题目</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               </div>
             ) : (
               /* 题库为空 - Duolingo 风格空状态 */
