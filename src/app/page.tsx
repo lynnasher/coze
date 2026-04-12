@@ -152,7 +152,7 @@ export default function QuizApp() {
       }
       
       // 提取题库名称
-      const bankName = data.subjectName || data.bankName || file.name.replace(/\.json$/i, '') || '导入题库';
+      const bankName = data.subjectName || data.bankName || data.title || file.name.replace(/\.json$/i, '') || '导入题库';
       
       // 生成题库 ID
       const bankId = generateId();
@@ -168,9 +168,12 @@ export default function QuizApp() {
       
       // 递归处理题目（支持嵌套的 children）
       const processQuestion = (q: Record<string, unknown>, parentId?: string): Question | null => {
+        // 检测格式类型
+        const isExportFormat = !!q.stem; // 题库.json 格式
+        
         // 转换类型
         let questionType: QuestionType = 'single';
-        const qType = q.type;
+        const qType = q.type || q.qtype;
         if (typeof qType === 'number') {
           questionType = typeMap[qType as number] || 'single';
         } else if (typeof qType === 'string') {
@@ -182,23 +185,35 @@ export default function QuizApp() {
           else questionType = 'single';
         }
         
-        // 转换选项
+        // 转换选项（支持多种格式）
         let options: { id: string; text: string }[] | undefined;
-        const qOptions = q.options;
-        if (qOptions && typeof qOptions === 'object') {
-          if (Array.isArray(qOptions)) {
-            options = qOptions as { id: string; text: string }[];
-          } else {
-            options = Object.entries(qOptions).map(([key, val]) => ({
-              id: key.toLowerCase(),
-              text: String(val),
-            })).sort((a, b) => a.id.localeCompare(b.id));
+        
+        if (isExportFormat) {
+          // 格式二：题库.json - optiona, optionb, optionc, optiond
+          const opts: { id: string; text: string }[] = [];
+          if (q.optiona) opts.push({ id: 'a', text: String(q.optiona) });
+          if (q.optionb) opts.push({ id: 'b', text: String(q.optionb) });
+          if (q.optionc) opts.push({ id: 'c', text: String(q.optionc) });
+          if (q.optiond) opts.push({ id: 'd', text: String(q.optiond) });
+          if (opts.length > 0) options = opts;
+        } else {
+          // 格式一：标准格式 - options 数组或对象
+          const qOptions = q.options;
+          if (qOptions && typeof qOptions === 'object') {
+            if (Array.isArray(qOptions)) {
+              options = qOptions as { id: string; text: string }[];
+            } else {
+              options = Object.entries(qOptions).map(([key, val]) => ({
+                id: key.toLowerCase(),
+                text: String(val),
+              })).sort((a, b) => a.id.localeCompare(b.id));
+            }
           }
         }
         
         // 处理答案
         let answer: string | string[] = 'a';
-        const qAnswer = q.answer;
+        const qAnswer = q.answer || q.ans;
         if (qAnswer) {
           if (typeof qAnswer === 'string') {
             const ans = qAnswer.trim().toLowerCase();
@@ -214,14 +229,20 @@ export default function QuizApp() {
         
         const questionId = generateId();
         
+        // 获取内容字段
+        const content = (q.question as string) || (q.content as string) || (q.stem as string) || '';
+        
+        // 获取解析字段
+        const explanation = (q.explanation as string) || (q.parsetext as string) || '';
+        
         return {
           id: questionId,
-          parentId: parentId, // 关联父题目
+          parentId: parentId,
           type: questionType,
-          content: (q.question as string) || (q.content as string) || '',
+          content,
           options,
           answer,
-          explanation: (q.explanation as string) || '',
+          explanation,
           difficulty: (q.difficulty as Difficulty) || 'medium',
           tags: (q.tags as string[]) || [],
           bankId,
@@ -613,10 +634,10 @@ export default function QuizApp() {
                   
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="font-medium text-gray-700 mb-2 text-sm">JSON 格式说明</h4>
-                    <div className="text-xs text-gray-600 bg-gray-100 p-3 rounded-lg overflow-x-auto">
-                      <p className="font-medium mb-2">支持的两种格式：</p>
+                    <div className="text-xs text-gray-600 bg-gray-100 p-3 rounded-lg overflow-x-auto max-h-80 overflow-y-auto">
+                      <p className="font-medium mb-2">支持的格式：</p>
                       
-                      <p className="font-medium mt-3 text-blue-600">格式一（推荐）：</p>
+                      <p className="font-medium mt-3 text-blue-600">格式一（标准）：</p>
                       <pre className="mt-1 mb-2">{`{
   "bankName": "题库名称",
   "questions": [{
@@ -629,16 +650,39 @@ export default function QuizApp() {
 }`}</pre>
                       
                       <p className="font-medium mt-3 text-green-600">格式二（导出格式）：</p>
-                      <pre className="mt-1">{`{
+                      <pre className="mt-1 mb-2">{`{
   "subjectName": "科目名称",
   "questions": [{
-    "type": 1,  // 1单选 2多选 3判断 4填空
+    "type": 1,
     "question": "题目内容",
     "options": {"A":"选项A","B":"选项B"},
     "answer": "A",
     "explanation": "解析"
   }]
 }`}</pre>
+                      
+                      <p className="font-medium mt-3 text-purple-600">格式三（题库.json）：</p>
+                      <pre className="mt-1 mb-2">{`{
+  "title": "题库",
+  "questions": [{
+    "qtype": 1,
+    "stem": "题目内容",
+    "optiona": "选项A", "optionb": "选项B",
+    "ans": "A",
+    "parsetext": "解析"
+  }]
+}`}</pre>
+                      
+                      <p className="font-medium mt-3 text-orange-600">综合案例题格式：</p>
+                      <pre className="mt-1">{`{
+  "type": "comprehensive",
+  "content": "案例背景材料...",
+  "children": [
+    {"type":"single","content":"子题1...",...},
+    {"type":"multiple","content":"子题2...",...}
+  ]
+}`}</pre>
+                      <p className="mt-1 text-gray-500">type: 1单选 2多选 3判断 4填空 5综合</p>
                     </div>
                   </div>
                 </div>
@@ -758,21 +802,42 @@ export default function QuizApp() {
                           currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
                           currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
                           currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
+                          currentQuestion.type === 'comprehensive' ? 'bg-red-500 text-white' :
                           'bg-green-500 text-white'
                         }`}>
                           {currentQuestion.type === 'single' ? '单选题' :
                            currentQuestion.type === 'multiple' ? '多选题' :
-                           currentQuestion.type === 'true-false' ? '判断题' : '填空题'}
+                           currentQuestion.type === 'true-false' ? '判断题' :
+                           currentQuestion.type === 'comprehensive' ? '综合题' : '填空题'}
                         </span>
                         <span className="text-sm text-gray-500">
                           {quizState.currentIndex + 1} / {quizState.questions.length}
                         </span>
                       </div>
                       
+                      {/* 综合题背景材料 */}
+                      {currentQuestion.parentId && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                          <div className="flex items-center gap-2 text-amber-800 mb-2">
+                            <FileText className="w-4 h-4" />
+                            <span className="font-medium text-sm">案例背景</span>
+                          </div>
+                          <p className="text-amber-900 text-sm leading-relaxed">
+                            {(() => {
+                              const parentQuestion = questions.find(q => q.id === currentQuestion.parentId);
+                              return parentQuestion?.content || '（背景材料）';
+                            })()}
+                          </p>
+                        </div>
+                      )}
+                      
                       {/* 题干 */}
                       <div className="bg-white rounded-xl p-4 mb-4 shadow-sm">
                         <p className="text-base sm:text-lg text-gray-900 leading-relaxed">
-                          {currentQuestion.content}
+                          {currentQuestion.type === 'comprehensive' ? (
+                            // 综合题直接显示内容（背景）
+                            currentQuestion.content
+                          ) : currentQuestion.content}
                         </p>
                       </div>
                       
