@@ -5,7 +5,7 @@ import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -618,7 +618,13 @@ export default function QuizApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-white">
-      {/* 顶部导航 */}
+      {/* 错题复习页面 - 完全覆盖，不显示主页面 */}
+      {showWrongAnswers && (
+        <WrongAnswersPage onBack={() => setShowWrongAnswers(false)} />
+      )}
+
+      {/* 顶部导航 - 错题页面时不显示 */}
+      {!showWrongAnswers && (
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-orange-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -668,47 +674,42 @@ export default function QuizApp() {
           </Dialog>
         </div>
       </header>
+      )}
 
-      {/* Tab 切换菜单 - 始终显示 */}
-      <div className="max-w-2xl mx-auto px-4 pt-4">
-        <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
-          {[
-            { key: 'practice', icon: Play, label: '练习', color: 'from-green-500 to-emerald-500' },
-            { key: 'library', icon: Library, label: '题库', color: 'from-blue-500 to-cyan-500' },
-            { key: 'stats', icon: BarChart3, label: '统计', color: 'from-purple-500 to-violet-500' },
-            { key: 'wrong', icon: Star, label: '错题', color: 'from-orange-500 to-amber-500' },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => {
-                if (tab.key === 'wrong') {
-                  setShowWrongAnswers(true);
-                } else {
-                  setShowWrongAnswers(false);
-                  setActiveTab(tab.key);
-                }
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl text-sm font-medium transition-all ${
-                showWrongAnswers || activeTab === tab.key
-                  ? `bg-gradient-to-r ${tab.color} text-white shadow-lg`
-                  : 'text-gray-600 hover:bg-white/50'
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 主内容 */}
+      {!showWrongAnswers && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Duolingo 风格 Tab 切换 */}
+          <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
+            {[
+              { key: 'practice', icon: Play, label: '练习', color: 'from-green-500 to-emerald-500' },
+              { key: 'library', icon: Library, label: '题库', color: 'from-blue-500 to-cyan-500' },
+              { key: 'stats', icon: BarChart3, label: '统计', color: 'from-purple-500 to-violet-500' },
+              { key: 'wrong', icon: Star, label: '错题', color: 'from-orange-500 to-amber-500' },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => {
+                  if (tab.key === 'wrong') {
+                    setShowWrongAnswers(true);
+                  } else {
+                    setActiveTab(tab.key);
+                  }
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl text-sm font-medium transition-all ${
+                  activeTab === tab.key
+                    ? `bg-gradient-to-r ${tab.color} text-white shadow-lg`
+                    : 'text-gray-600 hover:bg-white/50'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
 
-      {/* 主内容区域 */}
-      {showWrongAnswers ? (
-        /* 错题本页面 */
-        <div className="max-w-2xl mx-auto">
-          <WrongAnswersPage onBack={() => setShowWrongAnswers(false)} />
-        </div>
-      ) : (
-        <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+          {/* 练习页面 */}
+          <TabsContent value="practice">
             {!quizState.isComplete && quizState.questions.length > 0 && hasStarted ? (
               <div className="min-h-screen -mx-4 sm:mx-0">
                 {/* 顶部渐变导航栏 */}
@@ -1212,11 +1213,12 @@ export default function QuizApp() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-            {questions.length > 0 ? (
-            <div className="space-y-6">
-              {/* 题库页面 */}
-              <div className="space-y-4">
+            )}
+          </TabsContent>
+
+          {/* 题库页面 - Duolingo 风格 */}
+          <TabsContent value="library">
+            <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center">
                   <Library className="w-5 h-5 text-white" />
@@ -1726,10 +1728,11 @@ export default function QuizApp() {
                 )}
               </DialogContent>
             </Dialog>
-          </div>
+          </TabsContent>
 
           {/* 统计页面 - Duolingo 风格 */}
-          <div className="space-y-4">
+          <TabsContent value="stats">
+            <div className="space-y-4">
               {/* 统计卡片网格 */}
               <div className="grid grid-cols-2 gap-3">
                 <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
@@ -1819,9 +1822,9 @@ export default function QuizApp() {
                 </CardContent>
               </Card>
             </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+          </TabsContent>
+        </Tabs>
+      )}
+    </div>
+  );
 }
