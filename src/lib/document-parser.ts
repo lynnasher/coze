@@ -72,9 +72,9 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
   const cleaned = cleanText(text);
   const questions: ParsedQuestion[] = [];
 
-  // 按空行分割成块
-  const blocks = cleaned.split(/\n\s*\n/).filter(b => b.trim());
-
+  // 先尝试拆分综合题中的小题
+  const blocks = splitComprehensiveQuestions(cleaned);
+  
   for (const block of blocks) {
     const trimmed = block.trim();
     if (!trimmed) continue;
@@ -117,6 +117,76 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
   }
 
   return questions;
+};
+
+// 拆分综合题中的小题（如 "（1）"、"(1)"、"①" 等格式）
+const splitComprehensiveQuestions = (text: string): string[] => {
+  // 小题的编号模式：中文括号、英文括号、数字序号
+  const subQuestionPatterns = [
+    /（(\d+)）/g,           // 中文括号：（1）（2）
+    /\((\d+)\)/g,           // 英文括号：(1)(2)
+    /[①-⑨]/g,              // 圆圈数字：①②③
+    /^\s*(\d+)[.、)]\s/g,   // 数字编号：1. 2.
+  ];
+  
+  // 检测是否包含综合题标记
+  const isComprehensive = /综合题|案例分析|计算题|论述题|简答题|分析题/i.test(text);
+  
+  if (!isComprehensive) {
+    // 非综合题，按空行分割
+    return text.split(/\n\s*\n/).filter(b => b.trim());
+  }
+  
+  // 综合题处理：按小题编号拆分
+  const lines = text.split('\n');
+  const blocks: string[] = [];
+  let currentBlock: string[] = [];
+  let mainTitle = ''; // 保留大题标题
+  let foundMainTitle = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    // 检测大题标题（包含综合题字样）
+    if (!foundMainTitle && /^\d+[.、)]\s*.*综合题|案例分析|计算题|论述题|简答题|分析题/i.test(trimmed)) {
+      mainTitle = trimmed;
+      foundMainTitle = true;
+      continue;
+    }
+    
+    // 检测小题开始
+    const isSubQuestion = /^[（\(]?\d+[）\)]/.test(trimmed) || 
+                          /^[①-⑨]/.test(trimmed) ||
+                          /^\d+[.、]\s*[（\(]?\d/.test(trimmed);
+    
+    // 如果遇到小题编号，说明是新的小题
+    if (isSubQuestion && foundMainTitle) {
+      // 保存之前的block
+      if (currentBlock.length > 0) {
+        blocks.push(currentBlock.join('\n'));
+      }
+      // 新小题的标题 = 大题标题 + 小题内容
+      currentBlock = [mainTitle + ' ' + trimmed];
+    } else if (currentBlock.length > 0 || trimmed) {
+      // 继续收集当前小题内容
+      if (trimmed) {
+        currentBlock.push(trimmed);
+      }
+    }
+  }
+  
+  // 保存最后一个小题
+  if (currentBlock.length > 0) {
+    blocks.push(currentBlock.join('\n'));
+  }
+  
+  // 如果没有拆分出小题，按空行分割
+  if (blocks.length === 0) {
+    return text.split(/\n\s*\n/).filter(b => b.trim());
+  }
+  
+  return blocks;
 };
 
 // 解析单个题目块
