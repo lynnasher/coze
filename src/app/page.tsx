@@ -386,9 +386,10 @@ export default function QuizApp() {
     }
     
     if (currentQuestion.type === 'multiple') {
+      const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
       return (
         <div className="space-y-2 sm:space-y-3">
-          {currentQuestion.options?.map((option, index) => {
+          {options.map((option: { id: string; text: string }, index: number) => {
             const correctAnswers = Array.isArray(currentQuestion.answer) 
               ? currentQuestion.answer 
               : [currentQuestion.answer];
@@ -428,9 +429,10 @@ export default function QuizApp() {
     }
     
     // 单选题
+    const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
     return (
       <div className="space-y-2 sm:space-y-3">
-        {currentQuestion.options?.map((option, index) => {
+        {options.map((option: { id: string; text: string }, index: number) => {
           const isCorrectAnswer = currentQuestion.answer === option.id;
           const isSelected = currentAnswer === option.id;
           
@@ -1254,9 +1256,9 @@ export default function QuizApp() {
                                   {renderTypeBadge(q.type)}
                                 </div>
                                 <p className="font-medium text-gray-900 mb-2 text-sm sm:text-base line-clamp-2">{q.content}</p>
-                                {q.options && (
+                                {q.options && Array.isArray(q.options) && q.options.length > 0 && (
                                   <div className="grid grid-cols-2 gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
-                                    {q.options.map((opt, optIdx) => (
+                                    {q.options.map((opt: { id: string; text: string }, optIdx: number) => (
                                       <div key={`opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
                                         <span className="font-medium">{opt.id.toUpperCase()}.</span>
                                         <span className="truncate">{opt.text}</span>
@@ -1317,9 +1319,9 @@ export default function QuizApp() {
                                 )}
                               </div>
                               <p className="font-medium text-gray-900 mb-2 line-clamp-2">{q.content}</p>
-                              {q.options && (
+                              {q.options && Array.isArray(q.options) && q.options.length > 0 && (
                                 <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                                  {q.options.map((opt, optIdx) => (
+                                  {q.options.map((opt: { id: string; text: string }, optIdx: number) => (
                                     <div key={`q-opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
                                       <span className="font-medium">{opt.id.toUpperCase()}.</span>
                                       <span className="truncate">{opt.text}</span>
@@ -1391,10 +1393,10 @@ export default function QuizApp() {
                     />
                   </div>
                   
-                  {newQuestion.type !== 'fill-blank' && (
+                  {newQuestion.type !== 'fill-blank' && Array.isArray(newQuestion.options) && (
                     <div className="space-y-2">
                       <Label>选项</Label>
-                      {newQuestion.options?.map((opt, idx) => (
+                      {newQuestion.options.map((opt: { id: string; text: string }, idx: number) => (
                         <div key={`new-opt-${idx}-${opt.id}`} className="flex gap-2">
                           <span className="w-6 py-2 text-gray-500">{opt.id.toUpperCase()}.</span>
                           <Input
@@ -1448,7 +1450,7 @@ export default function QuizApp() {
                           <SelectValue placeholder="选择正确答案" />
                         </SelectTrigger>
                         <SelectContent>
-                          {newQuestion.options?.map((opt, idx) => (
+                          {Array.isArray(newQuestion.options) && newQuestion.options.map((opt: { id: string; text: string }, idx: number) => (
                             <SelectItem key={`select-opt-${idx}-${opt.id}`} value={opt.id}>
                               {opt.id.toUpperCase()}. {opt.text}
                             </SelectItem>
