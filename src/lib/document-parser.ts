@@ -121,16 +121,8 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
 
 // 拆分综合题中的小题（如 "（1）"、"(1)"、"①" 等格式）
 const splitComprehensiveQuestions = (text: string): string[] => {
-  // 小题的编号模式：中文括号、英文括号、数字序号
-  const subQuestionPatterns = [
-    /（(\d+)）/g,           // 中文括号：（1）（2）
-    /\((\d+)\)/g,           // 英文括号：(1)(2)
-    /[①-⑨]/g,              // 圆圈数字：①②③
-    /^\s*(\d+)[.、)]\s/g,   // 数字编号：1. 2.
-  ];
-  
-  // 检测是否包含综合题标记
-  const isComprehensive = /综合题|案例分析|计算题|论述题|简答题|分析题/i.test(text);
+  // 检测是否包含综合题标记（注意：综合案例题 包含"案例"不包含"综合题"）
+  const isComprehensive = /综合[题案例]|案例[分析题]|计算题|论述题|简答题|分析题/i.test(text);
   
   if (!isComprehensive) {
     // 非综合题，按空行分割
@@ -141,38 +133,57 @@ const splitComprehensiveQuestions = (text: string): string[] => {
   const lines = text.split('\n');
   const blocks: string[] = [];
   let currentBlock: string[] = [];
-  let mainTitle = ''; // 保留大题标题
+  let mainTitle = ''; // 保留大题标题（案例描述）
   let foundMainTitle = false;
+  let caseDescription: string[] = []; // 存储案例描述
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
     
-    // 检测大题标题（包含综合题字样）
-    if (!foundMainTitle && /^\d+[.、)]\s*.*综合题|案例分析|计算题|论述题|简答题|分析题/i.test(trimmed)) {
+    // 检测大题标题（包含综合题字样，如 "114. 【综合案例题】"）
+    if (!foundMainTitle && /^\d+[.、)]\s*【?综合题|案例分析|计算题|论述题|简答题|分析题/i.test(trimmed)) {
       mainTitle = trimmed;
       foundMainTitle = true;
       continue;
     }
     
-    // 检测小题开始
-    const isSubQuestion = /^[（\(]?\d+[）\)]/.test(trimmed) || 
-                          /^[①-⑨]/.test(trimmed) ||
-                          /^\d+[.、]\s*[（\(]?\d/.test(trimmed);
+    // 检测小题开始：支持多种格式
+    // (1), （1）, (一), ①, 1. 等
+    const isSubQuestionStart = 
+      /^[（\(]\d+[）\)]/.test(trimmed) ||           // (1) （1）
+      /^[（\(][一二三四五六七八九十]+[）\)]/.test(trimmed) || // (一)
+      /^[①-⑨]/.test(trimmed) ||                      // ①②③
+      /^\d+[.、]\s*[（\(]?\d/.test(trimmed);          // 1. (1) 或 1.1
     
-    // 如果遇到小题编号，说明是新的小题
-    if (isSubQuestion && foundMainTitle) {
+    // 如果遇到新的小题编号
+    if (isSubQuestionStart && foundMainTitle) {
       // 保存之前的block
       if (currentBlock.length > 0) {
         blocks.push(currentBlock.join('\n'));
       }
-      // 新小题的标题 = 大题标题 + 小题内容
-      currentBlock = [mainTitle + ' ' + trimmed];
-    } else if (currentBlock.length > 0 || trimmed) {
-      // 继续收集当前小题内容
-      if (trimmed) {
+      
+      // 重新构建：包含大题标题、案例描述、小题内容
+      const prefix = [mainTitle, ...caseDescription].filter(Boolean).join(' ');
+      currentBlock = [prefix + ' ' + trimmed];
+      
+      // 小题编号后的第一行可能是题目内容，继续收集
+      // 清空案例描述（后续小题不再重复）
+      caseDescription = [];
+    } 
+    // 如果还没有找到小题（收集案例描述部分）
+    else if (foundMainTitle && !isSubQuestionStart && trimmed && !/^[A-Za-z][.、:]/.test(trimmed)) {
+      // 这是案例描述的一部分
+      if (currentBlock.length === 0) {
+        caseDescription.push(trimmed);
+      } else {
+        // 继续收集当前小题的内容
         currentBlock.push(trimmed);
       }
+    }
+    // 选项或其他内容
+    else if (currentBlock.length > 0) {
+      currentBlock.push(trimmed);
     }
   }
   
@@ -181,12 +192,13 @@ const splitComprehensiveQuestions = (text: string): string[] => {
     blocks.push(currentBlock.join('\n'));
   }
   
-  // 如果没有拆分出小题，按空行分割
-  if (blocks.length === 0) {
-    return text.split(/\n\s*\n/).filter(b => b.trim());
+  // 如果拆分成功且有多个小题，返回拆分结果
+  if (blocks.length > 1) {
+    return blocks;
   }
   
-  return blocks;
+  // 如果只有一个小题或没有拆分，按空行分割
+  return text.split(/\n\s*\n/).filter(b => b.trim());
 };
 
 // 解析单个题目块
