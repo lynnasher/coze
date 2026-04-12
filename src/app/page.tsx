@@ -62,6 +62,7 @@ export default function QuizApp() {
   const questionCardRef = useRef<HTMLDivElement>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
@@ -345,6 +346,24 @@ export default function QuizApp() {
   const handleDeleteQuestion = (id: string) => {
     questionStore.remove(id);
     loadQuestions();
+  };
+  
+  // 编辑题目 - 打开编辑弹窗
+  const handleEditQuestion = (q: Question) => {
+    setEditingQuestion({ ...q });
+  };
+  
+  // 保存编辑的题目
+  const handleSaveEditQuestion = () => {
+    if (!editingQuestion) return;
+    if (!editingQuestion.content || !editingQuestion.answer) {
+      alert('请填写题目内容和答案');
+      return;
+    }
+    questionStore.update(editingQuestion);
+    loadQuestions();
+    setEditingQuestion(null);
+    alert('题目已更新');
   };
   
   // 删除题库（同时删除题库内的所有题目）
@@ -1389,8 +1408,8 @@ export default function QuizApp() {
                     <span className="sm:hidden">题目</span>
                     ({questions.filter(q => q.bankId === selectedBankId).length})
                   </h3>
-                  <Button variant="outline" size="sm" onClick={() => setShowBankQuestions(false)}>
-                    关闭
+                  <Button variant="ghost" size="icon" onClick={() => setShowBankQuestions(false)} className="h-8 w-8">
+                    <X className="w-4 h-4" />
                   </Button>
                 </div>
                 <Card>
@@ -1424,14 +1443,26 @@ export default function QuizApp() {
                                   </span>
                                 </div>
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteQuestion(q.id)}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 flex-shrink-0"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditQuestion(q)}
+                                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 h-8 w-8"
+                                  title="编辑"
+                                >
+                                  <FileCheck className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteQuestion(q.id)}
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                                  title="删除"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1487,14 +1518,26 @@ export default function QuizApp() {
                                 </span>
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteQuestion(q.id)}
-                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditQuestion(q)}
+                                className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 h-8 w-8"
+                                title="编辑"
+                              >
+                                <FileCheck className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteQuestion(q.id)}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8"
+                                title="删除"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1632,6 +1675,117 @@ export default function QuizApp() {
                     保存题目
                   </Button>
                 </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* 编辑题目弹窗 */}
+            <Dialog open={!!editingQuestion} onOpenChange={(open) => !open && setEditingQuestion(null)}>
+              <DialogContent className="max-w-[calc(100%-32px)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>编辑题目</DialogTitle>
+                </DialogHeader>
+                {editingQuestion && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label>题目类型</Label>
+                      <Select
+                        value={editingQuestion.type}
+                        onValueChange={(v) => setEditingQuestion({ ...editingQuestion, type: v as QuestionType })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="single">单选题</SelectItem>
+                          <SelectItem value="multiple">多选题</SelectItem>
+                          <SelectItem value="true-false">判断题</SelectItem>
+                          <SelectItem value="fill-blank">填空题</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label>题目内容</Label>
+                      <Textarea
+                        value={editingQuestion.content || ''}
+                        onChange={(e) => setEditingQuestion({ ...editingQuestion, content: e.target.value })}
+                        placeholder="请输入题目内容"
+                        className="mt-1 min-h-[80px]"
+                      />
+                    </div>
+                    
+                    {(editingQuestion.type === 'single' || editingQuestion.type === 'multiple') && (
+                      <div>
+                        <Label>选项</Label>
+                        <div className="space-y-2 mt-1">
+                          {(editingQuestion.options || []).map((opt, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <span className="text-sm font-medium w-6">{opt.id.toUpperCase()}.</span>
+                              <Input
+                                value={opt.text}
+                                onChange={(e) => {
+                                  const newOpts = [...(editingQuestion.options || [])];
+                                  newOpts[idx] = { ...newOpts[idx], text: e.target.value };
+                                  setEditingQuestion({ ...editingQuestion, options: newOpts });
+                                }}
+                                placeholder={`选项${opt.id.toUpperCase()}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div>
+                      <Label>正确答案</Label>
+                      <Input
+                        value={Array.isArray(editingQuestion.answer) ? editingQuestion.answer.join('') : editingQuestion.answer}
+                        onChange={(e) => {
+                          const val = e.target.value.toLowerCase();
+                          if (val.length > 1) {
+                            setEditingQuestion({ ...editingQuestion, answer: val.split('') });
+                          } else {
+                            setEditingQuestion({ ...editingQuestion, answer: val });
+                          }
+                        }}
+                        placeholder="输入正确答案，如 A 或 ABC"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">单选题输入单个字母，多选题输入多个字母</p>
+                    </div>
+                    
+                    <div>
+                      <Label>解析（可选）</Label>
+                      <Textarea
+                        value={editingQuestion.explanation || ''}
+                        onChange={(e) => setEditingQuestion({ ...editingQuestion, explanation: e.target.value })}
+                        placeholder="请输入题目解析"
+                        className="mt-1 min-h-[60px]"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>难度</Label>
+                      <Select
+                        value={editingQuestion.difficulty}
+                        onValueChange={(v) => setEditingQuestion({ ...editingQuestion, difficulty: v as Difficulty })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="easy">简单</SelectItem>
+                          <SelectItem value="medium">中等</SelectItem>
+                          <SelectItem value="hard">困难</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <Button onClick={handleSaveEditQuestion} className="w-full">
+                      保存修改
+                    </Button>
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           </TabsContent>
