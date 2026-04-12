@@ -466,15 +466,17 @@ export default function QuizApp() {
   };
 
   // 渲染题目类型标签
-  const renderTypeBadge = (type: QuestionType) => {
-    const config: Record<QuestionType, { label: string; color: string }> = {
+  const renderTypeBadge = (type: string) => {
+    const config: Record<string, { label: string; color: string }> = {
       single: { label: '单选', color: 'bg-blue-100 text-blue-700 text-xs' },
       multiple: { label: '多选', color: 'bg-purple-100 text-purple-700 text-xs' },
       'true-false': { label: '判断', color: 'bg-orange-100 text-orange-700 text-xs' },
       'fill-blank': { label: '填空', color: 'bg-green-100 text-green-700 text-xs' },
     };
+    const safeType = type || 'single';
+    const cfg = config[safeType] || { label: safeType, color: 'bg-gray-100 text-gray-700 text-xs' };
     return (
-      <Badge className={`${config[type].color} px-1.5 py-0.5 sm:px-2 sm:py-0.5`}>{config[type].label}</Badge>
+      <Badge className={`${cfg.color} px-1.5 py-0.5 sm:px-2 sm:py-0.5`}>{cfg.label}</Badge>
     );
   };
 
