@@ -46,7 +46,6 @@ import {
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, QuestionBank } from '@/lib/types';
-import WrongAnswersPage from '@/components/WrongAnswersPage';
 
 // Duolingo 风格颜色
 const COLORS = {
@@ -81,7 +80,6 @@ export default function QuizApp() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [showWrongAnswers, setShowWrongAnswers] = useState(false);
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
@@ -618,13 +616,7 @@ export default function QuizApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-white">
-      {/* 错题复习页面 - 完全覆盖，不显示主页面 */}
-      {showWrongAnswers && (
-        <WrongAnswersPage onBack={() => setShowWrongAnswers(false)} />
-      )}
-
-      {/* 顶部导航 - 错题页面时不显示 */}
-      {!showWrongAnswers && (
+      {/* 顶部导航 */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-orange-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -674,28 +666,22 @@ export default function QuizApp() {
           </Dialog>
         </div>
       </header>
-      )}
 
       {/* 主内容 */}
-      {!showWrongAnswers && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Duolingo 风格 Tab 切换 */}
-          <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
-            {[
-              { key: 'practice', icon: Play, label: '练习', color: 'from-green-500 to-emerald-500' },
-              { key: 'library', icon: Library, label: '题库', color: 'from-blue-500 to-cyan-500' },
-              { key: 'stats', icon: BarChart3, label: '统计', color: 'from-purple-500 to-violet-500' },
-              { key: 'wrong', icon: Star, label: '错题', color: 'from-orange-500 to-amber-500' },
-            ].map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  if (tab.key === 'wrong') {
-                    setShowWrongAnswers(true);
-                  } else {
-                    setActiveTab(tab.key);
-                  }
-                }}
+      <main className="max-w-2xl mx-auto px-4 py-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Duolingo 风格 Tab 切换 */}
+        <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
+          {[
+            { key: 'practice', icon: Play, label: '练习', color: 'from-green-500 to-emerald-500' },
+            { key: 'library', icon: Library, label: '题库', color: 'from-blue-500 to-cyan-500' },
+            { key: 'stats', icon: BarChart3, label: '统计', color: 'from-purple-500 to-violet-500' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+              }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl text-sm font-medium transition-all ${
                   activeTab === tab.key
                     ? `bg-gradient-to-r ${tab.color} text-white shadow-lg`
@@ -1797,34 +1783,10 @@ export default function QuizApp() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* 错题本入口 */}
-              <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl overflow-hidden">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-200">
-                        <Star className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-800">错题本</h3>
-                        <p className="text-xs text-gray-500">{getStats().wrongQuestionIds.length} 道错题</p>
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={() => setShowWrongAnswers(true)}
-                      className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-lg shadow-orange-200"
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      复习
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
         </Tabs>
-      )}
+      </main>
     </div>
   );
 }
