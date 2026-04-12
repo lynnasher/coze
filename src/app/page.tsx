@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, QuestionBank } from '@/lib/types';
+import WrongAnswersPage from '@/components/WrongAnswersPage';
 
 export default function QuizApp() {
   const {
@@ -63,6 +64,7 @@ export default function QuizApp() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [addQuestionOpen, setAddQuestionOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [showWrongAnswers, setShowWrongAnswers] = useState(false);
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
@@ -717,6 +719,11 @@ export default function QuizApp() {
           </div>
         </div>
       </header>
+
+      {/* 错题复习页面 */}
+      {showWrongAnswers && (
+        <WrongAnswersPage onBack={() => setShowWrongAnswers(false)} />
+      )}
 
       {/* 主内容 */}
       <main className="max-w-7xl mx-auto px-4 py-6">
@@ -1871,48 +1878,28 @@ export default function QuizApp() {
               </CardContent>
             </Card>
 
-            {/* 错题本 */}
-            {getStats().wrongQuestionIds.length > 0 && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="w-5 h-5 text-orange-500" />
-                    错题本 ({getStats().wrongQuestionIds.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {getStats().wrongQuestionIds.map((id, idx) => {
-                      const q = questions.find(q => q.id === id);
-                      if (!q) return null;
-                      return (
-                        <Badge
-                          key={id}
-                          variant="outline"
-                          className="px-3 py-1 cursor-pointer hover:bg-orange-50"
-                          onClick={() => {
-                            startQuiz('wrong');
-                            setActiveTab('practice');
-                          }}
-                        >
-                          {idx + 1}. {q.content.slice(0, 20)}...
-                        </Badge>
-                      );
-                    })}
-                  </div>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => {
-                      startQuiz('wrong');
-                      setActiveTab('practice');
-                    }}
-                  >
-                    重新练习错题
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            {/* 错题本入口 */}
+            <Card className="mt-6 border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-orange-500" />
+                  错题本
+                  <Badge variant="secondary">{getStats().wrongQuestionIds.length} 道</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-600 mb-4">
+                  专门针对错题的复习页面，支持记忆模式，科学安排复习时间
+                </p>
+                <Button 
+                  className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                  onClick={() => setShowWrongAnswers(true)}
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  进入错题复习
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

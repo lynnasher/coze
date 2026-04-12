@@ -1,10 +1,11 @@
-import { Question, PracticeRecord, QuestionBank, Stats } from './types';
+import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel } from './types';
 
 const STORAGE_KEYS = {
   QUESTIONS: 'quiz_questions',
   RECORDS: 'quiz_records',
   BANKS: 'quiz_banks',
   STATS: 'quiz_stats',
+  WRONG_STATS: 'quiz_wrong_stats', // 错题记忆状态
 };
 
 // 题目管理
@@ -498,4 +499,111 @@ export const initSampleQuestions = () => {
   ];
   
   questionStore.save(sampleQuestions);
+};
+
+// 错题记忆状态管理
+const INTERVALS = {
+  forgot: 0,      // 忘记：立即复习
+  learning: 1,   // 学习中：1天后
+  mastered: 3,   // 已掌握：3天后
+};
+
+export const wrongStatsStore = {
+  // 获取所有错题统计
+  getAll: (): WrongQuestionStats[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.WRONG_STATS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // 保存所有错题统计
+  save: (stats: WrongQuestionStats[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.WRONG_STATS, JSON.stringify(stats));
+    } catch (e) {
+      console.error('保存错题统计失败:', e);
+    }
+  },
+
+  // 获取单个错题的统计
+  getById: (questionId: string): WrongQuestionStats | undefined => {
+    return wrongStatsStore.getAll().find(s => s.questionId === questionId);
+  },
+
+  // 更新错题答题结果
+  updateResult: (questionId: string, isCorrect: boolean, wrongAnswer?: string | string[]) => {
+    const stats = wrongStatsStore.getAll();
+    const index = stats.findIndex(s => s.questionId === questionId);
+    
+    if (index === -1) {
+      // 新增
+      if (!isCorrect) {
+        stats.push({
+          questionId,
+          wrongCount: 1,
+          correctCount: 0,
+          memoryLevel: 'forgot',
+          lastReviewed: Date.now(),
+          nextReview: Date.now(),
+          lastWrongAnswer: wrongAnswer || '',
+        });
+      }
+    } else {
+      // 更新
+      if (isCorrect) {
+        stats[index].correctCount++;
+        // 根据正确次数更新记忆水平
+        if (stats[index].correctCount >= 3) {
+          stats[index].memoryLevel = 'mastered';
+          stats[index].nextReview = Date.now() + INTERVALS.mastered * 24 * 60 * 60 * 1000;
+        } else if (stats[index].correctCount >= 1) {
+          stats[index].memoryLevel = 'learning';
+          stats[index].nextReview = Date.now() + INTERVALS.learning * 24 * 60 * 60 * 1000;
+        }
+      } else {
+        stats[index].wrongCount++;
+        stats[index].memoryLevel = 'forgot';
+        stats[index].nextReview = Date.now(); // 立即复习
+        stats[index].lastWrongAnswer = wrongAnswer || '';
+      }
+      stats[index].lastReviewed = Date.now();
+    }
+    
+    wrongStatsStore.save(stats);
+  },
+
+  // 重置单道题的统计
+  reset: (questionId: string) => {
+    const stats = wrongStatsStore.getAll().filter(s => s.questionId !== questionId);
+    wrongStatsStore.save(stats);
+  },
+
+  // 重置所有错题统计
+  clear: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.WRONG_STATS);
+  },
+
+  // 获取需要复习的错题（基于间隔重复）
+  getForReview: (): WrongQuestionStats[] => {
+    const now = Date.now();
+    return wrongStatsStore.getAll().filter(s => s.nextReview <= now);
+  },
+
+  // 获取统计摘要
+  getSummary: () => {
+    const stats = wrongStatsStore.getAll();
+    return {
+      total: stats.length,
+      forgot: stats.filter(s => s.memoryLevel === 'forgot').length,
+      learning: stats.filter(s => s.memoryLevel === 'learning').length,
+      mastered: stats.filter(s => s.memoryLevel === 'mastered').length,
+      dueReview: wrongStatsStore.getForReview().length,
+    };
+  },
 };

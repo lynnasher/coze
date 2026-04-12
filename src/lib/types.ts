@@ -31,6 +31,19 @@ export interface PracticeRecord {
   timestamp: number;
 }
 
+// 错题记忆状态
+export type MemoryLevel = 'forgot' | 'learning' | 'mastered';
+
+export interface WrongQuestionStats {
+  questionId: string;
+  wrongCount: number;      // 错误次数
+  correctCount: number;    // 正确次数
+  memoryLevel: MemoryLevel; // 记忆状态
+  lastReviewed: number;    // 上次复习时间
+  nextReview: number;      // 下次复习时间（基于间隔重复）
+  lastWrongAnswer: string | string[]; // 上次错误答案
+}
+
 export interface QuestionBank {
   id: string;
   name: string;
