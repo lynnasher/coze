@@ -614,7 +614,13 @@ export default function QuizApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-white">
-      {/* 顶部导航 - Duolingo 风格 */}
+      {/* 错题复习页面 - 完全覆盖，不显示主页面 */}
+      {showWrongAnswers && (
+        <WrongAnswersPage onBack={() => setShowWrongAnswers(false)} />
+      )}
+
+      {/* 顶部导航 - 错题页面时不显示 */}
+      {!showWrongAnswers && (
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-orange-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -662,14 +668,10 @@ export default function QuizApp() {
           </Dialog>
         </div>
       </header>
-
-      {/* 错题复习页面 */}
-      {showWrongAnswers && (
-        <WrongAnswersPage onBack={() => setShowWrongAnswers(false)} />
       )}
 
       {/* 主内容 */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      {!showWrongAnswers && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Duolingo 风格 Tab 切换 */}
           <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
@@ -1816,7 +1818,7 @@ export default function QuizApp() {
             </div>
           </TabsContent>
         </Tabs>
-      </main>
+      )}
     </div>
   );
 }
