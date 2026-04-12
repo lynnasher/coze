@@ -741,6 +741,10 @@ export default function QuizApp() {
               <BarChart3 className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>统计</span>
             </TabsTrigger>
+            <TabsTrigger value="wrong" className="gap-1 sm:gap-2 text-xs sm:text-sm" onClick={() => setShowWrongAnswers(true)}>
+              <Star className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>错题</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* 练习页面 - 新布局 */}

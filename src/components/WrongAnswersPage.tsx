@@ -22,7 +22,7 @@ import {
   Zap
 } from 'lucide-react';
 import { questionStore, recordStore, wrongStatsStore, generateId } from '@/lib/quiz-store';
-import { Question, QuestionType, WrongQuestionStats, MemoryLevel, PracticeRecord } from '@/lib/types';
+import { Question, WrongQuestionStats, PracticeRecord } from '@/lib/types';
 
 interface WrongAnswersPageProps {
   onBack: () => void;
@@ -45,9 +45,41 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
   // 加载数据
   const loadData = useCallback(() => {
     const allQuestions = questionStore.getAll();
-    const allStats = wrongStatsStore.getAll();
+    const allRecords = recordStore.getAll();
+    const allWrongStats = wrongStatsStore.getAll();
+    
+    // 从 recordStore 获取所有答错的题目ID
+    const wrongQuestionIds = new Set<string>();
+    allRecords.forEach(record => {
+      if (!record.isCorrect) {
+        wrongQuestionIds.add(record.questionId);
+      }
+    });
+    
+    // 合并数据：从 recordStore 获取错题列表，从 wrongStatsStore 获取记忆状态
+    const mergedStats: WrongQuestionStats[] = Array.from(wrongQuestionIds).map(questionId => {
+      // 查找已有的记忆状态
+      const existingStat = allWrongStats.find(s => s.questionId === questionId);
+      
+      // 计算该题的错误次数和正确次数
+      const questionRecords = allRecords.filter(r => r.questionId === questionId);
+      const wrongCount = questionRecords.filter(r => !r.isCorrect).length;
+      const correctCount = questionRecords.filter(r => r.isCorrect).length;
+      const lastWrongRecord = questionRecords.filter(r => !r.isCorrect).pop();
+      
+      return existingStat || {
+        questionId,
+        wrongCount,
+        correctCount,
+        memoryLevel: 'forgot' as const,
+        lastReviewed: lastWrongRecord?.timestamp || Date.now(),
+        nextReview: Date.now(),
+        lastWrongAnswer: lastWrongRecord?.selectedAnswer || '',
+      };
+    });
+    
     setQuestions(allQuestions);
-    setWrongStats(allStats);
+    setWrongStats(mergedStats);
   }, []);
 
   useEffect(() => {
