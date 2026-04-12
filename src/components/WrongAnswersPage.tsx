@@ -1,46 +1,47 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
 import { 
   Star, 
-  BookOpen, 
   Check, 
   X, 
-  Brain, 
-  Clock, 
-  RefreshCw,
+  Brain,
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft,
-  Target,
-  Flame,
-  Zap
+  RefreshCw,
+  Trash2,
+  Search
 } from 'lucide-react';
 import { questionStore, recordStore, wrongStatsStore, generateId } from '@/lib/quiz-store';
-import { Question, WrongQuestionStats, PracticeRecord } from '@/lib/types';
+import { Question, WrongQuestionStats } from '@/lib/types';
 
 interface WrongAnswersPageProps {
   onBack: () => void;
 }
 
 const MEMORY_CONFIG = {
-  forgot: { label: '未掌握', color: 'bg-red-100 text-red-700 border-red-200', icon: X, progress: 0 },
-  learning: { label: '学习中', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: RefreshCw, progress: 50 },
-  mastered: { label: '已掌握', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: Check, progress: 100 },
+  forgot: { label: '未掌握', color: 'bg-red-500 text-white', icon: X },
+  learning: { label: '学习中', color: 'bg-amber-500 text-white', icon: RefreshCw },
+  mastered: { label: '已掌握', color: 'bg-emerald-500 text-white', icon: Check },
 };
+
+const ITEMS_PER_PAGE = 10;
 
 export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
   const [wrongStats, setWrongStats] = useState<WrongQuestionStats[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'forgot' | 'learning' | 'mastered'>('all');
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | string[] | null>(null);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
   // 加载数据
   const loadData = useCallback(() => {
@@ -56,12 +57,9 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
       }
     });
     
-    // 合并数据：从 recordStore 获取错题列表，从 wrongStatsStore 获取记忆状态
+    // 合并数据
     const mergedStats: WrongQuestionStats[] = Array.from(wrongQuestionIds).map(questionId => {
-      // 查找已有的记忆状态
       const existingStat = allWrongStats.find(s => s.questionId === questionId);
-      
-      // 计算该题的错误次数和正确次数
       const questionRecords = allRecords.filter(r => r.questionId === questionId);
       const wrongCount = questionRecords.filter(r => !r.isCorrect).length;
       const correctCount = questionRecords.filter(r => r.isCorrect).length;
@@ -71,7 +69,7 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
         questionId,
         wrongCount,
         correctCount,
-        memoryLevel: 'forgot' as const,
+        memoryLevel: 'forgot',
         lastReviewed: lastWrongRecord?.timestamp || Date.now(),
         nextReview: Date.now(),
         lastWrongAnswer: lastWrongRecord?.selectedAnswer || '',
@@ -86,43 +84,44 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
     loadData();
   }, [loadData]);
 
-  // 当前时间（用于判断是否需要复习）- 使用 useMemo 避免 ESLint 警告
-  const now = useMemo(() => Date.now(), []);
+  // 过滤和搜索
+  const filteredStats = useMemo(() => {
+    let result = wrongStats;
+    
+    // 按状态过滤
+    if (filterStatus !== 'all') {
+      result = result.filter(s => s.memoryLevel === filterStatus);
+    }
+    
+    // 搜索
+    if (searchKeyword.trim()) {
+      const keyword = searchKeyword.toLowerCase();
+      result = result.filter(s => {
+        const q = questions.find(q => q.id === s.questionId);
+        return q?.content.toLowerCase().includes(keyword);
+      });
+    }
+    
+    return result;
+  }, [wrongStats, filterStatus, searchKeyword, questions]);
 
-  // 获取错题对应的题目
-  const getWrongQuestion = (stat: WrongQuestionStats): Question | undefined => {
-    return questions.find(q => q.id === stat.questionId);
-  };
+  // 分页
+  const totalPages = Math.ceil(filteredStats.length / ITEMS_PER_PAGE);
+  const paginatedStats = filteredStats.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
-  // 获取统计摘要
-  const summary = {
+  // 统计
+  const stats = useMemo(() => ({
     total: wrongStats.length,
     forgot: wrongStats.filter(s => s.memoryLevel === 'forgot').length,
     learning: wrongStats.filter(s => s.memoryLevel === 'learning').length,
     mastered: wrongStats.filter(s => s.memoryLevel === 'mastered').length,
-    dueReview: wrongStats.filter(s => s.nextReview <= now).length,
-  };
+  }), [wrongStats]);
 
-  // 记忆掌握率
-  const masteryRate = summary.total > 0 
-    ? Math.round((summary.mastered / summary.total) * 100) 
-    : 0;
-
-  // 筛选错题
-  const filterStats = (stats: WrongQuestionStats[], filter: string): WrongQuestionStats[] => {
-    switch (filter) {
-      case 'review':
-        return stats.filter(s => s.nextReview <= now);
-      case 'forgot':
-        return stats.filter(s => s.memoryLevel === 'forgot');
-      case 'learning':
-        return stats.filter(s => s.memoryLevel === 'learning');
-      case 'mastered':
-        return stats.filter(s => s.memoryLevel === 'mastered');
-      default:
-        return stats;
-    }
-  };
+  // 获取题目
+  const getQuestion = (questionId: string) => questions.find(q => q.id === questionId);
 
   // 检查答案
   const checkAnswer = (question: Question, selected: string | string[] | null): boolean => {
@@ -140,117 +139,61 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
     return selected === question.answer;
   };
 
-  // 处理答题结果
-  const handleAnswer = (isCorrect: boolean) => {
+  // 提交答案
+  const handleSubmit = () => {
     if (!reviewingId) return;
-    
-    // 记录答题
-    const question = questions.find(q => q.id === reviewingId);
-    if (question) {
-      const record: PracticeRecord = {
-        id: generateId(),
-        questionId: question.id,
-        isCorrect,
-        selectedAnswer: selectedAnswer || '',
-        timestamp: Date.now(),
-      };
-      recordStore.add(record);
-      
-      // 更新错题记忆状态
-      wrongStatsStore.updateResult(
-        question.id, 
-        isCorrect, 
-        !isCorrect ? selectedAnswer : undefined
-      );
-    }
-    
+    const question = getQuestion(reviewingId);
+    if (!question) return;
+
+    const correct = checkAnswer(question, selectedAnswer);
+    setIsCorrect(correct);
+
+    // 记录并更新
+    const record = {
+      id: generateId(),
+      questionId: question.id,
+      isCorrect: correct,
+      selectedAnswer: selectedAnswer || '',
+      timestamp: Date.now(),
+    };
+    recordStore.add(record);
+    wrongStatsStore.updateResult(question.id, correct, !correct ? selectedAnswer : undefined);
     loadData();
-    setShowAnswer(false);
-    setSelectedAnswer(null);
-    setReviewingId(null);
   };
 
-  // 渲染单个错题卡片
-  const renderWrongCard = (stat: WrongQuestionStats) => {
-    const question = getWrongQuestion(stat);
-    if (!question) return null;
-
-    const config = MEMORY_CONFIG[stat.memoryLevel];
-    const MemoryIcon = config.icon;
-
-    return (
-      <Card 
-        key={stat.questionId}
-        className="group cursor-pointer hover:shadow-md transition-all duration-200 hover:border-blue-200"
-        onClick={() => {
-          setReviewingId(stat.questionId);
-          setShowAnswer(false);
-          setSelectedAnswer(null);
-        }}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              {/* 标签行 */}
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge className={config.color} variant="outline">
-                  <MemoryIcon className="w-3 h-3 mr-1" />
-                  {config.label}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  {question.type === 'single' ? '单选' :
-                   question.type === 'multiple' ? '多选' :
-                   question.type === 'true-false' ? '判断' : '填空'}
-                </Badge>
-                <span className="text-xs text-gray-400">
-                  错{stat.wrongCount}次·对{stat.correctCount}次
-                </span>
-              </div>
-              
-              {/* 题目内容 */}
-              <p className="text-sm text-gray-700 line-clamp-2 mb-2">
-                {question.content}
-              </p>
-              
-              {/* 进度条 */}
-              <div className="flex items-center gap-2">
-                <Progress 
-                  value={config.progress} 
-                  className="flex-1 h-1.5"
-                />
-                <span className="text-xs text-gray-400">
-                  {config.progress}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // 移除错题
+  const handleRemove = (questionId: string) => {
+    if (confirm('确定移除这道错题？')) {
+      wrongStatsStore.reset(questionId);
+      loadData();
+    }
   };
 
-  // 渲染复习模式
-  const renderReviewMode = () => {
-    const question = questions.find(q => q.id === reviewingId);
+  // 复习模式
+  if (reviewingId) {
+    const question = getQuestion(reviewingId);
     const stat = wrongStats.find(s => s.questionId === reviewingId);
-    if (!question || !stat) return null;
-
-    const isCorrect = selectedAnswer !== null && checkAnswer(question, selectedAnswer);
+    
+    if (!question || !stat) {
+      setReviewingId(null);
+      return null;
+    }
 
     return (
-      <div className="fixed inset-0 bg-white z-50 overflow-auto">
-        {/* 顶部导航 */}
+      <div className="min-h-screen bg-gray-50">
+        {/* 顶部 */}
         <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" onClick={() => {
               setReviewingId(null);
               setShowAnswer(false);
               setSelectedAnswer(null);
+              setIsCorrect(null);
             }}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h2 className="font-semibold">复习错题</h2>
+              <p className="text-sm font-medium">复习错题</p>
               <p className="text-xs text-gray-500">
                 错{stat.wrongCount}次 · 对{stat.correctCount}次
               </p>
@@ -261,18 +204,14 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
           </Badge>
         </div>
 
-        <div className="max-w-2xl mx-auto p-4 space-y-4">
-          {/* 题目内容 */}
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="p-6">
-              <p className="text-lg font-medium leading-relaxed">
-                {question.content}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="max-w-xl mx-auto p-4 space-y-4">
+          {/* 题干 */}
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <p className="text-base leading-relaxed">{question.content}</p>
+          </div>
 
           {/* 选项 */}
-          {question.options && question.options.length > 0 && !showAnswer && (
+          {!showAnswer && question.options && question.options.length > 0 && (
             <div className="space-y-2">
               {question.options.map((opt) => {
                 const isSelected = Array.isArray(selectedAnswer) 
@@ -285,326 +224,237 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
                     onClick={() => {
                       if (question.type === 'multiple') {
                         const current = Array.isArray(selectedAnswer) ? selectedAnswer : [];
-                        if (isSelected) {
-                          setSelectedAnswer(current.filter(id => id !== opt.id));
-                        } else {
-                          setSelectedAnswer([...current, opt.id]);
-                        }
+                        setSelectedAnswer(isSelected 
+                          ? current.filter(id => id !== opt.id)
+                          : [...current, opt.id]
+                        );
                       } else {
                         setSelectedAnswer(opt.id);
                       }
                     }}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
                       isSelected 
                         ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                        : 'border-gray-200 hover:border-blue-200'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                        isSelected ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {opt.id.toUpperCase()}
-                      </span>
-                      <span className="flex-1">{opt.text}</span>
-                      {isSelected && <Check className="w-5 h-5 text-blue-500" />}
-                    </div>
+                    <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center mr-2 text-sm font-medium ${
+                      isSelected ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                    }`}>
+                      {opt.id.toUpperCase()}
+                    </span>
+                    {opt.text}
                   </button>
                 );
               })}
-              <p className="text-xs text-gray-400 text-center py-2">
-                {question.type === 'multiple' ? '点击选择多个答案' : '点击选择答案'}
-              </p>
-            </div>
-          )}
-
-          {/* 操作按钮 */}
-          {!showAnswer && (
-            <div className="flex gap-3 pt-4">
-              <Button 
-                className="flex-1" 
-                disabled={selectedAnswer === null}
-                onClick={() => setShowAnswer(true)}
-              >
-                确认答案
-              </Button>
             </div>
           )}
 
           {/* 答案揭示 */}
-          {showAnswer && (
-            <div className="space-y-4">
-              {/* 正确/错误提示 */}
-              <div className={`p-4 rounded-xl ${isCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
-                <div className="flex items-center gap-3">
+          {showAnswer && isCorrect !== null && (
+            <div className="space-y-3">
+              <div className={`p-4 rounded-lg ${isCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className="flex items-center gap-2">
                   {isCorrect ? (
                     <>
-                      <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center">
-                        <Check className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-emerald-700">回答正确</h3>
-                        <p className="text-sm text-emerald-600">
-                          继续保持，下次遇到也能答对！
-                        </p>
-                      </div>
+                      <Check className="w-5 h-5 text-emerald-600" />
+                      <span className="font-medium text-emerald-700">回答正确</span>
                     </>
                   ) : (
                     <>
-                      <div className="w-12 h-12 rounded-full bg-red-500 flex items-center justify-center">
-                        <X className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-red-700">回答错误</h3>
-                        <p className="text-sm text-red-600">
-                          记得加强这个知识点的记忆
-                        </p>
-                      </div>
+                      <X className="w-5 h-5 text-red-600" />
+                      <span className="font-medium text-red-700">回答错误</span>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* 正确答案 */}
-              <Card className="border-l-4 border-l-emerald-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Check className="w-5 h-5 text-emerald-500" />
-                    <span className="font-medium text-emerald-700">正确答案</span>
-                  </div>
-                  <p className="text-lg font-semibold">
-                    {Array.isArray(question.answer) 
-                      ? question.answer.map(a => a.toUpperCase()).join(', ')
-                      : question.answer.toUpperCase()}
-                  </p>
-                  {question.options && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      {question.options.find(o => o.id === question.answer)?.text || ''}
-                      {Array.isArray(question.answer) && question.answer.map(a => {
-                        const opt = question.options?.find(o => o.id === a);
-                        return opt ? `${opt.text} ` : '';
-                      })}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-gray-500 mb-1">正确答案</p>
+                <p className="font-semibold text-emerald-600">
+                  {Array.isArray(question.answer) 
+                    ? question.answer.map(a => a.toUpperCase()).join(', ')
+                    : question.answer.toUpperCase()}
+                </p>
+              </div>
 
-              {/* 解析 */}
               {question.explanation && (
-                <Card className="border-l-4 border-l-amber-500">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Brain className="w-5 h-5 text-amber-500" />
-                      <span className="font-medium text-amber-700">解析</span>
-                    </div>
-                    <p className="text-gray-700 leading-relaxed">
-                      {question.explanation}
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="bg-amber-50 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 leading-relaxed">{question.explanation}</p>
+                </div>
               )}
 
-              {/* 记忆反馈 */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-sm font-medium text-gray-700 mb-3">
-                  这道题下次什么时候复习？
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={isCorrect ? 'outline' : 'default'}
-                    size="sm"
-                    className={isCorrect ? 'bg-emerald-500 text-white hover:bg-emerald-600' : ''}
-                    onClick={() => handleAnswer(true)}
-                  >
-                    <Check className="w-4 h-4 mr-1" />
-                    记住了
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={isCorrect ? '' : 'bg-amber-500 text-white hover:bg-amber-600'}
-                    onClick={() => handleAnswer(false)}
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1" />
-                    再记一下
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      wrongStatsStore.reset(question.id);
-                      loadData();
-                      setReviewingId(null);
-                      setShowAnswer(false);
-                      setSelectedAnswer(null);
-                    }}
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    移除
-                  </Button>
-                </div>
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  className="flex-1" 
+                  variant={isCorrect ? 'outline' : 'default'}
+                  onClick={handleSubmit}
+                >
+                  <Check className="w-4 h-4 mr-1" />
+                  {isCorrect ? '已掌握' : '再记一下'}
+                </Button>
+                <Button variant="outline" onClick={() => handleRemove(question.id)}>
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  移除
+                </Button>
               </div>
             </div>
+          )}
+
+          {/* 提交按钮 */}
+          {!showAnswer && (
+            <Button 
+              className="w-full" 
+              disabled={selectedAnswer === null}
+              onClick={() => {
+                handleSubmit();
+                setShowAnswer(true);
+              }}
+            >
+              确认答案
+            </Button>
           )}
         </div>
       </div>
     );
-  };
-
-  // 复习模式
-  if (reviewingId) {
-    return renderReviewMode();
   }
 
+  // 主列表
   return (
-    <div className="space-y-6">
-      {/* 返回按钮 */}
+    <div className="space-y-4">
+      {/* 头部 */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Star className="w-6 h-6 text-orange-500" />
-          错题本
-          {summary.total > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {summary.total} 道
-            </Badge>
-          )}
-        </h2>
+        <div className="flex items-center gap-2">
+          <Star className="w-5 h-5 text-orange-500" />
+          <h2 className="text-lg font-semibold">错题本</h2>
+        </div>
+        <Badge variant="secondary" className="ml-auto">
+          {stats.total} 道
+        </Badge>
       </div>
 
-      {summary.total === 0 ? (
+      {stats.total === 0 ? (
         /* 空状态 */
-        <Card className="border-2 border-dashed">
-          <CardContent className="py-16 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-orange-100 flex items-center justify-center">
-              <Star className="w-8 h-8 text-orange-500" />
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-orange-100 flex items-center justify-center">
+              <Star className="w-6 h-6 text-orange-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-              暂无错题
-            </h3>
-            <p className="text-gray-500">
-              做错的题目会自动记录到这里，加油！
-            </p>
+            <p className="text-gray-500">暂无错题记录</p>
           </CardContent>
         </Card>
       ) : (
         <>
-          {/* 统计卡片 */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Card className="border-l-4 border-l-orange-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{summary.total}</p>
-                    <p className="text-xs text-gray-500">错题总数</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-red-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{summary.dueReview}</p>
-                    <p className="text-xs text-gray-500">待复习</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-emerald-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <Target className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{masteryRate}%</p>
-                    <p className="text-xs text-gray-500">掌握率</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-blue-500">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Flame className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{summary.mastered}</p>
-                    <p className="text-xs text-gray-500">已掌握</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* 统计行 */}
+          <div className="flex gap-2 text-xs">
+            <Badge variant={filterStatus === 'forgot' ? 'default' : 'outline'} 
+              className={`cursor-pointer ${filterStatus === 'forgot' ? 'bg-red-500' : ''}`}
+              onClick={() => { setFilterStatus('forgot'); setCurrentPage(1); }}>
+              未掌握 {stats.forgot}
+            </Badge>
+            <Badge variant={filterStatus === 'learning' ? 'default' : 'outline'}
+              className={`cursor-pointer ${filterStatus === 'learning' ? 'bg-amber-500' : ''}`}
+              onClick={() => { setFilterStatus('learning'); setCurrentPage(1); }}>
+              学习中 {stats.learning}
+            </Badge>
+            <Badge variant={filterStatus === 'mastered' ? 'default' : 'outline'}
+              className={`cursor-pointer ${filterStatus === 'mastered' ? 'bg-emerald-500' : ''}`}
+              onClick={() => { setFilterStatus('mastered'); setCurrentPage(1); }}>
+              已掌握 {stats.mastered}
+            </Badge>
           </div>
 
-          {/* 整体进度 */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">整体掌握进度</span>
-                <span className="text-sm text-gray-500">{masteryRate}%</span>
-              </div>
-              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500 transition-all duration-500"
-                  style={{ width: `${masteryRate}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-400">
-                <span>未掌握 {summary.forgot}</span>
-                <span>学习中 {summary.learning}</span>
-                <span>已掌握 {summary.mastered}</span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* 搜索 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="搜索错题..."
+              value={searchKeyword}
+              onChange={(e) => { setSearchKeyword(e.target.value); setCurrentPage(1); }}
+              className="pl-9"
+            />
+          </div>
 
-          {/* 错题列表 */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="all" className="text-xs">
-                全部 {summary.total}
-              </TabsTrigger>
-              <TabsTrigger value="review" className="text-xs">
-                待复习 {summary.dueReview}
-              </TabsTrigger>
-              <TabsTrigger value="forgot" className="text-xs">
-                未掌握 {summary.forgot}
-              </TabsTrigger>
-              <TabsTrigger value="learning" className="text-xs">
-                学习中 {summary.learning}
-              </TabsTrigger>
-              <TabsTrigger value="mastered" className="text-xs">
-                已掌握 {summary.mastered}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value={activeTab} className="mt-4">
-              {filterStats(wrongStats, activeTab).length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-gray-500">
-                    暂无相关错题
+          {/* 列表 */}
+          <div className="space-y-2">
+            {paginatedStats.map((stat, idx) => {
+              const question = getQuestion(stat.questionId);
+              if (!question) return null;
+              
+              return (
+                <Card 
+                  key={stat.questionId}
+                  className="cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    setReviewingId(stat.questionId);
+                    setShowAnswer(false);
+                    setSelectedAnswer(null);
+                    setIsCorrect(null);
+                  }}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-sm text-gray-400 mt-0.5">
+                        {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900 line-clamp-2">{question.content}</p>
+                        <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                          <Badge className={`${MEMORY_CONFIG[stat.memoryLevel].color} text-xs`} variant="secondary">
+                            {MEMORY_CONFIG[stat.memoryLevel].label}
+                          </Badge>
+                          <span>错{stat.wrongCount}</span>
+                          <span>·</span>
+                          <span>对{stat.correctCount}</span>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="h-8 w-8 text-gray-400 hover:text-red-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemove(stat.questionId);
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {filterStats(wrongStats, activeTab).map(stat => renderWrongCard(stat))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+              );
+            })}
+          </div>
+
+          {/* 分页 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-sm text-gray-500">
+                第 {currentPage} / {totalPages} 页，共 {filteredStats.length} 道
+              </p>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
