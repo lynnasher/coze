@@ -72,44 +72,21 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
   const cleaned = cleanText(text);
   const questions: ParsedQuestion[] = [];
 
-  // 先尝试拆分综合题中的小题
-  const blocks = splitComprehensiveQuestions(cleaned);
+  // 第一步：按大题编号拆分（避免空行分割破坏综合题）
+  const questionBlocks = splitByMainQuestion(cleaned);
   
-  for (const block of blocks) {
+  for (const block of questionBlocks) {
     const trimmed = block.trim();
     if (!trimmed) continue;
 
-    const question = parseQuestionBlock(trimmed);
-    if (question) {
-      questions.push(question);
-    }
-  }
-
-  // 如果按空行分割没找到题目，尝试按编号分割
-  if (questions.length === 0) {
-    const lines = cleaned.split('\n');
-    let currentBlock = '';
-    const questionBlocks: string[] = [];
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      // 检测新题目开始：数字编号开头
-      if (/^\d+[.、)]\s*\S/.test(trimmed) || /^\[?(单选|多选|判断|填空)/.test(trimmed)) {
-        if (currentBlock.trim()) {
-          questionBlocks.push(currentBlock.trim());
-        }
-        currentBlock = trimmed;
-      } else if (currentBlock) {
-        currentBlock += '\n' + trimmed;
-      }
-    }
-
-    if (currentBlock.trim()) {
-      questionBlocks.push(currentBlock.trim());
-    }
-
-    for (const block of questionBlocks) {
-      const question = parseQuestionBlock(block);
+    // 第二步：检测是否是综合题，如果是则拆分小题
+    const subBlocks = splitComprehensiveQuestions(trimmed);
+    
+    for (const subBlock of subBlocks) {
+      const subTrimmed = subBlock.trim();
+      if (!subTrimmed) continue;
+      
+      const question = parseQuestionBlock(subTrimmed);
       if (question) {
         questions.push(question);
       }
@@ -117,6 +94,36 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
   }
 
   return questions;
+};
+
+// 按大题编号拆分（匹配 "1."、"1、"、"1）"、"1【单选题】" 等格式）
+const splitByMainQuestion = (text: string): string[] => {
+  const lines = text.split('\n');
+  const blocks: string[] = [];
+  let currentBlock: string[] = [];
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // 检测新题目开始：数字编号开头（可能有题型标记）
+    // 匹配: "1. "、"1、 "、"1） "、"1.【单选题】"、"1【判断题】" 等
+    if (/^\d+[.、\)]\s*(\[?【?(单选|多选|判断|填空|综合|案例|计算|论述|简答|分析)]?】?)?/.test(trimmed)) {
+      // 保存之前的block
+      if (currentBlock.length > 0) {
+        blocks.push(currentBlock.join('\n'));
+      }
+      currentBlock = [trimmed];
+    } else if (currentBlock.length > 0) {
+      currentBlock.push(trimmed);
+    }
+  }
+  
+  // 保存最后一个block
+  if (currentBlock.length > 0) {
+    blocks.push(currentBlock.join('\n'));
+  }
+  
+  return blocks;
 };
 
 // 拆分综合题中的小题（如 "（1）"、"(1)"、"①" 等格式）
