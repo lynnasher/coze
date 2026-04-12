@@ -305,9 +305,10 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
     type = explicitType;
   }
 
-  // 5. 判断题答案转换
-  if (type === 'true-false') {
-    answer = 'true';
+  // 5. 判断题答案转换（保持原有答案格式，'a' 表示正确，'b' 表示错误）
+  // 如果没有识别到答案，默认设为 'a'（正确）
+  if (type === 'true-false' && !answer) {
+    answer = 'a';
   }
 
   // 6. 识别难度
