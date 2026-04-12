@@ -135,122 +135,75 @@ export default function QuizApp() {
     }
   };
 
-  // 文档导入（Word 文档）
-  const handleDocumentImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    const fileName = file.name.toLowerCase();
-    if (!fileName.endsWith('.pdf') && !fileName.endsWith('.docx')) {
-      alert('仅支持 PDF 或 DOCX 格式文件');
-      e.target.value = '';
-      return;
-    }
-    
-    // 从文件名提取题库名称（去掉扩展名）
-    const bankName = file.name.replace(/\.(pdf|docx)$/i, '');
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('bankName', bankName);
-      
-      const response = await fetch('/api/parse-document', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        // 将解析的题目保存到 localStorage，并关联题库ID
-        if (result.questions && result.questions.length > 0) {
-          // 添加题库ID到每道题目（由服务端生成的bankId）
-          const questionsWithBankId = result.questions.map((q: Question) => ({
-            ...q,
-            bankId: result.bankId,
-          }));
-          questionStore.addMultiple(questionsWithBankId);
-          
-          // 创建题库
-          const bank = bankStore.createWithId(result.bankId, result.bankName || bankName, file.name);
-          bank.questionIds = questionsWithBankId.map((q: Question) => q.id);
-          bankStore.update(bank);
-        }
-        loadQuestions();
-        setImportModalOpen(false);
-        alert(`成功导入题库「${result.bankName || bankName}」\n共 ${result.total} 道题目\n\n题目类型：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
-      } else {
-        alert(result.error || '导入失败');
-      }
-    } catch (error) {
-      console.error('文档导入错误:', error);
-      alert('导入失败，请检查文件格式是否正确');
-    }
-    
-    e.target.value = '';
-  };
-
-  // PDF 导入
-  const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // JSON 题库导入
+  const handleJsonImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const text = await file.text();
+      const data = JSON.parse(text);
       
-      const response = await fetch('/api/parse-pdf', {
-        method: 'POST',
-        body: formData,
+      // 验证 JSON 格式
+      if (!data.questions || !Array.isArray(data.questions)) {
+        alert('JSON 格式错误：缺少 questions 数组');
+        e.target.value = '';
+        return;
+      }
+      
+      // 提取题库名称（可选）
+      const bankName = data.bankName || file.name.replace(/\.json$/i, '') || '导入题库';
+      
+      // 生成题库 ID
+      const bankId = generateId();
+      
+      // 处理每道题目
+      const questionsWithBankId = data.questions.map((q: Partial<Question>) => {
+        // 生成题目 ID
+        const questionId = generateId();
+        
+        return {
+          id: questionId,
+          type: (q.type as QuestionType) || 'single',
+          content: q.content || '',
+          options: q.options,
+          answer: q.answer || 'a',
+          explanation: q.explanation,
+          difficulty: (q.difficulty as Difficulty) || 'medium',
+          tags: q.tags || [],
+          bankId: bankId,
+          createdAt: Date.now(),
+        } as Question;
       });
       
-      const result = await response.json();
-      
-      if (result.success) {
-        loadQuestions();
-        setImportModalOpen(false);
-      } else {
-        alert(result.error || '导入失败');
+      if (questionsWithBankId.length === 0) {
+        alert('JSON 中没有有效的题目');
+        e.target.value = '';
+        return;
       }
+      
+      // 保存题目到 localStorage
+      questionStore.addMultiple(questionsWithBankId);
+      
+      // 创建题库
+      const bank = bankStore.createWithId(bankId, bankName, file.name);
+      bank.questionIds = questionsWithBankId.map((q: Question) => q.id);
+      bankStore.update(bank);
+      
+      // 统计类型
+      const typeStats = {
+        single: questionsWithBankId.filter((q: Question) => q.type === 'single').length,
+        multiple: questionsWithBankId.filter((q: Question) => q.type === 'multiple').length,
+        'true-false': questionsWithBankId.filter((q: Question) => q.type === 'true-false').length,
+        'fill-blank': questionsWithBankId.filter((q: Question) => q.type === 'fill-blank').length,
+      };
+      
+      loadQuestions();
+      setImportModalOpen(false);
+      alert(`成功导入题库「${bankName}」\n共 ${questionsWithBankId.length} 道题目\n\n题目类型：\n单选题: ${typeStats.single} 道\n多选题: ${typeStats.multiple} 道\n判断题: ${typeStats['true-false']} 道\n填空题: ${typeStats['fill-blank']} 道`);
     } catch (error) {
-      console.error('导入错误:', error);
-      alert('导入失败，请重试');
-    }
-    
-    e.target.value = '';
-  };
-
-  // WORK 题库导入
-  const handleWorkImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch('/api/parse-work', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        // 将解析的题目保存到 localStorage
-        if (result.questions && result.questions.length > 0) {
-          questionStore.addMultiple(result.questions);
-        }
-        loadQuestions();
-        setImportModalOpen(false);
-        alert(`成功导入 ${result.total} 道题目！\n\n题目类型统计：\n单选题: ${result.typeStats?.single || 0} 道\n多选题: ${result.typeStats?.multiple || 0} 道\n判断题: ${result.typeStats?.['true-false'] || 0} 道\n填空题: ${result.typeStats?.['fill-blank'] || 0} 道`);
-      } else {
-        alert(result.error || '导入失败');
-      }
-    } catch (error) {
-      console.error('WORK 题库导入错误:', error);
-      alert('导入失败，请检查文件格式是否正确');
+      console.error('JSON 导入错误:', error);
+      alert('导入失败，请检查 JSON 格式是否正确');
     }
     
     e.target.value = '';
@@ -565,27 +518,38 @@ export default function QuizApp() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="text-center py-6 sm:py-8">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                      <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                      <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-green-600" />
                     </div>
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">导入 Word 文档</h3>
-                    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">选择 .docx 格式的 Word 文档，系统将自动提取题目</p>
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">导入 JSON 题库</h3>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">选择 .json 格式的题库文件</p>
                     <Input
                       type="file"
-                      accept=".docx"
-                      onChange={handleDocumentImport}
+                      accept=".json"
+                      onChange={handleJsonImport}
                       className="max-w-xs mx-auto text-sm"
                     />
                   </div>
                   
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-700 mb-2 text-sm">文档格式要求</h4>
-                    <ul className="text-xs text-gray-600 space-y-1">
-                      <li>题目编号格式：<code className="bg-gray-200 px-1 rounded">1. 题目内容</code></li>
-                      <li>选项格式：<code className="bg-gray-200 px-1 rounded">A. 选项内容</code></li>
-                      <li>答案格式：<code className="bg-gray-200 px-1 rounded">正确答案：B</code></li>
-                      <li>解析格式：<code className="bg-gray-200 px-1 rounded">名师解析：...</code></li>
-                    </ul>
+                    <h4 className="font-medium text-gray-700 mb-2 text-sm">JSON 格式说明</h4>
+                    <pre className="text-xs text-gray-600 bg-gray-100 p-3 rounded-lg overflow-x-auto">{`{
+  "bankName": "题库名称（可选）",
+  "questions": [
+    {
+      "type": "single",  // single|multiple|true-false|fill-blank
+      "content": "题目内容",
+      "options": [
+        { "id": "a", "text": "选项A" },
+        { "id": "b", "text": "选项B" }
+      ],
+      "answer": "a",
+      "explanation": "解析内容（可选）",
+      "difficulty": "medium",  // easy|medium|hard
+      "tags": ["标签1"]  // 可选
+    }
+  ]
+}`}</pre>
                   </div>
                 </div>
               </DialogContent>
