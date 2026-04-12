@@ -19,6 +19,8 @@ import {
   Upload, 
   ChevronLeft, 
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Check,
   X,
   Trophy,
@@ -101,8 +103,11 @@ export default function QuizApp() {
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [editingBankName, setEditingBankName] = useState('');
   const [showBankQuestions, setShowBankQuestions] = useState(false);
+  const [showAllQuestions, setShowAllQuestions] = useState(false); // 所有题目列表展开状态
+  const [allQuestionsPage, setAllQuestionsPage] = useState(1); // 所有题目分页
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(7200);
+  const QUESTIONS_PER_PAGE = 20; // 每页显示题目数
   
   // 练习模式状态
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
@@ -1077,7 +1082,7 @@ export default function QuizApp() {
               <div className="space-y-5">
                 {/* 题库选择区域 - 卡片列表 */}
                 <div>
-                  <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
+                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
                       <Library className="w-4 h-4 text-white" />
                     </div>
@@ -1095,7 +1100,7 @@ export default function QuizApp() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 mb-1">全部题目</h3>
+                            <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">全部题目</h3>
                             <div className="flex items-center gap-1 text-sm text-gray-400">
                               <BookOpen className="w-3 h-3" />
                               <span>{questions.length} 道题</span>
@@ -1125,7 +1130,7 @@ export default function QuizApp() {
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">{bank.name}</h3>
+                                <h3 className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">{bank.name}</h3>
                                 <div className="flex items-center gap-3 text-sm text-gray-400">
                                   <span className="flex items-center gap-1">
                                     <BookOpen className="w-3 h-3" />
@@ -1470,62 +1475,141 @@ export default function QuizApp() {
               </div>
             )}
 
-            {/* 所有题目列表 */}
+            {/* 所有题目列表 - 默认折叠，点击展开 */}
             {!showBankQuestions && questions.length > 0 && (
               <div className="mt-6">
-                <h3 className="font-bold flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-                    <BookOpen className="w-4 h-4 text-white" />
-                  </div>
-                  所有题目
-                  <Badge variant="secondary" className="rounded-full">{questions.length}</Badge>
-                </h3>
-                <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                  <CardContent className="p-0 divide-y max-h-[400px] overflow-y-auto">
-                    {questions.map((q, idx) => (
-                      <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <span className="text-sm font-medium text-gray-400">#{idx + 1}</span>
-                              {renderTypeBadge(q.type)}
-                              {q.bankId && banks.find(b => b.id === q.bankId) && (
-                                <Badge variant="secondary" className="text-xs rounded-full line-clamp-1 max-w-[120px]">
-                                  {banks.find(b => b.id === q.bankId)?.name}
-                                </Badge>
-                              )}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold flex items-center gap-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-4 h-4 text-white" />
+                    </div>
+                    所有题目
+                    <Badge variant="secondary" className="rounded-full">{questions.length}</Badge>
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAllQuestions(!showAllQuestions);
+                      setAllQuestionsPage(1);
+                    }}
+                    className="rounded-xl"
+                  >
+                    {showAllQuestions ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-1" />
+                        收起
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-1" />
+                        展开
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {showAllQuestions && (
+                  <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+                    <CardContent className="p-0 divide-y">
+                      {questions
+                        .slice((allQuestionsPage - 1) * QUESTIONS_PER_PAGE, allQuestionsPage * QUESTIONS_PER_PAGE)
+                        .map((q, idx) => {
+                          const globalIdx = (allQuestionsPage - 1) * QUESTIONS_PER_PAGE + idx;
+                          return (
+                            <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                    <span className="text-sm font-medium text-gray-400">#{globalIdx + 1}</span>
+                                    {renderTypeBadge(q.type)}
+                                    {q.bankId && banks.find(b => b.id === q.bankId) && (
+                                      <Badge variant="secondary" className="text-xs rounded-full line-clamp-1 max-w-[120px]">
+                                        {banks.find(b => b.id === q.bankId)?.name}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="font-medium text-gray-900 mb-2 line-clamp-2 text-sm">{q.content}</p>
+                                  <div className="text-xs">
+                                    <span className="text-gray-400">答案：</span>
+                                    <span className="font-medium text-emerald-600">
+                                      {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditQuestion(q)}
+                                    className="h-8 w-8 rounded-xl text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                                  >
+                                    <FileCheck className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteQuestion(q.id)}
+                                    className="h-8 w-8 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
-                            <p className="font-medium text-gray-900 mb-2 line-clamp-2 text-sm">{q.content}</p>
-                            <div className="text-xs">
-                              <span className="text-gray-400">答案：</span>
-                              <span className="font-medium text-emerald-600">
-                                {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditQuestion(q)}
-                              className="h-8 w-8 rounded-xl text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                            >
-                              <FileCheck className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteQuestion(q.id)}
-                              className="h-8 w-8 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          );
+                        })}
+                    </CardContent>
+                    
+                    {/* 分页控件 */}
+                    {questions.length > QUESTIONS_PER_PAGE && (
+                      <div className="flex items-center justify-between p-4 border-t bg-gray-50">
+                        <span className="text-sm text-gray-500">
+                          第 {(allQuestionsPage - 1) * QUESTIONS_PER_PAGE + 1} - {Math.min(allQuestionsPage * QUESTIONS_PER_PAGE, questions.length)} 条，共 {questions.length} 条
+                        </span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAllQuestionsPage(p => Math.max(1, p - 1))}
+                            disabled={allQuestionsPage === 1}
+                            className="rounded-xl h-8"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          {Array.from({ length: Math.ceil(questions.length / QUESTIONS_PER_PAGE) }, (_, i) => i + 1)
+                            .filter(p => p === 1 || p === Math.ceil(questions.length / QUESTIONS_PER_PAGE) || Math.abs(p - allQuestionsPage) <= 1)
+                            .map((page, idx, arr) => (
+                              <>
+                                {idx > 0 && arr[idx - 1] !== page - 1 && (
+                                  <span key={`ellipsis-${page}`} className="px-1 text-gray-400">...</span>
+                                )}
+                                <Button
+                                  key={page}
+                                  variant={allQuestionsPage === page ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setAllQuestionsPage(page)}
+                                  className={`rounded-xl h-8 w-8 p-0 ${allQuestionsPage === page ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : ''}`}
+                                >
+                                  {page}
+                                </Button>
+                              </>
+                            ))
+                          }
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAllQuestionsPage(p => Math.min(Math.ceil(questions.length / QUESTIONS_PER_PAGE), p + 1))}
+                            disabled={allQuestionsPage === Math.ceil(questions.length / QUESTIONS_PER_PAGE)}
+                            className="rounded-xl h-8"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                    )}
+                  </Card>
+                )}
               </div>
             )}
 
