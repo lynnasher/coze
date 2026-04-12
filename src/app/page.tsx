@@ -178,8 +178,15 @@ export default function QuizApp() {
         if (typeof qType === 'number') {
           questionType = typeMap[qType as number] || 'single';
         } else if (typeof qType === 'string') {
-          const t = qType.toLowerCase();
-          if (t.includes('多选')) questionType = 'multiple';
+          const t = qType.toLowerCase().trim();
+          // 直接匹配英文类型
+          if (t === 'single') questionType = 'single';
+          else if (t === 'multiple') questionType = 'multiple';
+          else if (t === 'true-false' || t === 'truefalse' || t === 'judge') questionType = 'true-false';
+          else if (t === 'fill-blank' || t === 'fillblank' || t === 'fill') questionType = 'fill-blank';
+          else if (t === 'comprehensive') questionType = 'comprehensive';
+          // 匹配中文类型
+          else if (t.includes('多选')) questionType = 'multiple';
           else if (t.includes('判断')) questionType = 'true-false';
           else if (t.includes('填空')) questionType = 'fill-blank';
           else if (t.includes('综合') || t.includes('案例')) questionType = 'comprehensive';
