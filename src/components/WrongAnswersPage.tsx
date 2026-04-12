@@ -117,7 +117,7 @@ export default function WrongAnswersPage({ onBack }: WrongAnswersPageProps) {
     setIsCorrect(correct);
     setShowResult(true);
     recordStore.add({ id: generateId(), questionId: q.id, isCorrect: correct, selectedAnswer: selectedAnswer || '', timestamp: Date.now() });
-    wrongStatsStore.updateResult(q.id, correct, !correct ? selectedAnswer : undefined);
+    wrongStatsStore.updateResult(q.id, correct, !correct && selectedAnswer !== null ? selectedAnswer : undefined);
     loadData();
   };
 
