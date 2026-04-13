@@ -534,7 +534,10 @@ export default function QuizApp() {
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* 当 hasStarted 为 true 时，隐藏 Tabs，直接显示练习页面 */}
         {hasStarted ? (
-          <PracticeView />
+          <PracticeView onExit={() => {
+            setHasStarted(false);
+            setPracticeBankId(null);
+          }} />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Duolingo 风格 Tab 切换 */}
@@ -1281,14 +1284,17 @@ export default function QuizApp() {
 }
 
 // 练习页面组件 - 无 Tabs，简洁设计
-function PracticeView() {
+interface PracticeViewProps {
+  onExit: () => void;
+}
+
+function PracticeView({ onExit }: PracticeViewProps) {
   const {
     quizState,
     currentQuestion,
     currentAnswer,
     isAnswerCorrect,
     isLoading,
-    hasStarted,
     selectAnswer,
     nextQuestion,
     prevQuestion,
@@ -1296,11 +1302,8 @@ function PracticeView() {
     finishQuiz,
     goToQuestion,
     restartQuiz,
-    getStats,
-    setHasStarted,
   } = useQuiz();
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
-  const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
   
   const isCurrentCorrect = useMemo(() => {
     if (!currentQuestion || !currentAnswer) return false;
@@ -1378,10 +1381,7 @@ function PracticeView() {
                 再练一次
               </Button>
               <Button 
-                onClick={() => {
-                  setHasStarted(false);
-                  setPracticeBankId(null);
-                }} 
+                onClick={() => onExit()} 
                 variant="outline"
                 className="flex-1 border-2 border-gray-200 rounded-xl"
               >
@@ -1413,8 +1413,7 @@ function PracticeView() {
             size="sm"
             onClick={() => {
               if (confirm('确定要退出练习吗？')) {
-                setHasStarted(false);
-                setPracticeBankId(null);
+                onExit();
               }
             }}
             className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10 gap-1"
