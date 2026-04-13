@@ -77,15 +77,34 @@ export function useQuiz() {
     });
   }, []);
 
-  // 选择答案
+  // 选择答案（自动提交）
   const selectAnswer = useCallback((questionId: string, answer: string | string[]) => {
-    setQuizState(prev => ({
-      ...prev,
-      answers: {
+    setQuizState(prev => {
+      const newAnswers = {
         ...prev.answers,
         [questionId]: answer,
-      },
-    }));
+      };
+      const currentQuestion = prev.questions[prev.currentIndex];
+      if (currentQuestion) {
+        const isCorrect = checkAnswer(currentQuestion, answer);
+        recordStore.add({
+          id: generateId(),
+          questionId,
+          isCorrect,
+          selectedAnswer: answer,
+          timestamp: Date.now(),
+        });
+        return {
+          ...prev,
+          answers: newAnswers,
+          showResult: true,
+        };
+      }
+      return {
+        ...prev,
+        answers: newAnswers,
+      };
+    });
   }, []);
 
   // 下一题

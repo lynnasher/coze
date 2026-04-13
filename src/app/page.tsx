@@ -1548,29 +1548,41 @@ function PracticeView({ onExit }: PracticeViewProps) {
             })}
           </div>
 
-          {/* 答案反馈 */}
+          {/* 答案与解析 - 精简版 */}
           {quizState.showResult && (
-            <div className="mt-4 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  isCurrentCorrect ? 'bg-emerald-500' : 'bg-red-500'
-                }`}>
-                  {isCurrentCorrect ? (
-                    <Check className="w-4 h-4 text-white" />
-                  ) : (
-                    <X className="w-4 h-4 text-white" />
-                  )}
+            <div className="mt-4 space-y-2 sm:space-y-3">
+              {/* 结果卡片 */}
+              <div className={`rounded-xl p-3 sm:p-4 ${isCurrentCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${isCurrentCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                      {isCurrentCorrect ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
+                    </div>
+                    <span className={`text-sm sm:text-base font-bold ${isCurrentCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
+                      {isCurrentCorrect ? '太棒了！' : '再接再厉！'}
+                    </span>
+                  </div>
+                  <div className="bg-white rounded-lg px-2 py-1 sm:px-3 sm:py-1">
+                    <span className="text-xs sm:text-sm text-gray-500">答案：</span>
+                    <span className="text-sm sm:text-lg font-bold text-emerald-600 ml-1">
+                      {Array.isArray(currentQuestion.answer) 
+                        ? currentQuestion.answer.map(a => a.toUpperCase()).join(', ')
+                        : currentQuestion.answer.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
-                <span className={`font-bold ${
-                  isCurrentCorrect ? 'text-emerald-700' : 'text-red-700'
-                }`}>
-                  {isCurrentCorrect ? '回答正确!' : '回答错误'}
-                </span>
               </div>
+              
+              {/* 解析 */}
               {currentQuestion.explanation && (
-                <div className="mt-2 text-sm text-gray-600">
-                  <span className="font-semibold">解析：</span>
-                  {currentQuestion.explanation}
+                <div className="bg-amber-50 rounded-xl p-2 sm:p-3 border border-amber-200">
+                  <div className="flex items-center gap-1 sm:gap-2 text-amber-700 mb-1">
+                    <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="font-semibold text-xs sm:text-sm">解析</span>
+                  </div>
+                  <p className="text-amber-900 text-xs sm:text-sm leading-relaxed">
+                    {currentQuestion.explanation}
+                  </p>
                 </div>
               )}
             </div>
@@ -1591,60 +1603,30 @@ function PracticeView({ onExit }: PracticeViewProps) {
               }
             }}
             disabled={quizState.currentIndex === 0}
-            className="h-10 px-2 rounded-lg border border-gray-200 flex-shrink-0"
+            className="h-10 px-3 rounded-lg border border-gray-200"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline ml-1 text-sm">上一题</span>
+            <span className="ml-1 text-sm">上一题</span>
           </Button>
-          
-          {/* 查看解析 */}
-          {currentAnswer && !quizState.showResult && (
-            <Button
-              onClick={() => submitAnswer()}
-              className="h-10 px-2 sm:px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-medium text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span className="ml-1 text-xs sm:text-sm">查看解析</span>
-            </Button>
-          )}
-          
-          {/* 结果提示 */}
-          {quizState.showResult && (
-            <div className={`h-10 flex items-center justify-center px-2 sm:px-3 rounded-xl font-medium text-xs sm:text-sm ${
-              isCurrentCorrect 
-                ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' 
-                : 'bg-red-100 text-red-700 border border-red-300'
-            }`}>
-              {isCurrentCorrect ? (
-                <Check className="w-4 h-4 mr-1" />
-              ) : (
-                <X className="w-4 h-4 mr-1" />
-              )}
-              <span>{isCurrentCorrect ? '正确' : '错误'}</span>
-            </div>
-          )}
 
           {/* 下一题 / 交卷 */}
           {quizState.currentIndex === quizState.questions.length - 1 ? (
             <Button
               onClick={() => finishQuiz()}
-              className="h-10 px-2 sm:px-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl flex-1 sm:flex-none"
+              className="h-10 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl"
             >
               <FileCheck className="w-4 h-4" />
-              <span className="ml-1 text-xs sm:text-sm">交卷</span>
+              <span className="ml-2 text-sm">交卷</span>
             </Button>
           ) : (
             <Button
               onClick={() => {
-                if (currentAnswer && !quizState.showResult) {
-                  submitAnswer();
-                }
                 nextQuestion();
                 setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
               }}
-              className="h-10 px-2 sm:px-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl flex-1 sm:flex-none"
+              className="h-10 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl"
             >
-              <span className="text-xs sm:text-sm">下一题</span>
+              <span className="text-sm">下一题</span>
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           )}
