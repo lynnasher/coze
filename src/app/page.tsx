@@ -471,12 +471,8 @@ export default function QuizApp() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
         <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4">
-            <img 
-              src="https://code.coze.cn/api/sandbox/coze_coding/file/proxy?expire_time=-1&file_path=assets%2Fimage.png&nonce=bc2e0f4c-de39-48cf-9d38-20a43bfc7403&project_id=7627388236024889398&sign=825d4212b0c347b0fa3190a3c738f8d9a0e3439cb0e9b73425ec607230854602" 
-              alt="Logo" 
-              className="w-full h-full rounded-2xl object-contain animate-pulse"
-            />
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl flex items-center justify-center">
+            <BookOpen className="w-10 h-10 text-white" />
           </div>
           <p className="text-gray-600 font-medium">加载中...</p>
         </div>
@@ -490,11 +486,9 @@ export default function QuizApp() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-orange-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img 
-              src="https://code.coze.cn/api/sandbox/coze_coding/file/proxy?expire_time=-1&file_path=assets%2Fimage.png&nonce=bc2e0f4c-de39-48cf-9d38-20a43bfc7403&project_id=7627388236024889398&sign=825d4212b0c347b0fa3190a3c738f8d9a0e3439cb0e9b73425ec607230854602" 
-              alt="Logo" 
-              className="w-12 h-12 rounded-2xl object-contain"
-            />
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
             <div>
               <h1 className="text-xl font-bold text-gray-800">智能刷题</h1>
               <p className="text-xs text-gray-400">{questions.length} 道题目</p>
