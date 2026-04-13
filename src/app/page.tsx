@@ -135,7 +135,7 @@ export default function QuizApp() {
       }
       
       const bankName = data.subjectName || data.bankName || data.title || file.name.replace(/\.json$/i, '') || '导入题库';
-      const bankId = generateId();
+      const bankId = `bank_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 9)}`;
       
       const typeMap: Record<number, QuestionType> = {
         1: 'single',
@@ -534,10 +534,24 @@ export default function QuizApp() {
       <main className="max-w-2xl mx-auto px-4 py-6">
         {/* 当 hasStarted 为 true 时，隐藏 Tabs，直接显示练习页面 */}
         {hasStarted ? (
-          <PracticeView onExit={() => {
-            setHasStarted(false);
-            setPracticeBankId(null);
-          }} />
+          <PracticeView 
+            onExit={() => {
+              setHasStarted(false);
+              setPracticeBankId(null);
+            }} 
+            quizState={quizState}
+            currentQuestion={currentQuestion}
+            currentAnswer={currentAnswer}
+            isAnswerCorrect={isAnswerCorrect}
+            isLoading={isLoading}
+            selectAnswer={selectAnswer}
+            nextQuestion={nextQuestion}
+            prevQuestion={prevQuestion}
+            submitAnswer={submitAnswer}
+            finishQuiz={finishQuiz}
+            goToQuestion={goToQuestion}
+            restartQuiz={restartQuiz}
+          />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Duolingo 风格 Tab 切换 */}
@@ -1286,23 +1300,35 @@ export default function QuizApp() {
 // 练习页面组件 - 无 Tabs，简洁设计
 interface PracticeViewProps {
   onExit: () => void;
+  quizState: ReturnType<typeof useQuiz>['quizState'];
+  currentQuestion: ReturnType<typeof useQuiz>['currentQuestion'];
+  currentAnswer: ReturnType<typeof useQuiz>['currentAnswer'];
+  isAnswerCorrect: ReturnType<typeof useQuiz>['isAnswerCorrect'];
+  isLoading: ReturnType<typeof useQuiz>['isLoading'];
+  selectAnswer: ReturnType<typeof useQuiz>['selectAnswer'];
+  nextQuestion: ReturnType<typeof useQuiz>['nextQuestion'];
+  prevQuestion: ReturnType<typeof useQuiz>['prevQuestion'];
+  submitAnswer: ReturnType<typeof useQuiz>['submitAnswer'];
+  finishQuiz: ReturnType<typeof useQuiz>['finishQuiz'];
+  goToQuestion: ReturnType<typeof useQuiz>['goToQuestion'];
+  restartQuiz: ReturnType<typeof useQuiz>['restartQuiz'];
 }
 
-function PracticeView({ onExit }: PracticeViewProps) {
-  const {
-    quizState,
-    currentQuestion,
-    currentAnswer,
-    isAnswerCorrect,
-    isLoading,
-    selectAnswer,
-    nextQuestion,
-    prevQuestion,
-    submitAnswer,
-    finishQuiz,
-    goToQuestion,
-    restartQuiz,
-  } = useQuiz();
+function PracticeView({ 
+  onExit, 
+  quizState, 
+  currentQuestion, 
+  currentAnswer,
+  isAnswerCorrect,
+  isLoading,
+  selectAnswer,
+  nextQuestion,
+  prevQuestion,
+  submitAnswer,
+  finishQuiz,
+  goToQuestion,
+  restartQuiz,
+}: PracticeViewProps) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   
   const isCurrentCorrect = useMemo(() => {
@@ -1413,13 +1439,6 @@ function PracticeView({ onExit }: PracticeViewProps) {
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">返回</span>
           </Button>
-          
-          {/* 进度信息 - 橙色胶囊 */}
-          <div className="bg-white/25 px-4 py-1.5 rounded-full">
-            <span className="text-sm font-bold">
-              {quizState.currentIndex + 1}/{quizState.questions.length}
-            </span>
-          </div>
           
           {/* 答题卡和交卷按钮 */}
           <div className="flex items-center gap-1">
