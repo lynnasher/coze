@@ -1328,6 +1328,18 @@ function PracticeView({ onExit }: PracticeViewProps) {
   }
 
   if (quizState.isComplete) {
+    // 计算当前练习的统计
+    const totalQuestions = quizState.questions.length;
+    const answeredQuestions = quizState.questions.filter(q => quizState.answers[q.id] !== undefined);
+    const correctCount = answeredQuestions.filter(q => {
+      const userAnswer = quizState.answers[q.id];
+      if (Array.isArray(q.answer)) {
+        return Array.isArray(userAnswer) && q.answer.every(a => userAnswer.includes(a));
+      }
+      return userAnswer === q.answer;
+    }).length;
+    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+    
     return (
       <div className="min-h-screen -mx-4 sm:mx-0 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
@@ -1340,35 +1352,15 @@ function PracticeView({ onExit }: PracticeViewProps) {
             <p className="text-gray-500 mb-8">你已完成本次练习，继续加油！</p>
             <div className="grid grid-cols-3 gap-3 mb-8">
               <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 border border-blue-100">
-                <p className="text-3xl font-bold text-blue-600">{quizState.questions.length}</p>
+                <p className="text-3xl font-bold text-blue-600">{totalQuestions}</p>
                 <p className="text-xs text-gray-500 mt-1">总题数</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-4 border border-emerald-100">
-                <p className="text-3xl font-bold text-emerald-600">
-                  {Object.values(quizState.answers).filter((_, idx) => {
-                    const q = quizState.questions[idx];
-                    const ans = quizState.answers[q.id];
-                    if (Array.isArray(q.answer)) {
-                      return Array.isArray(ans) && q.answer.every(a => ans.includes(a));
-                    }
-                    return ans === q.answer;
-                  }).length}
-                </p>
+                <p className="text-3xl font-bold text-emerald-600">{correctCount}</p>
                 <p className="text-xs text-gray-500 mt-1">正确</p>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-4 border border-purple-100">
-                <p className="text-3xl font-bold text-purple-600">
-                  {Math.round(
-                    (Object.values(quizState.answers).filter((_, idx) => {
-                      const q = quizState.questions[idx];
-                      const ans = quizState.answers[q.id];
-                      if (Array.isArray(q.answer)) {
-                        return Array.isArray(ans) && q.answer.every(a => ans.includes(a));
-                      }
-                      return ans === q.answer;
-                    }).length / quizState.questions.length) * 100
-                  )}%
-                </p>
+                <p className="text-3xl font-bold text-purple-600">{accuracy}%</p>
                 <p className="text-xs text-gray-500 mt-1">正确率</p>
               </div>
             </div>
