@@ -591,15 +591,8 @@ export default function QuizApp() {
                       {quizState.currentIndex + 1}/{quizState.questions.length}
                     </span>
                     
-                    {/* 答题卡按钮 */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowAnswerSheet(true)}
-                      className="text-white hover:bg-white/20 rounded-lg px-2 h-8"
-                    >
-                      <Grid3X3 className="w-4 h-4" />
-                    </Button>
+                    {/* 占位，保持居中 */}
+                    <div className="w-8" />
                   </div>
                   
                   {/* 进度条 */}
@@ -615,8 +608,8 @@ export default function QuizApp() {
                 <div className="p-2 sm:p-4 pb-24 sm:pb-32">
                   {currentQuestion && (
                     <div ref={questionCardRef} tabIndex={-1}>
-                      {/* 题型标签 */}
-                      <div className="mb-2 flex items-center gap-2">
+                      {/* 题型标签 + 题号 */}
+                      <div className="mb-3 flex items-center gap-2">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
                           currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
                           currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
@@ -629,16 +622,19 @@ export default function QuizApp() {
                            currentQuestion.type === 'true-false' ? '判断' :
                            currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
                         </span>
+                        <span className="text-xs text-gray-400 font-medium">
+                          第 {quizState.currentIndex + 1} 题 / 共 {quizState.questions.length} 题
+                        </span>
                       </div>
                       
                       {/* 综合题背景材料 */}
                       {currentQuestion.parentId && (
-                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-2 sm:p-4 mb-2 sm:mb-3">
-                          <div className="flex items-center gap-2 text-amber-700 mb-1">
-                            <BookMarked className="w-3 h-3 sm:w-4 sm:h-4" />
-                            <span className="font-semibold text-xs">案例背景</span>
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 sm:p-4 mb-4">
+                          <div className="flex items-center gap-2 text-amber-700 mb-2">
+                            <BookMarked className="w-4 h-4" />
+                            <span className="font-semibold text-sm">案例背景</span>
                           </div>
-                          <p className="text-amber-900 text-xs leading-relaxed">
+                          <p className="text-amber-900 text-sm leading-relaxed">
                             {(() => {
                               const parentQuestion = questions.find(q => q.id === currentQuestion.parentId);
                               return parentQuestion?.content || '（背景材料）';
@@ -647,9 +643,9 @@ export default function QuizApp() {
                         </div>
                       )}
                       
-                      {/* 题干 - 超精简版 */}
-                      <div className="bg-white rounded-xl p-3 sm:p-5 mb-3 sm:mb-4 shadow-sm">
-                        <p className="text-sm sm:text-lg text-gray-800 leading-relaxed font-medium">
+                      {/* 题干 - 有层次感的设计 */}
+                      <div className="bg-white rounded-2xl p-4 sm:p-6 mb-4 shadow-lg border border-gray-100">
+                        <p className="text-base sm:text-xl text-gray-800 leading-relaxed font-semibold">
                           {currentQuestion.content}
                         </p>
                       </div>
