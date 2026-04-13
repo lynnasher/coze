@@ -334,7 +334,7 @@ export default function QuizApp() {
           ];
       
       return (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {defaultOptions.map((option, index) => {
             const isCorrectAnswer = currentQuestion.answer === option.id;
             const isSelected = currentAnswer === option.id;
@@ -342,7 +342,7 @@ export default function QuizApp() {
             return (
               <div
                 key={`tf-${index}-${option.id}`}
-                className={`flex items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                className={`flex items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleTrueFalseSelect(option.id)}
               >
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 font-bold text-sm sm:text-base transition-colors ${
@@ -376,7 +376,7 @@ export default function QuizApp() {
     if (currentQuestion.type === 'multiple') {
       const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
       return (
-        <div className="space-y-2 sm:space-y-3">
+        <div className="space-y-3">
           {options.map((option: { id: string; text: string }, index: number) => {
             const correctAnswers = Array.isArray(currentQuestion.answer) 
               ? currentQuestion.answer 
@@ -387,7 +387,7 @@ export default function QuizApp() {
             return (
               <div
                 key={`multi-${index}-${option.id}`}
-                className={`flex items-center p-2 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                className={`flex items-center p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleMultiSelect(option.id, !isSelected)}
               >
                 <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 font-bold text-xs sm:text-base transition-colors ${
@@ -423,7 +423,7 @@ export default function QuizApp() {
     // 单选题
     const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
     return (
-      <div className="space-y-2 sm:space-y-3">
+      <div className="space-y-3">
         {options.map((option: { id: string; text: string }, index: number) => {
           const isCorrectAnswer = currentQuestion.answer === option.id;
           const isSelected = currentAnswer === option.id;
@@ -431,7 +431,7 @@ export default function QuizApp() {
           return (
             <div
               key={`single-${index}-${option.id}`}
-              className={`flex items-center p-2 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+              className={`flex items-center p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
               onClick={() => !quizState.showResult && handleSingleSelect(option.id)}
             >
               <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 font-bold text-xs sm:text-base transition-colors ${
@@ -569,7 +569,7 @@ export default function QuizApp() {
             {!quizState.isComplete && quizState.questions.length > 0 && hasStarted ? (
               <div className="min-h-screen sm:-mx-4">
                 {/* 顶部导航栏 - 超精简版 */}
-                <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 text-white px-2 py-2 sm:px-4 sm:py-4 sticky top-0 z-20 sm:rounded-b-3xl shadow-lg">
+                <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 text-white px-2 py-2 sm:px-4 sm:py-4 sticky top-0 z-20 rounded-b-3xl shadow-lg">
                   <div className="flex items-center justify-between">
                     {/* 退出按钮 */}
                     <Button
@@ -591,15 +591,32 @@ export default function QuizApp() {
                       {quizState.currentIndex + 1}/{quizState.questions.length}
                     </span>
                     
-                    {/* 答题卡按钮 */}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowAnswerSheet(true)}
-                      className="text-white hover:bg-white/20 rounded-lg px-2 h-8"
-                    >
-                      <Grid3X3 className="w-4 h-4" />
-                    </Button>
+                    {/* 右侧按钮组 */}
+                    <div className="flex items-center gap-1">
+                      {/* 答题卡按钮 */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowAnswerSheet(true)}
+                        className="text-white hover:bg-white/20 rounded-lg px-2 h-8"
+                      >
+                        <Grid3X3 className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* 交卷按钮 */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          if (confirm('确定要交卷吗？')) {
+                            finishQuiz();
+                          }
+                        }}
+                        className="text-white hover:bg-white/20 rounded-lg px-3 h-8 font-medium"
+                      >
+                        <FileCheck className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -608,7 +625,7 @@ export default function QuizApp() {
                   {currentQuestion && (
                     <div ref={questionCardRef} tabIndex={-1}>
                       {/* 题干 - 显眼设计 + 固定顶部 */}
-                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[72px] z-10 shadow-sm">
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[72px] z-10 shadow-sm rounded-b-3xl">
                         <div className="max-w-2xl mx-auto p-4 sm:p-6">
                           {/* 题型标签 + 题号 */}
                           <div className="mb-3 flex items-center gap-2">
@@ -835,18 +852,6 @@ export default function QuizApp() {
                           <span>未答</span>
                         </div>
                       </div>
-                      
-                      {/* 交卷按钮 */}
-                      <Button
-                        onClick={() => {
-                          setShowAnswerSheet(false);
-                          finishQuiz();
-                        }}
-                        className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg"
-                      >
-                        <FileCheck className="w-4 h-4 mr-2" />
-                        交卷
-                      </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
