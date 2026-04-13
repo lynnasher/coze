@@ -420,7 +420,7 @@ export default function QuizApp() {
             value={(currentAnswer as string) || ''}
             onChange={(e) => handleFillBlankChange(e.target.value)}
             disabled={quizState.showResult}
-            className="min-h-[100px] rounded-2xl border-2 border-gray-200 focus:border-orange-300 bg-white"
+            className="min-h-[60px] sm:min-h-[100px] rounded-xl sm:rounded-2xl border-2 border-gray-200 focus:border-orange-300 bg-white text-sm sm:text-base"
           />
         </div>
       );
@@ -429,19 +429,19 @@ export default function QuizApp() {
     const getOptionStyle = (isSelected: boolean, isCorrectAnswer: boolean, showResult: boolean) => {
       if (showResult) {
         if (isSelected && isCorrectAnswer) {
-          return 'border-emerald-400 bg-emerald-50 shadow-md';
+          return 'border-emerald-400 bg-emerald-50';
         }
         if (isSelected && !isCorrectAnswer) {
-          return 'border-red-400 bg-red-50 shadow-md';
+          return 'border-red-400 bg-red-50';
         }
         if (isCorrectAnswer) {
           return 'border-emerald-300 bg-emerald-25';
         }
       }
       if (isSelected) {
-        return 'border-orange-400 bg-orange-50 shadow-lg shadow-orange-100';
+        return 'border-orange-400 bg-orange-50';
       }
-      return 'border-gray-200 bg-white hover:border-orange-200 hover:shadow-md';
+      return 'border-gray-200 bg-white hover:border-orange-200';
     };
     
     if (currentQuestion.type === 'true-false') {
@@ -453,7 +453,7 @@ export default function QuizApp() {
           ];
       
       return (
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {defaultOptions.map((option, index) => {
             const isCorrectAnswer = currentQuestion.answer === option.id;
             const isSelected = currentAnswer === option.id;
@@ -461,10 +461,10 @@ export default function QuizApp() {
             return (
               <div
                 key={`tf-${index}-${option.id}`}
-                className={`flex items-center p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                className={`flex items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleTrueFalseSelect(option.id)}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 font-bold text-lg transition-colors ${
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 font-bold text-sm sm:text-base transition-colors ${
                   isSelected 
                     ? quizState.showResult 
                       ? isCorrectAnswer 
@@ -474,15 +474,15 @@ export default function QuizApp() {
                     : 'bg-gray-100 text-gray-500'
                 }`}>
                   {isSelected ? (
-                    <Check className="w-6 h-6" />
+                    <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : (
                     option.id.toUpperCase()
                   )}
                 </div>
-                <span className="flex-1 text-base font-medium">{option.text}</span>
+                <span className="flex-1 text-sm sm:text-base font-medium">{option.text}</span>
                 {quizState.showResult && isCorrectAnswer && (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
-                    <Check className="w-5 h-5 text-white" />
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                 )}
               </div>
@@ -495,7 +495,7 @@ export default function QuizApp() {
     if (currentQuestion.type === 'multiple') {
       const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
       return (
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {options.map((option: { id: string; text: string }, index: number) => {
             const correctAnswers = Array.isArray(currentQuestion.answer) 
               ? currentQuestion.answer 
@@ -506,10 +506,10 @@ export default function QuizApp() {
             return (
               <div
                 key={`multi-${index}-${option.id}`}
-                className={`flex items-center p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                className={`flex items-center p-2 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
                 onClick={() => !quizState.showResult && handleMultiSelect(option.id, !isSelected)}
               >
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 font-bold text-lg transition-colors ${
+                <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 font-bold text-xs sm:text-base transition-colors ${
                   isSelected 
                     ? quizState.showResult 
                       ? isCorrectAnswer 
@@ -520,21 +520,21 @@ export default function QuizApp() {
                 }`}>
                   {option.id.toUpperCase()}
                 </div>
-                <span className="flex-1 text-base font-medium">{option.text}</span>
+                <span className="flex-1 text-xs sm:text-base font-medium leading-tight">{option.text}</span>
                 {quizState.showResult && isCorrectAnswer && (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
-                    <Check className="w-5 h-5 text-white" />
+                  <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center ml-1">
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                 )}
                 {quizState.showResult && isSelected && !isCorrectAnswer && (
-                  <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
-                    <X className="w-5 h-5 text-white" />
+                  <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-red-500 flex items-center justify-center ml-1">
+                    <X className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   </div>
                 )}
               </div>
             );
           })}
-          <p className="text-sm text-gray-400 mt-2">* 此题为多选题，可选择多个答案</p>
+          <p className="text-xs text-gray-400 mt-1 sm:mt-2">* 此题为多选题，可选择多个答案</p>
         </div>
       );
     }
@@ -542,7 +542,7 @@ export default function QuizApp() {
     // 单选题
     const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
     return (
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {options.map((option: { id: string; text: string }, index: number) => {
           const isCorrectAnswer = currentQuestion.answer === option.id;
           const isSelected = currentAnswer === option.id;
@@ -550,10 +550,10 @@ export default function QuizApp() {
           return (
             <div
               key={`single-${index}-${option.id}`}
-              className={`flex items-center p-4 rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+              className={`flex items-center p-2 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
               onClick={() => !quizState.showResult && handleSingleSelect(option.id)}
             >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mr-4 font-bold text-lg transition-colors ${
+              <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mr-2 sm:mr-3 font-bold text-xs sm:text-base transition-colors ${
                 isSelected 
                   ? quizState.showResult 
                     ? isCorrectAnswer 
@@ -563,20 +563,20 @@ export default function QuizApp() {
                   : 'bg-gray-100 text-gray-500'
               }`}>
                 {isSelected ? (
-                  <Check className="w-6 h-6" />
+                  <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                 ) : (
                   option.id.toUpperCase()
                 )}
               </div>
-              <span className="flex-1 text-base font-medium">{option.text}</span>
+              <span className="flex-1 text-xs sm:text-base font-medium leading-tight">{option.text}</span>
               {quizState.showResult && isCorrectAnswer && (
-                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
-                  <Check className="w-5 h-5 text-white" />
+                <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-emerald-500 flex items-center justify-center ml-1">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
               )}
               {quizState.showResult && isSelected && !isCorrectAnswer && (
-                <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
-                  <X className="w-5 h-5 text-white" />
+                <div className="w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-red-500 flex items-center justify-center ml-1">
+                  <X className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                 </div>
               )}
             </div>
@@ -703,10 +703,10 @@ export default function QuizApp() {
           <TabsContent value="practice">
             {!quizState.isComplete && quizState.questions.length > 0 && hasStarted ? (
               <div className="min-h-screen sm:-mx-4">
-                {/* 顶部导航栏 - 小屏幕简化版 */}
-                <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 text-white px-3 py-3 sm:px-4 sm:py-4 sticky top-0 z-20 sm:rounded-b-3xl shadow-lg">
+                {/* 顶部导航栏 - 超精简版 */}
+                <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 text-white px-2 py-2 sm:px-4 sm:py-4 sticky top-0 z-20 sm:rounded-b-3xl shadow-lg">
                   <div className="flex items-center justify-between">
-                    {/* 退出按钮 - 小屏幕隐藏文字 */}
+                    {/* 退出按钮 */}
                     <Button
                       variant="ghost"
                       size="sm"
@@ -716,37 +716,29 @@ export default function QuizApp() {
                           setPracticeBankId(null);
                         }
                       }}
-                      className="text-white hover:bg-white/20 rounded-xl px-2 sm:px-3 h-9"
+                      className="text-white hover:bg-white/20 rounded-lg px-2 h-8"
                     >
-                      <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="hidden sm:inline ml-1">退出</span>
+                      <ArrowLeft className="w-4 h-4" />
                     </Button>
                     
-                    {/* 进度信息 - 小屏幕更紧凑 */}
-                    <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm">
-                      <span className="bg-white/20 px-2 py-1 rounded-lg">
-                        {quizState.currentIndex + 1}/{quizState.questions.length}
-                      </span>
-                      <span className="hidden sm:flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
-                      </span>
-                    </div>
+                    {/* 进度信息 */}
+                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                      {quizState.currentIndex + 1}/{quizState.questions.length}
+                    </span>
                     
-                    {/* 答题卡按钮 - 小屏幕隐藏文字 */}
+                    {/* 答题卡按钮 */}
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => setShowAnswerSheet(true)}
-                      className="text-white hover:bg-white/20 rounded-xl px-2 sm:px-3 h-9"
+                      className="text-white hover:bg-white/20 rounded-lg px-2 h-8"
                     >
-                      <Grid3X3 className="w-4 h-4 sm:w-5 sm:h-5" />
-                      <span className="hidden sm:inline ml-1">答题卡</span>
+                      <Grid3X3 className="w-4 h-4" />
                     </Button>
                   </div>
                   
-                  {/* 进度条 - 小屏幕简化 */}
-                  <div className="mt-2 sm:mt-3 h-1.5 bg-white/30 rounded-full overflow-hidden">
+                  {/* 进度条 */}
+                  <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-white rounded-full transition-all duration-300"
                       style={{ width: `${(Object.keys(quizState.answers).length / quizState.questions.length) * 100}%` }}
@@ -754,39 +746,34 @@ export default function QuizApp() {
                   </div>
                 </div>
 
-                {/* 题目内容区域 - 小屏幕减少 padding */}
-                <div className="p-3 sm:p-4 pb-28 sm:pb-32">
+                {/* 题目内容区域 - 超精简版 */}
+                <div className="p-2 sm:p-4 pb-24 sm:pb-32">
                   {currentQuestion && (
                     <div ref={questionCardRef} tabIndex={-1}>
                       {/* 题型标签 */}
-                      <div className="mb-3 sm:mb-4 flex items-center gap-2">
-                        <span className={`inline-flex px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs font-bold ${
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
                           currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
                           currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
                           currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
                           currentQuestion.type === 'comprehensive' ? 'bg-red-500 text-white' :
                           'bg-green-500 text-white'
                         }`}>
-                          {currentQuestion.type === 'single' ? '单选题' :
-                           currentQuestion.type === 'multiple' ? '多选题' :
-                           currentQuestion.type === 'true-false' ? '判断题' :
-                           currentQuestion.type === 'comprehensive' ? '综合题' : '填空题'}
+                          {currentQuestion.type === 'single' ? '单选' :
+                           currentQuestion.type === 'multiple' ? '多选' :
+                           currentQuestion.type === 'true-false' ? '判断' :
+                           currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
                         </span>
-                        {currentQuestion.type !== 'single' && (
-                          <span className="text-xs sm:text-sm text-gray-400 font-medium">
-                            {quizState.currentIndex + 1} / {quizState.questions.length}
-                          </span>
-                        )}
                       </div>
                       
                       {/* 综合题背景材料 */}
                       {currentQuestion.parentId && (
-                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 mb-3 sm:p-4">
-                          <div className="flex items-center gap-2 text-amber-700 mb-1 sm:mb-2">
-                            <BookMarked className="w-4 h-4" />
-                            <span className="font-semibold text-xs sm:text-sm">案例背景</span>
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-2 sm:p-4 mb-2 sm:mb-3">
+                          <div className="flex items-center gap-2 text-amber-700 mb-1">
+                            <BookMarked className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="font-semibold text-xs">案例背景</span>
                           </div>
-                          <p className="text-amber-900 text-xs sm:text-sm leading-relaxed">
+                          <p className="text-amber-900 text-xs leading-relaxed">
                             {(() => {
                               const parentQuestion = questions.find(q => q.id === currentQuestion.parentId);
                               return parentQuestion?.content || '（背景材料）';
@@ -795,52 +782,48 @@ export default function QuizApp() {
                         </div>
                       )}
                       
-                      {/* 题干 - 小屏幕更紧凑 */}
-                      <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 mb-4 sm:mb-5 shadow-sm sm:shadow-lg">
-                        <p className="text-base sm:text-lg text-gray-800 leading-relaxed font-medium">
+                      {/* 题干 - 超精简版 */}
+                      <div className="bg-white rounded-xl p-3 sm:p-5 mb-3 sm:mb-4 shadow-sm">
+                        <p className="text-sm sm:text-lg text-gray-800 leading-relaxed font-medium">
                           {currentQuestion.content}
                         </p>
                       </div>
                       
-                      {/* 选项列表 - 小屏幕减少间距 */}
-                      <div className="space-y-2 sm:space-y-3">
+                      {/* 选项列表 - 已优化 */}
+                      <div className="space-y-1.5 sm:space-y-3">
                         {renderOptions()}
                       </div>
                       
-                      {/* 答案与解析 - 小屏幕更紧凑 */}
+                      {/* 答案与解析 - 精简版 */}
                       {quizState.showResult && (
-                        <div className="mt-4 sm:mt-5 space-y-3 sm:space-y-4">
+                        <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
                           {/* 结果卡片 */}
-                          <div className={`rounded-xl sm:rounded-2xl p-3 sm:p-5 ${isAnswerCorrect ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200' : 'bg-gradient-to-r from-red-50 to-pink-50 border border-red-200'}`}>
-                            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                              <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center ${isAnswerCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
-                                {isAnswerCorrect ? <Check className="w-5 h-5 sm:w-8 sm:h-8 text-white" /> : <X className="w-5 h-5 sm:w-8 sm:h-8 text-white" />}
-                              </div>
-                              <div>
-                                <h3 className={`text-base sm:text-xl font-bold ${isAnswerCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
+                          <div className={`rounded-xl p-3 sm:p-4 ${isAnswerCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${isAnswerCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                                  {isAnswerCorrect ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
+                                </div>
+                                <span className={`text-sm sm:text-base font-bold ${isAnswerCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
                                   {isAnswerCorrect ? '太棒了！' : '再接再厉！'}
-                                </h3>
-                                <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">
-                                  {isAnswerCorrect ? '继续保持，好记性！' : '别灰心，继续努力！'}
-                                </p>
+                                </span>
                               </div>
-                            </div>
-                            
-                            <div className="bg-white rounded-lg sm:rounded-xl p-2 sm:p-4">
-                              <p className="text-xs sm:text-sm text-gray-500 mb-0.5 sm:mb-1">正确答案</p>
-                              <p className="text-lg sm:text-2xl font-bold text-emerald-600">
-                                {Array.isArray(currentQuestion.answer) 
-                                  ? currentQuestion.answer.map(a => a.toUpperCase()).join(', ')
-                                  : currentQuestion.answer.toUpperCase()}
-                              </p>
+                              <div className="bg-white rounded-lg px-2 py-1 sm:px-3 sm:py-1">
+                                <span className="text-xs sm:text-sm text-gray-500">答案：</span>
+                                <span className="text-sm sm:text-lg font-bold text-emerald-600 ml-1">
+                                  {Array.isArray(currentQuestion.answer) 
+                                    ? currentQuestion.answer.map(a => a.toUpperCase()).join(', ')
+                                    : currentQuestion.answer.toUpperCase()}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           
                           {/* 解析 */}
                           {currentQuestion.explanation && (
-                            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-amber-200">
-                              <div className="flex items-center gap-2 text-amber-700 mb-1 sm:mb-2">
-                                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <div className="bg-amber-50 rounded-xl p-2 sm:p-3 border border-amber-200">
+                              <div className="flex items-center gap-1 sm:gap-2 text-amber-700 mb-1">
+                                <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
                                 <span className="font-semibold text-xs sm:text-sm">解析</span>
                               </div>
                               <p className="text-amber-900 text-xs sm:text-sm leading-relaxed">
@@ -854,9 +837,9 @@ export default function QuizApp() {
                   )}
                 </div>
 
-                {/* 底部固定操作栏 - 小屏幕优化 */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-3 py-3 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none rounded-t-2xl sm:rounded-none">
-                  <div className="flex items-center justify-between gap-2 sm:gap-3 max-w-2xl mx-auto">
+                {/* 底部固定操作栏 - 超精简版 */}
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 sm:static sm:max-w-2xl sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none">
+                  <div className="flex items-center justify-between gap-1 sm:gap-2 max-w-2xl mx-auto">
                     {/* 上一题 */}
                     <Button
                       variant="outline"
@@ -869,42 +852,36 @@ export default function QuizApp() {
                         }
                       }}
                       disabled={quizState.currentIndex === 0}
-                      className="h-11 sm:h-12 px-2 sm:px-4 rounded-xl border-2 border-gray-200 flex-shrink-0"
+                      className="h-10 sm:h-11 px-2 rounded-lg border border-gray-200 flex-shrink-0"
                     >
-                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-1" />
-                      <span className="hidden sm:inline">上一题</span>
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline ml-1 text-sm">上一题</span>
                     </Button>
                     
                     {/* 查看解析 */}
                     {currentAnswer && !quizState.showResult && (
                       <Button
                         onClick={submitAnswer}
-                        className="h-11 sm:h-12 px-3 sm:px-6 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-semibold flex-1 sm:flex-none"
+                        className="h-10 sm:h-11 px-2 sm:px-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-medium text-sm sm:font-semibold flex-1 sm:flex-none"
                       >
-                        <BookOpen className="w-4 h-4 sm:w-5 sm:mr-2" />
-                        <span className="hidden sm:inline">查看解析</span>
-                        <span className="sm:hidden text-xs">解析</span>
+                        <BookOpen className="w-4 h-4" />
+                        <span className="ml-1 sm:ml-2 text-xs sm:text-sm">查看解析</span>
                       </Button>
                     )}
                     
                     {/* 结果提示 */}
                     {quizState.showResult && (
-                      <div className={`h-11 sm:h-12 flex items-center justify-center px-3 sm:px-4 rounded-xl font-semibold text-sm ${
+                      <div className={`h-10 sm:h-11 flex items-center justify-center px-2 sm:px-3 rounded-xl font-medium text-sm ${
                         isAnswerCorrect 
-                          ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-200' 
-                          : 'bg-red-100 text-red-700 border-2 border-red-200'
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' 
+                          : 'bg-red-100 text-red-700 border border-red-300'
                       }`}>
                         {isAnswerCorrect ? (
-                          <>
-                            <Check className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-1" />
-                            <span className="hidden sm:inline">正确</span>
-                          </>
+                          <Check className="w-4 h-4 mr-1" />
                         ) : (
-                          <>
-                            <X className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-1" />
-                            <span className="hidden sm:inline">错误</span>
-                          </>
+                          <X className="w-4 h-4 mr-1" />
                         )}
+                        <span className="text-xs sm:text-sm">{isAnswerCorrect ? '正确' : '错误'}</span>
                       </div>
                     )}
 
@@ -912,11 +889,10 @@ export default function QuizApp() {
                     {quizState.currentIndex === quizState.questions.length - 1 ? (
                       <Button
                         onClick={() => finishQuiz()}
-                        className="h-11 sm:h-12 px-3 sm:px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl flex-1 sm:flex-none"
+                        className="h-10 sm:h-11 px-2 sm:px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl flex-1 sm:flex-none"
                       >
-                        <FileCheck className="w-4 h-4 sm:w-5 sm:mr-2" />
-                        <span className="hidden sm:inline">交卷</span>
-                        <span className="sm:hidden text-xs">交卷</span>
+                        <FileCheck className="w-4 h-4" />
+                        <span className="ml-1 sm:ml-2 text-xs sm:text-sm">交卷</span>
                       </Button>
                     ) : (
                       <Button
@@ -929,11 +905,10 @@ export default function QuizApp() {
                             questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                           }, 50);
                         }}
-                        className="h-11 sm:h-12 px-3 sm:px-6 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-xl flex-1 sm:flex-none"
+                        className="h-10 sm:h-11 px-2 sm:px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl flex-1 sm:flex-none"
                       >
-                        <span className="hidden sm:inline">下一题</span>
-                        <span className="sm:hidden text-xs">下一题</span>
-                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 sm:ml-1" />
+                        <span className="text-xs sm:text-sm">下一题</span>
+                        <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     )}
                   </div>
