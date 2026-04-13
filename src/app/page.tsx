@@ -629,7 +629,7 @@ export default function QuizApp() {
                         <div className="max-w-2xl mx-auto p-4 sm:p-6">
                           {/* 题型标签 + 题号 */}
                           <div className="mb-3 flex items-center gap-2">
-                            <span className={`inline-flex px-2 py-0.5 text-xs font-bold ${
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
                               currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
                               currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
                               currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
@@ -805,35 +805,63 @@ export default function QuizApp() {
                       </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
-                        {quizState.questions.map((q, idx) => {
-                          const answered = !!quizState.answers[q.id];
-                          const record = recordStore.getByQuestionId(q.id);
-                          const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
-                          const isCurrent = idx === quizState.currentIndex;
-                          
-                          return (
-                            <button
-                              key={q.id}
-                              onClick={() => {
-                                goToQuestion(idx);
-                                setShowAnswerSheet(false);
-                              }}
-                              className={`w-10 h-10 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
-                                isCurrent
-                                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
-                                  : answered
-                                    ? isWrong
-                                      ? 'bg-red-100 text-red-700 border-2 border-red-300'
-                                      : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                                    : 'bg-gray-100 text-gray-600 border-2 border-gray-200 hover:bg-gray-200'
-                              }`}
-                            >
-                              {idx + 1}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {/* 按题型分组显示 */}
+                      {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
+                        const typeQuestions = quizState.questions
+                          .map((q, idx) => ({ q, idx }))
+                          .filter(item => item.q.type === type);
+                        
+                        if (typeQuestions.length === 0) return null;
+                        
+                        const typeLabel = type === 'single' ? '单选题' : 
+                                         type === 'multiple' ? '多选题' : 
+                                         type === 'true-false' ? '判断题' : 
+                                         type === 'fill-blank' ? '填空题' : '综合题';
+                        const typeColor = type === 'single' ? 'bg-blue-500' : 
+                                         type === 'multiple' ? 'bg-purple-500' : 
+                                         type === 'true-false' ? 'bg-orange-500' : 
+                                         type === 'fill-blank' ? 'bg-green-500' : 'bg-red-500';
+                        
+                        return (
+                          <div key={type}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
+                              <span className="text-sm font-medium text-gray-700">{typeLabel}</span>
+                              <span className="text-xs text-gray-400">({typeQuestions.length}题)</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {typeQuestions.map(({ q, idx }) => {
+                                const answered = !!quizState.answers[q.id];
+                                const record = recordStore.getByQuestionId(q.id);
+                                const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
+                                const isCurrent = idx === quizState.currentIndex;
+                                
+                                return (
+                                  <button
+                                    key={q.id}
+                                    onClick={() => {
+                                      goToQuestion(idx);
+                                      setShowAnswerSheet(false);
+                                    }}
+                                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                                      isCurrent
+                                        ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
+                                        : answered
+                                          ? isWrong
+                                            ? 'bg-red-100 text-red-700 border-2 border-red-300'
+                                            : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                                          : 'bg-gray-100 text-gray-600 border-2 border-gray-200 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    {idx + 1}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
                       <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t">
                         <div className="flex items-center gap-1.5">
                           <div className="w-4 h-4 rounded bg-gradient-to-r from-orange-500 to-amber-500"></div>
