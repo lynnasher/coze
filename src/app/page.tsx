@@ -1561,9 +1561,10 @@ function PracticeView() {
         </div>
       </div>
 
-      {/* 底部导航栏 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 px-4 py-3 z-30">
-        <div className="max-w-2xl mx-auto flex items-center gap-2">
+      {/* 底部固定操作栏 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-30">
+        <div className="flex items-center justify-between gap-1 max-w-2xl mx-auto">
+          {/* 上一题 */}
           <Button
             variant="outline"
             onClick={() => {
@@ -1573,46 +1574,57 @@ function PracticeView() {
               }
             }}
             disabled={quizState.currentIndex === 0}
-            className="h-10 sm:h-11 px-2 rounded-lg border border-gray-200 flex-shrink-0"
+            className="h-10 px-2 rounded-lg border border-gray-200 flex-shrink-0"
           >
             <ChevronLeft className="w-4 h-4" />
             <span className="hidden sm:inline ml-1 text-sm">上一题</span>
           </Button>
+          
+          {/* 查看解析 */}
+          {currentAnswer && !quizState.showResult && (
+            <Button
+              onClick={() => submitAnswer()}
+              className="h-10 px-2 sm:px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl font-medium text-xs sm:text-sm flex-1 sm:flex-none"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="ml-1 text-xs sm:text-sm">查看解析</span>
+            </Button>
+          )}
+          
+          {/* 结果提示 */}
+          {quizState.showResult && (
+            <div className={`h-10 flex items-center justify-center px-2 sm:px-3 rounded-xl font-medium text-xs sm:text-sm ${
+              isCurrentCorrect 
+                ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' 
+                : 'bg-red-100 text-red-700 border border-red-300'
+            }`}>
+              {isCurrentCorrect ? (
+                <Check className="w-4 h-4 mr-1" />
+              ) : (
+                <X className="w-4 h-4 mr-1" />
+              )}
+              <span>{isCurrentCorrect ? '正确' : '错误'}</span>
+            </div>
+          )}
 
-          <div className="flex-1 flex items-center justify-center gap-1">
-            {quizState.questions.slice(0, Math.min(10, quizState.questions.length)).map((_, idx) => {
-              const q = quizState.questions[idx];
-              const answered = !!quizState.answers[q.id];
-              const record = recordStore.getByQuestionId(q.id);
-              const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
-              const isCurrent = idx === quizState.currentIndex && idx < 10;
-              return (
-                <div
-                  key={idx}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    isCurrent
-                      ? 'bg-orange-500 scale-125'
-                      : answered
-                        ? isWrong
-                          ? 'bg-red-400'
-                          : 'bg-emerald-400'
-                        : 'bg-gray-200'
-                  }`}
-                />
-              );
-            })}
-            {quizState.questions.length > 10 && (
-              <span className="text-xs text-gray-400 ml-1">+{quizState.questions.length - 10}</span>
-            )}
-          </div>
+          {/* 答题卡按钮 */}
+          <Button
+            variant="outline"
+            onClick={() => setShowAnswerSheet(true)}
+            className="h-10 px-2 sm:px-3 rounded-lg border border-gray-200 flex-shrink-0"
+          >
+            <Grid3X3 className="w-4 h-4" />
+            <span className="hidden sm:inline ml-1 text-sm">答题卡</span>
+          </Button>
 
+          {/* 下一题 / 交卷 */}
           {quizState.currentIndex === quizState.questions.length - 1 ? (
             <Button
               onClick={() => finishQuiz()}
-              className="h-10 sm:h-11 px-2 sm:px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl flex-1 sm:flex-none"
+              className="h-10 px-2 sm:px-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl flex-1 sm:flex-none"
             >
               <FileCheck className="w-4 h-4" />
-              <span className="ml-1 sm:ml-2 text-xs sm:text-sm">交卷</span>
+              <span className="ml-1 text-xs sm:text-sm">交卷</span>
             </Button>
           ) : (
             <Button
@@ -1623,7 +1635,7 @@ function PracticeView() {
                 nextQuestion();
                 setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
               }}
-              className="h-10 sm:h-11 px-2 sm:px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl flex-1 sm:flex-none"
+              className="h-10 px-2 sm:px-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl flex-1 sm:flex-none"
             >
               <span className="text-xs sm:text-sm">下一题</span>
               <ChevronRight className="w-4 h-4 ml-1" />
@@ -1634,13 +1646,23 @@ function PracticeView() {
 
       {/* 答题卡弹窗 */}
       <Dialog open={showAnswerSheet} onOpenChange={setShowAnswerSheet}>
-        <DialogContent className="sm:max-w-[400px] max-w-[calc(100%-32px)] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                <Grid3X3 className="w-4 h-4 text-white" />
+        <DialogContent className="max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto rounded-2xl p-4">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-base flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                  <Grid3X3 className="w-4 h-4 text-white" />
+                </div>
+                答题卡
               </div>
-              答题卡
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAnswerSheet(false)}
+                className="h-8 w-8 p-0 rounded-full"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
