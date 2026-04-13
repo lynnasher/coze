@@ -1301,7 +1301,6 @@ function PracticeView() {
   } = useQuiz();
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
-  const { recordStore } = require('@/lib/quiz-store');
   
   const isCurrentCorrect = useMemo(() => {
     if (!currentQuestion || !currentAnswer) return false;
