@@ -1058,20 +1058,21 @@ export default function QuizApp() {
                     </span>
                   </h2>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 顺序练习 + 随机练习 一行 */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
                     {/* 顺序练习 */}
                     <Card 
                       className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
                       onClick={() => startQuiz('sequential', practiceBankId)}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Target className="w-6 h-6 text-white" />
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <Target className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-900">顺序练习</h3>
-                            <p className="text-xs text-gray-400">按顺序逐一攻克</p>
+                            <h3 className="font-semibold text-gray-900 text-sm">顺序练习</h3>
+                            <p className="text-xs text-gray-400">按顺序攻克</p>
                           </div>
                         </div>
                       </CardContent>
@@ -1082,37 +1083,37 @@ export default function QuizApp() {
                       className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
                       onClick={() => startQuiz('random', practiceBankId)}
                     >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <RefreshCw className="w-6 h-6 text-white" />
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <RefreshCw className="w-5 h-5 text-white" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-gray-900">随机练习</h3>
-                            <p className="text-xs text-gray-400">打乱顺序挑战自我</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {/* 错题重练 */}
-                    <Card 
-                      className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
-                      onClick={() => startQuiz('wrong', practiceBankId)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Star className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">错题重练</h3>
-                            <p className="text-xs text-gray-400">专攻易错题目</p>
+                            <h3 className="font-semibold text-gray-900 text-sm">随机练习</h3>
+                            <p className="text-xs text-gray-400">打乱顺序挑战</p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
+                  
+                  {/* 错题重练 单独一行 */}
+                  <Card 
+                    className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
+                    onClick={() => startQuiz('wrong', practiceBankId)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Star className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900 text-sm">错题重练</h3>
+                          <p className="text-xs text-gray-400">专攻易错题目</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             ) : (
