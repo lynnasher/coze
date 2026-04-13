@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   BANKS: 'quiz_banks',
   STATS: 'quiz_stats',
   WRONG_STATS: 'quiz_wrong_stats', // 错题记忆状态
+  WRONG_STREAK: 'quiz_wrong_streak', // 错题连续正确次数
 };
 
 // 题目管理
@@ -101,23 +102,82 @@ export const recordStore = {
     return recordStore.getAll().filter(r => r.questionId === questionId);
   },
 
-  getWrongQuestionIds: (): string[] => {
-    const records = recordStore.getAll();
-    const wrongMap = new Map<string, number>();
-    
-    records.forEach(record => {
-      if (!record.isCorrect) {
-        wrongMap.set(record.questionId, (wrongMap.get(record.questionId) || 0) + 1);
-      }
-    });
-    
-    return Array.from(wrongMap.keys());
-  },
-
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.RECORDS);
   },
+};
+
+// 错题连续正确次数管理
+export const wrongStreakStore = {
+  // 获取所有错题的连续正确次数
+  getAll: (): Record<string, number> => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.WRONG_STREAK);
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  },
+
+  // 保存所有错题的连续正确次数
+  save: (streaks: Record<string, number>) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.WRONG_STREAK, JSON.stringify(streaks));
+    } catch (e) {
+      console.error('保存错题连续正确次数失败:', e);
+    }
+  },
+
+  // 获取某道题的连续正确次数
+  get: (questionId: string): number => {
+    return wrongStreakStore.getAll()[questionId] || 0;
+  },
+
+  // 增加某道题的连续正确次数（答对）
+  increment: (questionId: string): number => {
+    const streaks = wrongStreakStore.getAll();
+    streaks[questionId] = (streaks[questionId] || 0) + 1;
+    wrongStreakStore.save(streaks);
+    return streaks[questionId];
+  },
+
+  // 重置某道题的连续正确次数（答错）
+  reset: (questionId: string) => {
+    const streaks = wrongStreakStore.getAll();
+    delete streaks[questionId];
+    wrongStreakStore.save(streaks);
+  },
+
+  // 删除某道题的记录（移出错题本）
+  remove: (questionId: string) => {
+    wrongStreakStore.reset(questionId);
+  },
+
+  // 清空所有
+  clear: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);
+  },
+};
+
+// 修改 getWrongQuestionIds 函数：只返回真正答错过的题目，且连续正确次数未达3次
+export const getWrongQuestionIds = (): string[] => {
+  const records = recordStore.getAll();
+  const streaks = wrongStreakStore.getAll();
+  
+  // 收集所有答错过的题目ID
+  const wrongQuestions = new Set<string>();
+  records.forEach(record => {
+    if (!record.isCorrect) {
+      wrongQuestions.add(record.questionId);
+    }
+  });
+  
+  // 返回错题中连续正确次数未达3次的题目
+  return Array.from(wrongQuestions).filter(qId => (streaks[qId] || 0) < 3);
 };
 
 // 题库管理
@@ -311,7 +371,7 @@ export const calculateStats = (): Stats => {
     ? Math.round((correctCount / totalAttempts) * 100) 
     : 0;
   
-  const wrongQuestions = recordStore.getWrongQuestionIds();
+  const wrongQuestions = getWrongQuestionIds();
   
   // 计算连续正确次数
   let streak = 0;

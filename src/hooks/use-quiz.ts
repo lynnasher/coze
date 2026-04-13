@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -58,16 +58,15 @@ export function useQuiz() {
     if (mode === 'random') {
       questions = [...questions].sort(() => Math.random() - 0.5);
     } else if (mode === 'wrong') {
-      const wrongIds = recordStore.getWrongQuestionIds();
+      // 使用新的 getWrongQuestionIds 函数，只获取需要继续练习的错题
+      const wrongIds = getWrongQuestionIds();
       if (wrongIds.length > 0) {
         // 错题重练也要考虑题库筛选
         questions = questions.filter(q => wrongIds.includes(q.id));
       }
       if (questions.length === 0) {
-        // 如果没有错题，使用筛选后的全部题目
-        questions = bankId 
-          ? questions.filter(q => q.bankId === bankId)
-          : questions;
+        // 如果没有错题，显示提示（不切换到全部题目模式）
+        questions = [];
       }
     }
 
@@ -93,13 +92,30 @@ export function useQuiz() {
       const currentQuestion = prev.questions[prev.currentIndex];
       if (currentQuestion) {
         const isCorrect = checkAnswer(currentQuestion, answer);
-        recordStore.add({
-          id: generateId(),
-          questionId,
-          isCorrect,
-          selectedAnswer: answer,
-          timestamp: Date.now(),
-        });
+        
+        // 只在答错时记录练习记录
+        if (!isCorrect) {
+          recordStore.add({
+            id: generateId(),
+            questionId,
+            isCorrect,
+            selectedAnswer: answer,
+            timestamp: Date.now(),
+          });
+        }
+        
+        // 更新错题连续正确次数
+        if (isCorrect) {
+          // 答对：增加连续正确次数，如果达到3次则移出错题本
+          const newStreak = wrongStreakStore.increment(questionId);
+          if (newStreak >= 3) {
+            wrongStreakStore.remove(questionId);
+          }
+        } else {
+          // 答错：重置连续正确次数
+          wrongStreakStore.reset(questionId);
+        }
+        
         return {
           ...prev,
           answers: newAnswers,
@@ -264,7 +280,7 @@ export function useQuiz() {
       totalCount,
       accuracy,
       wrongCount: totalCount - correctCount,
-      wrongQuestionIds: recordStore.getWrongQuestionIds(),
+      wrongQuestionIds: getWrongQuestionIds(),
     };
   }, []);
 
