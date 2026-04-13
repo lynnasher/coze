@@ -1371,6 +1371,13 @@ function PracticeView({
   restartQuiz,
 }: PracticeViewProps) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
+  // 答案与解析显示状态（不自动显示，需手动点击按钮）
+  const [showExplanation, setShowExplanation] = useState(false);
+  
+  // 切换题目时重置答案与解析显示状态
+  useEffect(() => {
+    setShowExplanation(false);
+  }, [quizState.currentIndex]);
   
   const isCurrentCorrect = useMemo(() => {
     if (!currentQuestion || !currentAnswer) return false;
@@ -1551,15 +1558,18 @@ function PracticeView({
                 ? currentQuestion.answer.includes(option.id)
                 : currentQuestion.answer === option.id;
               
+              // 选中和显示结果时的样式
               let optionStyle = 'bg-white border-gray-200 hover:border-orange-300';
-              if (isSelected) {
-                optionStyle = quizState.showResult
-                  ? isCorrectAnswer
-                    ? 'bg-emerald-50 border-emerald-500'
-                    : 'bg-red-50 border-red-500'
-                  : 'bg-orange-50 border-orange-500';
-              }
-              if (quizState.showResult && isCorrectAnswer) {
+              if (isSelected && showExplanation) {
+                // 显示结果后：选中且正确的绿色，选中且错误的红色
+                optionStyle = isCorrectAnswer
+                  ? 'bg-emerald-50 border-emerald-500'
+                  : 'bg-red-50 border-red-500';
+              } else if (isSelected) {
+                // 未显示结果时：只显示选中状态
+                optionStyle = 'bg-orange-50 border-orange-500';
+              } else if (showExplanation && isCorrectAnswer) {
+                // 显示结果后：未选中但正确的也显示绿色
                 optionStyle = 'bg-emerald-50 border-emerald-500';
               }
               
@@ -1567,16 +1577,16 @@ function PracticeView({
                 <div
                   key={option.id}
                   className={`flex items-center p-4 rounded-2xl border-2 transition-all cursor-pointer ${optionStyle}`}
-                  onClick={() => !quizState.showResult && selectAnswer(currentQuestion.id, option.id)}
+                  onClick={() => !showExplanation && selectAnswer(currentQuestion.id, option.id)}
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 font-bold text-sm ${
-                    isSelected
-                      ? quizState.showResult
-                        ? isCorrectAnswer
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-red-500 text-white'
-                        : 'bg-orange-500 text-white'
-                      : 'bg-gray-100 text-gray-500'
+                    isSelected && showExplanation
+                      ? isCorrectAnswer
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-red-500 text-white'
+                      : isSelected
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-100 text-gray-500'
                   }`}>
                     {isSelected ? (
                       <Check className="w-4 h-4" />
@@ -1585,12 +1595,12 @@ function PracticeView({
                     )}
                   </div>
                   <span className="flex-1 text-sm font-medium">{option.text}</span>
-                  {quizState.showResult && isCorrectAnswer && (
+                  {showExplanation && isCorrectAnswer && (
                     <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
                       <Check className="w-4 h-4 text-white" />
                     </div>
                   )}
-                  {quizState.showResult && isSelected && !isCorrectAnswer && (
+                  {showExplanation && isSelected && !isCorrectAnswer && (
                     <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center ml-2">
                       <X className="w-4 h-4 text-white" />
                     </div>
@@ -1600,8 +1610,8 @@ function PracticeView({
             })}
           </div>
 
-          {/* 答案与解析 - 精简版 */}
-          {quizState.showResult && (
+          {/* 答案与解析 - 需手动点击按钮显示 */}
+          {showExplanation && (
             <div className="mt-4 space-y-2 sm:space-y-3">
               {/* 结果卡片 */}
               <div className={`rounded-xl p-3 sm:p-4 ${isCurrentCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
@@ -1659,6 +1669,19 @@ function PracticeView({
           >
             <ChevronLeft className="w-4 h-4" />
             <span className="ml-1 text-sm">上一题</span>
+          </Button>
+
+          {/* 答案与解析按钮 */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              submitAnswer();
+              setShowExplanation(true);
+            }}
+            className="h-10 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span className="ml-1 text-sm font-medium">答案与解析</span>
           </Button>
 
           {/* 下一题 / 交卷 */}
