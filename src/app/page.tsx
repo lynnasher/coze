@@ -591,8 +591,15 @@ export default function QuizApp() {
                       {quizState.currentIndex + 1}/{quizState.questions.length}
                     </span>
                     
-                    {/* 占位，保持居中 */}
-                    <div className="w-8" />
+                    {/* 答题卡按钮 */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowAnswerSheet(true)}
+                      className="text-white hover:bg-white/20 rounded-lg px-2 h-8"
+                    >
+                      <Grid3X3 className="w-4 h-4" />
+                    </Button>
                   </div>
                   
                   {/* 进度条 */}
@@ -604,60 +611,43 @@ export default function QuizApp() {
                   </div>
                 </div>
 
-                {/* 题目内容区域 - 超精简版 */}
-                <div className="p-2 sm:p-4 pb-24 sm:pb-32">
+                {/* 题目内容区域 */}
+                <div className="pb-24 sm:pb-32">
                   {currentQuestion && (
                     <div ref={questionCardRef} tabIndex={-1}>
-                      {/* 题型标签 + 题号 */}
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
-                          currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
-                          currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
-                          currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
-                          currentQuestion.type === 'comprehensive' ? 'bg-red-500 text-white' :
-                          'bg-green-500 text-white'
-                        }`}>
-                          {currentQuestion.type === 'single' ? '单选' :
-                           currentQuestion.type === 'multiple' ? '多选' :
-                           currentQuestion.type === 'true-false' ? '判断' :
-                           currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">
-                          第 {quizState.currentIndex + 1} 题 / 共 {quizState.questions.length} 题
-                        </span>
-                      </div>
-                      
-                      {/* 综合题背景材料 */}
-                      {currentQuestion.parentId && (
-                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 sm:p-4 mb-4">
-                          <div className="flex items-center gap-2 text-amber-700 mb-2">
-                            <BookMarked className="w-4 h-4" />
-                            <span className="font-semibold text-sm">案例背景</span>
-                          </div>
-                          <p className="text-amber-900 text-sm leading-relaxed">
-                            {(() => {
-                              const parentQuestion = questions.find(q => q.id === currentQuestion.parentId);
-                              return parentQuestion?.content || '（背景材料）';
-                            })()}
+                      {/* 题干 - 显眼设计 + 固定顶部 */}
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[88px] z-10 shadow-sm">
+                        <div className="max-w-2xl mx-auto p-4 sm:p-6">
+                          {/* 综合题背景材料 */}
+                          {currentQuestion.parentId && (
+                            <div className="bg-white border border-amber-200 rounded-xl p-3 sm:p-4 mb-3">
+                              <div className="flex items-center gap-2 text-amber-600 mb-2">
+                                <BookMarked className="w-4 h-4" />
+                                <span className="font-semibold text-sm">案例背景</span>
+                              </div>
+                              <p className="text-amber-900 text-sm leading-relaxed">
+                                {(() => {
+                                  const parentQuestion = questions.find(q => q.id === currentQuestion.parentId);
+                                  return parentQuestion?.content || '（背景材料）';
+                                })()}
+                              </p>
+                            </div>
+                          )}
+                          
+                          <p className="text-base sm:text-xl text-gray-800 leading-relaxed font-semibold">
+                            {currentQuestion.content}
                           </p>
                         </div>
-                      )}
-                      
-                      {/* 题干 - 有层次感的设计 */}
-                      <div className="bg-white rounded-2xl p-4 sm:p-6 mb-4 shadow-lg border border-gray-100">
-                        <p className="text-base sm:text-xl text-gray-800 leading-relaxed font-semibold">
-                          {currentQuestion.content}
-                        </p>
                       </div>
                       
-                      {/* 选项列表 - 已优化 */}
-                      <div className="space-y-1.5 sm:space-y-3">
+                      {/* 选项列表 */}
+                      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-1.5 sm:space-y-3">
                         {renderOptions()}
                       </div>
                       
                       {/* 答案与解析 - 精简版 */}
                       {quizState.showResult && (
-                        <div className="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
+                        <div className="max-w-2xl mx-auto px-4 sm:px-0 mt-3 sm:mt-4 space-y-2 sm:space-y-3">
                           {/* 结果卡片 */}
                           <div className={`rounded-xl p-3 sm:p-4 ${isAnswerCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
                             <div className="flex items-center justify-between">
