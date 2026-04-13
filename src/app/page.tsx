@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,7 +65,6 @@ export default function QuizApp() {
     getStats,
     setHasStarted,
   } = useQuiz();
-  const questionCardRef = useRef<HTMLDivElement>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -617,12 +616,12 @@ export default function QuizApp() {
                 {/* 题目内容区域 */}
                 <div className="pb-24 sm:pb-32">
                   {currentQuestion && (
-                    <div ref={questionCardRef} tabIndex={-1}>
+                    <div>
                       {/* 题干 - 显眼设计 + 固定顶部 */}
-                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[72px] z-10 shadow-sm">
-                        <div className="max-w-2xl mx-auto p-4 sm:p-6">
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[56px] sm:top-[56px] z-10 shadow-sm">
+                        <div className="max-w-2xl mx-auto px-4 py-3 sm:py-4">
                           {/* 题型标签 + 题号 */}
-                          <div className="mb-3 flex items-center gap-2">
+                          <div className="mb-2 flex items-center gap-2">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
                               currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
                               currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
@@ -720,7 +719,7 @@ export default function QuizApp() {
                         if (quizState.currentIndex > 0) {
                           prevQuestion();
                           setTimeout(() => {
-                            questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }, 50);
                         }
                       }}
@@ -775,7 +774,7 @@ export default function QuizApp() {
                           }
                           nextQuestion();
                           setTimeout(() => {
-                            questionCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }, 50);
                         }}
                         className="h-10 sm:h-11 px-2 sm:px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl flex-1 sm:flex-none"
