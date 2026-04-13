@@ -1430,15 +1430,33 @@ function PracticeView() {
             </span>
           </div>
           
-          {/* 答题卡按钮 */}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setShowAnswerSheet(true)}
-            className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10"
-          >
-            <Grid3X3 className="w-4 h-4" />
-          </Button>
+          {/* 答题卡和交卷按钮 */}
+          <div className="flex items-center gap-1">
+            {/* 答题卡按钮 */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowAnswerSheet(true)}
+              className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+            
+            {/* 交卷按钮 */}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                if (confirm('确定要交卷吗？')) {
+                  finishQuiz();
+                }
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10 font-medium"
+            >
+              <FileCheck className="w-4 h-4" />
+              <span className="ml-1 text-sm">交卷</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -1606,16 +1624,6 @@ function PracticeView() {
               <span>{isCurrentCorrect ? '正确' : '错误'}</span>
             </div>
           )}
-
-          {/* 答题卡按钮 */}
-          <Button
-            variant="outline"
-            onClick={() => setShowAnswerSheet(true)}
-            className="h-10 px-2 sm:px-3 rounded-lg border border-gray-200 flex-shrink-0"
-          >
-            <Grid3X3 className="w-4 h-4" />
-            <span className="hidden sm:inline ml-1 text-sm">答题卡</span>
-          </Button>
 
           {/* 下一题 / 交卷 */}
           {quizState.currentIndex === quizState.questions.length - 1 ? (
