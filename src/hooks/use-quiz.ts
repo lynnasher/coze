@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -44,9 +44,15 @@ export function useQuiz() {
   const startQuiz = useCallback((mode: PracticeMode = 'sequential', bankId?: string | null) => {
     let questions = questionStore.getAll();
     
-    // 按题库筛选
+    // 优先使用题库的 questionIds 获取题目（更可靠）
     if (bankId) {
-      questions = questions.filter(q => q.bankId === bankId);
+      const bank = bankStore.getById(bankId);
+      if (bank && bank.questionIds.length > 0) {
+        questions = questions.filter(q => bank.questionIds.includes(q.id));
+      } else {
+        // 降级：按 bankId 属性筛选
+        questions = questions.filter(q => q.bankId === bankId);
+      }
     }
     
     if (mode === 'random') {
@@ -60,8 +66,8 @@ export function useQuiz() {
       if (questions.length === 0) {
         // 如果没有错题，使用筛选后的全部题目
         questions = bankId 
-          ? questionStore.getAll().filter(q => q.bankId === bankId)
-          : questionStore.getAll();
+          ? questions.filter(q => q.bankId === bankId)
+          : questions;
       }
     }
 
