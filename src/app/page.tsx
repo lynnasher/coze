@@ -33,7 +33,7 @@ import {
   RotateCcw,
   BookMarked
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty } from '@/lib/types';
 
 // Duolingo 风格颜色
@@ -75,6 +75,9 @@ export default function QuizApp() {
   
   // 练习模式状态
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
+  
+  // 统计页面日期筛选状态
+  const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('all');
   
   const banks = useMemo(() => bankStore.getAll(), [questions]);
   
@@ -1224,76 +1227,113 @@ export default function QuizApp() {
 
           {/* 统计页面 - Duolingo 风格 */}
           <TabsContent value="stats">
-            <div className="space-y-4">
-              {/* 统计卡片网格 */}
-              <div className="grid grid-cols-2 gap-3">
-                <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-200">
-                      <BarChart3 className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl font-bold text-gray-800">{getStats().totalCount}</p>
-                    <p className="text-sm text-gray-400">总练习</p>
-                  </CardContent>
-                </Card>
+            {(() => {
+              // 获取日期范围内的记录
+              const getFilteredStats = (filter: 'day' | 'week' | 'month' | 'all') => {
+                const records = recordStore.getAll();
+                const now = Date.now();
+                const dayMs = 24 * 60 * 60 * 1000;
+                let filteredRecords = records;
                 
-                <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-emerald-200">
-                      <Check className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl font-bold text-gray-800">{getStats().correctCount}</p>
-                    <p className="text-sm text-gray-400">正确</p>
-                  </CardContent>
-                </Card>
+                if (filter === 'day') {
+                  filteredRecords = records.filter(r => now - r.timestamp < dayMs);
+                } else if (filter === 'week') {
+                  filteredRecords = records.filter(r => now - r.timestamp < 7 * dayMs);
+                } else if (filter === 'month') {
+                  filteredRecords = records.filter(r => now - r.timestamp < 30 * dayMs);
+                }
                 
-                <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-red-200">
-                      <X className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl font-bold text-gray-800">{getStats().wrongCount}</p>
-                    <p className="text-sm text-gray-400">错误</p>
-                  </CardContent>
-                </Card>
+                const totalCount = filteredRecords.length;
+                const correctCount = filteredRecords.filter(r => r.isCorrect).length;
+                const wrongCount = totalCount - correctCount;
+                const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
                 
-                <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-purple-200">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl font-bold text-gray-800">{getStats().accuracy}%</p>
-                    <p className="text-sm text-gray-400">正确率</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* 趋势图表区域 */}
-              <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-pink-50">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 text-white" />
-                    </div>
-                    正确率趋势
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px] flex items-center justify-center text-gray-400">
-                    <div className="text-center px-4">
-                      <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
-                        <BarChart3 className="w-8 h-8 text-gray-300" />
-                      </div>
-                      <p className="text-sm">开始刷题后显示趋势</p>
+                return { totalCount, correctCount, wrongCount, accuracy };
+              };
+              
+              return (
+                <div className="space-y-4">
+                  {/* 日期筛选按钮 */}
+                  <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+                    {[
+                      { key: 'day', label: '今日' },
+                      { key: 'week', label: '本周' },
+                      { key: 'month', label: '本月' },
+                      { key: 'all', label: '全部' },
+                    ].map(filter => (
+                      <button
+                        key={filter.key}
+                        onClick={() => setStatsFilter(filter.key as 'day' | 'week' | 'month' | 'all')}
+                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          statsFilter === filter.key
+                            ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg'
+                            : 'text-gray-600 hover:bg-white/50'
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* 统计卡片网格 */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-200">
+                          <BarChart3 className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).totalCount}</p>
+                        <p className="text-sm text-gray-400">总练习</p>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-emerald-200">
+                          <Check className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).correctCount}</p>
+                        <p className="text-sm text-gray-400">正确</p>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-red-200">
+                          <X className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).wrongCount}</p>
+                        <p className="text-sm text-gray-400">错误</p>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+                      <CardContent className="p-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-purple-200">
+                          <Target className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).accuracy}%</p>
+                        <p className="text-sm text-gray-400">正确率</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                  
+                  {/* 错题数量提示 */}
+                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
+                    <div className="flex items-center gap-2 text-amber-700">
+                      <Star className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        当前错题库有 {getWrongQuestionIds().length} 道题需要复习
+                      </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              );
+            })()}
           </TabsContent>
         </Tabs>
-        )}
-      </main>
+      )}
+    </main>
     </div>
   );
 }
