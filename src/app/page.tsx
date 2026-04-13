@@ -625,11 +625,11 @@ export default function QuizApp() {
                   {currentQuestion && (
                     <div ref={questionCardRef} tabIndex={-1}>
                       {/* 题干 - 显眼设计 + 固定顶部 */}
-                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[72px] z-10 shadow-sm rounded-b-3xl">
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[72px] z-10 shadow-sm">
                         <div className="max-w-2xl mx-auto p-4 sm:p-6">
                           {/* 题型标签 + 题号 */}
                           <div className="mb-3 flex items-center gap-2">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
+                            <span className={`inline-flex px-2 py-0.5 text-xs font-bold ${
                               currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
                               currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
                               currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
