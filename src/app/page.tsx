@@ -601,14 +601,6 @@ export default function QuizApp() {
                       <Grid3X3 className="w-4 h-4" />
                     </Button>
                   </div>
-                  
-                  {/* 进度条 */}
-                  <div className="mt-2 h-1 bg-white/30 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-white rounded-full transition-all duration-300"
-                      style={{ width: `${(Object.keys(quizState.answers).length / quizState.questions.length) * 100}%` }}
-                    />
-                  </div>
                 </div>
 
                 {/* 题目内容区域 */}
@@ -616,8 +608,27 @@ export default function QuizApp() {
                   {currentQuestion && (
                     <div ref={questionCardRef} tabIndex={-1}>
                       {/* 题干 - 显眼设计 + 固定顶部 */}
-                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[88px] z-10 shadow-sm">
+                      <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[72px] sm:top-[72px] z-10 shadow-sm">
                         <div className="max-w-2xl mx-auto p-4 sm:p-6">
+                          {/* 题型标签 + 题号 */}
+                          <div className="mb-3 flex items-center gap-2">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
+                              currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
+                              currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
+                              currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
+                              currentQuestion.type === 'comprehensive' ? 'bg-red-500 text-white' :
+                              'bg-green-500 text-white'
+                            }`}>
+                              {currentQuestion.type === 'single' ? '单选' :
+                               currentQuestion.type === 'multiple' ? '多选' :
+                               currentQuestion.type === 'true-false' ? '判断' :
+                               currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
+                            </span>
+                            <span className="text-xs text-gray-500 font-medium">
+                              第 {quizState.currentIndex + 1} 题 / 共 {quizState.questions.length} 题
+                            </span>
+                          </div>
+                          
                           {/* 综合题背景材料 */}
                           {currentQuestion.parentId && (
                             <div className="bg-white border border-amber-200 rounded-xl p-3 sm:p-4 mb-3">
@@ -824,6 +835,18 @@ export default function QuizApp() {
                           <span>未答</span>
                         </div>
                       </div>
+                      
+                      {/* 交卷按钮 */}
+                      <Button
+                        onClick={() => {
+                          setShowAnswerSheet(false);
+                          finishQuiz();
+                        }}
+                        className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold rounded-xl shadow-lg"
+                      >
+                        <FileCheck className="w-4 h-4 mr-2" />
+                        交卷
+                      </Button>
                     </div>
                   </DialogContent>
                 </Dialog>
