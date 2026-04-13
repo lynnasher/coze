@@ -8,19 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Play, 
   Library, 
   BarChart3, 
   Upload, 
   ChevronLeft, 
-  ChevronRight,
-  ChevronUp,
-  ChevronDown,
+  ChevronRight, 
   Check,
   X,
   Trophy,
@@ -28,26 +24,17 @@ import {
   BookOpen,
   Star,
   RefreshCw,
-  Plus,
   Trash2,
   FileText,
   FileCheck,
   Grid3X3,
-  Clock,
   ArrowLeft,
-  Sparkles,
-  Zap,
-  Crown,
-  Flame,
-  BookMarked,
   TrendingUp,
-  PartyPopper,
   RotateCcw,
-  ListTodo,
-  Dumbbell
+  BookMarked
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, generateId } from '@/lib/quiz-store';
-import { Question, QuestionType, Difficulty, QuestionBank } from '@/lib/types';
+import { Question, QuestionType, Difficulty } from '@/lib/types';
 
 // Duolingo 风格颜色
 const COLORS = {
@@ -80,34 +67,12 @@ export default function QuizApp() {
   } = useQuiz();
   const questionCardRef = useRef<HTMLDivElement>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [addQuestionOpen, setAddQuestionOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [newQuestion, setNewQuestion] = useState<Partial<Question>>({
-    type: 'single',
-    content: '',
-    options: [
-      { id: 'a', text: '' },
-      { id: 'b', text: '' },
-      { id: 'c', text: '' },
-      { id: 'd', text: '' },
-    ],
-    answer: 'a',
-    difficulty: 'medium',
-    tags: [],
-  });
   
   // 题库管理状态
-  const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
-  const [editingBankId, setEditingBankId] = useState<string | null>(null);
-  const [editingBankName, setEditingBankName] = useState('');
-  const [showBankQuestions, setShowBankQuestions] = useState(false);
-  const [showAllQuestions, setShowAllQuestions] = useState(false); // 所有题目列表展开状态
-  const [allQuestionsPage, setAllQuestionsPage] = useState(1); // 所有题目分页
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(7200);
-  const QUESTIONS_PER_PAGE = 20; // 每页显示题目数
   
   // 练习模式状态
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
@@ -299,66 +264,6 @@ export default function QuizApp() {
     e.target.value = '';
   };
 
-  // 添加题目
-  const handleAddQuestion = () => {
-    if (!newQuestion.content || !newQuestion.answer) {
-      alert('请填写题目内容和答案');
-      return;
-    }
-    
-    const question: Question = {
-      id: generateId(),
-      type: newQuestion.type as QuestionType,
-      content: newQuestion.content,
-      options: newQuestion.type !== 'fill-blank' ? newQuestion.options : undefined,
-      answer: newQuestion.answer,
-      difficulty: newQuestion.difficulty as Difficulty,
-      tags: newQuestion.tags || [],
-      createdAt: Date.now(),
-    };
-    
-    questionStore.add(question);
-    loadQuestions();
-    setAddQuestionOpen(false);
-    setNewQuestion({
-      type: 'single',
-      content: '',
-      options: [
-        { id: 'a', text: '' },
-        { id: 'b', text: '' },
-        { id: 'c', text: '' },
-        { id: 'd', text: '' },
-      ],
-      answer: 'a',
-      difficulty: 'medium',
-      tags: [],
-    });
-  };
-
-  // 删除题目
-  const handleDeleteQuestion = (id: string) => {
-    questionStore.remove(id);
-    loadQuestions();
-  };
-  
-  // 编辑题目
-  const handleEditQuestion = (q: Question) => {
-    setEditingQuestion({ ...q });
-  };
-  
-  // 保存编辑的题目
-  const handleSaveEditQuestion = () => {
-    if (!editingQuestion) return;
-    if (!editingQuestion.content || !editingQuestion.answer) {
-      alert('请填写题目内容和答案');
-      return;
-    }
-    questionStore.update(editingQuestion);
-    loadQuestions();
-    setEditingQuestion(null);
-    alert('题目已更新');
-  };
-  
   // 删除题库
   const handleDeleteBank = (bankId: string) => {
     const bank = bankStore.getById(bankId);
@@ -370,29 +275,7 @@ export default function QuizApp() {
       });
       bankStore.remove(bankId);
       loadQuestions();
-      setSelectedBankId(null);
     }
-  };
-  
-  // 开始编辑题库名称
-  const handleStartEditBank = (bank: QuestionBank) => {
-    setEditingBankId(bank.id);
-    setEditingBankName(bank.name);
-  };
-  
-  // 保存题库名称
-  const handleSaveBankName = () => {
-    if (editingBankId && editingBankName.trim()) {
-      bankStore.rename(editingBankId, editingBankName.trim());
-      setEditingBankId(null);
-      setEditingBankName('');
-    }
-  };
-  
-  // 查看题库内的题目
-  const handleViewBankQuestions = (bankId: string) => {
-    setSelectedBankId(bankId);
-    setShowBankQuestions(true);
   };
   
   // 清空所有题库和题目
@@ -402,8 +285,6 @@ export default function QuizApp() {
       bankStore.clear();
       recordStore.clear();
       loadQuestions();
-      setSelectedBankId(null);
-      setShowBankQuestions(false);
       alert('已清空所有题库和题目');
     }
   };
@@ -583,22 +464,6 @@ export default function QuizApp() {
           );
         })}
       </div>
-    );
-  };
-
-  // 渲染题目类型标签
-  const renderTypeBadge = (type: string) => {
-    const config: Record<string, { label: string; color: string }> = {
-      single: { label: '单选', color: 'bg-blue-100 text-blue-700' },
-      multiple: { label: '多选', color: 'bg-purple-100 text-purple-700' },
-      'true-false': { label: '判断', color: 'bg-orange-100 text-orange-700' },
-      'fill-blank': { label: '填空', color: 'bg-green-100 text-green-700' },
-      comprehensive: { label: '综合', color: 'bg-red-100 text-red-700' },
-    };
-    const safeType = type || 'single';
-    const cfg = config[safeType] || { label: safeType, color: 'bg-gray-100 text-gray-700' };
-    return (
-      <Badge className={`${cfg.color} px-2 py-0.5 rounded-full text-xs font-medium`}>{cfg.label}</Badge>
     );
   };
 
@@ -1211,14 +1076,6 @@ export default function QuizApp() {
                       <Upload className="w-4 h-4" />
                       导入题库
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setAddQuestionOpen(true)} 
-                      className="gap-2 rounded-xl border-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      添加题目
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1234,36 +1091,17 @@ export default function QuizApp() {
                 </div>
                 题库管理
               </h2>
-              <div className="flex gap-2">
-                {banks.length > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleClearAll}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    清空
-                  </Button>
-                )}
+              {banks.length > 0 && (
                 <Button 
-                  onClick={() => setImportModalOpen(true)} 
+                  variant="ghost" 
                   size="sm" 
-                  className="gap-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl"
+                  onClick={handleClearAll}
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
                 >
-                  <Upload className="w-4 h-4" />
-                  导入
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">清空</span>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setAddQuestionOpen(true)} 
-                  className="gap-1 rounded-xl"
-                >
-                  <Plus className="w-4 h-4" />
-                  添加
-                </Button>
-              </div>
+              )}
             </div>
 
             {/* 题库列表 */}
@@ -1274,14 +1112,7 @@ export default function QuizApp() {
                     <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
                       <Library className="w-8 h-8 text-gray-400" />
                     </div>
-                    <p className="text-gray-500 mb-4">暂无题库，导入题库开始学习</p>
-                    <Button 
-                      onClick={() => setImportModalOpen(true)} 
-                      className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl"
-                    >
-                      <Upload className="w-4 h-4" />
-                      导入题库
-                    </Button>
+                    <p className="text-gray-500">暂无题库，请先导入题库</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -1291,46 +1122,18 @@ export default function QuizApp() {
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1 min-w-0">
-                            {editingBankId === bank.id ? (
-                              <div className="flex gap-2">
-                                <Input
-                                  value={editingBankName}
-                                  onChange={(e) => setEditingBankName(e.target.value)}
-                                  className="h-9 text-sm rounded-xl"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveBankName();
-                                    if (e.key === 'Escape') setEditingBankId(null);
-                                  }}
-                                />
-                                <Button size="sm" onClick={handleSaveBankName} className="rounded-xl">保存</Button>
-                              </div>
-                            ) : (
-                              <div className="cursor-pointer group" onClick={() => handleViewBankQuestions(bank.id)}>
-                                <h4 className="font-semibold text-gray-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-2">
-                                  {bank.name}
-                                </h4>
-                              </div>
-                            )}
+                            <h4 className="font-semibold text-gray-900 leading-tight line-clamp-2">
+                              {bank.name}
+                            </h4>
                           </div>
-                          <div className="flex gap-1 ml-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-xl"
-                              onClick={() => handleStartEditBank(bank)}
-                            >
-                              <FileText className="w-4 h-4 text-gray-400" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
-                              onClick={() => handleDeleteBank(bank.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteBank(bank.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                         
                         <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
@@ -1341,481 +1144,25 @@ export default function QuizApp() {
                           <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
                         </div>
                         
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 h-9 text-xs rounded-xl border-gray-200"
-                            onClick={() => handleViewBankQuestions(bank.id)}
-                          >
-                            <Library className="w-3 h-3 mr-1" />
-                            查看
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="flex-1 h-9 text-xs bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl"
-                            onClick={() => {
-                              setPracticeBankId(bank.id);
-                              setActiveTab('practice');
-                              setTimeout(() => startQuiz('sequential', bank.id), 100);
-                            }}
-                            disabled={bank.questionIds.length === 0}
-                          >
-                            <Play className="w-3 h-3 mr-1" />
-                            练习
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full h-9 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 rounded-xl"
+                          onClick={() => {
+                            setPracticeBankId(bank.id);
+                            setActiveTab('practice');
+                            setTimeout(() => startQuiz('sequential', bank.id), 100);
+                          }}
+                          disabled={bank.questionIds.length === 0}
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          开始练习
+                        </Button>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* 题库内题目列表 */}
-            {showBankQuestions && selectedBankId && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-4 h-4 text-white" />
-                    </div>
-                    {banks.find(b => b.id === selectedBankId)?.name}
-                    <Badge variant="secondary" className="rounded-full">{questions.filter(q => q.bankId === selectedBankId).length}</Badge>
-                  </h3>
-                  <Button variant="ghost" size="icon" onClick={() => setShowBankQuestions(false)} className="h-8 w-8 rounded-xl">
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                  <CardContent className="p-0 divide-y">
-                    {questions
-                      .filter(q => q.bankId === selectedBankId)
-                      .map((q, idx) => (
-                        <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                <span className="text-xs font-medium text-gray-400">#{idx + 1}</span>
-                                {renderTypeBadge(q.type)}
-                              </div>
-                              <p className="font-medium text-gray-900 mb-2 line-clamp-2 text-sm">{q.content}</p>
-                              {q.options && Array.isArray(q.options) && q.options.length > 0 && (
-                                <div className="grid grid-cols-2 gap-1 text-xs text-gray-500">
-                                  {q.options.map((opt, optIdx) => (
-                                    <div key={`opt-${optIdx}-${opt.id}`} className="flex items-center gap-1">
-                                      <span className="font-medium">{opt.id.toUpperCase()}.</span>
-                                      <span className="truncate">{opt.text}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="mt-2 text-xs">
-                                <span className="text-gray-400">答案：</span>
-                                <span className="font-medium text-emerald-600">
-                                  {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditQuestion(q)}
-                                className="h-8 w-8 rounded-xl text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                              >
-                                <FileCheck className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteQuestion(q.id)}
-                                className="h-8 w-8 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    {questions.filter(q => q.bankId === selectedBankId).length === 0 && (
-                      <div className="p-8 text-center">
-                        <p className="text-gray-400">该题库暂无题目</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* 所有题目列表 - 默认折叠，点击展开 */}
-            {!showBankQuestions && questions.length > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-4 h-4 text-white" />
-                    </div>
-                    所有题目
-                    <Badge variant="secondary" className="rounded-full">{questions.length}</Badge>
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowAllQuestions(!showAllQuestions);
-                      setAllQuestionsPage(1);
-                    }}
-                    className="rounded-xl"
-                  >
-                    {showAllQuestions ? (
-                      <>
-                        <ChevronUp className="w-4 h-4 mr-1" />
-                        收起
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4 mr-1" />
-                        展开
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                {showAllQuestions && (
-                  <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
-                    <CardContent className="p-0 divide-y">
-                      {questions
-                        .slice((allQuestionsPage - 1) * QUESTIONS_PER_PAGE, allQuestionsPage * QUESTIONS_PER_PAGE)
-                        .map((q, idx) => {
-                          const globalIdx = (allQuestionsPage - 1) * QUESTIONS_PER_PAGE + idx;
-                          return (
-                            <div key={q.id} className="p-4 hover:bg-gray-50 transition-colors">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                    <span className="text-sm font-medium text-gray-400">#{globalIdx + 1}</span>
-                                    {renderTypeBadge(q.type)}
-                                    {q.bankId && banks.find(b => b.id === q.bankId) && (
-                                      <Badge variant="secondary" className="text-xs rounded-full line-clamp-1 max-w-[120px]">
-                                        {banks.find(b => b.id === q.bankId)?.name}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <p className="font-medium text-gray-900 mb-2 line-clamp-2 text-sm">{q.content}</p>
-                                  <div className="text-xs">
-                                    <span className="text-gray-400">答案：</span>
-                                    <span className="font-medium text-emerald-600">
-                                      {Array.isArray(q.answer) ? q.answer.map(a => a.toUpperCase()).join(', ') : q.answer.toUpperCase()}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEditQuestion(q)}
-                                    className="h-8 w-8 rounded-xl text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                                  >
-                                    <FileCheck className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleDeleteQuestion(q.id)}
-                                    className="h-8 w-8 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </CardContent>
-                    
-                    {/* 分页控件 */}
-                    {questions.length > QUESTIONS_PER_PAGE && (
-                      <div className="flex items-center justify-between p-4 border-t bg-gray-50">
-                        <span className="text-sm text-gray-500">
-                          第 {(allQuestionsPage - 1) * QUESTIONS_PER_PAGE + 1} - {Math.min(allQuestionsPage * QUESTIONS_PER_PAGE, questions.length)} 条，共 {questions.length} 条
-                        </span>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAllQuestionsPage(p => Math.max(1, p - 1))}
-                            disabled={allQuestionsPage === 1}
-                            className="rounded-xl h-8"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          {Array.from({ length: Math.ceil(questions.length / QUESTIONS_PER_PAGE) }, (_, i) => i + 1)
-                            .filter(p => p === 1 || p === Math.ceil(questions.length / QUESTIONS_PER_PAGE) || Math.abs(p - allQuestionsPage) <= 1)
-                            .map((page, idx, arr) => (
-                              <>
-                                {idx > 0 && arr[idx - 1] !== page - 1 && (
-                                  <span key={`ellipsis-${page}`} className="px-1 text-gray-400">...</span>
-                                )}
-                                <Button
-                                  key={page}
-                                  variant={allQuestionsPage === page ? "default" : "outline"}
-                                  size="sm"
-                                  onClick={() => setAllQuestionsPage(page)}
-                                  className={`rounded-xl h-8 w-8 p-0 ${allQuestionsPage === page ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : ''}`}
-                                >
-                                  {page}
-                                </Button>
-                              </>
-                            ))
-                          }
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAllQuestionsPage(p => Math.min(Math.ceil(questions.length / QUESTIONS_PER_PAGE), p + 1))}
-                            disabled={allQuestionsPage === Math.ceil(questions.length / QUESTIONS_PER_PAGE)}
-                            className="rounded-xl h-8"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                )}
-              </div>
-            )}
-
-            {/* 添加题目弹窗 */}
-            <Dialog open={addQuestionOpen} onOpenChange={setAddQuestionOpen}>
-              <DialogContent className="max-w-[calc(100%-32px)] sm:max-w-[500px] max-h-[90vh] overflow-y-auto rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-                      <Plus className="w-5 h-5 text-white" />
-                    </div>
-                    添加题目
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium">题目类型</Label>
-                    <Select
-                      value={newQuestion.type}
-                      onValueChange={(v) => setNewQuestion({ ...newQuestion, type: v as QuestionType })}
-                    >
-                      <SelectTrigger className="mt-1 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="single">单选题</SelectItem>
-                        <SelectItem value="multiple">多选题</SelectItem>
-                        <SelectItem value="true-false">判断题</SelectItem>
-                        <SelectItem value="fill-blank">填空题</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label className="text-sm font-medium">题目内容</Label>
-                    <Textarea
-                      value={newQuestion.content}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, content: e.target.value })}
-                      placeholder="请输入题目内容..."
-                      className="mt-1 rounded-xl"
-                    />
-                  </div>
-                  
-                  {newQuestion.type !== 'fill-blank' && Array.isArray(newQuestion.options) && (
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">选项</Label>
-                      {newQuestion.options.map((opt, idx) => (
-                        <div key={`new-opt-${idx}-${opt.id}`} className="flex gap-2 items-center">
-                          <span className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-sm font-bold text-gray-500">{opt.id.toUpperCase()}</span>
-                          <Input
-                            value={opt.text}
-                            onChange={(e) => {
-                              const opts = [...(newQuestion.options || [])];
-                              opts[idx] = { ...opts[idx], text: e.target.value };
-                              setNewQuestion({ ...newQuestion, options: opts });
-                            }}
-                            placeholder={`选项 ${opt.id.toUpperCase()}`}
-                            className="flex-1 rounded-xl"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  <div>
-                    <Label className="text-sm font-medium">正确答案</Label>
-                    {newQuestion.type === 'fill-blank' ? (
-                      <Input
-                        value={newQuestion.answer as string}
-                        onChange={(e) => setNewQuestion({ ...newQuestion, answer: e.target.value })}
-                        placeholder="输入正确答案"
-                        className="mt-1 rounded-xl"
-                      />
-                    ) : newQuestion.type === 'multiple' ? (
-                      <div className="flex gap-4 mt-2">
-                        {['a', 'b', 'c', 'd'].map((opt) => (
-                          <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                            <Checkbox
-                              checked={(newQuestion.answer as string[])?.includes(opt)}
-                              onCheckedChange={(checked) => {
-                                const current = (newQuestion.answer as string[]) || [];
-                                if (checked) {
-                                  setNewQuestion({ ...newQuestion, answer: [...current, opt] });
-                                } else {
-                                  setNewQuestion({ ...newQuestion, answer: current.filter(a => a !== opt) });
-                                }
-                              }}
-                            />
-                            <span className="font-medium">{opt.toUpperCase()}</span>
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <Select
-                        value={newQuestion.answer as string}
-                        onValueChange={(v) => setNewQuestion({ ...newQuestion, answer: v })}
-                      >
-                        <SelectTrigger className="mt-1 rounded-xl">
-                          <SelectValue placeholder="选择正确答案" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Array.isArray(newQuestion.options) && newQuestion.options.map((opt, idx) => (
-                            <SelectItem key={`select-opt-${idx}-${opt.id}`} value={opt.id}>
-                              {opt.id.toUpperCase()}. {opt.text}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Label className="text-sm font-medium">难度</Label>
-                    <Select
-                      value={newQuestion.difficulty}
-                      onValueChange={(v) => setNewQuestion({ ...newQuestion, difficulty: v as Difficulty })}
-                    >
-                      <SelectTrigger className="mt-1 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="easy">简单</SelectItem>
-                        <SelectItem value="medium">中等</SelectItem>
-                        <SelectItem value="hard">困难</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <Button onClick={handleAddQuestion} className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl">
-                    保存题目
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* 编辑题目弹窗 */}
-            <Dialog open={!!editingQuestion} onOpenChange={(open) => !open && setEditingQuestion(null)}>
-              <DialogContent className="max-w-[calc(100%-32px)] sm:max-w-[500px] max-h-[90vh] overflow-y-auto rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                      <FileCheck className="w-5 h-5 text-white" />
-                    </div>
-                    编辑题目
-                  </DialogTitle>
-                </DialogHeader>
-                {editingQuestion && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium">题目类型</Label>
-                      <Select
-                        value={editingQuestion.type}
-                        onValueChange={(v) => setEditingQuestion({ ...editingQuestion, type: v as QuestionType })}
-                      >
-                        <SelectTrigger className="mt-1 rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="single">单选题</SelectItem>
-                          <SelectItem value="multiple">多选题</SelectItem>
-                          <SelectItem value="true-false">判断题</SelectItem>
-                          <SelectItem value="fill-blank">填空题</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">题目内容</Label>
-                      <Textarea
-                        value={editingQuestion.content || ''}
-                        onChange={(e) => setEditingQuestion({ ...editingQuestion, content: e.target.value })}
-                        placeholder="请输入题目内容"
-                        className="mt-1 rounded-xl min-h-[80px]"
-                      />
-                    </div>
-                    
-                    {(editingQuestion.type === 'single' || editingQuestion.type === 'multiple') && (
-                      <div>
-                        <Label className="text-sm font-medium">选项</Label>
-                        <div className="space-y-2 mt-1">
-                          {(editingQuestion.options || []).map((opt, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <span className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-sm font-bold text-gray-500">{opt.id.toUpperCase()}</span>
-                              <Input
-                                value={opt.text}
-                                onChange={(e) => {
-                                  const newOpts = [...(editingQuestion.options || [])];
-                                  newOpts[idx] = { ...newOpts[idx], text: e.target.value };
-                                  setEditingQuestion({ ...editingQuestion, options: newOpts });
-                                }}
-                                placeholder={`选项${opt.id.toUpperCase()}`}
-                                className="flex-1 rounded-xl"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div>
-                      <Label className="text-sm font-medium">正确答案</Label>
-                      <Input
-                        value={Array.isArray(editingQuestion.answer) ? editingQuestion.answer.join('') : editingQuestion.answer}
-                        onChange={(e) => {
-                          const val = e.target.value.toLowerCase();
-                          if (val.length > 1) {
-                            setEditingQuestion({ ...editingQuestion, answer: val.split('') });
-                          } else {
-                            setEditingQuestion({ ...editingQuestion, answer: val });
-                          }
-                        }}
-                        placeholder="如 A 或 ABC"
-                        className="mt-1 rounded-xl"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">解析（可选）</Label>
-                      <Textarea
-                        value={editingQuestion.explanation || ''}
-                        onChange={(e) => setEditingQuestion({ ...editingQuestion, explanation: e.target.value })}
-                        placeholder="请输入题目解析"
-                        className="mt-1 rounded-xl"
-                      />
-                    </div>
-                    
-                    <Button onClick={handleSaveEditQuestion} className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl">
-                      保存修改
-                    </Button>
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
           </TabsContent>
 
           {/* 统计页面 - Duolingo 风格 */}
