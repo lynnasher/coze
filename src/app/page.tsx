@@ -487,7 +487,17 @@ export default function QuizApp() {
       {/* 顶部导航 */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-orange-100">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => {
+              if (hasStarted) {
+                if (confirm('确定要退出练习返回主页吗？')) {
+                  setHasStarted(false);
+                  setPracticeBankId(null);
+                }
+              }
+            }}
+          >
             <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center">
               <BookOpen className="w-6 h-6 text-white" />
             </div>
@@ -902,9 +912,9 @@ export default function QuizApp() {
                 </Dialog>
               </div>
             ) : quizState.isComplete ? (
-              /* 完成页面 - Duolingo 风格庆祝 */
-              <div className="min-h-screen -mx-4 sm:mx-0 flex items-center justify-center p-4">
-                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
+              /* 完成页面 - Duolingo 风格庆祝，可滚动 */
+              <div className="pb-8">
+                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md mx-auto text-center relative overflow-hidden">
                   {/* 庆祝动画背景 */}
                   <div className="absolute inset-0 bg-gradient-to-b from-orange-50 to-white pointer-events-none" />
                   
@@ -957,18 +967,21 @@ export default function QuizApp() {
                     <div className="flex gap-3 justify-center">
                       <Button 
                         onClick={restartQuiz} 
-                        className="gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl shadow-lg"
+                        className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-lg"
                       >
                         <RotateCcw className="w-4 h-4" />
-                        再练一次
+                        错题重练
                       </Button>
                       <Button 
                         variant="outline" 
-                        onClick={() => setActiveTab('stats')}
+                        onClick={() => {
+                          setHasStarted(false);
+                          setPracticeBankId(null);
+                        }}
                         className="gap-2 rounded-xl border-2"
                       >
-                        <BarChart3 className="w-4 h-4" />
-                        查看统计
+                        <ArrowLeft className="w-4 h-4" />
+                        返回主页
                       </Button>
                     </div>
                   </div>
