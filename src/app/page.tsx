@@ -1553,6 +1553,19 @@ function PracticeView({
                 第 {quizState.currentIndex + 1} 题 / 共 {quizState.questions.length} 题
               </span>
             </div>
+            
+            {/* 案例背景（综合题显示） */}
+            {currentQuestion.caseBackground && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="flex items-start gap-2">
+                  <FileText className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-blue-700 leading-relaxed whitespace-pre-wrap">
+                    {currentQuestion.caseBackground}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <p className="text-base sm:text-lg font-semibold text-gray-800 leading-relaxed">
               {currentQuestion.content}
             </p>

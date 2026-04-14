@@ -16,11 +16,12 @@
 - 题目分类（按科目、章节）
 
 ### 2.2 题目练习
-- 多种题型支持：选择题（单选/多选）、判断题、填空题
+- 多种题型支持：选择题（单选/多选）、判断题、填空题、综合案例题
 - 随机练习模式
 - 顺序练习模式
 - 错题重练模式
 - 答题计时功能
+- 答案与解析需手动点击按钮显示（支持多选题自由选择）
 
 ### 2.3 答题反馈
 - 实时答案校验
@@ -80,7 +81,8 @@ D、低于800亿元
 **解析器特点**：
 - 支持跨行选项合并
 - 自动提取答案和解析
-- 智能识别题目类型（单选/多选/判断/填空）
+- 智能识别题目类型（单选/多选/判断/填空/综合）
+- 支持综合案例题识别，自动提取案例背景
 - 支持多种变体格式
 
 ### 3.5 数据存储
@@ -124,7 +126,8 @@ src/
 ```typescript
 interface Question {
   id: string;
-  type: 'single' | 'multiple' | 'true-false' | 'fill-blank';
+  parentId?: string; // 父题目ID（综合案例题的子题目）
+  type: 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
   content: string;
   options?: { id: string; text: string }[];
   answer: string | string[];
@@ -132,6 +135,10 @@ interface Question {
   tags: string[];
   difficulty: 'easy' | 'medium' | 'hard';
   createdAt: number;
+  bankId?: string; // 关联的题库ID
+  // 综合案例题相关字段
+  caseBackground?: string; // 案例背景（综合题大题描述）
+  caseContext?: string; // 案例上下文/材料
 }
 ```
 

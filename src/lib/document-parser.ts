@@ -9,6 +9,9 @@ export interface ParsedQuestion {
   answer: string | string[];
   explanation?: string;
   difficulty: Difficulty;
+  // 综合案例题相关字段
+  caseBackground?: string; // 案例背景（综合题大题描述）
+  caseContext?: string; // 案例上下文/材料
 }
 
 // 清理文本
@@ -82,14 +85,21 @@ export const extractQuestionsFromText = (text: string): ParsedQuestion[] => {
     if (!trimmed) continue;
 
     // 第二步：检测是否是综合题，如果是则拆分小题
-    const subBlocks = splitComprehensiveQuestions(trimmed);
+    const { subBlocks, caseBackground } = splitComprehensiveQuestions(trimmed);
+    
+    // 判断是否为综合题
+    const isComprehensive = /综合[题案例]|案例[分析题]|计算题|论述题|简答题|分析题/i.test(trimmed);
     
     for (const subBlock of subBlocks) {
       const subTrimmed = subBlock.trim();
       if (!subTrimmed) continue;
       
-      const question = parseQuestionBlock(subTrimmed);
+      const question = parseQuestionBlock(subTrimmed, isComprehensive ? caseBackground : '');
       if (question) {
+        // 如果是综合题，设置 caseBackground
+        if (isComprehensive && caseBackground) {
+          question.caseBackground = caseBackground;
+        }
         questions.push(question);
       }
     }
@@ -129,14 +139,13 @@ const splitByMainQuestion = (text: string): string[] => {
 };
 
 // 拆分综合题中的小题（如 "（1）"、"(1)"、"①" 等格式）
-const splitComprehensiveQuestions = (text: string): string[] => {
+const splitComprehensiveQuestions = (text: string): { subBlocks: string[]; caseBackground: string } => {
   // 检测是否包含综合题标记（注意：综合案例题 包含"案例"不包含"综合题"）
   const isComprehensive = /综合[题案例]|案例[分析题]|计算题|论述题|简答题|分析题/i.test(text);
   
   if (!isComprehensive) {
-    // 非综合题，直接返回原始块（不再按空行分割）
-    // 每个 block 已经是完整的题目
-    return [text];
+    // 非综合题，直接返回原始块
+    return { subBlocks: [text], caseBackground: '' };
   }
   
   // 综合题处理：按小题编号拆分
@@ -203,17 +212,20 @@ const splitComprehensiveQuestions = (text: string): string[] => {
     blocks.push(currentBlock.join('\n'));
   }
   
+  // 构建案例背景文本
+  const caseBackground = [mainTitle, ...caseDescription].filter(Boolean).join('\n');
+  
   // 如果拆分成功且有多个小题，返回拆分结果
   if (blocks.length > 1) {
-    return blocks;
+    return { subBlocks: blocks, caseBackground };
   }
   
-  // 如果只有一个小题或没有拆分，按空行分割
-  return [text];
+  // 如果只有一个小题或没有拆分，返回原始文本
+  return { subBlocks: [text], caseBackground: '' };
 };
 
 // 解析单个题目块
-const parseQuestionBlock = (block: string): ParsedQuestion | null => {
+const parseQuestionBlock = (block: string, caseBackground: string = ''): ParsedQuestion | null => {
   // 先按行分割
   const rawLines = block.split('\n');
   const lines = rawLines.map(l => l.trim()).filter(l => l);
@@ -283,6 +295,20 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   let content = contentLines.join(' ').trim();
   // 去掉开头的编号（如 "1." 或 "1、"）
   content = content.replace(/^\d+[.、)]\s*/, '').trim();
+  
+  // 如果有案例背景，保留案例内容（去掉综合题标题等）
+  if (caseBackground) {
+    // 保留案例描述，但去掉大题编号
+    const caseMatch = caseBackground.match(/^\d+[.、)]\s*【?.*?(综合题|案例分析|计算题|论述题|简答题|分析题)】?\s*(.*)$/i);
+    if (caseMatch) {
+      // 保留案例材料内容
+      const caseContent = caseMatch[2].trim();
+      if (caseContent) {
+        // 将案例内容前置到题目中
+        content = caseContent + '\n\n' + content;
+      }
+    }
+  }
   
   if (!content || content.length < 5) {
     return null;
@@ -399,6 +425,10 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
   if (explicitType) {
     type = explicitType;
   }
+  // 如果有案例背景，标记为综合题
+  if (caseBackground && type === 'single') {
+    type = 'comprehensive';
+  }
 
   // 5. 判断题答案转换（保持原有答案格式，'a' 表示正确，'b' 表示错误）
   // 如果没有识别到答案，默认设为 'a'（正确）
@@ -416,6 +446,7 @@ const parseQuestionBlock = (block: string): ParsedQuestion | null => {
     answer,
     explanation: explanation || undefined,
     difficulty,
+    caseBackground: caseBackground || undefined,
   };
 };
 
@@ -471,6 +502,8 @@ export const convertToQuestions = (parsed: ParsedQuestion[]): Question[] => {
     tags: [],
     difficulty: p.difficulty,
     createdAt: Date.now(),
+    caseBackground: p.caseBackground,
+    caseContext: p.caseContext,
   }));
 };
 
