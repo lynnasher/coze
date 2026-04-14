@@ -24,6 +24,7 @@ export interface Question {
   // 综合案例题相关字段
   caseBackground?: string; // 案例背景（综合题大题描述）
   caseContext?: string; // 案例上下文/材料
+  children?: Question[]; // 综合题的子题目
 }
 
 export interface PracticeRecord {

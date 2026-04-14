@@ -226,16 +226,136 @@ export default function QuizApp() {
         } as Question;
       };
       
+      // 辅助函数：处理子题目的选项
+      const processChildOptions = (child: Record<string, unknown>): { id: string; text: string }[] | undefined => {
+        const childIsExportFormat = !!child.stem;
+        if (childIsExportFormat) {
+          const opts: { id: string; text: string }[] = [];
+          if (child.optiona) opts.push({ id: 'a', text: String(child.optiona) });
+          if (child.optionb) opts.push({ id: 'b', text: String(child.optionb) });
+          if (child.optionc) opts.push({ id: 'c', text: String(child.optionc) });
+          if (child.optiond) opts.push({ id: 'd', text: String(child.optiond) });
+          return opts.length > 0 ? opts : undefined;
+        } else {
+          const childQOptions = child.options;
+          if (childQOptions && typeof childQOptions === 'object') {
+            if (Array.isArray(childQOptions)) {
+              return childQOptions as { id: string; text: string }[];
+            } else {
+              return Object.entries(childQOptions).map(([key, val]) => ({
+                id: key.toLowerCase(),
+                text: String(val),
+              })).sort((a, b) => a.id.localeCompare(b.id));
+            }
+          }
+          return undefined;
+        }
+      };
+      
+      // 辅助函数：处理子题目的答案
+      const processChildAnswer = (child: Record<string, unknown>): string | string[] => {
+        let answer: string | string[] = 'a';
+        const childQAnswer = child.answer || child.ans;
+        if (childQAnswer) {
+          if (typeof childQAnswer === 'string') {
+            const ans = childQAnswer.trim().toLowerCase();
+            if (ans.length > 1) {
+              answer = ans.split('');
+            } else {
+              answer = ans;
+            }
+          } else if (Array.isArray(childQAnswer)) {
+            answer = childQAnswer as string[];
+          }
+        }
+        return answer;
+      };
+      
+      // 辅助函数：处理子题目类型
+      const processChildType = (child: Record<string, unknown>): QuestionType => {
+        const childQType = child.type || child.qtype;
+        let questionType: QuestionType = 'single';
+        if (typeof childQType === 'number') {
+          questionType = typeMap[childQType as number] || 'single';
+        } else if (typeof childQType === 'string') {
+          const t = childQType.toLowerCase().trim();
+          if (t === 'single') questionType = 'single';
+          else if (t === 'multiple') questionType = 'multiple';
+          else if (t === 'true-false' || t === 'truefalse' || t === 'judge') questionType = 'true-false';
+          else if (t === 'fill-blank' || t === 'fillblank' || t === 'fill') questionType = 'fill-blank';
+          else if (t === 'comprehensive') questionType = 'comprehensive';
+          else if (t.includes('多选')) questionType = 'multiple';
+          else if (t.includes('判断')) questionType = 'true-false';
+          else if (t.includes('填空')) questionType = 'fill-blank';
+          else if (t.includes('综合') || t.includes('案例')) questionType = 'comprehensive';
+          else questionType = 'single';
+        }
+        return questionType;
+      };
+      
+      // 处理综合题的子题目，生成 children 数组
+      const processChildren = (children: Record<string, unknown>[], parentId: string): Question[] => {
+        return children.map((child) => {
+          const childContent = (child.question as string) || (child.content as string) || (child.stem as string) || '';
+          return {
+            id: generateId(),
+            parentId: parentId,
+            type: processChildType(child),
+            content: childContent,
+            options: processChildOptions(child),
+            answer: processChildAnswer(child),
+            explanation: ((child.explanation as string) || (child.parsetext as string)) || undefined,
+            difficulty: (child.difficulty as Difficulty) || 'medium',
+            tags: [],
+            bankId,
+            createdAt: Date.now(),
+          } as Question;
+        }).filter(q => q.content); // 过滤掉没有内容的题目
+      };
+      
       const flattenQuestions = (questions: Record<string, unknown>[], parentId?: string): Question[] => {
         const result: Question[] = [];
         for (const q of questions) {
-          const processed = processQuestion(q, parentId);
-          if (processed) {
-            result.push(processed);
-            const children = q.children as Record<string, unknown>[] | undefined;
-            if (Array.isArray(children) && children.length > 0) {
-              const childQuestions = flattenQuestions(children, processed.id);
-              result.push(...childQuestions);
+          const children = q.children as Record<string, unknown>[] | undefined;
+          const hasChildren = Array.isArray(children) && children.length > 0;
+          
+          // 如果是综合题且有子题目
+          const qType = q.type || q.qtype;
+          const isComprehensive = 
+            (typeof qType === 'number' && qType === 5) ||
+            (typeof qType === 'string' && (qType.toLowerCase().trim() === 'comprehensive' || qType.includes('综合') || qType.includes('案例')));
+          
+          if (hasChildren && isComprehensive) {
+            // 综合题：保留 children 数组，content 作为 caseBackground
+            const questionId = generateId();
+            const caseBackground = (q.question as string) || (q.content as string) || (q.stem as string) || '';
+            
+            // 处理子题目
+            const childQuestions = processChildren(children, questionId);
+            
+            // 综合题父题目：children 包含子题目
+            const comprehensiveQuestion: Question = {
+              id: questionId,
+              parentId: undefined,
+              type: 'comprehensive',
+              content: '', // 显示时使用 caseBackground
+              caseBackground: caseBackground,
+              children: childQuestions,
+              options: undefined,
+              answer: '',
+              explanation: '',
+              difficulty: 'medium',
+              tags: [],
+              bankId,
+              createdAt: Date.now(),
+            };
+            
+            result.push(comprehensiveQuestion);
+          } else {
+            // 普通题目
+            const processed = processQuestion(q, parentId);
+            if (processed) {
+              result.push(processed);
             }
           }
         }
@@ -1386,20 +1506,36 @@ function PracticeView({
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   // 答案与解析显示状态（不自动显示，需手动点击按钮）
   const [showExplanation, setShowExplanation] = useState(false);
+  // 当前综合题的子题目索引
+  const [currentChildIndex, setCurrentChildIndex] = useState(0);
   
   // 切换题目时重置答案与解析显示状态
   useEffect(() => {
     setShowExplanation(false);
+    setCurrentChildIndex(0);
   }, [quizState.currentIndex]);
   
-  const isCurrentCorrect = useMemo(() => {
-    if (!currentQuestion || !currentAnswer) return false;
-    if (Array.isArray(currentQuestion.answer)) {
-      return Array.isArray(currentAnswer) && 
-        currentQuestion.answer.every(a => currentAnswer.includes(a));
+  // 获取当前要显示的题目（综合题显示子题目）
+  const getDisplayQuestion = useMemo(() => {
+    if (!currentQuestion) return null;
+    // 如果是综合题且有子题目，返回当前子题目
+    if (currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0) {
+      const child = currentQuestion.children[currentChildIndex];
+      if (child) return child;
     }
-    return currentAnswer === currentQuestion.answer;
-  }, [currentQuestion, currentAnswer]);
+    return currentQuestion;
+  }, [currentQuestion, currentChildIndex]);
+  
+  const displayQuestion = getDisplayQuestion;
+  
+  const isCurrentCorrect = useMemo(() => {
+    if (!displayQuestion || !currentAnswer) return false;
+    if (Array.isArray(displayQuestion.answer)) {
+      return Array.isArray(currentAnswer) && 
+        displayQuestion.answer.every(a => currentAnswer.includes(a));
+    }
+    return currentAnswer === displayQuestion.answer;
+  }, [displayQuestion, currentAnswer]);
 
   if (isLoading) {
     return (
@@ -1566,8 +1702,16 @@ function PracticeView({
               </div>
             )}
             
+            {/* 子题目指示器（综合题显示） */}
+            {currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 && (
+              <div className="mb-2 flex items-center gap-2 text-xs text-gray-500">
+                <span>子题 {currentChildIndex + 1}/{currentQuestion.children.length}</span>
+                <span className="text-purple-600 font-medium">（{displayQuestion?.type === 'multiple' ? '多选' : displayQuestion?.type === 'single' ? '单选' : displayQuestion?.type === 'true-false' ? '判断' : '填空'}）</span>
+              </div>
+            )}
+            
             <p className="text-base sm:text-lg font-semibold text-gray-800 leading-relaxed">
-              {currentQuestion.content}
+              {displayQuestion?.content}
             </p>
           </div>
         </div>
@@ -1576,13 +1720,13 @@ function PracticeView({
         <div className="max-w-2xl mx-auto px-4 py-4">
           {/* 选项列表 */}
           <div className="space-y-3">
-            {currentQuestion.options?.map((option, index) => {
+            {displayQuestion?.options?.map((option, index) => {
               const isSelected = Array.isArray(currentAnswer) 
                 ? currentAnswer.includes(option.id)
                 : currentAnswer === option.id;
-              const isCorrectAnswer = Array.isArray(currentQuestion.answer)
-                ? currentQuestion.answer.includes(option.id)
-                : currentQuestion.answer === option.id;
+              const isCorrectAnswer = Array.isArray(displayQuestion.answer)
+                ? displayQuestion.answer.includes(option.id)
+                : displayQuestion.answer === option.id;
               
               // 选中和显示结果时的样式
               let optionStyle = 'bg-white border-gray-200 hover:border-orange-300';
@@ -1603,7 +1747,7 @@ function PracticeView({
                 <div
                   key={option.id}
                   className={`flex items-center p-4 rounded-2xl border-2 transition-all cursor-pointer ${optionStyle}`}
-                  onClick={() => !showExplanation && selectAnswer(currentQuestion.id, option.id)}
+                  onClick={() => !showExplanation && displayQuestion && selectAnswer(displayQuestion.id, option.id)}
                 >
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 font-bold text-sm ${
                     isSelected && showExplanation
@@ -1653,23 +1797,23 @@ function PracticeView({
                   <div className="bg-white rounded-lg px-2 py-1 sm:px-3 sm:py-1">
                     <span className="text-xs sm:text-sm text-gray-500">答案：</span>
                     <span className="text-sm sm:text-lg font-bold text-emerald-600 ml-1">
-                      {Array.isArray(currentQuestion.answer) 
-                        ? currentQuestion.answer.map(a => a.toUpperCase()).join(', ')
-                        : currentQuestion.answer.toUpperCase()}
+                      {Array.isArray(displayQuestion?.answer) 
+                        ? displayQuestion.answer.map(a => a.toUpperCase()).join(', ')
+                        : displayQuestion?.answer?.toUpperCase()}
                     </span>
                   </div>
                 </div>
               </div>
               
               {/* 解析 */}
-              {currentQuestion.explanation && (
+              {displayQuestion?.explanation && (
                 <div className="bg-amber-50 rounded-xl p-2 sm:p-3 border border-amber-200">
                   <div className="flex items-center gap-1 sm:gap-2 text-amber-700 mb-1">
                     <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="font-semibold text-xs sm:text-sm">解析</span>
                   </div>
                   <p className="text-amber-900 text-xs sm:text-sm leading-relaxed">
-                    {currentQuestion.explanation}
+                    {displayQuestion.explanation}
                   </p>
                 </div>
               )}
@@ -1685,16 +1829,27 @@ function PracticeView({
           <Button
             variant="outline"
             onClick={() => {
-              if (quizState.currentIndex > 0) {
+              // 如果是综合题的子题目，切换到上一个子题目
+              if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+                setCurrentChildIndex(prev => prev - 1);
+                setShowExplanation(false);
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+              } else if (quizState.currentIndex > 0) {
                 prevQuestion();
                 setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
               }
             }}
-            disabled={quizState.currentIndex === 0}
+            disabled={
+              currentQuestion?.type === 'comprehensive' 
+                ? currentChildIndex === 0 && quizState.currentIndex === 0
+                : quizState.currentIndex === 0
+            }
             className="h-10 px-3 rounded-lg border border-gray-200"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span className="ml-1 text-sm">上一题</span>
+            <span className="ml-1 text-sm">
+              {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一子题' : '上一题'}
+            </span>
           </Button>
 
           {/* 答案与解析按钮 */}
@@ -1710,27 +1865,54 @@ function PracticeView({
             <span className="ml-1 text-sm font-medium">答案与解析</span>
           </Button>
 
-          {/* 下一题 / 交卷 */}
-          {quizState.currentIndex === quizState.questions.length - 1 ? (
-            <Button
-              onClick={() => finishQuiz()}
-              className="h-10 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl"
-            >
-              <FileCheck className="w-4 h-4" />
-              <span className="ml-2 text-sm">交卷</span>
-            </Button>
-          ) : (
-            <Button
-              onClick={() => {
-                nextQuestion();
-                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-              }}
-              className="h-10 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl"
-            >
-              <span className="text-sm">下一题</span>
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          )}
+          {/* 下一题 / 下一子题 / 交卷 */}
+          {(() => {
+            const isComprehensive = currentQuestion?.type === 'comprehensive';
+            const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
+            const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
+            
+            if (isLastQuestion && !hasMoreChildren) {
+              // 最后一题且没有更多子题目，显示交卷
+              return (
+                <Button
+                  onClick={() => finishQuiz()}
+                  className="h-10 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl"
+                >
+                  <FileCheck className="w-4 h-4" />
+                  <span className="ml-2 text-sm">交卷</span>
+                </Button>
+              );
+            } else if (hasMoreChildren) {
+              // 还有更多子题目，切换到下一个子题目
+              return (
+                <Button
+                  onClick={() => {
+                    setCurrentChildIndex(prev => prev + 1);
+                    setShowExplanation(false);
+                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+                  }}
+                  className="h-10 px-4 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white font-medium rounded-xl"
+                >
+                  <span className="text-sm">下一子题</span>
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              );
+            } else {
+              // 切换到下一大题
+              return (
+                <Button
+                  onClick={() => {
+                    nextQuestion();
+                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+                  }}
+                  className="h-10 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl"
+                >
+                  <span className="text-sm">下一题</span>
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              );
+            }
+          })()}
         </div>
       </div>
 
