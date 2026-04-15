@@ -616,11 +616,11 @@ export default function QuizApp() {
                 {/* 已掌握和正确率 */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-2xl font-bold">{mounted ? getStats().masteredCount : '-'}</p>
+                    <p className="text-2xl font-bold">{mounted ? stats.masteredCount : '-'}</p>
                     <p className="text-xs opacity-80">已掌握</p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-2xl font-bold">{mounted ? getStats().accuracy : 0}%</p>
+                    <p className="text-2xl font-bold">{mounted ? stats.accuracy : 0}%</p>
                     <p className="text-xs opacity-80">正确率</p>
                   </div>
                 </div>
@@ -634,7 +634,7 @@ export default function QuizApp() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-gray-800">错题本</p>
-                        <p className="text-xs text-gray-500">{mounted ? getStats().wrongQuestionIds.length : '-'} 道待复习</p>
+                        <p className="text-xs text-gray-500">{mounted ? stats.wrongQuestionIds.length : '-'} 道待复习</p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-gray-400" />
                     </div>
@@ -1206,11 +1206,14 @@ function PracticeView({
     );
   }
 
-  // 计算进度
-  const answeredCount = quizState.questions.filter(q => quizState.answers[q.id] !== undefined).length;
-  const progressPercent = quizState.questions.length > 0 
-    ? Math.round((answeredCount / quizState.questions.length) * 100) 
-    : 0;
+  // 计算进度 - 使用 useMemo 避免重复计算
+  const { answeredCount, progressPercent } = useMemo(() => {
+    const count = quizState.questions.filter(q => quizState.answers[q.id] !== undefined).length;
+    const percent = quizState.questions.length > 0 
+      ? Math.round((count / quizState.questions.length) * 100) 
+      : 0;
+    return { answeredCount: count, progressPercent: percent };
+  }, [quizState.questions, quizState.answers]);
 
   return (
     <div className="min-h-screen bg-slate-50">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
 import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
 
@@ -330,8 +330,8 @@ export function useQuiz() {
     });
   }, []);
 
-  // 检查答案是否正确
-  const checkAnswer = (question: Question, selectedAnswer: string | string[] | undefined): boolean => {
+  // 检查答案是否正确 - 使用 useCallback 避免重复创建
+  const checkAnswer = useCallback((question: Question, selectedAnswer: string | string[] | undefined): boolean => {
     if (!selectedAnswer) return false;
     
     if (Array.isArray(question.answer)) {
@@ -349,7 +349,7 @@ export function useQuiz() {
     }
     
     return selectedAnswer === question.answer;
-  };
+  }, []);
 
   // 跳转到指定题目
   const goToQuestion = useCallback((index: number) => {
@@ -460,8 +460,8 @@ export function useQuiz() {
   const currentAnswer = currentQuestion ? quizState.answers[currentQuestion.id] : undefined;
   const isAnswerCorrect = currentQuestion ? checkAnswer(currentQuestion, currentAnswer) : false;
 
-  // 计算统计信息
-  const getStats = useCallback(() => {
+  // 计算统计信息 - 使用 useMemo 避免重复计算
+  const stats = useMemo(() => {
     const records = recordStore.getAll();
     
     // 只统计用户实际作答过的题目（排除空答题记录）
@@ -489,7 +489,7 @@ export function useQuiz() {
       wrongQuestionIds: getWrongQuestionIds(),
       masteredCount,
     };
-  }, []);
+  }, [quizState.currentIndex, quizState.answers]); // 依赖当前状态，确保及时更新
 
   return {
     quizState,
@@ -508,6 +508,6 @@ export function useQuiz() {
     goToQuestion,
     restartQuiz,
     resetQuiz,
-    getStats,
+    stats,
   };
 }
