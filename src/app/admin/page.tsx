@@ -418,6 +418,11 @@ export default function AdminPage() {
   const [categoryColor, setCategoryColor] = useState('blue');
   const [categoryParentId, setCategoryParentId] = useState<string | undefined>(undefined);
 
+  // 移动题库分类状态
+  const [isMoveCategoryDialogOpen, setIsMoveCategoryDialogOpen] = useState(false);
+  const [bankToMove, setBankToMove] = useState<QuestionBank | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('uncategorized');
+
   // 验证登录状态
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -690,6 +695,30 @@ export default function AdminPage() {
     a.download = `${bank.name}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // 移动题库到指定分类
+  const handleMoveCategory = () => {
+    if (!bankToMove) return;
+    
+    const storedBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
+    const updatedBanks = storedBanks.map((b: QuestionBank) => 
+      b.id === bankToMove.id 
+        ? { ...b, categoryId: selectedCategoryId === 'uncategorized' ? undefined : selectedCategoryId, updatedAt: Date.now() }
+        : b
+    );
+    localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
+    setBanks(updatedBanks);
+    setIsMoveCategoryDialogOpen(false);
+    setBankToMove(null);
+    setSuccess(`题库已移动到${selectedCategoryId === 'uncategorized' ? '未分类' : categories.find(c => c.id === selectedCategoryId)?.name || '指定分类'}`);
+  };
+
+  // 打开移动分类对话框
+  const openMoveCategoryDialog = (bank: QuestionBank) => {
+    setBankToMove(bank);
+    setSelectedCategoryId(bank.categoryId || 'uncategorized');
+    setIsMoveCategoryDialogOpen(true);
   };
 
   // 进入题库编辑页面
@@ -1050,6 +1079,10 @@ export default function AdminPage() {
                                       <Edit3 className="h-4 w-4 mr-2" />
                                       修改名称
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => openMoveCategoryDialog(bank)}>
+                                      <FolderOpen className="h-4 w-4 mr-2" />
+                                      移动分类
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => goToBankEdit(bank)}>
                                       <List className="h-4 w-4 mr-2" />
                                       编辑题目
@@ -1223,7 +1256,7 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
-              确定要删除题库"{bankToDelete?.name}"吗？此操作不可恢复。
+              确定要删除题库&quot;{bankToDelete?.name}&quot;吗？此操作不可恢复。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -1233,6 +1266,47 @@ export default function AdminPage() {
             <Button variant="destructive" onClick={handleDeleteBank}>
               <Trash2 className="h-4 w-4 mr-2" />
               删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 移动分类对话框 */}
+      <Dialog open={isMoveCategoryDialogOpen} onOpenChange={setIsMoveCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>移动题库到分类</DialogTitle>
+            <DialogDescription>
+              将「{bankToMove?.name}」移动到指定分类
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="move-category">选择分类</Label>
+            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="选择分类" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="uncategorized">未分类</SelectItem>
+                {/* 顶级分类 */}
+                {categories.filter(c => !c.parentId).map((cat) => (
+                  <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+                {/* 子分类 */}
+                {categories.filter(c => c.parentId).map((child) => (
+                  <SelectItem key={`child-${child.id}`} value={child.id}>
+                    &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMoveCategoryDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleMoveCategory}>
+              确认移动
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -53,11 +53,6 @@ export default function UsersPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
 
-  useEffect(() => {
-    checkAuth();
-    loadUsers();
-  }, []);
-
   const checkAuth = () => {
     const user = sessionStore.getCurrentUser();
     if (!user || user.role !== 'admin') {
@@ -70,6 +65,11 @@ export default function UsersPage() {
   const loadUsers = () => {
     setUsers(userStore.getAll());
   };
+
+  useEffect(() => {
+    checkAuth();
+    loadUsers();
+  }, []);
 
   const handleLogout = () => {
     logoutUser();
