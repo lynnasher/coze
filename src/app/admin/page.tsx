@@ -63,6 +63,8 @@ import {
   Plus,
   User,
   Key,
+  Database,
+  Upload,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -423,6 +425,70 @@ export default function AdminPage() {
   const [isMoveCategoryDialogOpen, setIsMoveCategoryDialogOpen] = useState(false);
   const [bankToMove, setBankToMove] = useState<QuestionBank | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('uncategorized');
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [localDataCount, setLocalDataCount] = useState(0);
+  const [localQuestionCount, setLocalQuestionCount] = useState(0);
+  const [migrateResult, setMigrateResult] = useState('');
+
+  // 检查本地数据
+  const handleLocalDataCheck = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
+    const localBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
+    const localQuestions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
+    
+    setLocalDataCount(localBanks.length);
+    setLocalQuestionCount(localQuestions.length);
+    
+    if (localBanks.length === 0) {
+      setMigrateResult('');
+    }
+  }, []);
+
+  // 迁移到数据库
+  const handleMigrateToDatabase = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    
+    const localBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
+    const localQuestions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
+    
+    if (localBanks.length === 0) {
+      return;
+    }
+    
+    setIsMigrating(true);
+    setMigrateResult('');
+    
+    try {
+      const response = await fetch('/api/admin/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          banks: localBanks,
+          questions: localQuestions
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setMigrateResult(data.message);
+        // 刷新题库列表
+        fetchBanks();
+        // 清除本地数据
+        localStorage.removeItem(STORAGE_KEYS.BANKS);
+        localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
+        setLocalDataCount(0);
+        setLocalQuestionCount(0);
+      } else {
+        setMigrateResult(`迁移失败: ${data.error}`);
+      }
+    } catch (error) {
+      setMigrateResult(`迁移失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsMigrating(false);
+    }
+  }, []);
 
   // 验证登录状态
   useEffect(() => {
@@ -945,6 +1011,71 @@ export default function AdminPage() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 迁移本地数据到数据库 */}
+        <Card className="mb-8 border-amber-200 bg-amber-50/50">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-amber-700">
+                <Database className="h-5 w-5" />
+                数据迁移
+              </CardTitle>
+              <CardDescription className="text-amber-600">
+                将本地存储的题库迁移到云端数据库
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                onClick={handleLocalDataCheck}
+                disabled={isMigrating}
+              >
+                <Search className="h-4 w-4 mr-2" />
+                查看本地数据
+              </Button>
+              <Button 
+                variant="default"
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={handleMigrateToDatabase}
+                disabled={isMigrating || localDataCount === 0}
+              >
+                {isMigrating ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    迁移中...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    迁移到数据库
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {localDataCount > 0 && (
+              <Alert className="border-amber-300 bg-amber-50">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-700">
+                  发现本地存储了 <strong>{localDataCount}</strong> 个题库，共 <strong>{localQuestionCount}</strong> 道题目。点击「迁移到数据库」可将其导入到云端数据库。
+                </AlertDescription>
+              </Alert>
+            )}
+            {localDataCount === 0 && (
+              <p className="text-sm text-slate-500">点击「查看本地数据」检查是否有本地存储的题库</p>
+            )}
+            {migrateResult && (
+              <Alert className="border-green-300 bg-green-50 mt-4">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-700">
+                  {migrateResult}
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
 
