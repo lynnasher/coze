@@ -105,10 +105,9 @@ export default function QuizApp() {
     category_id?: string;
   }>>([]);
   
-  const banks = useMemo(() => bankStore.getAll(), [questions]);
+  // 只使用数据库的题库
   const allBanks = useMemo(() => {
-    // 合并 localStorage 题库和数据库题库
-    const dbBanksFormatted = dbBanks.map(b => ({
+    return dbBanks.map(b => ({
       id: b.id,
       name: b.name,
       description: b.description || '',
@@ -116,11 +115,7 @@ export default function QuizApp() {
       questionCount: b.question_count || 0,
       categoryId: b.category_id
     }));
-    
-    // 去重：以数据库为主
-    const localFiltered = banks.filter(lb => !dbBanks.some(db => db.id === lb.id));
-    return [...dbBanksFormatted, ...localFiltered];
-  }, [banks, dbBanks]);
+  }, [dbBanks]);
   
   // 加载分类
   const loadCategories = useCallback(() => {

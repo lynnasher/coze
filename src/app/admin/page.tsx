@@ -541,37 +541,20 @@ export default function AdminPage() {
           id: b.id,
           name: b.name,
           description: b.description || undefined,
-          questionIds: [], // 数据库题库不需要这个字段
+          questionIds: [],
           categoryId: b.category_id || undefined,
           createdAt: new Date(b.created_at).getTime()
         }));
         
-        // 从 localStorage 获取本地题库（去重）
-        const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
-        const localBanks: QuestionBank[] = storedBanks ? JSON.parse(storedBanks) : [];
-        const localFiltered = localBanks.filter(lb => !dbBanks.some(db => db.id === lb.id));
-        
-        const allBanks = [...dbBanks, ...localFiltered];
-        setBanks(allBanks);
+        setBanks(dbBanks);
         setStats(prev => ({
           ...prev,
-          totalBanks: allBanks.length,
-          totalQuestions: allBanks.reduce((sum, bank) => sum + (bank.questionIds?.length || 0), 0)
+          totalBanks: dbBanks.length,
+          totalQuestions: dbBanks.reduce((sum, bank) => sum + (bank.questionIds?.length || 0), 0)
         }));
       }
     } catch (error) {
       console.error('加载题库失败:', error);
-      // 降级到 localStorage
-      const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
-      if (storedBanks) {
-        const parsedBanks: QuestionBank[] = JSON.parse(storedBanks);
-        setBanks(parsedBanks);
-        setStats(prev => ({
-          ...prev,
-          totalBanks: parsedBanks.length,
-          totalQuestions: parsedBanks.reduce((sum, bank) => sum + bank.questionIds.length, 0)
-        }));
-      }
     }
 
     // 从 localStorage 获取最近导入统计
@@ -583,6 +566,32 @@ export default function AdminPage() {
       setStats(prev => ({ ...prev, recentImports: recentQuestions.length }));
     }
   }, []);
+
+  // 清除本地题库数据（仅清除 localStorage 中的旧数据）
+  const handleClearLocalBanks = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
+    const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
+    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
+    
+    if (storedBanks || storedQuestions) {
+      const banks = storedBanks ? JSON.parse(storedBanks) : [];
+      const questions = storedQuestions ? JSON.parse(storedQuestions) : [];
+      
+      if (banks.length > 0 || questions.length > 0) {
+        localStorage.removeItem(STORAGE_KEYS.BANKS);
+        localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
+        setSuccess(`已清除 ${banks.length} 个本地题库和 ${questions.length} 道本地题目`);
+        loadBanks(); // 重新加载数据库题库
+        setLocalDataCount(0);
+        setLocalQuestionCount(0);
+      } else {
+        setSuccess('本地暂无题库数据');
+      }
+    } else {
+      setSuccess('本地暂无题库数据');
+    }
+  }, [loadBanks]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -1108,6 +1117,15 @@ export default function AdminPage() {
                   </>
                 )}
               </Button>
+              <Button 
+                variant="outline"
+                className="border-red-300 text-red-600 hover:bg-red-50"
+                onClick={handleClearLocalBanks}
+                disabled={isMigrating || localDataCount === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                清除本地数据
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -1115,12 +1133,12 @@ export default function AdminPage() {
               <Alert className="border-amber-300 bg-amber-50">
                 <AlertCircle className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-700">
-                  发现本地存储了 <strong>{localDataCount}</strong> 个题库，共 <strong>{localQuestionCount}</strong> 道题目。点击「迁移到数据库」可将其导入到云端数据库。
+                  发现本地存储了 <strong>{localDataCount}</strong> 个题库，共 <strong>{localQuestionCount}</strong> 道题目。可以选择「迁移到数据库」或「清除本地数据」。
                 </AlertDescription>
               </Alert>
             )}
             {localDataCount === 0 && (
-              <p className="text-sm text-slate-500">点击「查看本地数据」检查是否有本地存储的题库</p>
+              <p className="text-sm text-slate-500">暂无本地数据，所有题库均保存在数据库中</p>
             )}
             {migrateResult && (
               <Alert className="border-green-300 bg-green-50 mt-4">
