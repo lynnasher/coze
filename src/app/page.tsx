@@ -204,16 +204,34 @@ export default function QuizApp() {
     }
   }, [loadQuestions]);
 
-  // 获取用户激活的分类ID列表（未登录用户返回所有分类）
+  // 监听 localStorage 变化，以便在用户登录/登出后刷新状态
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'quiz_user_data' || e.key === 'quiz_user_token') {
+        const user = getCurrentUser();
+        setCurrentUser(user);
+        if (user) {
+          refreshActivatedCategories(user.id);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // 获取用户激活的分类ID列表
+  // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
   const getActivatedCategoryIds = useCallback(() => {
     if (!currentUser) {
-      // 未登录用户：返回所有一级分类ID
-      return categories.filter(c => !c.parentId).map(c => c.id);
+      // 未登录用户：不能做任何题库
+      return [];
     }
-    // 已登录用户：有激活的分类则用激活的，否则返回所有
+    // 已登录用户：只能做已激活分类的题库
     const activated = currentUser.activatedCategories || [];
-    return activated.length > 0 ? activated : categories.filter(c => !c.parentId).map(c => c.id);
-  }, [currentUser, categories]);
+    // 如果没有激活任何分类，返回空数组
+    return activated;
+  }, [currentUser]);
 
   // 过滤出可用的分类（用于显示）
   const getAvailableCategories = useCallback(() => {
@@ -471,12 +489,14 @@ export default function QuizApp() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Link href="/admin">
-              <Button variant="outline" size="sm" className="rounded-xl gap-1">
-                <Settings className="w-4 h-4" />
-                <span className="hidden sm:inline">管理</span>
-              </Button>
-            </Link>
+            {currentUser?.role === 'admin' && (
+              <Link href="/admin">
+                <Button variant="outline" size="sm" className="rounded-xl gap-1">
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">管理</span>
+                </Button>
+              </Link>
+            )}
             <UserStatus />
           </div>
         </div>
@@ -1229,6 +1249,38 @@ export default function QuizApp() {
               <p className="text-sm text-gray-500 mt-1">点击分类查看题库</p>
             </div>
 
+            {/* 未登录或无激活分类时的提示 */}
+            {(!currentUser || getActivatedCategoryIds().length === 0) && (
+              <Card className="mb-6 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                <CardContent className="p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center">
+                    <BookOpen className="w-8 h-8 text-amber-500" />
+                  </div>
+                  {!currentUser ? (
+                    <>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">请先登录</h3>
+                      <p className="text-gray-500 mb-4">登录后才能访问题库</p>
+                      <Link href="/profile">
+                        <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                          去登录
+                        </Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-2">暂无激活分类</h3>
+                      <p className="text-gray-500 mb-4">您还没有激活任何分类，请使用激活码激活</p>
+                      <Link href="/profile">
+                        <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                          去激活
+                        </Button>
+                      </Link>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* 题库列表 - 按分类分组，默认折叠 */}
             <div className="space-y-3">
               {banks.length === 0 ? (
@@ -1243,8 +1295,8 @@ export default function QuizApp() {
                 </Card>
               ) : (
                 <>
-                  {/* 未分类题库 - 始终展开 */}
-                  {banks.filter(b => !b.categoryId).length > 0 && (
+                  {/* 未分类题库 - 只有已登录用户才能访问 */}
+                  {currentUser && banks.filter(b => !b.categoryId).length > 0 && (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
                         <FolderOpen className="w-4 h-4 text-slate-500" />
@@ -1268,120 +1320,139 @@ export default function QuizApp() {
                   )}
                   
                   {/* 按分类显示题库 - 支持二级分类，点击展开 */}
-                  {categories.filter(c => !c.parentId).map(category => {
-                    // 获取该分类下的所有直接子分类
-                    const childCategories = categories.filter(c => c.parentId === category.id);
-                    
-                    // 获取该分类的直接题库
-                    const categoryBanks = banks.filter(b => b.categoryId === category.id);
-                    
-                    // 获取所有子分类的题库
-                    const childCategoryBanks = childCategories.flatMap(child => 
-                      banks.filter(b => b.categoryId === child.id)
+                  {(() => {
+                    const activatedIds = getActivatedCategoryIds();
+                    // 只显示已激活的分类（包括一级和二级分类）
+                    const visibleCategories = categories.filter(c => 
+                      activatedIds.includes(c.id) || 
+                      (c.parentId && activatedIds.includes(c.parentId))
                     );
                     
-                    // 如果该分类和子分类都没有题库，则不显示
-                    if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
+                    if (visibleCategories.length === 0) {
+                      return null;
+                    }
                     
                     return (
-                      <div key={category.id}>
-                        {/* 顶级分类 - 可点击展开 */}
-                        <div 
-                          className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
-                          onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
-                        >
-                          {selectedCategoryId === category.id ? (
-                            <FolderOpen className="w-4 h-4 text-slate-600" />
-                          ) : (
-                            <Folder className="w-4 h-4 text-slate-500" />
-                          )}
-                          <h3 className={`font-medium px-2 py-0.5 rounded ${
-                            category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                            category.color === 'green' ? 'bg-green-100 text-green-700' :
-                            category.color === 'red' ? 'bg-red-100 text-red-700' :
-                            category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                            category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                            category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                            category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                            'bg-cyan-100 text-cyan-700'
-                          }`}>
-                            {category.name}
-                          </h3>
-                          <span className="text-sm text-slate-400">
-                            ({categoryBanks.length + childCategoryBanks.length})
-                          </span>
-                          <ChevronRight className={`w-4 h-4 text-slate-400 ml-auto transition-transform ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
-                        </div>
-                        
-                        {/* 展开时显示题库 */}
-                        {selectedCategoryId === category.id && (
-                          <div className="ml-6 space-y-4">
-                            {/* 该分类的直接题库 */}
-                            {categoryBanks.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-sm text-slate-500">直接题库</span>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  {categoryBanks.map((bank) => (
-                                    <BankCard 
-                                      key={bank.id} 
-                                      bank={bank} 
-                                      onStartPractice={(bankId) => {
-                                        setPracticeBankId(bankId);
-                                        setActiveTab('practice');
-                                        setTimeout(() => startQuiz('sequential', bankId), 100);
-                                      }}
-                                    />
-                                  ))}
-                                </div>
+                      <>
+                        {visibleCategories.map(category => {
+                          // 获取该分类下的所有直接子分类（只显示已激活的）
+                          const childCategories = categories.filter(c => 
+                            c.parentId === category.id && activatedIds.includes(c.id)
+                          );
+                          
+                          // 获取该分类的直接题库
+                          const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                          
+                          // 获取所有子分类的题库
+                          const childCategoryBanks = childCategories.flatMap(child => 
+                            banks.filter(b => b.categoryId === child.id)
+                          );
+                          
+                          // 如果该分类和子分类都没有题库，则不显示
+                          if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
+                          
+                          return (
+                            <div key={category.id}>
+                              {/* 顶级分类 - 可点击展开 */}
+                              <div 
+                                className="flex items-center gap-2 mb-2 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
+                                onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                              >
+                                {selectedCategoryId === category.id ? (
+                                  <FolderOpen className="w-4 h-4 text-slate-600" />
+                                ) : (
+                                  <Folder className="w-4 h-4 text-slate-500" />
+                                )}
+                                <h3 className={`font-medium px-2 py-0.5 rounded ${
+                                  category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                  category.color === 'green' ? 'bg-green-100 text-green-700' :
+                                  category.color === 'red' ? 'bg-red-100 text-red-700' :
+                                  category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                  category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                  category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                  category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                  'bg-cyan-100 text-cyan-700'
+                                }`}>
+                                  {category.name}
+                                </h3>
+                                <span className="text-sm text-slate-400">
+                                  ({categoryBanks.length + childCategoryBanks.length})
+                                </span>
+                                <ChevronRight className={`w-4 h-4 text-slate-400 ml-auto transition-transform ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
                               </div>
-                            )}
                             
-                            {/* 子分类 */}
-                            {childCategories.map(child => {
-                              const childBanks = banks.filter(b => b.categoryId === child.id);
-                              if (childBanks.length === 0) return null;
-                              
-                              return (
-                                <div key={child.id}>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <FolderOpen className="w-3 h-3 text-slate-400" />
-                                    <span className={`text-sm font-medium px-2 py-0.5 rounded ${
-                                      child.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                                      child.color === 'green' ? 'bg-green-50 text-green-600' :
-                                      child.color === 'red' ? 'bg-red-50 text-red-600' :
-                                      child.color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
-                                      child.color === 'purple' ? 'bg-purple-50 text-purple-600' :
-                                      child.color === 'pink' ? 'bg-pink-50 text-pink-600' :
-                                      child.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-                                      'bg-cyan-50 text-cyan-600'
-                                    }`}>
-                                      {child.name}
-                                    </span>
-                                    <span className="text-xs text-slate-400">({childBanks.length})</span>
-                                  </div>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {childBanks.map((bank) => (
-                                      <BankCard 
-                                        key={bank.id} 
-                                        bank={bank} 
-                                        onStartPractice={(bankId) => {
-                                          setPracticeBankId(bankId);
-                                          setActiveTab('practice');
-                                          setTimeout(() => startQuiz('sequential', bankId), 100);
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
+                              {/* 展开时显示题库 */}
+                              {selectedCategoryId === category.id && (
+                                <div className="ml-6 space-y-4">
+                                  {/* 该分类的直接题库 */}
+                                  {categoryBanks.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-sm text-slate-500">直接题库</span>
+                                      </div>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {categoryBanks.map((bank) => (
+                                          <BankCard 
+                                            key={bank.id} 
+                                            bank={bank} 
+                                            onStartPractice={(bankId) => {
+                                              setPracticeBankId(bankId);
+                                              setActiveTab('practice');
+                                              setTimeout(() => startQuiz('sequential', bankId), 100);
+                                            }}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* 子分类 */}
+                                  {childCategories.map(child => {
+                                    const childBanks = banks.filter(b => b.categoryId === child.id);
+                                    if (childBanks.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={child.id}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <FolderOpen className="w-3 h-3 text-slate-400" />
+                                          <span className={`text-sm font-medium px-2 py-0.5 rounded ${
+                                            child.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                                            child.color === 'green' ? 'bg-green-50 text-green-600' :
+                                            child.color === 'red' ? 'bg-red-50 text-red-600' :
+                                            child.color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
+                                            child.color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                                            child.color === 'pink' ? 'bg-pink-50 text-pink-600' :
+                                            child.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+                                            'bg-cyan-50 text-cyan-600'
+                                          }`}>
+                                            {child.name}
+                                          </span>
+                                          <span className="text-xs text-slate-400">({childBanks.length})</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                          {childBanks.map((bank) => (
+                                            <BankCard 
+                                              key={bank.id} 
+                                              bank={bank} 
+                                              onStartPractice={(bankId) => {
+                                                setPracticeBankId(bankId);
+                                                setActiveTab('practice');
+                                                setTimeout(() => startQuiz('sequential', bankId), 100);
+                                              }}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
                     );
-                  })}
+                  })()}
                 </>
               )}
             </div>
