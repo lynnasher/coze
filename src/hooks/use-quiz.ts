@@ -21,6 +21,18 @@ export function useQuiz() {
   // 从数据库加载题目
   const loadQuestionsFromDb = useCallback(async (bankId?: string) => {
     try {
+      // 处理分类ID（cat_xxx格式）
+      if (bankId?.startsWith('cat_')) {
+        const categoryId = bankId.replace('cat_', '');
+        const url = `/api/questions?categoryId=${categoryId}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          return data.questions as Question[];
+        }
+        return null;
+      }
+      
       const url = bankId ? `/api/questions?bankId=${bankId}` : '/api/questions';
       const response = await fetch(url);
       if (response.ok) {

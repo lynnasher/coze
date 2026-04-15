@@ -277,6 +277,44 @@ export const bankService = {
     return this.convertToFrontendQuestions((data || []) as DbQuestion[]);
   },
 
+  // 通过分类ID获取所有题目（包括该分类下所有子分类的题库）
+  async getQuestionsByCategoryId(categoryId: string): Promise<Question[]> {
+    const client = getSupabaseClient();
+    
+    // 先获取该分类下所有子分类ID
+    const { data: categories } = await client
+      .from('categories')
+      .select('id')
+      .eq('parent_id', categoryId);
+    
+    const allCategoryIds = [categoryId, ...(categories?.map(c => c.id) || [])];
+    
+    // 获取这些分类下的所有题库
+    const { data: banks } = await client
+      .from('question_banks')
+      .select('id')
+      .in('category_id', allCategoryIds)
+      .eq('status', 'active');
+    
+    const bankIds = banks?.map(b => b.id) || [];
+    
+    if (bankIds.length === 0) {
+      return [];
+    }
+    
+    // 获取这些题库下的所有题目
+    const { data, error } = await client
+      .from('questions')
+      .select('*')
+      .in('bank_id', bankIds)
+      .eq('status', 'active')
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(`获取题目失败: ${error.message}`);
+
+    return this.convertToFrontendQuestions((data || []) as DbQuestion[]);
+  },
+
   // 通过题库ID获取题目（前端格式）
   async getQuestionsByBankIdFlat(bankId: string): Promise<Question[]> {
     const client = getSupabaseClient();

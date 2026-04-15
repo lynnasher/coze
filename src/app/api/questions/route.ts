@@ -6,9 +6,13 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const bankId = searchParams.get('bankId');
+    const categoryId = searchParams.get('categoryId');
     
     let questions;
-    if (bankId) {
+    if (categoryId) {
+      // 按分类获取所有题目
+      questions = await bankService.getQuestionsByCategoryId(categoryId);
+    } else if (bankId) {
       questions = await bankService.getQuestionsByBankId(bankId);
     } else {
       questions = await bankService.getAllQuestions();
