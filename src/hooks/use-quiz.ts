@@ -464,13 +464,21 @@ export function useQuiz() {
   // 计算统计信息
   const getStats = useCallback(() => {
     const records = recordStore.getAll();
-    const correctCount = records.filter(r => r.isCorrect).length;
-    const totalCount = records.length;
+    
+    // 只统计用户实际作答过的题目（排除空答题记录）
+    const answeredRecords = records.filter(r => {
+      if (!r.selectedAnswer) return false;
+      const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+      return answer.length > 0;
+    });
+    
+    const correctCount = answeredRecords.filter(r => r.isCorrect).length;
+    const totalCount = answeredRecords.length;
     const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
     
     // 已掌握题数：做对过的题目去重数量
     const correctQuestionIds = new Set(
-      records.filter(r => r.isCorrect).map(r => r.questionId)
+      answeredRecords.filter(r => r.isCorrect).map(r => r.questionId)
     );
     const masteredCount = correctQuestionIds.size;
     

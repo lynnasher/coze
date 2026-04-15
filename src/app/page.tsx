@@ -1044,8 +1044,15 @@ export default function QuizApp() {
                   filteredRecords = records.filter(r => now - r.timestamp < 30 * dayMs);
                 }
                 
-                const totalCount = filteredRecords.length;
-                const correctCount = filteredRecords.filter(r => r.isCorrect).length;
+                // 只统计用户实际作答过的题目（排除空答题记录）
+                const answeredRecords = filteredRecords.filter(r => {
+                  if (!r.selectedAnswer) return false;
+                  const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+                  return answer.length > 0;
+                });
+                
+                const totalCount = answeredRecords.length;
+                const correctCount = answeredRecords.filter(r => r.isCorrect).length;
                 const wrongCount = totalCount - correctCount;
                 const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
                 
