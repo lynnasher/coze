@@ -289,6 +289,20 @@ export function useQuiz() {
     startQuiz(quizState.mode);
   }, [quizState.mode, startQuiz]);
 
+  // 重置练习状态（返回首页时调用）
+  const resetQuiz = useCallback(() => {
+    setQuizState({
+      questions: [],
+      currentIndex: 0,
+      answers: {},
+      showResult: false,
+      mode: 'sequential',
+      timeSpent: 0,
+      isComplete: false,
+    });
+    setHasStarted(false);
+  }, []);
+
   // 直接完成练习（提交试卷）
   const finishQuiz = useCallback(() => {
     // 记录当前题目答案（如果已选但未提交）
@@ -366,6 +380,7 @@ export function useQuiz() {
     finishQuiz,
     goToQuestion,
     restartQuiz,
+    resetQuiz,
     getStats,
   };
 }

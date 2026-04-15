@@ -73,6 +73,7 @@ export default function QuizApp() {
     finishQuiz,
     goToQuestion,
     restartQuiz,
+    resetQuiz,
     getStats,
     setHasStarted,
   } = useQuiz();
@@ -524,6 +525,7 @@ export default function QuizApp() {
             finishQuiz={finishQuiz}
             goToQuestion={goToQuestion}
             restartQuiz={restartQuiz}
+            resetQuiz={resetQuiz}
           />
         ) : (
           <Tabs value={activeTab} onValueChange={(value) => {
@@ -579,6 +581,7 @@ export default function QuizApp() {
                 finishQuiz={finishQuiz}
                 goToQuestion={goToQuestion}
                 restartQuiz={restartQuiz}
+                resetQuiz={resetQuiz}
               />
             ) : (
               /* 首页布局 - 宣传图 + 简洁内容 */
@@ -1161,6 +1164,7 @@ interface PracticeViewProps {
   finishQuiz: ReturnType<typeof useQuiz>['finishQuiz'];
   goToQuestion: ReturnType<typeof useQuiz>['goToQuestion'];
   restartQuiz: ReturnType<typeof useQuiz>['restartQuiz'];
+  resetQuiz: ReturnType<typeof useQuiz>['resetQuiz'];
 }
 
 function PracticeView({ 
@@ -1177,6 +1181,7 @@ function PracticeView({
   finishQuiz,
   goToQuestion,
   restartQuiz,
+  resetQuiz,
 }: PracticeViewProps) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   // 答案与解析显示状态（不自动显示，需手动点击按钮）
@@ -1188,12 +1193,12 @@ function PracticeView({
   const handleFinishAndExit = useCallback(() => {
     if (confirm('确定要交卷吗？')) {
       finishQuiz();
-      // 延迟返回首页，让 finishQuiz 完成记录
+      // 延迟返回首页，让 finishQuiz 完成记录，然后重置所有状态
       setTimeout(() => {
-        onExit();
+        resetQuiz();
       }, 100);
     }
-  }, [finishQuiz, onExit]);
+  }, [finishQuiz, resetQuiz]);
   
   // 如果正在加载，显示加载状态
   if (isLoading) {
