@@ -195,9 +195,30 @@ export const activationCodeService = {
     if (error) throw new Error(`禁用激活码失败: ${error.message}`);
   },
 
-  // 删除激活码
+  // 删除激活码（级联删除用户激活记录）
   async delete(codeId: string): Promise<void> {
     const client = getSupabaseClient();
+    
+    // 先查询激活码，获取 code 用于删除用户激活记录
+    const { data: codeData, error: codeError } = await client
+      .from('activation_codes')
+      .select('code')
+      .eq('id', codeId)
+      .maybeSingle();
+    
+    if (codeError) throw new Error(`查询激活码失败: ${codeError.message}`);
+    
+    // 如果找到了激活码，先删除使用该激活码的用户激活记录
+    if (codeData) {
+      const { error: activationError } = await client
+        .from('user_activations')
+        .delete()
+        .eq('activation_code', codeData.code);
+      
+      if (activationError) throw new Error(`删除用户激活记录失败: ${activationError.message}`);
+    }
+    
+    // 删除激活码本身
     const { error } = await client.from('activation_codes').delete().eq('id', codeId);
     if (error) throw new Error(`删除激活码失败: ${error.message}`);
   },
