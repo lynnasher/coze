@@ -475,7 +475,7 @@ export default function QuizApp() {
     <div className="min-h-screen bg-gray-50">
       {/* 顶部区域 - 简洁清爽风格 */}
       <header className="bg-white sticky top-0 z-50 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-3">
+        <div className="max-w-[970px] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* 产品标识 */}
             <div className="flex items-center gap-2">
@@ -505,7 +505,7 @@ export default function QuizApp() {
       </header>
 
       {/* 主内容 */}
-      <main className="max-w-lg mx-auto px-4 py-4">
+      <main className="max-w-[970px] mx-auto px-4 py-4">
         {/* 当 hasStarted 为 true 时，隐藏 Tabs，直接显示练习页面 */}
         {hasStarted ? (
           <PracticeView 
@@ -568,7 +568,6 @@ export default function QuizApp() {
 
           {/* 练习页面 */}
           <TabsContent value="practice">
-              /* 首页布局 - 宣传图 + 简洁内容 */
               <div className="space-y-4">
                 {/* 宣传图区域 */}
                 <div className="rounded-2xl overflow-hidden shadow-sm">
@@ -1268,7 +1267,7 @@ function PracticeView({
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航栏 - 紧凑设计 */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-[970px] mx-auto">
           <div className="flex items-center justify-between">
             {/* 左侧：返回按钮 */}
             <Button
@@ -1310,7 +1309,7 @@ function PracticeView({
 
       {/* 进度条 */}
       <div className="bg-white border-b border-slate-100 px-4 py-2">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-[970px] mx-auto">
           <div className="flex items-center gap-3">
             <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div 
@@ -1327,7 +1326,7 @@ function PracticeView({
 
       {/* 题目内容区域 */}
       <div className="pb-28" ref={questionContentRef}>
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-[970px] mx-auto px-4 py-4">
           {/* 题目卡片 */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             {/* 题干头部 */}
@@ -1488,7 +1487,7 @@ function PracticeView({
 
       {/* 底部固定操作栏 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-[970px] mx-auto">
           <div className="flex items-center justify-between gap-3">
             {/* 上一题 */}
             <Button
