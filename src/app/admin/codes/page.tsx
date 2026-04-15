@@ -258,13 +258,14 @@ export default function ActivationCodesPage() {
         return;
       }
       
-      const response = await fetch('/api/activation-codes', {
+      // 使用 URL 查询参数传递 ID，避免 DELETE 请求 body 问题
+      const url = `/api/activation-codes?ids=${encodeURIComponent(JSON.stringify([codeId]))}`;
+      
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ ids: [codeId] }),
       });
       
       // 检查响应状态

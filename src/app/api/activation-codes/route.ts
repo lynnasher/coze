@@ -43,20 +43,31 @@ export async function POST(request: Request) {
 // 批量删除激活码
 export async function DELETE(request: Request) {
   try {
-    // 验证 Content-Type
+    // 尝试从 JSON body 获取 IDs
     const contentType = request.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      return NextResponse.json({ success: false, error: '无效的请求格式' }, { status: 400 });
+    let ids: string[] = [];
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        const body = await request.json();
+        ids = body.ids || [];
+      } catch {
+        // JSON 解析失败，忽略
+      }
     }
-
-    let body;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json({ success: false, error: '请求格式错误' }, { status: 400 });
+    
+    // 如果 body 中没有 IDs，尝试从 URL 查询参数获取
+    if (ids.length === 0) {
+      const url = new URL(request.url);
+      const idsParam = url.searchParams.get('ids');
+      if (idsParam) {
+        try {
+          ids = JSON.parse(idsParam);
+        } catch {
+          ids = [idsParam];
+        }
+      }
     }
-
-    const { ids } = body;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ success: false, error: '请提供要删除的ID列表' }, { status: 400 });
