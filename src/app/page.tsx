@@ -39,9 +39,12 @@ import {
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
-import { UserStatus } from '@/components/AuthModal';
-import { sessionStore } from '@/lib/user-store';
-import type { User } from '@/lib/types';
+import { UserStatus, getCurrentUser as getStoredUser } from '@/components/AuthModal';
+
+// 从 AuthModal 获取当前用户
+const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
+  return getStoredUser();
+};
 
 // Duolingo 风格颜色
 const COLORS = {
@@ -86,7 +89,13 @@ export default function QuizApp() {
   // 统计页面日期筛选状态
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('all');
   const [categories, setCategories] = useState<Category[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    phone: string;
+    nickname?: string;
+    role: string;
+    activatedCategories?: string[];
+  } | null>(null);
   
   const banks = useMemo(() => bankStore.getAll(), [questions]);
   
@@ -106,17 +115,23 @@ export default function QuizApp() {
   useEffect(() => {
     loadQuestions();
     // 获取当前登录用户
-    const user = sessionStore.getCurrentUser();
+    const user = getCurrentUser();
     setCurrentUser(user);
   }, [loadQuestions]);
 
-  // 获取用户激活的分类ID列表
+  // 获取用户激活的分类ID列表（未登录用户返回所有分类）
   const getActivatedCategoryIds = useCallback(() => {
-    return currentUser?.activatedCategories || [];
-  }, [currentUser]);
+    if (!currentUser) {
+      // 未登录用户：返回所有一级分类ID
+      return categories.filter(c => !c.parentId).map(c => c.id);
+    }
+    // 已登录用户：有激活的分类则用激活的，否则返回所有
+    const activated = currentUser.activatedCategories || [];
+    return activated.length > 0 ? activated : categories.filter(c => !c.parentId).map(c => c.id);
+  }, [currentUser, categories]);
 
-  // 过滤出已激活的一级分类
-  const getActivatedCategories = useCallback(() => {
+  // 过滤出可用的分类（用于显示）
+  const getAvailableCategories = useCallback(() => {
     const activatedIds = getActivatedCategoryIds();
     return categories.filter(c => !c.parentId && activatedIds.includes(c.id));
   }, [categories, getActivatedCategoryIds]);
@@ -879,7 +894,7 @@ export default function QuizApp() {
                   
                   {!selectedCategoryId ? (
                     /* 显示已激活的一级分类列表 */
-                    getActivatedCategories().length === 0 ? (
+                    getAvailableCategories().length === 0 ? (
                       <Card className="border-dashed border-2 bg-gray-50">
                         <CardContent className="p-6 text-center">
                           <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
@@ -890,7 +905,7 @@ export default function QuizApp() {
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                         {/* 已激活的一级分类卡片 - 紧凑显示 */}
-                        {getActivatedCategories().map((category) => {
+                        {getAvailableCategories().map((category) => {
                           const subCategories = categories.filter(c => c.parentId === category.id);
                           const categoryBanks = banks.filter(b => b.categoryId === category.id);
                           const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
