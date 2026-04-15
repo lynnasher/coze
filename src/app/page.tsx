@@ -1284,20 +1284,8 @@ function PracticeView({
               <span className="text-sm font-medium">返回</span>
             </Button>
             
-            {/* 中间：题型 + 题号 */}
+            {/* 中间：题号 */}
             <div className="flex items-center gap-2">
-              <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${
-                currentQuestion.type === 'single' ? 'bg-indigo-500' :
-                currentQuestion.type === 'multiple' ? 'bg-purple-500' :
-                currentQuestion.type === 'true-false' ? 'bg-cyan-500' :
-                currentQuestion.type === 'comprehensive' ? 'bg-rose-500' :
-                'bg-teal-500'
-              }`}>
-                {currentQuestion.type === 'single' ? '单选' :
-                 currentQuestion.type === 'multiple' ? '多选' :
-                 currentQuestion.type === 'true-false' ? '判断' :
-                 currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
-              </span>
               <span className="text-sm text-slate-600">
                 {quizState.currentIndex + 1} / {quizState.questions.length}
               </span>
@@ -1355,13 +1343,29 @@ function PracticeView({
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             {/* 题干头部 */}
             <div className="px-4 py-3 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
-              <div className="flex items-center gap-2">
-                {/* 子题目指示器（综合题显示） */}
-                {currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 && (
-                  <span className="text-xs text-slate-500 font-medium">
-                    子题 {currentChildIndex + 1}/{currentQuestion.children.length}
-                  </span>
-                )}
+              <div className="flex items-center justify-between gap-2">
+                {/* 左侧：题型标签 */}
+                <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${
+                  displayQuestion?.type === 'single' ? 'bg-indigo-500' :
+                  displayQuestion?.type === 'multiple' ? 'bg-purple-500' :
+                  displayQuestion?.type === 'true-false' ? 'bg-cyan-500' :
+                  displayQuestion?.type === 'comprehensive' ? 'bg-rose-500' :
+                  'bg-teal-500'
+                }`}>
+                  {displayQuestion?.type === 'single' ? '单选题' :
+                   displayQuestion?.type === 'multiple' ? '多选题' :
+                   displayQuestion?.type === 'true-false' ? '判断题' :
+                   displayQuestion?.type === 'comprehensive' ? '综合题' : '填空题'}
+                </span>
+                
+                {/* 右侧：题号 */}
+                <span className="text-xs text-slate-500 font-medium">
+                  {currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 ? (
+                    <>子题 {currentChildIndex + 1}/{currentQuestion.children.length}</>
+                  ) : (
+                    <>第 {quizState.currentIndex + 1} 题</>
+                  )}
+                </span>
               </div>
             </div>
             
@@ -1502,6 +1506,7 @@ function PracticeView({
             {/* 上一题 */}
             <Button
               variant="outline"
+              size="sm"
               onClick={() => {
                 // 如果是综合题的子题目，切换到上一个子题目
                 if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
@@ -1519,7 +1524,7 @@ function PracticeView({
                   ? currentChildIndex === 0 && quizState.currentIndex === 0
                   : quizState.currentIndex === 0
               }
-              className="flex-1 h-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+              className="h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="ml-1 text-sm font-medium">
@@ -1535,7 +1540,7 @@ function PracticeView({
                 setShowExplanation(true);
                 setTimeout(scrollToQuestion, 100);
               }}
-              className="h-11 px-4 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium"
+              className="h-11 px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
             >
               <BookOpen className="w-4 h-4" />
               <span className="ml-1.5 text-sm">查看答案</span>
@@ -1551,8 +1556,9 @@ function PracticeView({
                 // 最后一题且没有更多子题目，显示交卷
                 return (
                   <Button
+                    size="sm"
                     onClick={() => handleFinishAndExit()}
-                    className="flex-1 h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl shadow-md shadow-indigo-200"
+                    className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
                   >
                     <FileCheck className="w-4 h-4" />
                     <span className="ml-1.5 text-sm">交卷</span>
@@ -1562,12 +1568,13 @@ function PracticeView({
                 // 还有更多子题目，切换到下一个子题目
                 return (
                   <Button
+                    size="sm"
                     onClick={() => {
                       setCurrentChildIndex(prev => prev + 1);
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="flex-1 h-11 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl shadow-md shadow-purple-200"
+                    className="h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
                   >
                     <span className="text-sm">下一子题</span>
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -1577,12 +1584,13 @@ function PracticeView({
                 // 切换到下一大题
                 return (
                   <Button
+                    size="sm"
                     onClick={() => {
                       nextQuestion();
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="flex-1 h-11 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl shadow-md shadow-indigo-200"
+                    className="h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
                   >
                     <span className="text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-1" />

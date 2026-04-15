@@ -148,46 +148,15 @@ export function useQuiz() {
     });
   }, [loadQuestionsFromDb]);
 
-  // 选择答案（自动提交）
+  // 选择答案（不自动提交）
   const selectAnswer = useCallback((questionId: string, answer: string | string[]) => {
     setQuizState(prev => {
       const newAnswers = {
         ...prev.answers,
         [questionId]: answer,
       };
-      const currentQuestion = prev.questions[prev.currentIndex];
-      if (currentQuestion) {
-        const isCorrect = checkAnswer(currentQuestion, answer);
-        
-        // 只在答错时记录练习记录
-        if (!isCorrect) {
-          recordStore.add({
-            id: generateId(),
-            questionId,
-            isCorrect,
-            selectedAnswer: answer,
-            timestamp: Date.now(),
-          });
-        }
-        
-        // 更新错题连续正确次数
-        if (isCorrect) {
-          // 答对：增加连续正确次数，如果达到3次则移出错题本
-          const newStreak = wrongStreakStore.increment(questionId);
-          if (newStreak >= 3) {
-            wrongStreakStore.remove(questionId);
-          }
-        } else {
-          // 答错：重置连续正确次数
-          wrongStreakStore.reset(questionId);
-        }
-        
-        return {
-          ...prev,
-          answers: newAnswers,
-          showResult: true,
-        };
-      }
+      // 只更新答案，不自动显示结果
+      // 用户需要点击"查看答案"按钮才会显示结果
       return {
         ...prev,
         answers: newAnswers,
