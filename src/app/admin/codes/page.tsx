@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -44,8 +47,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 interface Category {
   id: string;
@@ -81,7 +86,11 @@ export default function ActivationCodesPage() {
   
   // 创建表单状态
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [expireType, setExpireType] = useState<'permanent' | 'days' | 'date'>('days');
   const [expireDays, setExpireDays] = useState('30');
+  const [expireDate, setExpireDate] = useState<Date | undefined>(
+    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 默认30天后
+  );
   const [codeCount, setCodeCount] = useState('1');
   const [creating, setCreating] = useState(false);
 
@@ -143,14 +152,6 @@ export default function ActivationCodesPage() {
     router.push('/admin/login');
   };
 
-  // 获取最小子分类（没有子分类的分类）
-  const getLeafCategories = (): Category[] => {
-    return categories.filter(cat => {
-      // 没有子分类的就是最小分类
-      return !categories.some(c => c.parentId === cat.id);
-    });
-  };
-
   // 获取分类的完整路径
   const getCategoryPath = (categoryId: string): string => {
     const category = categories.find(c => c.id === categoryId);
@@ -178,7 +179,14 @@ export default function ActivationCodesPage() {
       const category = categories.find(c => c.id === selectedCategory);
       
       // 计算过期时间
-      const expiresAt = expireDays === '0' ? null : new Date(Date.now() + parseInt(expireDays) * 24 * 60 * 60 * 1000).toISOString();
+      let expiresAt: string | null = null;
+      if (expireType === 'permanent') {
+        expiresAt = null; // 永久有效
+      } else if (expireType === 'days') {
+        expiresAt = new Date(Date.now() + parseInt(expireDays) * 24 * 60 * 60 * 1000).toISOString();
+      } else if (expireType === 'date' && expireDate) {
+        expiresAt = expireDate.toISOString();
+      }
       
       const response = await fetch('/api/activation-codes', {
         method: 'POST',
@@ -200,6 +208,7 @@ export default function ActivationCodesPage() {
         setCreateModalOpen(false);
         setSelectedCategory('');
         setExpireDays('30');
+        setExpireDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
         setCodeCount('1');
         loadCodes();
       } else {
@@ -502,7 +511,7 @@ export default function ActivationCodesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-gray-600">
-            <p>1. 每个激活码对应一个最小子分类（没有子分类的分类）</p>
+            <p>1. 每个激活码对应一个题库分类</p>
             <p>2. 用户使用激活码后，将获得该分类的访问权限</p>
             <p>3. 可设置过期时间，到期后用户的该分类权限将自动失效</p>
             <p>4. 单次激活码只能使用一次，使用后即失效</p>
@@ -517,7 +526,7 @@ export default function ActivationCodesPage() {
           <DialogHeader>
             <DialogTitle>生成激活码</DialogTitle>
             <DialogDescription>
-              为最小子分类生成激活码，设置过期时间
+              为题库分类生成激活码，设置过期时间
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -525,13 +534,13 @@ export default function ActivationCodesPage() {
               <Label htmlFor="category">对应分类 *</Label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder="选择最小子分类" />
+                  <SelectValue placeholder="选择分类" />
                 </SelectTrigger>
                 <SelectContent>
-                  {leafCategories.length === 0 ? (
+                  {categories.length === 0 ? (
                     <SelectItem value="none" disabled>暂无分类，请先创建分类</SelectItem>
                   ) : (
-                    leafCategories.map((cat) => (
+                    categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {getCategoryPath(cat.id)}
                       </SelectItem>
@@ -539,28 +548,82 @@ export default function ActivationCodesPage() {
                   )}
                 </SelectContent>
               </Select>
-              {categories.filter(c => c.parentId).length === 0 && categories.length > 0 && (
-                <p className="text-xs text-amber-600 mt-1">
-                  提示：当前没有子分类，请先创建二级分类
-                </p>
-              )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="expireDays">过期时间</Label>
-              <Select value={expireDays} onValueChange={setExpireDays}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">永久有效</SelectItem>
-                  <SelectItem value="7">7 天</SelectItem>
-                  <SelectItem value="30">30 天</SelectItem>
-                  <SelectItem value="90">90 天</SelectItem>
-                  <SelectItem value="180">180 天</SelectItem>
-                  <SelectItem value="365">1 年</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>过期时间</Label>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={expireType === 'permanent' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExpireType('permanent')}
+                    className="flex-1"
+                  >
+                    永久有效
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={expireType === 'days' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExpireType('days')}
+                    className="flex-1"
+                  >
+                    按天数
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={expireType === 'date' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setExpireType('date')}
+                    className="flex-1"
+                  >
+                    指定日期
+                  </Button>
+                </div>
+                
+                {expireType === 'days' && (
+                  <Select value={expireDays} onValueChange={setExpireDays}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择天数" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 天</SelectItem>
+                      <SelectItem value="30">30 天</SelectItem>
+                      <SelectItem value="90">90 天</SelectItem>
+                      <SelectItem value="180">180 天</SelectItem>
+                      <SelectItem value="365">1 年</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {expireType === 'date' && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !expireDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {expireDate ? format(expireDate, "yyyy-MM-dd") : "选择日期"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={expireDate}
+                        onSelect={setExpireDate}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
