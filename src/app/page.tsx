@@ -79,6 +79,7 @@ export default function QuizApp() {
   
   // 练习模式状态
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   
   // 统计页面日期筛选状态
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('all');
@@ -842,70 +843,197 @@ export default function QuizApp() {
                     <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
                       <Library className="w-4 h-4 text-white" />
                     </div>
-                    选择题库
+                    选择分类
+                    {selectedCategoryId && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => {
+                          setSelectedCategoryId(null);
+                          setPracticeBankId(null);
+                        }}
+                        className="text-xs h-7 ml-auto"
+                      >
+                        <ArrowLeft className="w-3 h-3 mr-1" />
+                        返回
+                      </Button>
+                    )}
                   </h2>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* 全部题目卡片 */}
-                    <Card 
-                      className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                        practiceBankId === null ? 'ring-2 ring-blue-500' : ''
-                      }`}
-                      onClick={() => setPracticeBankId(null)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">全部题目</h3>
-                            <div className="flex items-center gap-1 text-sm text-gray-400">
-                              <BookOpen className="w-3 h-3" />
-                              <span>{questions.length} 道题</span>
-                            </div>
-                          </div>
-                          {practiceBankId === null && (
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                              <Check className="w-4 h-4 text-white" />
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {/* 题库卡片 */}
-                    {banks.map((bank) => {
-                      const bankQuestions = questions.filter(q => q.bankId === bank.id);
-                      const isSelected = practiceBankId === bank.id;
-                      return (
-                        <Card 
-                          key={bank.id}
-                          className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                            isSelected ? 'ring-2 ring-blue-500' : ''
-                          }`}
-                          onClick={() => setPracticeBankId(bank.id)}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">{bank.name}</h3>
-                                <div className="flex items-center gap-3 text-sm text-gray-400">
-                                  <span className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3" />
-                                    {bankQuestions.length} 道题
-                                  </span>
-                                  <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
-                                </div>
+                  {!selectedCategoryId ? (
+                    /* 显示一级分类列表 */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* 全部题目卡片 */}
+                      <Card 
+                        className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                          practiceBankId === null && selectedCategoryId === null ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                        onClick={() => {
+                          setSelectedCategoryId(null);
+                          setPracticeBankId(null);
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">全部题目</h3>
+                              <div className="flex items-center gap-1 text-sm text-gray-400">
+                                <BookOpen className="w-3 h-3" />
+                                <span>{questions.length} 道题</span>
                               </div>
-                              {isSelected && (
-                                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                                  <Check className="w-4 h-4 text-white" />
-                                </div>
-                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
+                            {practiceBankId === null && selectedCategoryId === null && (
+                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* 一级分类卡片 */}
+                      {categories.filter(c => !c.parentId).map((category) => {
+                        const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                        const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
+                        const isSelected = selectedCategoryId === category.id;
+                        return (
+                          <Card 
+                            key={category.id}
+                            className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                              isSelected ? 'ring-2 ring-blue-500' : ''
+                            }`}
+                            onClick={() => {
+                              setSelectedCategoryId(category.id);
+                              setPracticeBankId(null);
+                            }}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">{category.name}</h3>
+                                  <div className="flex items-center gap-3 text-sm text-gray-400">
+                                    <span className="flex items-center gap-1">
+                                      <BookOpen className="w-3 h-3" />
+                                      {categoryQuestions.length} 道题
+                                    </span>
+                                    <span>{categoryBanks.length} 个题库</span>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                    <Check className="w-4 h-4 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* 显示选中分类下的子分类和题库 */
+                    <div className="space-y-4">
+                      {/* 返回按钮和当前分类标题 */}
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            setSelectedCategoryId(null);
+                            setPracticeBankId(null);
+                          }}
+                          className="text-xs"
+                        >
+                          <ArrowLeft className="w-3 h-3 mr-1" />
+                          返回分类
+                        </Button>
+                        <span className="text-sm text-gray-500">
+                          {categories.find(c => c.id === selectedCategoryId)?.name}
+                        </span>
+                      </div>
+                      
+                      {/* 子分类卡片 */}
+                      {categories.filter(c => c.parentId === selectedCategoryId).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {categories.filter(c => c.parentId === selectedCategoryId).map((subCategory) => {
+                            const subCategoryBanks = banks.filter(b => b.categoryId === subCategory.id);
+                            const subCategoryQuestions = questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId));
+                            const isSelected = practiceBankId === subCategory.id && practiceBankId.startsWith('cat_');
+                            return (
+                              <Card 
+                                key={subCategory.id}
+                                className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                                  isSelected ? 'ring-2 ring-blue-500' : ''
+                                }`}
+                                onClick={() => {
+                                  setPracticeBankId(`cat_${subCategory.id}`);
+                                }}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">{subCategory.name}</h3>
+                                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                          <BookOpen className="w-3 h-3" />
+                                          {subCategoryQuestions.length} 道题
+                                        </span>
+                                        <span>{subCategoryBanks.length} 个题库</span>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                        <Check className="w-4 h-4 text-white" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* 该分类下的题库列表 */}
+                      {banks.filter(b => b.categoryId === selectedCategoryId).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {banks.filter(b => b.categoryId === selectedCategoryId).map((bank) => {
+                            const bankQuestions = questions.filter(q => q.bankId === bank.id);
+                            const isSelected = practiceBankId === bank.id;
+                            return (
+                              <Card 
+                                key={bank.id}
+                                className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                                  isSelected ? 'ring-2 ring-blue-500' : ''
+                                }`}
+                                onClick={() => setPracticeBankId(bank.id)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <h3 className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">{bank.name}</h3>
+                                      <div className="flex items-center gap-3 text-sm text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                          <BookOpen className="w-3 h-3" />
+                                          {bankQuestions.length} 道题
+                                        </span>
+                                        <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
+                                      </div>
+                                    </div>
+                                    {isSelected && (
+                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                        <Check className="w-4 h-4 text-white" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 {/* 练习模式选择 - 简约卡片 */}
@@ -916,7 +1044,17 @@ export default function QuizApp() {
                     </div>
                     选择练习模式
                     <span className="text-sm font-normal text-gray-400 ml-2">
-                      共 {practiceBankId ? questions.filter(q => q.bankId === practiceBankId).length : questions.length} 道题
+                      共 {(() => {
+                        if (!practiceBankId) {
+                          return questions.length;
+                        } else if (practiceBankId.startsWith('cat_')) {
+                          const subCategoryId = practiceBankId.replace('cat_', '');
+                          const subCategoryBanks = banks.filter(b => b.categoryId === subCategoryId);
+                          return questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId)).length;
+                        } else {
+                          return questions.filter(q => q.bankId === practiceBankId).length;
+                        }
+                      })()} 道题
                     </span>
                   </h2>
                   

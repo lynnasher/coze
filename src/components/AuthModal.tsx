@@ -21,12 +21,57 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     initDefaultAdmin();
   }, []);
+
+  // 倒计时效果
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  // 获取验证码
+  const handleGetVerifyCode = async () => {
+    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) {
+      setError('请输入正确的手机号');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, type: 'send' }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCountdown(60);
+        // 测试模式下显示验证码
+        if (data.testCode) {
+          alert(`【测试模式】验证码: ${data.testCode}`);
+        }
+      } else {
+        setError(data.error || '获取验证码失败');
+      }
+    } catch {
+      setError('网络错误，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +88,28 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           setError(result.error || '登录失败');
         }
       } else {
+        // 注册时验证验证码
+        if (!verifyCode) {
+          setError('请输入验证码');
+          setLoading(false);
+          return;
+        }
+
+        // 验证验证码
+        const verifyResponse = await fetch('/api/auth/code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, code: verifyCode, type: 'verify' }),
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (!verifyData.success) {
+          setError(verifyData.error || '验证码错误');
+          setLoading(false);
+          return;
+        }
+
         const result = registerUser(phone, password, nickname);
         if (result.success) {
           onOpenChange(false);
@@ -60,7 +127,9 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
     setPhone('');
     setPassword('');
     setNickname('');
+    setVerifyCode('');
     setError('');
+    setCountdown(0);
   };
 
   return (
@@ -119,12 +188,35 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">手机号</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="tel"
+                    placeholder="请输入手机号"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    maxLength={11}
+                    required
+                    className="rounded-xl flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl whitespace-nowrap"
+                    onClick={handleGetVerifyCode}
+                    disabled={loading || countdown > 0}
+                  >
+                    {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">验证码</label>
                 <Input
-                  type="tel"
-                  placeholder="请输入手机号"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  maxLength={11}
+                  type="text"
+                  placeholder="请输入验证码"
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  maxLength={6}
                   required
                   className="rounded-xl"
                 />

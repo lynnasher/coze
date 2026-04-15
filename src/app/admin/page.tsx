@@ -1091,17 +1091,6 @@ export default function AdminPage() {
                                       <Download className="h-4 w-4 mr-2" />
                                       导出 JSON
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-red-600"
-                                      onClick={() => {
-                                        setBankToDelete(bank);
-                                        setIsDeleteDialogOpen(true);
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      删除题库
-                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </TableCell>
