@@ -53,10 +53,18 @@ export interface QuestionBank {
   name: string;
   description?: string;
   sourceFile?: string; // 来源文件名
+  categoryId?: string; // 分类ID
   questionIds: string[];
   createdAt: number;
   updatedAt: number;
   totalQuestions?: number; // 缓存的题目数量
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
 }
 
 export interface QuizState {

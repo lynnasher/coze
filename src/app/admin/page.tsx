@@ -15,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -32,6 +31,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   BookOpen,
   FileText,
@@ -51,16 +57,33 @@ import {
   X,
   ChevronRight,
   List,
+  FolderOpen,
+  Folder,
+  Plus,
 } from 'lucide-react';
+
+// 存储 Keys - 与前台统一
+const STORAGE_KEYS = {
+  QUESTIONS: 'quiz_questions',
+  BANKS: 'quiz_banks',
+  CATEGORIES: 'quiz_categories',
+};
 
 interface QuestionBank {
   id: string;
   name: string;
   description?: string;
-  sourceFile?: string;
+  categoryId?: string;
   questionIds: string[];
   createdAt: number;
   updatedAt: number;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
 }
 
 interface AdminStats {
@@ -307,7 +330,7 @@ function flattenQuestions(questions: Record<string, unknown>[], bankId: string):
 }
 
 // 本地导入 JSON
-function localImportJson(data: Record<string, unknown>, fileName: string): { count: number; bankId: string; bankName: string } {
+function localImportJson(data: Record<string, unknown>, fileName: string, categoryId?: string): { count: number; bankId: string; bankName: string } {
   const questions = data.questions;
   
   if (!Array.isArray(questions)) {
@@ -324,14 +347,15 @@ function localImportJson(data: Record<string, unknown>, fileName: string): { cou
   }
   
   // 读取现有数据
-  const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
-  const existingBanks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+  const existingQuestions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
+  const existingBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
   
   // 创建新题库
-  const newBank = {
+  const newBank: QuestionBank = {
     id: bankId,
     name: bankName,
     description: `从 ${fileName} 导入`,
+    categoryId: categoryId,
     questionIds: processedQuestions.map(q => q.id),
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -342,11 +366,23 @@ function localImportJson(data: Record<string, unknown>, fileName: string): { cou
   const updatedBanks = [...existingBanks, newBank];
   
   // 保存
-  localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-  localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+  localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(updatedQuestions));
+  localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
   
   return { count: processedQuestions.length, bankId, bankName };
 }
+
+// 分类颜色选项
+const categoryColors = [
+  { value: 'blue', label: '蓝色' },
+  { value: 'green', label: '绿色' },
+  { value: 'red', label: '红色' },
+  { value: 'yellow', label: '黄色' },
+  { value: 'purple', label: '紫色' },
+  { value: 'pink', label: '粉色' },
+  { value: 'indigo', label: '靛蓝' },
+  { value: 'cyan', label: '青色' },
+];
 
 export default function AdminPage() {
   const router = useRouter();
@@ -354,6 +390,7 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [banks, setBanks] = useState<QuestionBank[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<AdminStats>({
     totalBanks: 0,
     totalQuestions: 0,
@@ -362,6 +399,7 @@ export default function AdminPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [bankToDelete, setBankToDelete] = useState<QuestionBank | null>(null);
   
@@ -369,6 +407,12 @@ export default function AdminPage() {
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [editingBankName, setEditingBankName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // 分类管理状态
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryColor, setCategoryColor] = useState('blue');
 
   // 验证登录状态
   useEffect(() => {
@@ -380,7 +424,6 @@ export default function AdminPage() {
       return;
     }
 
-    // 验证 token 是否过期
     try {
       const payload = JSON.parse(atob(token));
       if (payload.exp < Date.now()) {
@@ -392,14 +435,21 @@ export default function AdminPage() {
       setIsAuthenticated(true);
     } catch {
       router.push('/admin/login');
-      return;
     }
   }, [router]);
 
+  // 加载分类
+  const loadCategories = useCallback(() => {
+    const storedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+    if (storedCategories) {
+      setCategories(JSON.parse(storedCategories));
+    }
+  }, []);
+
   // 加载题库数据
   const loadBanks = useCallback(() => {
-    const storedBanks = localStorage.getItem('questionBanks');
-    const storedQuestions = localStorage.getItem('questions');
+    const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
+    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
     
     if (storedBanks) {
       const parsedBanks: QuestionBank[] = JSON.parse(storedBanks);
@@ -413,7 +463,6 @@ export default function AdminPage() {
 
     if (storedQuestions) {
       const questions = JSON.parse(storedQuestions);
-      // 统计最近7天导入的题目
       const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
       const recentQuestions = questions.filter((q: { createdAt: number }) => q.createdAt > weekAgo);
       setStats(prev => ({ ...prev, recentImports: recentQuestions.length }));
@@ -423,8 +472,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAuthenticated) {
       loadBanks();
+      loadCategories();
     }
-  }, [isAuthenticated, loadBanks]);
+  }, [isAuthenticated, loadBanks, loadCategories]);
 
   // 登出
   const handleLogout = () => {
@@ -446,7 +496,7 @@ export default function AdminPage() {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      const result = localImportJson(data, file.name);
+      const result = localImportJson(data, file.name, filterCategory !== 'all' ? filterCategory : undefined);
 
       setSuccess(`成功导入 ${result.count} 道题目到"${result.bankName}"题库`);
       loadBanks();
@@ -461,6 +511,66 @@ export default function AdminPage() {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  // 保存分类
+  const saveCategory = () => {
+    if (!categoryName.trim()) {
+      setError('分类名称不能为空');
+      return;
+    }
+
+    const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
+    
+    if (editingCategory) {
+      // 更新
+      const updated = existingCategories.map((c: Category) => 
+        c.id === editingCategory.id 
+          ? { ...c, name: categoryName.trim(), color: categoryColor }
+          : c
+      );
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updated));
+      setCategories(updated);
+      setSuccess('分类已更新');
+    } else {
+      // 新增
+      const newCategory: Category = {
+        id: generateId(),
+        name: categoryName.trim(),
+        color: categoryColor,
+        order: existingCategories.length,
+      };
+      const updated = [...existingCategories, newCategory];
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updated));
+      setCategories(updated);
+      setSuccess('分类已添加');
+    }
+
+    setIsCategoryModalOpen(false);
+    setEditingCategory(null);
+    setCategoryName('');
+    setCategoryColor('blue');
+  };
+
+  // 删除分类
+  const deleteCategory = (category: Category) => {
+    // 将该分类下的题库移至未分类
+    const existingBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
+    const updatedBanks = existingBanks.map((b: QuestionBank) => 
+      b.categoryId === category.id 
+        ? { ...b, categoryId: undefined }
+        : b
+    );
+    localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
+    
+    // 删除分类
+    const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
+    const updatedCategories = existingCategories.filter((c: Category) => c.id !== category.id);
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updatedCategories));
+    
+    setCategories(updatedCategories);
+    setBanks(updatedBanks);
+    setSuccess('分类已删除');
   };
 
   // 开始编辑题库名称
@@ -478,7 +588,7 @@ export default function AdminPage() {
     }
 
     try {
-      const storedBanks = localStorage.getItem('questionBanks');
+      const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
       if (!storedBanks) return;
       
       const banksList: QuestionBank[] = JSON.parse(storedBanks);
@@ -488,7 +598,7 @@ export default function AdminPage() {
           : b
       );
       
-      localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+      localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
       setBanks(updatedBanks);
       setSuccess('题库名称已更新');
     } catch (err) {
@@ -509,16 +619,16 @@ export default function AdminPage() {
     if (!bankToDelete) return;
 
     try {
-      const questions = JSON.parse(localStorage.getItem('questions') || '[]');
-      const banksList = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+      const questions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
+      const banksList = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
       
       const updatedBanks = banksList.filter((b: { id: string }) => b.id !== bankToDelete.id);
       const updatedQuestions = questions.filter(
         (q: { bankId?: string }) => q.bankId !== bankToDelete.id
       );
 
-      localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-      localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+      localStorage.setItem(STORAGE_KEYS.QUESTIONS, JSON.stringify(updatedQuestions));
+      localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
 
       setSuccess(`题库"${bankToDelete.name}"已删除`);
       loadBanks();
@@ -531,7 +641,7 @@ export default function AdminPage() {
 
   // 导出题库为 JSON
   const handleExportBank = (bank: QuestionBank) => {
-    const storedQuestions = localStorage.getItem('questions');
+    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
     if (!storedQuestions) return;
 
     const allQuestions = JSON.parse(storedQuestions);
@@ -558,6 +668,28 @@ export default function AdminPage() {
     router.push(`/admin/bank/${bank.id}`);
   };
 
+  // 获取分类名称
+  const getCategoryName = (categoryId?: string) => {
+    if (!categoryId) return '未分类';
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || '未分类';
+  };
+
+  // 获取分类颜色
+  const getCategoryColorClass = (color: string) => {
+    const colorMap: Record<string, string> = {
+      blue: 'bg-blue-100 text-blue-700',
+      green: 'bg-green-100 text-green-700',
+      red: 'bg-red-100 text-red-700',
+      yellow: 'bg-yellow-100 text-yellow-700',
+      purple: 'bg-purple-100 text-purple-700',
+      pink: 'bg-pink-100 text-pink-700',
+      indigo: 'bg-indigo-100 text-indigo-700',
+      cyan: 'bg-cyan-100 text-cyan-700',
+    };
+    return colorMap[color] || 'bg-gray-100 text-gray-700';
+  };
+
   // 格式化时间
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('zh-CN', {
@@ -570,19 +702,21 @@ export default function AdminPage() {
   };
 
   // 过滤题库
-  const filteredBanks = banks.filter(bank =>
-    bank.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bank.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBanks = banks.filter(bank => {
+    const matchSearch = bank.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCategory = filterCategory === 'all' || bank.categoryId === filterCategory || (!bank.categoryId && filterCategory === 'uncategorized');
+    return matchSearch && matchCategory;
+  });
 
-  // 题型显示映射
-  const typeLabels: Record<string, string> = {
-    single: '单选题',
-    multiple: '多选题',
-    'true-false': '判断题',
-    'fill-blank': '填空题',
-    comprehensive: '综合题'
-  };
+  // 按分类分组
+  const groupedBanks = filteredBanks.reduce((acc, bank) => {
+    const categoryId = bank.categoryId || 'uncategorized';
+    if (!acc[categoryId]) {
+      acc[categoryId] = [];
+    }
+    acc[categoryId].push(bank);
+    return acc;
+  }, {} as Record<string, QuestionBank[]>);
 
   if (!isAuthenticated) {
     return null;
@@ -666,54 +800,57 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* 导入区域 - 仅保留 JSON 导入 */}
+        {/* 导入区域 */}
         <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileJson className="h-5 w-5" />
-              导入题库
-            </CardTitle>
-            <CardDescription>
-              仅支持 JSON 格式的题库文件
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileJson className="h-5 w-5" />
+                导入题库
+              </CardTitle>
+              <CardDescription>
+                导入 JSON 格式题库到指定分类
+              </CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => setIsCategoryModalOpen(true)}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              管理分类
+            </Button>
           </CardHeader>
           <CardContent>
-            <div>
-              <Label htmlFor="json-upload" className="cursor-pointer">
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-green-500 hover:bg-green-50 transition-colors">
-                  <FileJson className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                  <p className="font-medium">导入 JSON 题目</p>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {isImporting ? '正在导入...' : '点击选择 JSON 文件'}
-                  </p>
-                </div>
-              </Label>
-              <input
-                id="json-upload"
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={handleJsonImport}
-                disabled={isImporting}
-              />
-            </div>
-
-            <div className="mt-4 p-3 bg-slate-100 rounded-lg">
-              <p className="text-sm font-medium text-slate-700 mb-2">JSON 格式说明：</p>
-              <pre className="text-xs text-slate-600 overflow-x-auto">
-{`{
-  "bankName": "题库名称",
-  "questions": [
-    {
-      "type": "single",
-      "content": "题目内容",
-      "options": [{"id": "a", "text": "选项A"}, ...],
-      "answer": "a",
-      "explanation": "解析内容"
-    }
-  ]
-}`}
-              </pre>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <Label htmlFor="category-select">导入到分类</Label>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="选择分类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部分类</SelectItem>
+                    <SelectItem value="uncategorized">未分类</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-[2]">
+                <Label htmlFor="json-upload">选择 JSON 文件</Label>
+                <Label htmlFor="json-upload" className="cursor-pointer mt-2 block">
+                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-green-500 hover:bg-green-50 transition-colors">
+                    <FileJson className="h-6 w-6 mx-auto mb-1 text-slate-400" />
+                    <p className="text-sm">{isImporting ? '正在导入...' : '点击选择 JSON 文件'}</p>
+                  </div>
+                </Label>
+                <input
+                  id="json-upload"
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleJsonImport}
+                  disabled={isImporting}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -729,14 +866,28 @@ export default function AdminPage() {
                 </CardTitle>
                 <CardDescription>共 {banks.length} 个题库</CardDescription>
               </div>
-              <div className="relative w-full md:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="搜索题库..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="搜索题库..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue placeholder="筛选分类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部分类</SelectItem>
+                    <SelectItem value="uncategorized">未分类</SelectItem>
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardHeader>
@@ -748,104 +899,196 @@ export default function AdminPage() {
                 <p className="text-sm mt-1">请上传 JSON 文件导入题库</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>题库名称</TableHead>
-                    <TableHead>题目数量</TableHead>
-                    <TableHead>创建时间</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredBanks.map((bank) => (
-                    <TableRow key={bank.id} className="cursor-pointer hover:bg-slate-50">
-                      <TableCell onClick={() => goToBankEdit(bank)}>
-                        {editingBankId === bank.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              ref={inputRef}
-                              value={editingBankName}
-                              onChange={(e) => setEditingBankName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') saveBankName();
-                                if (e.key === 'Escape') cancelEditBankName();
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="h-8 max-w-[200px]"
-                              autoFocus
-                            />
-                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); saveBankName(); }}>
-                              <Check className="h-4 w-4 text-green-600" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); cancelEditBankName(); }}>
-                              <X className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{bank.name}</span>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={(e) => { e.stopPropagation(); startEditBankName(bank); }}
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <Edit3 className="h-3 w-3 text-slate-400" />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell onClick={() => goToBankEdit(bank)}>
-                        <Badge variant="secondary">
-                          {bank.questionIds.length} 题
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-slate-500" onClick={() => goToBankEdit(bank)}>
-                        {formatDate(bank.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => startEditBankName(bank)}>
-                              <Edit3 className="h-4 w-4 mr-2" />
-                              修改名称
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => goToBankEdit(bank)}>
-                              <List className="h-4 w-4 mr-2" />
-                              编辑题目
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleExportBank(bank)}>
-                              <Download className="h-4 w-4 mr-2" />
-                              导出 JSON
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => {
-                                setBankToDelete(bank);
-                                setIsDeleteDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              删除题库
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-6">
+                {Object.entries(groupedBanks).map(([categoryId, categoryBanks]) => {
+                  const categoryName = categoryId === 'uncategorized' ? '未分类' : 
+                    categories.find(c => c.id === categoryId)?.name || '未知分类';
+                  const categoryColor = categoryId === 'uncategorized' ? 'gray' :
+                    categories.find(c => c.id === categoryId)?.color || 'gray';
+                  
+                  return (
+                    <div key={categoryId}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Folder className="h-4 w-4 text-slate-500" />
+                        <h3 className={`font-medium px-2 py-0.5 rounded ${getCategoryColorClass(categoryColor)}`}>
+                          {categoryName}
+                        </h3>
+                        <span className="text-sm text-slate-400">({categoryBanks.length})</span>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>题库名称</TableHead>
+                            <TableHead>题目数量</TableHead>
+                            <TableHead>创建时间</TableHead>
+                            <TableHead className="text-right">操作</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {categoryBanks.map((bank) => (
+                            <TableRow key={bank.id} className="cursor-pointer hover:bg-slate-50">
+                              <TableCell onClick={() => goToBankEdit(bank)}>
+                                {editingBankId === bank.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      ref={inputRef}
+                                      value={editingBankName}
+                                      onChange={(e) => setEditingBankName(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') saveBankName();
+                                        if (e.key === 'Escape') cancelEditBankName();
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="h-8 max-w-[200px]"
+                                      autoFocus
+                                    />
+                                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); saveBankName(); }}>
+                                      <Check className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); cancelEditBankName(); }}>
+                                      <X className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <span className="font-medium">{bank.name}</span>
+                                )}
+                              </TableCell>
+                              <TableCell onClick={() => goToBankEdit(bank)}>
+                                <Badge variant="secondary">
+                                  {bank.questionIds.length} 题
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-slate-500" onClick={() => goToBankEdit(bank)}>
+                                {formatDate(bank.createdAt)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => startEditBankName(bank)}>
+                                      <Edit3 className="h-4 w-4 mr-2" />
+                                      修改名称
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => goToBankEdit(bank)}>
+                                      <List className="h-4 w-4 mr-2" />
+                                      编辑题目
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleExportBank(bank)}>
+                                      <Download className="h-4 w-4 mr-2" />
+                                      导出 JSON
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={() => {
+                                        setBankToDelete(bank);
+                                        setIsDeleteDialogOpen(true);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      删除题库
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
       </main>
+
+      {/* 分类管理弹窗 */}
+      <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>管理分类</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* 已有分类列表 */}
+            <div className="space-y-2">
+              {categories.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">暂无分类</p>
+              ) : (
+                categories.map((cat) => (
+                  <div key={cat.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Badge className={getCategoryColorClass(cat.color)}>{cat.name}</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setEditingCategory(cat);
+                        setCategoryName(cat.name);
+                        setCategoryColor(cat.color);
+                      }}>
+                        <Edit3 className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => deleteCategory(cat)}>
+                        <Trash2 className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            {/* 添加/编辑分类表单 */}
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="新分类名称"
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {categoryColors.map((c) => (
+                  <button
+                    key={c.value}
+                    onClick={() => setCategoryColor(c.value)}
+                    className={`w-8 h-8 rounded-full ${
+                      categoryColor === c.value ? 'ring-2 ring-offset-2 ring-slate-400' : ''
+                    } ${
+                      c.value === 'blue' ? 'bg-blue-500' :
+                      c.value === 'green' ? 'bg-green-500' :
+                      c.value === 'red' ? 'bg-red-500' :
+                      c.value === 'yellow' ? 'bg-yellow-500' :
+                      c.value === 'purple' ? 'bg-purple-500' :
+                      c.value === 'pink' ? 'bg-pink-500' :
+                      c.value === 'indigo' ? 'bg-indigo-500' :
+                      'bg-cyan-500'
+                    }`}
+                    title={c.label}
+                  />
+                ))}
+              </div>
+              <Button onClick={saveCategory} className="w-full">
+                <Plus className="h-4 w-4 mr-2" />
+                {editingCategory ? '保存修改' : '添加分类'}
+              </Button>
+              {editingCategory && (
+                <Button variant="outline" onClick={() => {
+                  setEditingCategory(null);
+                  setCategoryName('');
+                  setCategoryColor('blue');
+                }} className="w-full">
+                  取消编辑
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 删除确认对话框 */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

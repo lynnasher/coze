@@ -1,5 +1,6 @@
 import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel } from './types';
 
+// 统一存储 Keys - 前后台共用
 const STORAGE_KEYS = {
   QUESTIONS: 'quiz_questions',
   RECORDS: 'quiz_records',
@@ -7,6 +8,7 @@ const STORAGE_KEYS = {
   STATS: 'quiz_stats',
   WRONG_STATS: 'quiz_wrong_stats', // 错题记忆状态
   WRONG_STREAK: 'quiz_wrong_streak', // 错题连续正确次数
+  CATEGORIES: 'quiz_categories',
 };
 
 // 题目管理

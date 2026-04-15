@@ -122,6 +122,7 @@ src/
 │               └── route.ts
 ├── components/
 │   ├── ui/                      # shadcn/ui 组件
+│   ├── BankCard.tsx            # 题库卡片组件
 │   ├── quiz/                    # 刷题相关组件
 │   │   ├── QuizCard.tsx         # 题目卡片
 │   │   ├── QuizOption.tsx       # 选项组件
@@ -183,6 +184,18 @@ interface QuestionBank {
   name: string;
   description?: string;
   questionIds: string[];
+  createdAt: number;
+  categoryId?: string; // 关联的分类ID
+}
+```
+
+### 5.4 分类 (Category)
+```typescript
+interface Category {
+  id: string;
+  name: string;
+  color: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'pink' | 'indigo' | 'cyan';
+  order: number;
   createdAt: number;
 }
 ```
@@ -285,9 +298,11 @@ DELETE /api/questions/:id
 ## 10. 测试清单
 
 - [ ] PDF 导入功能
-- [ ] 题目展示正确
-- [ ] 答题交互流畅
-- [ ] 答案校验准确
-- [ ] 进度统计正确
-- [ ] 数据持久化正常
-- [ ] 响应式布局正常
+- [x] 题目展示正确
+- [x] 答题交互流畅
+- [x] 答案校验准确
+- [x] 进度统计正确
+- [x] 数据持久化正常
+- [x] 响应式布局正常
+- [x] 题库分类管理（后台）
+- [x] 前台题库按分类显示
