@@ -74,9 +74,54 @@ export default function ProfilePage() {
       return;
     }
     setUser(currentUser);
+    console.log('当前用户:', currentUser);
+    console.log('用户已激活分类:', currentUser.activated_categories);
   };
 
-  const loadData = async () => {
+  const loadData = async (retryCount = 0) => {
+    // 从 API 获取用户已激活的分类记录（优先加载，因为需要验证 token）
+    const token = localStorage.getItem('quiz_user_token');
+    if (token) {
+      try {
+        const activationsRes = await fetch('/api/auth/user/activations', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (activationsRes.status === 401) {
+          // Token 过期，需要重新登录
+          console.error('Token 已过期，请重新登录');
+          alert('登录已过期，请重新登录');
+          localStorage.removeItem('quiz_user_token');
+          localStorage.removeItem('quiz_user_data');
+          window.location.href = '/';
+          return;
+        }
+        
+        if (activationsRes.ok) {
+          const activationsData = await activationsRes.json();
+          console.log('激活记录数据:', activationsData);
+          // 设置用户激活记录
+          setUserActivations(activationsData.activations || []);
+        } else {
+          console.error('获取激活记录失败:', activationsRes.status);
+          // 如果失败，重试最多3次
+          if (retryCount < 3) {
+            console.log(`重试获取激活记录 (${retryCount + 1}/3)...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await loadData(retryCount + 1);
+          }
+        }
+      } catch (error) {
+        console.error('加载激活记录失败:', error);
+        // 网络错误时重试
+        if (retryCount < 3) {
+          console.log(`重试获取激活记录 (${retryCount + 1}/3)...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await loadData(retryCount + 1);
+        }
+      }
+    }
+    
     // 从数据库加载分类
     try {
       const response = await fetch('/api/categories');
@@ -88,27 +133,15 @@ export default function ProfilePage() {
       console.error('加载分类失败:', error);
     }
     
-    // 备用：从 localStorage 获取
-    const storedCategories = localStorage.getItem('quiz_categories');
-    if (storedCategories && categories.length === 0) {
-      setCategories(JSON.parse(storedCategories));
-    }
-    
-    // 从 API 获取用户已激活的分类记录
-    const token = localStorage.getItem('quiz_user_token');
-    if (token) {
-      try {
-        const activationsRes = await fetch('/api/auth/user/activations', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (activationsRes.ok) {
-          const activationsData = await activationsRes.json();
-          // 设置用户激活记录
-          setUserActivations(activationsData.activations || []);
-        }
-      } catch (error) {
-        console.error('加载激活记录失败:', error);
+    // 从数据库加载题库
+    try {
+      const banksResponse = await fetch('/api/banks');
+      if (banksResponse.ok) {
+        const banksData = await banksResponse.json();
+        setBanks(banksData.banks || []);
       }
+    } catch (error) {
+      console.error('加载题库失败:', error);
     }
     
     setLoading(false);
