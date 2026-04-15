@@ -229,10 +229,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 生成题目 ID
+    // 生成题目 ID 并类型转换
     const questionsWithIds = parsedQuestions.map(q => ({
       ...q,
-      id: generateId()
+      id: generateId(),
+      type: q.type as 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive'
     }));
 
     // 创建题库到数据库

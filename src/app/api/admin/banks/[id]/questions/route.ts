@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
 
@@ -65,7 +66,12 @@ export async function POST(
       case_context: question.caseContext || null,
     }];
 
-    const supabase = bankService['getSupabaseClient'] ? await import('@/storage/database/supabase-client').then(m => m.getSupabaseClient()) : null;
+    let supabase;
+    try {
+      supabase = await getSupabaseClient();
+    } catch (e) {
+      supabase = null;
+    }
     
     if (!supabase) {
       return NextResponse.json({ error: '数据库连接失败' }, { status: 500 });

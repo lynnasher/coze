@@ -45,6 +45,7 @@ export interface Question {
   bankId?: string;
   createdAt: number;
   caseBackground?: string;
+  caseContext?: string; // 案例上下文/材料
   children?: Question[];
 }
 

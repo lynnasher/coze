@@ -977,11 +977,7 @@ export default function QuizApp() {
                   <div 
                     className="bg-white rounded-xl p-3 shadow-sm text-center cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => {
-                      if (!currentUser) {
-                        router.push('/profile');
-                      } else {
-                        router.push('/profile');
-                      }
+                      window.location.href = '/profile';
                     }}
                   >
                     <div className="w-10 h-10 mx-auto mb-2 bg-amber-50 rounded-xl flex items-center justify-center">
@@ -1008,9 +1004,7 @@ export default function QuizApp() {
                       <span className="text-xs opacity-80">正确率</span>
                     </div>
                     <p className="text-2xl font-bold">
-                      {quizState.totalAnswered > 0 
-                        ? Math.round((quizState.totalCorrect / quizState.totalAnswered) * 100)
-                        : 0}%
+                      {getStats().accuracy}%
                     </p>
                   </div>
                 </div>
