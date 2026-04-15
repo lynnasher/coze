@@ -117,11 +117,21 @@ export default function QuizApp() {
     }));
   }, [dbBanks]);
   
-  // 加载分类
-  const loadCategories = useCallback(() => {
-    const storedCategories = localStorage.getItem('quiz_categories');
-    if (storedCategories) {
-      setCategories(JSON.parse(storedCategories));
+  // 从数据库加载分类
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('加载分类失败:', error);
+      // 备用：从 localStorage 获取
+      const storedCategories = localStorage.getItem('quiz_categories');
+      if (storedCategories) {
+        setCategories(JSON.parse(storedCategories));
+      }
     }
   }, []);
   
@@ -138,9 +148,9 @@ export default function QuizApp() {
     }
   }, []);
   
-  const loadQuestions = useCallback(() => {
+  const loadQuestions = useCallback(async () => {
     setQuestions(questionStore.getAll());
-    loadCategories();
+    await loadCategories();
     loadBanksFromDb();
   }, [loadCategories, loadBanksFromDb]);
 

@@ -51,17 +51,22 @@ export default function ProfilePage() {
     setUser(currentUser);
   };
 
-  const loadData = () => {
-    // 加载分类
-    const storedCategories = localStorage.getItem('quiz_categories');
-    if (storedCategories) {
-      setCategories(JSON.parse(storedCategories));
+  const loadData = async () => {
+    // 从数据库加载分类
+    try {
+      const response = await fetch('/api/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('加载分类失败:', error);
     }
     
-    // 加载题库
-    const storedBanks = localStorage.getItem('quiz_banks');
-    if (storedBanks) {
-      setBanks(JSON.parse(storedBanks));
+    // 备用：从 localStorage 获取
+    const storedCategories = localStorage.getItem('quiz_categories');
+    if (storedCategories && categories.length === 0) {
+      setCategories(JSON.parse(storedCategories));
     }
     
     setLoading(false);

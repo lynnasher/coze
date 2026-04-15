@@ -514,11 +514,21 @@ export default function AdminPage() {
     }
   }, [router]);
 
-  // 加载分类
-  const loadCategories = useCallback(() => {
-    const storedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-    if (storedCategories) {
-      setCategories(JSON.parse(storedCategories));
+  // 从数据库加载分类
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('加载分类失败:', error);
+      // 备用：从 localStorage 获取
+      const storedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (storedCategories) {
+        setCategories(JSON.parse(storedCategories));
+      }
     }
   }, []);
 

@@ -115,10 +115,20 @@ export default function ActivationCodesPage() {
     }
   };
 
-  const loadCategories = () => {
-    const stored = localStorage.getItem('quiz_categories');
-    if (stored) {
-      setCategories(JSON.parse(stored));
+  const loadCategories = async () => {
+    try {
+      const response = await fetch('/api/admin/categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('加载分类失败:', error);
+      // 备用：从 localStorage 获取
+      const stored = localStorage.getItem('quiz_categories');
+      if (stored) {
+        setCategories(JSON.parse(stored));
+      }
     }
   };
 
