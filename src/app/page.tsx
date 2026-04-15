@@ -1616,21 +1616,11 @@ function PracticeView({
       <Dialog open={showAnswerSheet} onOpenChange={setShowAnswerSheet}>
         <DialogContent className="max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto rounded-2xl p-4">
           <DialogHeader className="pb-2">
-            <DialogTitle className="text-base flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                  <Grid3X3 className="w-4 h-4 text-white" />
-                </div>
-                答题卡
+            <DialogTitle className="text-base flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+                <Grid3X3 className="w-4 h-4 text-white" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAnswerSheet(false)}
-                className="h-8 w-8 p-0 rounded-full"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+              <span>答题卡</span>
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -1643,16 +1633,16 @@ function PracticeView({
                                type === 'multiple' ? '多选题' : 
                                type === 'true-false' ? '判断题' : 
                                type === 'fill-blank' ? '填空题' : '综合题';
-              const typeColor = type === 'single' ? 'bg-blue-500' : 
+              const typeColor = type === 'single' ? 'bg-indigo-500' : 
                                type === 'multiple' ? 'bg-purple-500' : 
-                               type === 'true-false' ? 'bg-orange-500' : 
-                               type === 'fill-blank' ? 'bg-green-500' : 'bg-red-500';
+                               type === 'true-false' ? 'bg-cyan-500' : 
+                               type === 'fill-blank' ? 'bg-teal-500' : 'bg-rose-500';
               return (
                 <div key={type}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
-                    <span className="text-sm font-medium text-gray-700">{typeLabel}</span>
-                    <span className="text-xs text-gray-400">({typeQuestions.length}题)</span>
+                    <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
+                    <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {typeQuestions.map(({ q, idx }) => {
@@ -1674,7 +1664,7 @@ function PracticeView({
                                 ? isWrong
                                   ? 'bg-red-100 text-red-700 border-2 border-red-300'
                                   : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                                : 'bg-gray-100 text-gray-600 border-2 border-gray-200 hover:bg-gray-200'
+                                : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200'
                           }`}
                         >
                           {idx + 1}
@@ -1685,9 +1675,9 @@ function PracticeView({
                 </div>
               );
             })}
-            <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t">
+            <div className="flex items-center gap-4 text-xs text-slate-500 pt-2 border-t border-slate-100">
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-gradient-to-r from-orange-500 to-amber-500"></div>
+                <div className="w-4 h-4 rounded bg-gradient-to-r from-indigo-500 to-purple-500"></div>
                 <span>当前</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -1699,7 +1689,7 @@ function PracticeView({
                 <span>错误</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200"></div>
+                <div className="w-4 h-4 rounded bg-slate-100 border border-slate-200"></div>
                 <span>未答</span>
               </div>
             </div>
