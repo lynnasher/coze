@@ -524,7 +524,12 @@ export default function QuizApp() {
             restartQuiz={restartQuiz}
           />
         ) : (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={(value) => {
+            setActiveTab(value);
+            // 切换标签页时重置展开状态
+            setSelectedCategoryId(null);
+            setPracticeBankId(null);
+          }} className="space-y-6">
         {/* 功能标签导航 - 清新风格 */}
         <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-4">
           {[
@@ -534,7 +539,12 @@ export default function QuizApp() {
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => {
+                setActiveTab(tab.key);
+                // 切换标签页时重置展开状态
+                setSelectedCategoryId(null);
+                setPracticeBankId(null);
+              }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? `${tab.color} text-white shadow-md`
