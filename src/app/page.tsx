@@ -106,7 +106,7 @@ export default function QuizApp() {
   }>>([]);
   
   // 只使用数据库的题库
-  const allBanks = useMemo(() => {
+  const banks = useMemo(() => {
     return dbBanks.map(b => ({
       id: b.id,
       name: b.name,
