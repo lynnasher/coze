@@ -30,7 +30,6 @@ import {
   ArrowLeft,
   TrendingUp,
   RotateCcw,
-  BookMarked,
   Settings,
   Folder,
   FolderOpen,
@@ -38,8 +37,7 @@ import {
   User,
   History,
   Flame,
-  Calendar,
-  ListTodo
+  Calendar
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
@@ -575,20 +573,39 @@ export default function QuizApp() {
           ))}
         </div>
 
-          {/* 练习页面 - 双栏布局 */}
+          {/* 练习页面 - 单栏布局 */}
           <TabsContent value="practice">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* 左侧主内容区 */}
-              <div className="lg:col-span-2 space-y-4">
-                {/* 宣传图区域 */}
-                <div className="rounded-2xl overflow-hidden shadow-sm">
-                  <img 
-                    src="https://coze-coding-project.tos.coze.site/coze_storage_7627388534718103615/image/generate_image_1d4f58e3-afe1-4357-9ac8-92a08a77cc5c.jpeg?sign=1807788692-32b74fe686-0-8b149b77cd7c9a0b904429699ef25a0dd3578dfd4ebce3d49afc914c91250132" 
-                    alt="智能刷题助手"
-                    className="w-full object-cover"
-                    style={{ maxHeight: '160px' }}
-                  />
+            <div className="space-y-4">
+              {/* 宣传图区域 */}
+              <div className="rounded-2xl overflow-hidden shadow-sm">
+                <img 
+                  src="https://coze-coding-project.tos.coze.site/coze_storage_7627388534718103615/image/generate_image_1d4f58e3-afe1-4357-9ac8-92a08a77cc5c.jpeg?sign=1807788692-32b74fe686-0-8b149b77cd7c9a0b904429699ef25a0dd3578dfd4ebce3d49afc914c91250132" 
+                  alt="智能刷题助手"
+                  className="w-full object-cover"
+                  style={{ maxHeight: '160px' }}
+                />
+              </div>
+
+              {/* 学习成就卡片 */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                  </div>
+                  学习成就
+                </h3>
+                
+                {/* 连续学习天数 */}
+                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl mb-3">
+                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-orange-600">7</p>
+                    <p className="text-xs text-gray-500">连续学习天数</p>
+                  </div>
                 </div>
+              </div>
 
                 {/* 最近练习 */}
                 {recentPractices.length > 0 && (
@@ -769,27 +786,7 @@ export default function QuizApp() {
                   )}
                 </div>
 
-                {/* 学习数据卡片 */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BookOpen className="w-4 h-4 opacity-80" />
-                      <span className="text-xs opacity-80">已掌握</span>
-                    </div>
-                    <p className="text-2xl font-bold">{getStats().masteredCount}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Trophy className="w-4 h-4 opacity-80" />
-                      <span className="text-xs opacity-80">正确率</span>
-                    </div>
-                    <p className="text-2xl font-bold">
-                      {getStats().accuracy}%
-                    </p>
-                  </div>
-                </div>
-
-                {/* 登录提示 */}
+              {/* 登录提示 */}
                 {!currentUser && (
                   <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100">
                     <div className="flex items-center gap-3">
@@ -808,130 +805,6 @@ export default function QuizApp() {
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* 右侧边栏 - 学习成就区 */}
-              <div className="space-y-4">
-                {/* 学习成就卡片 */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
-                      <Trophy className="w-3.5 h-3.5 text-amber-500" />
-                    </div>
-                    学习成就
-                  </h3>
-                  
-                  {/* 连续学习天数 */}
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl mb-3">
-                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                      <Flame className="w-5 h-5 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-orange-600">7</p>
-                      <p className="text-xs text-gray-500">连续学习天数</p>
-                    </div>
-                  </div>
-                  
-                  {/* 已掌握/待复习 */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-                      <p className="text-2xl font-bold">{getStats().masteredCount}</p>
-                      <p className="text-xs opacity-80">已掌握</p>
-                    </div>
-                    <div className="bg-gradient-to-br from-rose-500 to-pink-500 rounded-xl p-3 text-white text-center">
-                      <p className="text-2xl font-bold">{getStats().wrongQuestionIds.length}</p>
-                      <p className="text-xs opacity-80">待复习</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 错题本 */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-red-100 rounded-lg flex items-center justify-center">
-                      <BookMarked className="w-3.5 h-3.5 text-red-500" />
-                    </div>
-                    错题本
-                  </h3>
-                  
-                  {getStats().wrongQuestionIds.length > 0 ? (
-                    <div className="space-y-2">
-                      {/* 简化显示：显示总错题数和快捷入口 */}
-                      <div className="p-3 bg-red-50 rounded-xl border border-red-100">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-red-700">待复习错题</span>
-                          <span className="text-lg font-bold text-red-600">{getStats().wrongQuestionIds.length}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mb-2">坚持做对3次即可移出错题本</p>
-                        <Button 
-                          size="sm" 
-                          className="w-full bg-red-500 hover:bg-red-600 text-white"
-                          onClick={() => startQuiz('wrong', null)}
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                          开始错题重练
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 text-gray-400">
-                      <Check className="w-8 h-8 mx-auto mb-2 text-emerald-400" />
-                      <p className="text-sm">太棒了！暂无错题</p>
-                      <p className="text-xs mt-1">继续保持</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 今日目标 */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-violet-100 rounded-lg flex items-center justify-center">
-                      <ListTodo className="w-3.5 h-3.5 text-violet-500" />
-                    </div>
-                    今日目标
-                  </h3>
-                  
-                  {(() => {
-                    // 计算今日答题数
-                    const todayStart = new Date();
-                    todayStart.setHours(0, 0, 0, 0);
-                    const todayRecords = recordStore.getAll().filter(r => r.timestamp >= todayStart.getTime());
-                    const todayCount = todayRecords.length;
-                    const todayTarget = 20; // 每日目标20题
-                    const progress = Math.min(Math.round((todayCount / todayTarget) * 100), 100);
-                    
-                    return (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">答题目标</span>
-                          <span className="text-sm font-medium text-gray-800">{todayCount}/{todayTarget} 题</span>
-                        </div>
-                        
-                        {/* 进度条 */}
-                        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all ${
-                              progress >= 100 
-                                ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
-                                : 'bg-gradient-to-r from-violet-500 to-purple-500'
-                            }`}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        
-                        {progress >= 100 ? (
-                          <div className="flex items-center gap-2 text-emerald-600 text-xs">
-                            <Check className="w-4 h-4" />
-                            <span>今日目标已完成！</span>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-400">再完成 {todayTarget - todayCount} 题即可达成目标</p>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
             </div>
           </TabsContent>
 
