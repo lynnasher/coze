@@ -1284,25 +1284,49 @@ function PracticeView({
               <span className="text-sm font-medium">返回</span>
             </Button>
             
-            {/* 中间：题号 */}
+            {/* 中间：题型 + 题号 */}
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-slate-700">
-                {quizState.currentIndex + 1}
+              <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${
+                currentQuestion.type === 'single' ? 'bg-indigo-500' :
+                currentQuestion.type === 'multiple' ? 'bg-purple-500' :
+                currentQuestion.type === 'true-false' ? 'bg-cyan-500' :
+                currentQuestion.type === 'comprehensive' ? 'bg-rose-500' :
+                'bg-teal-500'
+              }`}>
+                {currentQuestion.type === 'single' ? '单选' :
+                 currentQuestion.type === 'multiple' ? '多选' :
+                 currentQuestion.type === 'true-false' ? '判断' :
+                 currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
               </span>
-              <span className="text-slate-400">/</span>
-              <span className="text-sm text-slate-500">{quizState.questions.length}</span>
+              <span className="text-sm text-slate-600">
+                {quizState.currentIndex + 1} / {quizState.questions.length}
+              </span>
             </div>
             
-            {/* 右侧：答题卡 */}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowAnswerSheet(true)}
-              className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -mr-2"
-            >
-              <Grid3X3 className="w-4 h-4" />
-              <span className="text-sm font-medium ml-1.5">答题卡</span>
-            </Button>
+            {/* 右侧：交卷 + 答题卡 */}
+            <div className="flex items-center gap-1">
+              {/* 交卷按钮 */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleFinishAndExit()}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg px-2 h-9"
+              >
+                <FileCheck className="w-4 h-4" />
+                <span className="text-sm font-medium ml-1">交卷</span>
+              </Button>
+              
+              {/* 答题卡 */}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowAnswerSheet(true)}
+                className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -mr-2"
+              >
+                <Grid3X3 className="w-4 h-4" />
+                <span className="text-sm font-medium ml-1.5">答题卡</span>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1332,20 +1356,6 @@ function PracticeView({
             {/* 题干头部 */}
             <div className="px-4 py-3 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
               <div className="flex items-center gap-2">
-                {/* 题型标签 */}
-                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow-sm ${
-                  currentQuestion.type === 'single' ? 'bg-indigo-500' :
-                  currentQuestion.type === 'multiple' ? 'bg-purple-500' :
-                  currentQuestion.type === 'true-false' ? 'bg-cyan-500' :
-                  currentQuestion.type === 'comprehensive' ? 'bg-rose-500' :
-                  'bg-teal-500'
-                }`}>
-                  {currentQuestion.type === 'single' ? '单选' :
-                   currentQuestion.type === 'multiple' ? '多选' :
-                   currentQuestion.type === 'true-false' ? '判断' :
-                   currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
-                </span>
-                
                 {/* 子题目指示器（综合题显示） */}
                 {currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 && (
                   <span className="text-xs text-slate-500 font-medium">

@@ -195,8 +195,12 @@ export const bankService = {
       tags: string | null;
       case_background: string | null;
       case_context: string | null;
+      index_order: number;
     }> = [];
 
+    let mainIndex = 0;
+    let subIndex = 0;
+    
     for (const q of questions) {
       if (q.type === 'comprehensive' && q.children) {
         // 综合题：先插入父题目
@@ -213,6 +217,7 @@ export const bankService = {
           tags: JSON.stringify(q.tags || []),
           case_background: q.caseBackground || null,
           case_context: q.caseContext || null,
+          index_order: mainIndex++,
         });
 
         // 插入子题目
@@ -230,6 +235,7 @@ export const bankService = {
             tags: JSON.stringify(child.tags || []),
             case_background: null,
             case_context: null,
+            index_order: subIndex++,
           });
         }
       } else {
@@ -247,6 +253,7 @@ export const bankService = {
           tags: JSON.stringify(q.tags || []),
           case_background: q.caseBackground || null,
           case_context: q.caseContext || null,
+          index_order: mainIndex++,
         });
       }
     }
@@ -256,7 +263,8 @@ export const bankService = {
     if (error) throw new Error(`创建题目失败: ${error.message}`);
 
     // 更新题库的题目数量
-    const uniqueParentCount = new Set(questionsToInsert.map(q => q.parent_id || q.id)).size;
+    const uniqueParentCount = questions.filter(q => q.type !== 'comprehensive' || !q.children).length + 
+                              questions.filter(q => q.type === 'comprehensive' && q.children).length;
     await this.updateQuestionCount(bankId, uniqueParentCount);
 
     return questionsToInsert.length;
@@ -270,7 +278,7 @@ export const bankService = {
       .select('*')
       .eq('bank_id', bankId)
       .eq('status', 'active')
-      .order('created_at', { ascending: true });
+      .order('index_order', { ascending: true });
 
     if (error) throw new Error(`获取题目失败: ${error.message}`);
 
@@ -308,7 +316,7 @@ export const bankService = {
       .select('*')
       .in('bank_id', bankIds)
       .eq('status', 'active')
-      .order('created_at', { ascending: true });
+      .order('index_order', { ascending: true });
 
     if (error) throw new Error(`获取题目失败: ${error.message}`);
 
@@ -324,7 +332,7 @@ export const bankService = {
       .eq('bank_id', bankId)
       .eq('status', 'active')
       .is('parent_id', null) // 只获取父题目
-      .order('created_at', { ascending: true });
+      .order('index_order', { ascending: true });
 
     if (error) throw new Error(`获取题目失败: ${error.message}`);
 
