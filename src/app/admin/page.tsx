@@ -1162,8 +1162,8 @@ export default function AdminPage() {
                     <SelectItem value="uncategorized">未分类</SelectItem>
                     {/* 一级分类 */}
                     {categories.filter(c => !c.parentId).map((cat) => (
-                      <>
-                        <SelectItem key={`parent-${cat.id}`} value={cat.id}>
+                      <div key={`parent-${cat.id}`}>
+                        <SelectItem value={cat.id}>
                           {cat.name}
                         </SelectItem>
                         {/* 子分类 - 缩进显示 */}
@@ -1172,7 +1172,7 @@ export default function AdminPage() {
                             &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
                           </SelectItem>
                         ))}
-                      </>
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>
