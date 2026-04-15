@@ -313,19 +313,19 @@ export default function QuizApp() {
     const getOptionStyle = (isSelected: boolean, isCorrectAnswer: boolean, showResult: boolean) => {
       if (showResult) {
         if (isSelected && isCorrectAnswer) {
-          return 'border-emerald-400 bg-emerald-50';
+          return 'border-emerald-500 bg-emerald-50 shadow-sm';
         }
         if (isSelected && !isCorrectAnswer) {
-          return 'border-red-400 bg-red-50';
+          return 'border-red-500 bg-red-50 shadow-sm';
         }
         if (isCorrectAnswer) {
-          return 'border-emerald-300 bg-emerald-50';
+          return 'border-emerald-400 bg-emerald-50/50';
         }
       }
       if (isSelected) {
-        return 'border-blue-400 bg-blue-50';
+        return 'border-blue-500 bg-blue-50 shadow-sm shadow-blue-500/10';
       }
-      return 'border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/30';
+      return 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/30';
     };
     
     if (currentQuestion.type === 'true-false') {
@@ -563,8 +563,8 @@ export default function QuizApp() {
           <TabsContent value="practice">
             {!quizState.isComplete && quizState.questions.length > 0 && hasStarted ? (
               <div className="min-h-screen sm:-mx-4">
-                {/* 顶部导航栏 - 清新简洁风格 */}
-                <div className="bg-white text-gray-800 px-4 py-3 sticky top-0 z-20 shadow-sm">
+                {/* 顶部导航栏 - 蓝色主题风格 */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 sticky top-0 z-20 shadow-md">
                   <div className="flex items-center justify-between">
                     {/* 退出按钮 */}
                     <Button
@@ -576,19 +576,17 @@ export default function QuizApp() {
                           setPracticeBankId(null);
                         }
                       }}
-                      className="text-gray-500 hover:bg-gray-100 rounded-lg px-2 h-8"
+                      className="text-white/90 hover:bg-white/20 rounded-lg px-2 h-8"
                     >
                       <ArrowLeft className="w-4 h-4" />
                       <span className="ml-1 text-sm">退出</span>
                     </Button>
                     
                     {/* 进度信息 */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">第</span>
-                      <span className="text-base font-bold text-gray-800">{quizState.currentIndex + 1}</span>
-                      <span className="text-sm text-gray-400">/</span>
-                      <span className="text-base font-bold text-gray-800">{quizState.questions.length}</span>
-                      <span className="text-sm text-gray-500">题</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                        {quizState.currentIndex + 1} / {quizState.questions.length}
+                      </span>
                     </div>
                     
                     {/* 答题卡按钮 */}
@@ -596,7 +594,7 @@ export default function QuizApp() {
                       size="sm"
                       variant="ghost"
                       onClick={() => setShowAnswerSheet(true)}
-                      className="text-gray-500 hover:bg-gray-100 rounded-lg px-2 h-8"
+                      className="text-white/90 hover:bg-white/20 rounded-lg px-2 h-8"
                     >
                       <Grid3X3 className="w-4 h-4" />
                     </Button>
@@ -607,30 +605,30 @@ export default function QuizApp() {
                 <div className="pb-28 sm:pb-32">
                   {currentQuestion && (
                     <div>
-                      {/* 题干区域 - 清新简洁风格 */}
-                      <div className="bg-white px-4 py-4 mb-3">
+                      {/* 题干区域 - 蓝色主题 */}
+                      <div className="bg-gradient-to-b from-blue-50 to-white px-4 py-4">
                         {/* 题型标签 + 题号 */}
-                        <div className="mb-3 flex items-center gap-2">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${
-                            currentQuestion.type === 'single' ? 'bg-blue-100 text-blue-600' :
-                            currentQuestion.type === 'multiple' ? 'bg-purple-100 text-purple-600' :
-                            currentQuestion.type === 'true-false' ? 'bg-orange-100 text-orange-600' :
-                            currentQuestion.type === 'comprehensive' ? 'bg-red-100 text-red-600' :
-                            'bg-green-100 text-green-600'
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
+                            currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
+                            currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
+                            currentQuestion.type === 'true-false' ? 'bg-cyan-500 text-white' :
+                            currentQuestion.type === 'comprehensive' ? 'bg-rose-500 text-white' :
+                            'bg-teal-500 text-white'
                           }`}>
                             {currentQuestion.type === 'single' ? '单选' :
                              currentQuestion.type === 'multiple' ? '多选' :
                              currentQuestion.type === 'true-false' ? '判断' :
                              currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
                           </span>
-                          <span className="text-xs text-gray-400 font-medium">
-                            第 {quizState.currentIndex + 1} 题
+                          <span className="text-xs text-blue-500 font-medium bg-blue-100 px-2 py-1 rounded-full">
+                            第 {quizState.currentIndex + 1} / {quizState.questions.length} 题
                           </span>
                         </div>
                         
                         {/* 综合题背景材料 */}
                         {currentQuestion.parentId && (
-                          <div className="bg-blue-50 rounded-xl p-3 mb-3">
+                          <div className="bg-white border border-blue-200 rounded-xl p-3 mb-3 shadow-sm">
                             <div className="flex items-center gap-2 text-blue-600 mb-2">
                               <BookMarked className="w-4 h-4" />
                               <span className="font-semibold text-sm">案例背景</span>
@@ -650,7 +648,7 @@ export default function QuizApp() {
                       </div>
                       
                       {/* 选项列表 */}
-                      <div className="px-4 space-y-2">
+                      <div className="px-4 space-y-2.5 py-2">
                         {renderOptions()}
                       </div>
                       
@@ -697,8 +695,8 @@ export default function QuizApp() {
                   )}
                 </div>
 
-                {/* 底部固定操作栏 - 清新简洁风格 */}
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 sm:static sm:max-w-lg sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0">
+                {/* 底部固定操作栏 - 蓝色主题 */}
+                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg sm:static sm:max-w-lg sm:mx-auto sm:mt-4 sm:bg-transparent sm:border-0 sm:p-0 sm:shadow-none">
                   <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
                     {/* 上一题 */}
                     <Button
@@ -712,7 +710,7 @@ export default function QuizApp() {
                         }
                       }}
                       disabled={quizState.currentIndex === 0}
-                      className="h-10 px-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      className="h-11 px-4 rounded-xl border-2 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300"
                     >
                       <ChevronLeft className="w-4 h-4" />
                       <span className="ml-1 text-sm">上一题</span>
@@ -722,7 +720,7 @@ export default function QuizApp() {
                     {currentAnswer && !quizState.showResult && (
                       <Button
                         onClick={submitAnswer}
-                        className="h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium text-sm"
+                        className="h-11 px-5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium text-sm shadow-md shadow-blue-500/20"
                       >
                         <BookOpen className="w-4 h-4" />
                         <span className="ml-1.5 text-sm">查看解析</span>
@@ -731,10 +729,10 @@ export default function QuizApp() {
                     
                     {/* 结果提示 */}
                     {quizState.showResult && !currentAnswer && (
-                      <div className={`h-10 flex items-center justify-center px-3 rounded-xl text-sm font-medium ${
+                      <div className={`h-11 flex items-center justify-center px-4 rounded-xl text-sm font-medium ${
                         isAnswerCorrect 
-                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
-                          : 'bg-red-100 text-red-700 border border-red-200'
+                          ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300' 
+                          : 'bg-red-100 text-red-700 border-2 border-red-300'
                       }`}>
                         {isAnswerCorrect ? (
                           <Check className="w-4 h-4 mr-1" />
@@ -749,7 +747,7 @@ export default function QuizApp() {
                     {quizState.currentIndex === quizState.questions.length - 1 ? (
                       <Button
                         onClick={() => finishQuiz()}
-                        className="h-10 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl"
+                        className="h-11 px-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20"
                       >
                         <FileCheck className="w-4 h-4" />
                         <span className="ml-1.5 text-sm">交卷</span>
@@ -765,7 +763,7 @@ export default function QuizApp() {
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }, 50);
                         }}
-                        className="h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl"
+                        className="h-11 px-5 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl shadow-md shadow-blue-500/20"
                       >
                         <span className="text-sm">下一题</span>
                         <ChevronRight className="w-4 h-4 ml-1" />
