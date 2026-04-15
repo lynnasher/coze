@@ -102,6 +102,7 @@ export default function QuizApp() {
     description?: string;
     question_count?: number;
     category_id?: string;
+    created_at?: string;
   }>>([]);
   
   // 只使用数据库的题库
@@ -112,7 +113,8 @@ export default function QuizApp() {
       description: b.description || '',
       questionIds: [],
       questionCount: b.question_count || 0,
-      categoryId: b.category_id
+      categoryId: b.category_id,
+      createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now()
     }));
   }, [dbBanks]);
   
@@ -172,6 +174,23 @@ export default function QuizApp() {
       console.error('刷新激活分类失败:', error);
     }
   };
+
+  // 加载题库
+  useEffect(() => {
+    console.log('加载题库...');
+    fetch('/api/banks')
+      .then(res => {
+        console.log('响应状态:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('题库数据:', data);
+        setDbBanks(data.banks || []);
+      })
+      .catch(err => {
+        console.error('加载题库失败:', err);
+      });
+  }, []);
 
   useEffect(() => {
     loadQuestions();

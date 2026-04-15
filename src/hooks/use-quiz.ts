@@ -15,7 +15,7 @@ export function useQuiz() {
     isComplete: false,
   });
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(typeof window !== 'undefined');
   const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
 
   // 从数据库加载题目
@@ -35,39 +35,50 @@ export function useQuiz() {
 
   // 初始化加载题目
   useEffect(() => {
+    console.log('useQuiz: 开始加载题目...');
     const loadQuestions = async () => {
-      // 先尝试从数据库加载
-      const dbQuestions = await loadQuestionsFromDb();
-      
-      let questions = questionStore.getAll();
-      
-      // 如果数据库有题目，合并到 localStorage
-      if (dbQuestions && dbQuestions.length > 0) {
-        // 合并数据库题目和本地题目，去重
-        const existingIds = new Set(questions.map(q => q.id));
-        const newQuestions = dbQuestions.filter(q => !existingIds.has(q.id));
-        if (newQuestions.length > 0) {
-          questions = [...questions, ...newQuestions];
-          questionStore.save(questions);
+      try {
+        console.log('useQuiz: 调用 loadQuestionsFromDb...');
+        // 先尝试从数据库加载
+        const dbQuestions = await loadQuestionsFromDb();
+        console.log('useQuiz: dbQuestions:', dbQuestions?.length);
+        
+        let questions = questionStore.getAll();
+        console.log('useQuiz: local questions:', questions.length);
+        
+        // 如果数据库有题目，合并到 localStorage
+        if (dbQuestions && dbQuestions.length > 0) {
+          // 合并数据库题目和本地题目，去重
+          const existingIds = new Set(questions.map(q => q.id));
+          const newQuestions = dbQuestions.filter(q => !existingIds.has(q.id));
+          if (newQuestions.length > 0) {
+            questions = [...questions, ...newQuestions];
+            questionStore.save(questions);
+          }
         }
-      }
-      
-      if (questions.length === 0) {
-        // 导入示例数据
-        try {
-          const { initSampleQuestions } = await import('@/lib/quiz-store');
-          initSampleQuestions();
-          questions = questionStore.getAll();
-        } catch {
-          // 忽略
+        
+        if (questions.length === 0) {
+          // 导入示例数据
+          try {
+            const { initSampleQuestions } = await import('@/lib/quiz-store');
+            initSampleQuestions();
+            questions = questionStore.getAll();
+          } catch {
+            // 忽略
+          }
         }
-      }
 
-      setQuizState(prev => ({
-        ...prev,
-        questions,
-      }));
-      setIsLoading(false);
+        console.log('useQuiz: 最终题目数:', questions.length);
+        setQuizState(prev => ({
+          ...prev,
+          questions,
+        }));
+        console.log('useQuiz: 设置 isLoading = false');
+        setIsLoading(false);
+      } catch (error) {
+        console.error('加载题目失败:', error);
+        setIsLoading(false);
+      }
     };
     
     loadQuestions();

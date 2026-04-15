@@ -144,6 +144,38 @@ export const bankService = {
     if (error) throw new Error(`删除题库失败: ${error.message}`);
   },
 
+  // 更新题库（名称、分类等）
+  async updateBank(
+    id: string,
+    updates: { name?: string; categoryId?: string | null; description?: string }
+  ): Promise<DbQuestionBank> {
+    const client = getSupabaseClient();
+    
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (updates.name !== undefined) {
+      updateData.name = updates.name;
+    }
+    if (updates.categoryId !== undefined) {
+      updateData.category_id = updates.categoryId;
+    }
+    if (updates.description !== undefined) {
+      updateData.description = updates.description;
+    }
+
+    const { data, error } = await client
+      .from('question_banks')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`更新题库失败: ${error.message}`);
+    return data as DbQuestionBank;
+  },
+
   // 批量创建题目
   async createQuestions(questions: Question[], bankId: string): Promise<number> {
     const client = getSupabaseClient();

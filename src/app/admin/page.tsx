@@ -63,8 +63,6 @@ import {
   Plus,
   User,
   Key,
-  Database,
-  Upload,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -426,70 +424,6 @@ export default function AdminPage() {
   const [isMoveCategoryDialogOpen, setIsMoveCategoryDialogOpen] = useState(false);
   const [bankToMove, setBankToMove] = useState<QuestionBank | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('uncategorized');
-  const [isMigrating, setIsMigrating] = useState(false);
-  const [localDataCount, setLocalDataCount] = useState(0);
-  const [localQuestionCount, setLocalQuestionCount] = useState(0);
-  const [migrateResult, setMigrateResult] = useState('');
-
-  // 检查本地数据
-  const handleLocalDataCheck = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    
-    const localBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
-    const localQuestions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
-    
-    setLocalDataCount(localBanks.length);
-    setLocalQuestionCount(localQuestions.length);
-    
-    if (localBanks.length === 0) {
-      setMigrateResult('');
-    }
-  }, []);
-
-  // 迁移到数据库
-  const handleMigrateToDatabase = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    
-    const localBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
-    const localQuestions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
-    
-    if (localBanks.length === 0) {
-      return;
-    }
-    
-    setIsMigrating(true);
-    setMigrateResult('');
-    
-    try {
-      const response = await fetch('/api/admin/migrate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          banks: localBanks,
-          questions: localQuestions
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setMigrateResult(data.message);
-        // 刷新题库列表
-        fetchBanks();
-        // 清除本地数据
-        localStorage.removeItem(STORAGE_KEYS.BANKS);
-        localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
-        setLocalDataCount(0);
-        setLocalQuestionCount(0);
-      } else {
-        setMigrateResult(`迁移失败: ${data.error}`);
-      }
-    } catch (error) {
-      setMigrateResult(`迁移失败: ${error instanceof Error ? error.message : '未知错误'}`);
-    } finally {
-      setIsMigrating(false);
-    }
-  }, []);
 
   // 验证登录状态
   useEffect(() => {
@@ -580,32 +514,6 @@ export default function AdminPage() {
       setStats(prev => ({ ...prev, recentImports: recentQuestions.length }));
     }
   }, []);
-
-  // 清除本地题库数据（仅清除 localStorage 中的旧数据）
-  const handleClearLocalBanks = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    
-    const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
-    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
-    
-    if (storedBanks || storedQuestions) {
-      const banks = storedBanks ? JSON.parse(storedBanks) : [];
-      const questions = storedQuestions ? JSON.parse(storedQuestions) : [];
-      
-      if (banks.length > 0 || questions.length > 0) {
-        localStorage.removeItem(STORAGE_KEYS.BANKS);
-        localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
-        setSuccess(`已清除 ${banks.length} 个本地题库和 ${questions.length} 道本地题目`);
-        loadBanks(); // 重新加载数据库题库
-        setLocalDataCount(0);
-        setLocalQuestionCount(0);
-      } else {
-        setSuccess('本地暂无题库数据');
-      }
-    } else {
-      setSuccess('本地暂无题库数据');
-    }
-  }, [loadBanks]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -790,28 +698,39 @@ export default function AdminPage() {
   };
 
   // 保存题库名称
-  const saveBankName = () => {
+  const saveBankName = async () => {
     if (!editingBankId || !editingBankName.trim()) {
       setEditingBankId(null);
       return;
     }
 
     try {
-      const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
-      if (!storedBanks) return;
-      
-      const banksList: QuestionBank[] = JSON.parse(storedBanks);
-      const updatedBanks = banksList.map(b => 
+      // 调用 API 更新数据库
+      const response = await fetch(`/api/admin/banks/${editingBankId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        },
+        body: JSON.stringify({
+          name: editingBankName.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '更新失败');
+      }
+
+      // 更新本地状态
+      setBanks(prevBanks => prevBanks.map(b => 
         b.id === editingBankId 
           ? { ...b, name: editingBankName.trim(), updatedAt: Date.now() }
           : b
-      );
-      
-      localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
-      setBanks(updatedBanks);
+      ));
       setSuccess('题库名称已更新');
     } catch (err) {
-      setError('更新失败');
+      setError(err instanceof Error ? err.message : '更新失败');
     } finally {
       setEditingBankId(null);
     }
@@ -888,20 +807,45 @@ export default function AdminPage() {
   };
 
   // 移动题库到指定分类
-  const handleMoveCategory = () => {
+  const handleMoveCategory = async () => {
     if (!bankToMove) return;
     
-    const storedBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
-    const updatedBanks = storedBanks.map((b: QuestionBank) => 
-      b.id === bankToMove.id 
-        ? { ...b, categoryId: selectedCategoryId === 'uncategorized' ? undefined : selectedCategoryId, updatedAt: Date.now() }
-        : b
-    );
-    localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
-    setBanks(updatedBanks);
-    setIsMoveCategoryDialogOpen(false);
-    setBankToMove(null);
-    setSuccess(`题库已移动到${selectedCategoryId === 'uncategorized' ? '未分类' : categories.find(c => c.id === selectedCategoryId)?.name || '指定分类'}`);
+    try {
+      // 调用 API 更新数据库
+      const response = await fetch(`/api/admin/banks/${bankToMove.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        },
+        body: JSON.stringify({
+          categoryId: selectedCategoryId === 'uncategorized' ? null : selectedCategoryId
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '移动失败');
+      }
+
+      // 更新本地状态
+      setBanks(prevBanks => prevBanks.map(b => 
+        b.id === bankToMove.id 
+          ? { ...b, categoryId: selectedCategoryId === 'uncategorized' ? undefined : selectedCategoryId, updatedAt: Date.now() }
+          : b
+      ));
+      
+      const targetCategory = selectedCategoryId === 'uncategorized' 
+        ? '未分类' 
+        : categories.find(c => c.id === selectedCategoryId)?.name || '指定分类';
+      
+      setSuccess(`题库已移动到「${targetCategory}」`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '移动失败');
+    } finally {
+      setIsMoveCategoryDialogOpen(false);
+      setBankToMove(null);
+    }
   };
 
   // 打开移动分类对话框
@@ -1134,80 +1078,6 @@ export default function AdminPage() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* 迁移本地数据到数据库 */}
-        <Card className="mb-8 border-amber-200 bg-amber-50/50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-amber-700">
-                <Database className="h-5 w-5" />
-                数据迁移
-              </CardTitle>
-              <CardDescription className="text-amber-600">
-                将本地存储的题库迁移到云端数据库
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                onClick={handleLocalDataCheck}
-                disabled={isMigrating}
-              >
-                <Search className="h-4 w-4 mr-2" />
-                查看本地数据
-              </Button>
-              <Button 
-                variant="default"
-                className="bg-amber-600 hover:bg-amber-700"
-                onClick={handleMigrateToDatabase}
-                disabled={isMigrating || localDataCount === 0}
-              >
-                {isMigrating ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    迁移中...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    迁移到数据库
-                  </>
-                )}
-              </Button>
-              <Button 
-                variant="outline"
-                className="border-red-300 text-red-600 hover:bg-red-50"
-                onClick={handleClearLocalBanks}
-                disabled={isMigrating || localDataCount === 0}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                清除本地数据
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {localDataCount > 0 && (
-              <Alert className="border-amber-300 bg-amber-50">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-amber-700">
-                  发现本地存储了 <strong>{localDataCount}</strong> 个题库，共 <strong>{localQuestionCount}</strong> 道题目。可以选择「迁移到数据库」或「清除本地数据」。
-                </AlertDescription>
-              </Alert>
-            )}
-            {localDataCount === 0 && (
-              <p className="text-sm text-slate-500">暂无本地数据，所有题库均保存在数据库中</p>
-            )}
-            {migrateResult && (
-              <Alert className="border-green-300 bg-green-50 mt-4">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-700">
-                  {migrateResult}
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 

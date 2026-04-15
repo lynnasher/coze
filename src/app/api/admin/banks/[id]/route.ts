@@ -37,6 +37,38 @@ export async function GET(
   }
 }
 
+// PUT - 更新题库
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    if (!verifyToken(request)) {
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const body = await request.json();
+    const { name, categoryId, description } = body;
+
+    const bank = await bankService.getBankById(id);
+    if (!bank) {
+      return NextResponse.json({ error: '题库不存在' }, { status: 404 });
+    }
+
+    const updatedBank = await bankService.updateBank(id, {
+      name,
+      categoryId,
+      description,
+    });
+
+    return NextResponse.json({ success: true, bank: updatedBank });
+  } catch (error) {
+    console.error('Failed to update bank:', error);
+    return NextResponse.json({ error: '更新失败' }, { status: 500 });
+  }
+}
+
 // DELETE - 删除题库
 export async function DELETE(
   request: Request,

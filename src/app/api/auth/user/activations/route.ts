@@ -1,34 +1,39 @@
 import { NextResponse } from 'next/server';
-import { userService } from '@/lib/services/user-service';
+import { activationCodeService } from '@/lib/services/activation-service';
 
+// 验证用户 token
+function verifyUserToken(request: Request): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+
+  try {
+    const token = authHeader.substring(7);
+    const userData = JSON.parse(Buffer.from(token, 'base64').toString());
+    return userData.id || null;
+  } catch {
+    return null;
+  }
+}
+
+// GET - 获取用户已激活的分类
 export async function GET(request: Request) {
   try {
-    // 获取请求头中的 Authorization
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ success: false, error: '未授权' }, { status: 401 });
+    const userId = verifyUserToken(request);
+    if (!userId) {
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
     }
 
-    const token = authHeader.substring(7);
-    
-    // 解析 token 获取用户 ID
-    let userId: string;
-    try {
-      const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-      userId = payload.userId;
-    } catch {
-      return NextResponse.json({ success: false, error: '无效的token' }, { status: 401 });
-    }
+    // 获取用户已激活的分类ID列表（会自动过滤过期的激活记录）
+    const activatedCategoryIds = await activationCodeService.getUserActivatedCategoryIds(userId);
 
-    // 获取用户激活的分类（检查过期时间）
-    const activatedCategories = await userService.getActivatedCategories(userId);
-
-    return NextResponse.json({
-      success: true,
-      activatedCategories,
+    return NextResponse.json({ 
+      success: true, 
+      activatedCategories: activatedCategoryIds 
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : '服务器错误';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    console.error('获取用户激活分类失败:', error);
+    return NextResponse.json({ success: false, error: '获取失败' }, { status: 500 });
   }
 }
