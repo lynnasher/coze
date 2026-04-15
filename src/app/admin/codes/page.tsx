@@ -136,12 +136,25 @@ export default function ActivationCodesPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
+      if (!token) {
+        console.error('未登录或登录已过期');
+        setLoading(false);
+        return;
+      }
+      
       const response = await fetch('/api/activation-codes', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
       if (response.ok) {
-        const data = await response.json();
-        setCodes(data.codes || []);
+        const text = await response.text();
+        if (text) {
+          const data = JSON.parse(text);
+          setCodes(data.codes || []);
+        }
+      } else if (response.status === 401) {
+        // token 过期，跳转登录
+        router.push('/admin/login');
       }
     } catch (error) {
       console.error('加载激活码失败:', error);
@@ -239,6 +252,12 @@ export default function ActivationCodesPage() {
     
     try {
       const token = localStorage.getItem('admin_token');
+      if (!token) {
+        alert('请先登录');
+        router.push('/admin/login');
+        return;
+      }
+      
       const response = await fetch('/api/activation-codes', {
         method: 'DELETE',
         headers: {
@@ -248,9 +267,25 @@ export default function ActivationCodesPage() {
         body: JSON.stringify({ ids: [codeId] }),
       });
       
-      const data = await response.json();
+      // 检查响应状态
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('删除失败:', response.status, errorText);
+        alert('删除失败，请重试');
+        return;
+      }
       
-      if (response.ok && data.success) {
+      // 尝试解析 JSON
+      const text = await response.text();
+      if (!text) {
+        console.error('服务器返回空响应');
+        alert('删除失败，请重试');
+        return;
+      }
+      
+      const data = JSON.parse(text);
+      
+      if (data.success) {
         setDeleteConfirm(null);
         loadCodes();
       } else {

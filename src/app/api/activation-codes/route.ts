@@ -43,10 +43,22 @@ export async function POST(request: Request) {
 // 批量删除激活码
 export async function DELETE(request: Request) {
   try {
-    const body = await request.json();
+    // 验证 Content-Type
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return NextResponse.json({ success: false, error: '无效的请求格式' }, { status: 400 });
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ success: false, error: '请求格式错误' }, { status: 400 });
+    }
+
     const { ids } = body;
 
-    if (!ids || !Array.isArray(ids)) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ success: false, error: '请提供要删除的ID列表' }, { status: 400 });
     }
 
@@ -56,6 +68,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('删除激活码失败:', error);
     const message = error instanceof Error ? error.message : '服务器错误';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
