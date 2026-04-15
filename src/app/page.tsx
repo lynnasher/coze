@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -1198,6 +1198,8 @@ function PracticeView({
   const [showExplanation, setShowExplanation] = useState(false);
   // 当前综合题的子题目索引
   const [currentChildIndex, setCurrentChildIndex] = useState(0);
+  // 题目内容区域的 ref，用于滚动聚焦
+  const questionContentRef = useRef<HTMLDivElement>(null);
   
   // 交卷并返回首页（不显示完成弹窗）
   const handleFinishAndExit = useCallback(() => {
@@ -1208,15 +1210,25 @@ function PracticeView({
     }
   }, [onExit]);
   
+  // 滚动到题目内容区域
+  const scrollToQuestion = useCallback(() => {
+    if (questionContentRef.current) {
+      questionContentRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }, []);
+  
   // 如果正在加载，显示加载状态
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
         <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center animate-pulse">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center animate-pulse shadow-lg">
             <BookOpen className="w-10 h-10 text-white" />
           </div>
-          <p className="text-gray-600 font-medium">加载中...</p>
+          <p className="text-slate-600 font-medium">加载中...</p>
         </div>
       </div>
     );
@@ -1226,12 +1238,12 @@ function PracticeView({
   // PracticeView 会被立即卸载，所以这个分支不会被渲染
   if (quizState.isComplete) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
         <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center animate-pulse">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center animate-pulse shadow-lg">
             <FileCheck className="w-10 h-10 text-white" />
           </div>
-          <p className="text-gray-600 font-medium">正在返回首页...</p>
+          <p className="text-slate-600 font-medium">正在返回首页...</p>
         </div>
       </div>
     );
@@ -1268,303 +1280,335 @@ function PracticeView({
   if (!currentQuestion) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">正在加载题目...</p>
+        <p className="text-slate-500">正在加载题目...</p>
       </div>
     );
   }
 
+  // 计算进度
+  const answeredCount = quizState.questions.filter(q => quizState.answers[q.id] !== undefined).length;
+  const progressPercent = quizState.questions.length > 0 
+    ? Math.round((answeredCount / quizState.questions.length) * 100) 
+    : 0;
+
   return (
-    <div className="-mx-4 sm:mx-0">
-      {/* 顶部导航栏 - 简洁设计 */}
-      <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 text-white px-3 py-3 sticky top-0 z-20 rounded-b-2xl shadow-lg">
-        <div className="flex items-center justify-between">
-          {/* 返回按钮 */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (confirm('确定要退出练习吗？')) {
-                onExit();
-              }
-            }}
-            className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10 gap-1"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">返回</span>
-          </Button>
-          
-          {/* 答题卡和交卷按钮 */}
-          <div className="flex items-center gap-1">
-            {/* 答题卡按钮 */}
+    <div className="min-h-screen bg-slate-50">
+      {/* 顶部导航栏 - 紧凑设计 */}
+      <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between">
+            {/* 左侧：返回按钮 */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (confirm('确定要退出练习吗？')) {
+                  onExit();
+                }
+              }}
+              className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              <span className="text-sm font-medium">返回</span>
+            </Button>
+            
+            {/* 中间：题号 */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-700">
+                {quizState.currentIndex + 1}
+              </span>
+              <span className="text-slate-400">/</span>
+              <span className="text-sm text-slate-500">{quizState.questions.length}</span>
+            </div>
+            
+            {/* 右侧：答题卡 */}
             <Button
               size="sm"
               variant="ghost"
               onClick={() => setShowAnswerSheet(true)}
-              className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10"
+              className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -mr-2"
             >
               <Grid3X3 className="w-4 h-4" />
-            </Button>
-            
-            {/* 交卷按钮 */}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => handleFinishAndExit()}
-              className="bg-white/20 hover:bg-white/30 text-white rounded-xl px-3 h-10 font-medium"
-            >
-              <FileCheck className="w-4 h-4" />
-              <span className="ml-1 text-sm">交卷</span>
+              <span className="text-sm font-medium ml-1.5">答题卡</span>
             </Button>
           </div>
         </div>
       </div>
 
+      {/* 进度条 */}
+      <div className="bg-white border-b border-slate-100 px-4 py-2">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
+              {progressPercent}%
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* 题目内容区域 */}
-      <div className="pb-24 sm:pb-32">
-        {/* 题干 */}
-        <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 sticky top-[56px] sm:top-[56px] z-10 shadow-sm">
-          <div className="max-w-2xl mx-auto px-4 py-3 sm:py-4">
-            <div className="mb-2 flex items-center gap-2">
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
-                currentQuestion.type === 'single' ? 'bg-blue-500 text-white' :
-                currentQuestion.type === 'multiple' ? 'bg-purple-500 text-white' :
-                currentQuestion.type === 'true-false' ? 'bg-orange-500 text-white' :
-                currentQuestion.type === 'comprehensive' ? 'bg-red-500 text-white' :
-                'bg-green-500 text-white'
-              }`}>
-                {currentQuestion.type === 'single' ? '单选' :
-                 currentQuestion.type === 'multiple' ? '多选' :
-                 currentQuestion.type === 'true-false' ? '判断' :
-                 currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
-              </span>
-              <span className="text-xs text-gray-500 font-medium">
-                第 {quizState.currentIndex + 1} 题 / 共 {quizState.questions.length} 题
-              </span>
+      <div className="pb-28" ref={questionContentRef}>
+        <div className="max-w-lg mx-auto px-4 py-4">
+          {/* 题目卡片 */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            {/* 题干头部 */}
+            <div className="px-4 py-3 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center gap-2">
+                {/* 题型标签 */}
+                <span className={`inline-flex px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow-sm ${
+                  currentQuestion.type === 'single' ? 'bg-indigo-500' :
+                  currentQuestion.type === 'multiple' ? 'bg-purple-500' :
+                  currentQuestion.type === 'true-false' ? 'bg-cyan-500' :
+                  currentQuestion.type === 'comprehensive' ? 'bg-rose-500' :
+                  'bg-teal-500'
+                }`}>
+                  {currentQuestion.type === 'single' ? '单选' :
+                   currentQuestion.type === 'multiple' ? '多选' :
+                   currentQuestion.type === 'true-false' ? '判断' :
+                   currentQuestion.type === 'comprehensive' ? '综合' : '填空'}
+                </span>
+                
+                {/* 子题目指示器（综合题显示） */}
+                {currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 && (
+                  <span className="text-xs text-slate-500 font-medium">
+                    子题 {currentChildIndex + 1}/{currentQuestion.children.length}
+                  </span>
+                )}
+              </div>
             </div>
             
             {/* 案例背景（综合题显示） */}
             {currentQuestion.caseBackground && (
-              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="mx-4 mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
                 <div className="flex items-start gap-2">
-                  <FileText className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-blue-700 leading-relaxed whitespace-pre-wrap">
+                  <FileText className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-indigo-700 leading-relaxed whitespace-pre-wrap">
                     {currentQuestion.caseBackground}
                   </div>
                 </div>
               </div>
             )}
             
-            {/* 子题目指示器（综合题显示） */}
-            {currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 && (
-              <div className="mb-2 flex items-center gap-2 text-xs text-gray-500">
-                <span>子题 {currentChildIndex + 1}/{currentQuestion.children.length}</span>
-                <span className="text-purple-600 font-medium">（{displayQuestion?.type === 'multiple' ? '多选' : displayQuestion?.type === 'single' ? '单选' : displayQuestion?.type === 'true-false' ? '判断' : '填空'}）</span>
+            {/* 题目内容 */}
+            <div className="px-4 py-4">
+              <p className="text-base font-medium text-slate-800 leading-relaxed">
+                {displayQuestion?.content}
+              </p>
+            </div>
+            
+            {/* 分隔线 */}
+            <div className="mx-4 h-px bg-slate-100" />
+            
+            {/* 选项区域 */}
+            <div className="px-4 py-4">
+              {/* 选项列表 */}
+              <div className="space-y-2.5">
+                {displayQuestion?.options?.map((option, index) => {
+                  const isSelected = Array.isArray(currentAnswer) 
+                    ? currentAnswer.includes(option.id)
+                    : currentAnswer === option.id;
+                  const isCorrectAnswer = Array.isArray(displayQuestion.answer)
+                    ? displayQuestion.answer.includes(option.id)
+                    : displayQuestion.answer === option.id;
+                  
+                  // 选中和显示结果时的样式
+                  let optionStyle = 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30';
+                  if (isSelected && showExplanation) {
+                    // 显示结果后：选中且正确的绿色，选中且错误的红色
+                    optionStyle = isCorrectAnswer
+                      ? 'bg-emerald-50 border-emerald-400'
+                      : 'bg-red-50 border-red-400';
+                  } else if (isSelected) {
+                    // 未显示结果时：只显示选中状态
+                    optionStyle = 'bg-indigo-50 border-indigo-400';
+                  } else if (showExplanation && isCorrectAnswer) {
+                    // 显示结果后：未选中但正确的也显示绿色
+                    optionStyle = 'bg-emerald-50 border-emerald-400';
+                  }
+                  
+                  return (
+                    <div
+                      key={option.id}
+                      className={`flex items-center p-3.5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${optionStyle}`}
+                      onClick={() => !showExplanation && displayQuestion && selectAnswer(displayQuestion.id, option.id)}
+                    >
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 font-bold text-xs transition-colors ${
+                        isSelected && showExplanation
+                          ? isCorrectAnswer
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-red-500 text-white'
+                          : isSelected
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        {isSelected ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          String.fromCharCode(65 + index)
+                        )}
+                      </div>
+                      <span className="flex-1 text-sm font-medium text-slate-700">{option.text}</span>
+                      {showExplanation && isCorrectAnswer && (
+                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      {showExplanation && isSelected && !isCorrectAnswer && (
+                        <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-2">
+                          <X className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* 答案与解析 - 需手动点击按钮显示 */}
+            {showExplanation && (
+              <div className="px-4 pb-4 space-y-3">
+                {/* 结果卡片 */}
+                <div className={`rounded-xl p-3.5 ${isCurrentCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isCurrentCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                        {isCurrentCorrect ? <Check className="w-5 h-5 text-white" /> : <X className="w-5 h-5 text-white" />}
+                      </div>
+                      <span className={`text-sm font-bold ${isCurrentCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {isCurrentCorrect ? '太棒了！' : '再接再厉！'}
+                      </span>
+                    </div>
+                    <div className="bg-white rounded-lg px-2.5 py-1">
+                      <span className="text-xs text-slate-500">答案</span>
+                      <span className="text-sm font-bold text-emerald-600 ml-1.5">
+                        {Array.isArray(displayQuestion?.answer) 
+                          ? displayQuestion.answer.map(a => a.toUpperCase()).join(', ')
+                          : displayQuestion?.answer?.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* 解析 */}
+                {displayQuestion?.explanation && (
+                  <div className="bg-amber-50 rounded-xl p-3.5 border border-amber-200">
+                    <div className="flex items-center gap-2 text-amber-700 mb-2">
+                      <BookOpen className="w-4 h-4" />
+                      <span className="font-semibold text-sm">解析</span>
+                    </div>
+                    <p className="text-amber-900 text-sm leading-relaxed">
+                      {displayQuestion.explanation}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-            
-            <p className="text-base sm:text-lg font-semibold text-gray-800 leading-relaxed">
-              {displayQuestion?.content}
-            </p>
           </div>
-        </div>
-
-        {/* 选项区域 */}
-        <div className="max-w-2xl mx-auto px-4 py-4">
-          {/* 选项列表 */}
-          <div className="space-y-3">
-            {displayQuestion?.options?.map((option, index) => {
-              const isSelected = Array.isArray(currentAnswer) 
-                ? currentAnswer.includes(option.id)
-                : currentAnswer === option.id;
-              const isCorrectAnswer = Array.isArray(displayQuestion.answer)
-                ? displayQuestion.answer.includes(option.id)
-                : displayQuestion.answer === option.id;
-              
-              // 选中和显示结果时的样式
-              let optionStyle = 'bg-white border-gray-200 hover:border-orange-300';
-              if (isSelected && showExplanation) {
-                // 显示结果后：选中且正确的绿色，选中且错误的红色
-                optionStyle = isCorrectAnswer
-                  ? 'bg-emerald-50 border-emerald-500'
-                  : 'bg-red-50 border-red-500';
-              } else if (isSelected) {
-                // 未显示结果时：只显示选中状态
-                optionStyle = 'bg-orange-50 border-orange-500';
-              } else if (showExplanation && isCorrectAnswer) {
-                // 显示结果后：未选中但正确的也显示绿色
-                optionStyle = 'bg-emerald-50 border-emerald-500';
-              }
-              
-              return (
-                <div
-                  key={option.id}
-                  className={`flex items-center p-4 rounded-2xl border-2 transition-all cursor-pointer ${optionStyle}`}
-                  onClick={() => !showExplanation && displayQuestion && selectAnswer(displayQuestion.id, option.id)}
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 font-bold text-sm ${
-                    isSelected && showExplanation
-                      ? isCorrectAnswer
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-red-500 text-white'
-                      : isSelected
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {isSelected ? (
-                      <Check className="w-4 h-4" />
-                    ) : (
-                      String.fromCharCode(65 + index)
-                    )}
-                  </div>
-                  <span className="flex-1 text-sm font-medium">{option.text}</span>
-                  {showExplanation && isCorrectAnswer && (
-                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
-                      <Check className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                  {showExplanation && isSelected && !isCorrectAnswer && (
-                    <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center ml-2">
-                      <X className="w-4 h-4 text-white" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 答案与解析 - 需手动点击按钮显示 */}
-          {showExplanation && (
-            <div className="mt-4 space-y-2 sm:space-y-3">
-              {/* 结果卡片 */}
-              <div className={`rounded-xl p-3 sm:p-4 ${isCurrentCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${isCurrentCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
-                      {isCurrentCorrect ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
-                    </div>
-                    <span className={`text-sm sm:text-base font-bold ${isCurrentCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
-                      {isCurrentCorrect ? '太棒了！' : '再接再厉！'}
-                    </span>
-                  </div>
-                  <div className="bg-white rounded-lg px-2 py-1 sm:px-3 sm:py-1">
-                    <span className="text-xs sm:text-sm text-gray-500">答案：</span>
-                    <span className="text-sm sm:text-lg font-bold text-emerald-600 ml-1">
-                      {Array.isArray(displayQuestion?.answer) 
-                        ? displayQuestion.answer.map(a => a.toUpperCase()).join(', ')
-                        : displayQuestion?.answer?.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* 解析 */}
-              {displayQuestion?.explanation && (
-                <div className="bg-amber-50 rounded-xl p-2 sm:p-3 border border-amber-200">
-                  <div className="flex items-center gap-1 sm:gap-2 text-amber-700 mb-1">
-                    <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="font-semibold text-xs sm:text-sm">解析</span>
-                  </div>
-                  <p className="text-amber-900 text-xs sm:text-sm leading-relaxed">
-                    {displayQuestion.explanation}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
       {/* 底部固定操作栏 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-30">
-        <div className="flex items-center justify-between gap-1 max-w-2xl mx-auto">
-          {/* 上一题 */}
-          <Button
-            variant="outline"
-            onClick={() => {
-              // 如果是综合题的子题目，切换到上一个子题目
-              if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
-                setCurrentChildIndex(prev => prev - 1);
-                setShowExplanation(false);
-                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-              } else if (quizState.currentIndex > 0) {
-                prevQuestion();
-                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            {/* 上一题 */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                // 如果是综合题的子题目，切换到上一个子题目
+                if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+                  setCurrentChildIndex(prev => prev - 1);
+                  setShowExplanation(false);
+                  setTimeout(scrollToQuestion, 50);
+                } else if (quizState.currentIndex > 0) {
+                  prevQuestion();
+                  setShowExplanation(false);
+                  setTimeout(scrollToQuestion, 50);
+                }
+              }}
+              disabled={
+                currentQuestion?.type === 'comprehensive' 
+                  ? currentChildIndex === 0 && quizState.currentIndex === 0
+                  : quizState.currentIndex === 0
               }
-            }}
-            disabled={
-              currentQuestion?.type === 'comprehensive' 
-                ? currentChildIndex === 0 && quizState.currentIndex === 0
-                : quizState.currentIndex === 0
-            }
-            className="h-10 px-3 rounded-lg border border-gray-200"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="ml-1 text-sm">
-              {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一子题' : '上一题'}
-            </span>
-          </Button>
+              className="flex-1 h-11 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="ml-1 text-sm font-medium">
+                {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一子题' : '上一题'}
+              </span>
+            </Button>
 
-          {/* 答案与解析按钮 */}
-          <Button
-            variant="outline"
-            onClick={() => {
-              submitAnswer();
-              setShowExplanation(true);
-            }}
-            className="h-10 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span className="ml-1 text-sm font-medium">答案与解析</span>
-          </Button>
+            {/* 答案与解析按钮 */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                submitAnswer();
+                setShowExplanation(true);
+                setTimeout(scrollToQuestion, 100);
+              }}
+              className="h-11 px-4 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="ml-1.5 text-sm">查看答案</span>
+            </Button>
 
-          {/* 下一题 / 下一子题 / 交卷 */}
-          {(() => {
-            const isComprehensive = currentQuestion?.type === 'comprehensive';
-            const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
-            const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
-            
-            if (isLastQuestion && !hasMoreChildren) {
-              // 最后一题且没有更多子题目，显示交卷
-              return (
-                <Button
-                  onClick={() => handleFinishAndExit()}
-                  className="h-10 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-xl"
-                >
-                  <FileCheck className="w-4 h-4" />
-                  <span className="ml-2 text-sm">交卷</span>
-                </Button>
-              );
-            } else if (hasMoreChildren) {
-              // 还有更多子题目，切换到下一个子题目
-              return (
-                <Button
-                  onClick={() => {
-                    setCurrentChildIndex(prev => prev + 1);
-                    setShowExplanation(false);
-                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-                  }}
-                  className="h-10 px-4 bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 text-white font-medium rounded-xl"
-                >
-                  <span className="text-sm">下一子题</span>
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              );
-            } else {
-              // 切换到下一大题
-              return (
-                <Button
-                  onClick={() => {
-                    nextQuestion();
-                    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 50);
-                  }}
-                  className="h-10 px-4 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-medium rounded-xl"
-                >
-                  <span className="text-sm">下一题</span>
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              );
-            }
-          })()}
+            {/* 下一题 / 下一子题 / 交卷 */}
+            {(() => {
+              const isComprehensive = currentQuestion?.type === 'comprehensive';
+              const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
+              const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
+              
+              if (isLastQuestion && !hasMoreChildren) {
+                // 最后一题且没有更多子题目，显示交卷
+                return (
+                  <Button
+                    onClick={() => handleFinishAndExit()}
+                    className="flex-1 h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl shadow-md shadow-indigo-200"
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    <span className="ml-1.5 text-sm">交卷</span>
+                  </Button>
+                );
+              } else if (hasMoreChildren) {
+                // 还有更多子题目，切换到下一个子题目
+                return (
+                  <Button
+                    onClick={() => {
+                      setCurrentChildIndex(prev => prev + 1);
+                      setShowExplanation(false);
+                      setTimeout(scrollToQuestion, 50);
+                    }}
+                    className="flex-1 h-11 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl shadow-md shadow-purple-200"
+                  >
+                    <span className="text-sm">下一子题</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                );
+              } else {
+                // 切换到下一大题
+                return (
+                  <Button
+                    onClick={() => {
+                      nextQuestion();
+                      setShowExplanation(false);
+                      setTimeout(scrollToQuestion, 50);
+                    }}
+                    className="flex-1 h-11 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl shadow-md shadow-indigo-200"
+                  >
+                    <span className="text-sm">下一题</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                );
+              }
+            })()}
+          </div>
         </div>
       </div>
 
