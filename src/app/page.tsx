@@ -616,6 +616,22 @@ export default function QuizApp() {
                     <p className="text-xs opacity-80">正确率</p>
                   </div>
                 </div>
+                
+                {/* 错题本入口 */}
+                <Link href="/wrongbook">
+                  <div className="mt-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 cursor-pointer hover:border-red-200 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-red-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-800">错题本</p>
+                        <p className="text-xs text-gray-500">{getStats().wrongQuestionIds.length} 道待复习</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                    </div>
+                  </div>
+                </Link>
               </div>
 
                 {/* 最近练习 */}
@@ -1028,15 +1044,23 @@ export default function QuizApp() {
                     </Card>
                   </div>
                   
-                  {/* 错题数量提示 */}
-                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
-                    <div className="flex items-center gap-2 text-amber-700">
-                      <Star className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        当前错题库有 {getWrongQuestionIds().length} 道题需要复习
-                      </span>
-                    </div>
-                  </div>
+                  {/* 错题本导航卡片 */}
+                  <Link href="/wrongbook">
+                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all cursor-pointer">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <BookOpen className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1 text-white">
+                            <p className="text-lg font-bold">错题本</p>
+                            <p className="text-sm opacity-80">{getWrongQuestionIds().length} 道待复习</p>
+                          </div>
+                          <ChevronRight className="w-6 h-6 text-white/60" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 </div>
               );
             })()}
