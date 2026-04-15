@@ -450,60 +450,41 @@ export default function QuizApp() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-white">
-        <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-amber-500 rounded-2xl flex items-center justify-center">
-            <BookOpen className="w-10 h-10 text-white" />
-          </div>
-          <p className="text-gray-600 font-medium">加载中...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-white">
-      {/* 顶部导航 */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-orange-100">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div 
-            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => {
-              if (hasStarted) {
-                if (confirm('确定要退出练习返回主页吗？')) {
-                  setHasStarted(false);
-                  setPracticeBankId(null);
-                }
-              }
-            }}
-          >
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gray-50">
+      {/* 顶部区域 - 简洁清爽风格 */}
+      <header className="bg-white sticky top-0 z-50 shadow-sm">
+        <div className="max-w-lg mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {/* 产品标识 */}
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
+                <p className="text-xs text-gray-400">{questions.length} 道题目</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">智能刷题</h1>
-              <p className="text-xs text-gray-400">{questions.length} 道题目</p>
+            
+            {/* 用户信息 */}
+            <div className="flex items-center gap-2">
+              {currentUser?.role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">管理</span>
+                  </Button>
+                </Link>
+              )}
+              <UserStatus />
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {currentUser?.role === 'admin' && (
-              <Link href="/admin">
-                <Button variant="outline" size="sm" className="rounded-xl gap-1">
-                  <Settings className="w-4 h-4" />
-                  <span className="hidden sm:inline">管理</span>
-                </Button>
-              </Link>
-            )}
-            <UserStatus />
           </div>
         </div>
       </header>
 
       {/* 主内容 */}
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-lg mx-auto px-4 py-4">
         {/* 当 hasStarted 为 true 时，隐藏 Tabs，直接显示练习页面 */}
         {hasStarted ? (
           <PracticeView 
@@ -526,29 +507,27 @@ export default function QuizApp() {
           />
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* Duolingo 风格 Tab 切换 */}
-        <div className="flex gap-2 p-1.5 bg-gray-100 rounded-2xl">
+        {/* 功能标签导航 - 清新风格 */}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-4">
           {[
-            { key: 'practice', icon: Play, label: '练习', color: 'from-green-500 to-emerald-500' },
-            { key: 'library', icon: Library, label: '题库', color: 'from-blue-500 to-cyan-500' },
-            { key: 'stats', icon: BarChart3, label: '统计', color: 'from-purple-500 to-violet-500' },
+            { key: 'practice', icon: Play, label: '练习', color: 'bg-emerald-500' },
+            { key: 'library', icon: Library, label: '题库', color: 'bg-blue-500' },
+            { key: 'stats', icon: BarChart3, label: '统计', color: 'bg-violet-500' },
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => {
-                setActiveTab(tab.key);
-              }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 rounded-xl text-sm font-medium transition-all ${
-                  activeTab === tab.key
-                    ? `bg-gradient-to-r ${tab.color} text-white shadow-lg`
-                    : 'text-gray-600 hover:bg-white/50'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.key
+                  ? `${tab.color} text-white shadow-md`
+                  : 'text-gray-500 hover:bg-white/50'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
           {/* 练习页面 */}
           <TabsContent value="practice">
@@ -949,11 +928,11 @@ export default function QuizApp() {
             ) : questions.length > 0 ? (
               /* 练习开始页面 - 题库管理风格 */
               <div className="space-y-5">
-                {/* 题库选择区域 - 卡片列表 */}
-                <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                      <Library className="w-4 h-4 text-white" />
+                {/* 选择分类模块 - 清新卡片风格 */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Folder className="w-3.5 h-3.5 text-blue-500" />
                     </div>
                     选择分类
                     {selectedCategoryId && (
@@ -964,27 +943,25 @@ export default function QuizApp() {
                           setSelectedCategoryId(null);
                           setPracticeBankId(null);
                         }}
-                        className="text-xs h-7 ml-auto"
+                        className="text-xs h-6 ml-auto text-gray-400 hover:text-gray-600"
                       >
-                        <ArrowLeft className="w-3 h-3 mr-1" />
+                        <ArrowLeft className="w-3 h-3 mr-0.5" />
                         返回
                       </Button>
                     )}
-                  </h2>
+                  </h3>
                   
                   {!selectedCategoryId ? (
                     /* 显示已激活的一级分类列表 */
                     getAvailableCategories().length === 0 ? (
-                      <Card className="border-dashed border-2 bg-gray-50">
-                        <CardContent className="p-6 text-center">
-                          <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                          <p className="text-gray-500 text-sm mb-2">暂无激活的分类</p>
-                          <p className="text-gray-400 text-xs">请在个人中心激活分类后开始练习</p>
-                        </CardContent>
-                      </Card>
+                      <div className="text-center py-8">
+                        <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                        <p className="text-gray-400 text-sm mb-1">暂无激活的分类</p>
+                        <p className="text-gray-300 text-xs">请在个人中心激活分类后开始练习</p>
+                      </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                        {/* 已激活的一级分类卡片 - 紧凑显示 */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* 已激活的一级分类卡片 */}
                         {getAvailableCategories().map((category) => {
                           const subCategories = categories.filter(c => c.parentId === category.id);
                           const categoryBanks = banks.filter(b => b.categoryId === category.id);
@@ -992,35 +969,35 @@ export default function QuizApp() {
                           const isSelected = practiceBankId === category.id;
                           
                           return (
-                            <Card 
+                            <div 
                               key={category.id}
-                              className={`cursor-pointer transition-all border-0 shadow-md rounded-xl overflow-hidden hover:shadow-lg ${
-                                isSelected ? 'ring-2 ring-blue-500' : ''
+                              className={`cursor-pointer transition-all rounded-xl p-3 border-2 ${
+                                isSelected 
+                                  ? 'border-blue-400 bg-blue-50' 
+                                  : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                               }`}
                               onClick={() => {
                                 setSelectedCategoryId(category.id);
                                 setPracticeBankId(null);
                               }}
                             >
-                              <CardContent className="p-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1 truncate">{category.name}</h3>
-                                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                                      <span>{categoryQuestions.length} 题</span>
-                                      {subCategories.length > 0 && (
-                                        <span className="text-blue-400">{subCategories.length} 子分类</span>
-                                      )}
-                                    </div>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm font-semibold text-gray-800 leading-tight mb-1 truncate">{category.name}</h4>
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                    <span>{categoryQuestions.length} 题</span>
+                                    {subCategories.length > 0 && (
+                                      <span className="text-blue-400">{subCategories.length} 子分类</span>
+                                    )}
                                   </div>
-                                  {isSelected && (
-                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                                      <Check className="w-3 h-3 text-white" />
-                                    </div>
-                                  )}
                                 </div>
-                              </CardContent>
-                            </Card>
+                                {isSelected && (
+                                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
+                                    <Check className="w-3 h-3 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -1130,22 +1107,21 @@ export default function QuizApp() {
                   )}
                 </div>
                 
-                {/* 练习模式选择 - 简约卡片 */}
-                <div>
-                  <h2 className="text-base font-semibold flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                      <Play className="w-4 h-4 text-white" />
+                {/* 选择练习模式模块 - 清新卡片风格 */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-violet-100 rounded-lg flex items-center justify-center">
+                      <Play className="w-3.5 h-3.5 text-violet-500" />
                     </div>
                     选择练习模式
                     {practiceBankId && (
-                      <span className="text-sm font-normal text-gray-400 ml-2">
+                      <span className="text-xs font-normal text-gray-400 ml-auto">
                         ({(() => {
                           if (practiceBankId.startsWith('cat_')) {
                             const subCategoryId = practiceBankId.replace('cat_', '');
                             const subCategoryBanks = banks.filter(b => b.categoryId === subCategoryId);
                             return questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId)).length;
                           } else if (selectedCategoryId) {
-                            // 一级分类
                             return questions.filter(q => banks.some(b => b.categoryId === selectedCategoryId && b.id === q.bankId)).length;
                           } else {
                             return questions.filter(q => q.bankId === practiceBankId).length;
@@ -1153,87 +1129,75 @@ export default function QuizApp() {
                         })()} 道题)
                       </span>
                     )}
-                  </h2>
+                  </h3>
                   
                   {!practiceBankId ? (
-                    <Card className="border-dashed border-2 bg-gray-50">
-                      <CardContent className="p-4 text-center text-gray-400 text-sm">
-                        请先选择上方分类后开始练习
-                      </CardContent>
-                    </Card>
+                    <div className="text-center py-8">
+                      <Play className="w-10 h-10 mx-auto mb-3 text-gray-200" />
+                      <p className="text-gray-400 text-sm">请先选择上方分类后开始练习</p>
+                    </div>
                   ) : (
                     <>
-                  {/* 顺序练习 + 随机练习 一行 */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
+                  {/* 练习模式卡片 - 清新风格 */}
+                  <div className="space-y-2">
                     {/* 顺序练习 */}
-                    <Card 
-                      className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
+                    <div 
+                      className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50 flex items-center gap-3"
                       onClick={() => startQuiz('sequential', practiceBankId)}
                     >
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Target className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-sm">顺序练习</h3>
-                            <p className="text-xs text-gray-400">按顺序攻克</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Target className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-800 text-sm">顺序练习</h4>
+                        <p className="text-xs text-gray-400">按顺序攻克</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
                     
                     {/* 随机练习 */}
-                    <Card 
-                      className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
+                    <div 
+                      className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-purple-200 hover:bg-purple-50 flex items-center gap-3"
                       onClick={() => startQuiz('random', practiceBankId)}
                     >
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <RefreshCw className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900 text-sm">随机练习</h3>
-                            <p className="text-xs text-gray-400">打乱顺序挑战</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  {/* 错题重练 单独一行 */}
-                  <Card 
-                    className="cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl hover:scale-[1.02]"
-                    onClick={() => startQuiz('wrong', practiceBankId)}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Star className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 text-sm">错题重练</h3>
-                          <p className="text-xs text-gray-400">专攻易错题目</p>
-                        </div>
+                      <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <RefreshCw className="w-5 h-5 text-purple-500" />
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-800 text-sm">随机练习</h4>
+                        <p className="text-xs text-gray-400">打乱顺序挑战</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                    
+                    {/* 错题重练 */}
+                    <div 
+                      className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-orange-200 hover:bg-orange-50 flex items-center gap-3"
+                      onClick={() => startQuiz('wrong', practiceBankId)}
+                    >
+                      <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Star className="w-5 h-5 text-orange-500" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-800 text-sm">错题重练</h4>
+                        <p className="text-xs text-gray-400">专攻易错题目</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                  </div>
                     </>
                   )}
                 </div>
               </div>
             ) : (
-              /* 题库为空 - Duolingo 风格空状态 */
-              <Card className="shadow-xl rounded-2xl border-0">
-                <CardContent className="pt-12 pb-12 text-center">
-                  <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-3xl flex items-center justify-center">
-                    <BookOpen className="w-12 h-12 text-gray-400" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">开始你的学习之旅</h2>
-                  <p className="text-gray-500 mb-4">请在右上角登录后开始练习</p>
-                </CardContent>
-              </Card>
+              /* 题库为空 - 简洁空状态 */
+              <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-2xl flex items-center justify-center">
+                  <BookOpen className="w-10 h-10 text-gray-300" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">开始你的学习之旅</h2>
+                <p className="text-gray-400 text-sm">请在右上角登录后开始练习</p>
+              </div>
             )}
           </TabsContent>
 
