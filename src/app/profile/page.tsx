@@ -4,17 +4,38 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check } from 'lucide-react';
 import Link from 'next/link';
-import { sessionStore, userStore, logoutUser } from '@/lib/user-store';
-import type { User as UserType, Category } from '@/lib/types';
+import { getCurrentUser } from '@/components/AuthModal';
+
+interface StoredUser {
+  id: string;
+  phone: string;
+  nickname?: string;
+  role: string;
+  activated_categories: string[];
+}
+
+interface Category {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+  parentId?: string;
+}
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<UserType | null>(null);
+  const [user, setUser] = useState<StoredUser | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [banks, setBanks] = useState<{ id: string; name: string; questionIds: string[]; categoryId?: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 激活码相关状态
+  const [activationCode, setActivationCode] = useState('');
+  const [activationLoading, setActivationLoading] = useState(false);
+  const [activationError, setActivationError] = useState('');
+  const [activationSuccess, setActivationSuccess] = useState('');
 
   useEffect(() => {
     checkAuth();
@@ -22,9 +43,8 @@ export default function ProfilePage() {
   }, []);
 
   const checkAuth = () => {
-    const currentUser = sessionStore.getCurrentUser();
+    const currentUser = getCurrentUser();
     if (!currentUser) {
-      // 未登录，跳转到首页
       window.location.href = '/';
       return;
     }
@@ -47,49 +67,71 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
-  const handleToggleCategory = (categoryId: string, isActivated: boolean) => {
-    if (!user) return;
-    
-    if (isActivated) {
-      userStore.deactivateCategory(user.id, categoryId);
-    } else {
-      userStore.activateCategory(user.id, categoryId);
+  // 使用激活码
+  const handleActivateCode = async () => {
+    if (!user || !activationCode.trim()) {
+      setActivationError('请输入激活码');
+      return;
     }
-    
-    // 刷新用户数据
-    const updatedUser = userStore.getById(user.id);
-    if (updatedUser) {
-      setUser(updatedUser);
+
+    setActivationLoading(true);
+    setActivationError('');
+    setActivationSuccess('');
+
+    try {
+      const response = await fetch('/api/activation-codes/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: activationCode, userId: user.id }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setActivationSuccess(`成功激活：${data.activation.category_name}`);
+        setActivationCode('');
+        
+        // 刷新用户数据
+        const updatedCategories = [...new Set([...user.activated_categories, data.activation.category_id])];
+        const updatedUser = { ...user, activated_categories: updatedCategories };
+        setUser(updatedUser);
+        localStorage.setItem('quiz_user_data', JSON.stringify(updatedUser));
+      } else {
+        setActivationError(data.error || '激活失败');
+      }
+    } catch {
+      setActivationError('网络错误，请稍后重试');
+    } finally {
+      setActivationLoading(false);
     }
   };
 
-  const handleActivateAll = () => {
-    if (!user) return;
-    const topLevelCategories = categories.filter(c => !c.parentId);
-    const allCategoryIds = topLevelCategories.map(c => c.id);
-    userStore.activateCategories(user.id, allCategoryIds);
-    
-    const updatedUser = userStore.getById(user.id);
-    if (updatedUser) {
-      setUser(updatedUser);
-    }
-  };
+  // 直接切换分类激活状态（管理员功能）
+  const handleToggleCategory = async (categoryId: string, isActivated: boolean) => {
+    if (!user || user.role !== 'admin') return;
 
-  const handleDeactivateAll = () => {
-    if (!user) return;
-    const topLevelCategories = categories.filter(c => !c.parentId);
-    topLevelCategories.forEach(cat => {
-      userStore.deactivateCategory(user.id, cat.id);
-    });
-    
-    const updatedUser = userStore.getById(user.id);
-    if (updatedUser) {
+    const updatedCategories = isActivated
+      ? user.activated_categories.filter(c => c !== categoryId)
+      : [...user.activated_categories, categoryId];
+
+    try {
+      await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, action: 'categories', value: updatedCategories }),
+      });
+
+      const updatedUser = { ...user, activated_categories: updatedCategories };
       setUser(updatedUser);
+      localStorage.setItem('quiz_user_data', JSON.stringify(updatedUser));
+    } catch {
+      console.error('更新分类失败');
     }
   };
 
   const handleLogout = () => {
-    logoutUser();
+    localStorage.removeItem('quiz_user_token');
+    localStorage.removeItem('quiz_user_data');
     window.location.href = '/';
   };
 
@@ -98,7 +140,7 @@ export default function ProfilePage() {
     return categoryBanks.reduce((sum, bank) => sum + bank.questionIds.length, 0);
   };
 
-  const activatedCategories = user?.activatedCategories || [];
+  const activatedCategories = user?.activated_categories || [];
   const topLevelCategories = categories.filter(c => !c.parentId);
 
   if (loading) {
@@ -159,6 +201,41 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        {/* 激活码激活 */}
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Key className="w-5 h-5 text-green-500" />
+              激活码激活
+            </CardTitle>
+            <CardDescription>
+              输入激活码获取分类访问权限
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                placeholder="请输入激活码"
+                value={activationCode}
+                onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
+                className="flex-1"
+              />
+              <Button onClick={handleActivateCode} disabled={activationLoading}>
+                {activationLoading ? '激活中...' : '激活'}
+              </Button>
+            </div>
+            {activationError && (
+              <p className="text-sm text-red-500 mt-2">{activationError}</p>
+            )}
+            {activationSuccess && (
+              <p className="text-sm text-green-500 mt-2 flex items-center gap-1">
+                <Check className="w-4 h-4" />
+                {activationSuccess}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 分类激活管理 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
@@ -166,27 +243,20 @@ export default function ProfilePage() {
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <BookOpen className="w-5 h-5 text-blue-500" />
-                  题库分类管理
+                  我的分类
                 </CardTitle>
                 <CardDescription>
-                  激活的分类可以在练习页面中选择和练习
+                  已激活的分类可以在练习页面中选择和练习
                 </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleActivateAll}>
-                  全选
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDeactivateAll}>
-                  取消全部
-                </Button>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             {topLevelCategories.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p>暂无分类</p>
+                <p className="text-xs mt-1">请使用激活码激活分类</p>
               </div>
             ) : (
               topLevelCategories.map((category) => {
@@ -195,7 +265,9 @@ export default function ProfilePage() {
                 
                 return (
                   <div key={category.id}>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                      isActivated ? 'bg-blue-50' : 'bg-gray-50 hover:bg-gray-100'
+                    }`}>
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                           isActivated ? 'bg-blue-100' : 'bg-gray-200'
@@ -210,13 +282,20 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {isActivated && (
+                        {isActivated ? (
                           <Badge variant="default" className="bg-blue-500">已激活</Badge>
+                        ) : (
+                          <Badge variant="outline">未激活</Badge>
                         )}
-                        <Switch
-                          checked={isActivated}
-                          onCheckedChange={(checked) => handleToggleCategory(category.id, checked)}
-                        />
+                        {user?.role === 'admin' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleToggleCategory(category.id, isActivated)}
+                          >
+                            {isActivated ? '取消' : '激活'}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

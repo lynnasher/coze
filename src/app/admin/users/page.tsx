@@ -40,80 +40,192 @@ import {
   LogOut,
   ArrowLeft,
   Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
-import { User as UserType } from '@/lib/types';
-import { userStore, sessionStore, logoutUser } from '@/lib/user-store';
+
+interface AdminUser {
+  id: string;
+  phone: string;
+  nickname?: string;
+  role: string;
+  status: string;
+  activated_categories: string[];
+  created_at: string;
+}
 
 export default function UsersPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<UserType[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [editUser, setEditUser] = useState<UserType | null>(null);
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  // 检查管理员登录状态
+  useEffect(() => {
+    checkAuth();
+    loadCategories();
+  }, []);
 
   const checkAuth = () => {
-    const user = sessionStore.getCurrentUser();
-    if (!user || user.role !== 'admin') {
+    const token = localStorage.getItem('admin_token');
+    const userData = localStorage.getItem('admin_user');
+    if (!token || !userData) {
       router.push('/admin/login');
       return;
     }
-    setCurrentUser(user);
+    try {
+      const user = JSON.parse(userData);
+      if (user.role !== 'admin') {
+        router.push('/admin/login');
+        return;
+      }
+      setCurrentUser(user);
+    } catch {
+      router.push('/admin/login');
+    }
   };
 
-  const loadUsers = () => {
-    setUsers(userStore.getAll());
+  const loadCategories = () => {
+    const stored = localStorage.getItem('quiz_categories');
+    if (stored) {
+      setCategories(JSON.parse(stored));
+    }
+  };
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error('加载用户失败:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    checkAuth();
-    loadUsers();
-  }, []);
+    if (currentUser) {
+      loadUsers();
+    }
+  }, [currentUser]);
 
   const handleLogout = () => {
-    logoutUser();
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
     router.push('/admin/login');
   };
 
-  const handleStatusToggle = (userId: string, currentStatus: 'active' | 'banned') => {
+  const handleStatusToggle = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'banned' : 'active';
-    userStore.updateStatus(userId, newStatus);
-    loadUsers();
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (response.ok) {
+        loadUsers();
+      }
+    } catch (error) {
+      console.error('更新状态失败:', error);
+    }
   };
 
-  const handleRoleChange = (userId: string, newRole: 'user' | 'admin') => {
-    userStore.updateRole(userId, newRole);
-    loadUsers();
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (response.ok) {
+        loadUsers();
+      }
+    } catch (error) {
+      console.error('更新角色失败:', error);
+    }
   };
 
-  const handleDelete = (userId: string) => {
-    // 不允许删除自己
+  const handleCategoriesChange = async (userId: string, activated_categories: string[]) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ activated_categories }),
+      });
+      if (response.ok) {
+        loadUsers();
+      }
+    } catch (error) {
+      console.error('更新分类失败:', error);
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
     if (userId === currentUser?.id) {
       alert('不能删除当前登录的管理员账号');
       return;
     }
-    userStore.remove(userId);
-    loadUsers();
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        loadUsers();
+      }
+    } catch (error) {
+      console.error('删除用户失败:', error);
+    }
     setDeleteConfirm(null);
   };
 
-  const handleAddUser = (phone: string, nickname: string, password: string, role: 'user' | 'admin') => {
-    if (userStore.exists(phone)) {
-      alert('该手机号已被注册');
-      return;
+  const handleAddUser = async (phone: string, nickname: string, password: string, role: string) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ phone, nickname, password, role }),
+      });
+      if (response.ok) {
+        loadUsers();
+        setEditUser(null);
+      } else {
+        const data = await response.json();
+        alert(data.error || '添加用户失败');
+      }
+    } catch (error) {
+      console.error('添加用户失败:', error);
+      alert('添加用户失败');
     }
-    userStore.add({
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      phone,
-      nickname,
-      password: btoa(password + '_salt_key_2024'),
-      createdAt: Date.now(),
-      role,
-      status: 'active',
-    });
-    loadUsers();
-    setEditUser(null);
   };
 
   const filteredUsers = users.filter(user => {
@@ -123,6 +235,13 @@ export default function UsersPage() {
       user.nickname?.toLowerCase().includes(query)
     );
   });
+
+  const toggleCategory = (userId: string, currentCategories: string[], categoryId: string) => {
+    const newCategories = currentCategories.includes(categoryId)
+      ? currentCategories.filter(c => c !== categoryId)
+      : [...currentCategories, categoryId];
+    handleCategoriesChange(userId, newCategories);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -145,6 +264,10 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={loadUsers} className="gap-1">
+                <RefreshCw className="w-4 h-4" />
+                刷新
+              </Button>
               <span className="text-sm text-gray-500">
                 管理员: {currentUser?.nickname || currentUser?.phone}
               </span>
@@ -213,7 +336,7 @@ export default function UsersPage() {
                 <CardTitle>用户列表</CardTitle>
                 <CardDescription>管理所有注册用户</CardDescription>
               </div>
-              <Button onClick={() => setEditUser({} as UserType)} className="gap-1">
+              <Button onClick={() => setEditUser({} as AdminUser)} className="gap-1">
                 <Plus className="w-4 h-4" />
                 添加用户
               </Button>
@@ -240,14 +363,21 @@ export default function UsersPage() {
                     <TableHead>昵称</TableHead>
                     <TableHead>角色</TableHead>
                     <TableHead>状态</TableHead>
+                    <TableHead>已激活分类</TableHead>
                     <TableHead>注册时间</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        加载中...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         暂无用户
                       </TableCell>
                     </TableRow>
@@ -277,8 +407,22 @@ export default function UsersPage() {
                             )}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {categories
+                              .filter(cat => user.activated_categories?.includes(cat.id))
+                              .map(cat => (
+                                <Badge key={cat.id} variant="outline" className="text-xs">
+                                  {cat.name}
+                                </Badge>
+                              ))}
+                            {(!user.activated_categories || user.activated_categories.length === 0) && (
+                              <span className="text-xs text-gray-400">无</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
@@ -288,6 +432,17 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                const newCategories = categories.map(c => c.id);
+                                handleCategoriesChange(user.id, newCategories);
+                              }}>
+                                激活所有分类
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                handleCategoriesChange(user.id, []);
+                              }}>
+                                清除分类
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleStatusToggle(user.id, user.status)}>
                                 {user.status === 'active' ? '禁用账号' : '启用账号'}
                               </DropdownMenuItem>
@@ -319,10 +474,8 @@ export default function UsersPage() {
       <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editUser?.id ? '编辑用户' : '添加用户'}</DialogTitle>
-            <DialogDescription>
-              {editUser?.id ? '修改用户信息' : '创建新用户账号'}
-            </DialogDescription>
+            <DialogTitle>添加用户</DialogTitle>
+            <DialogDescription>创建新用户账号</DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -330,7 +483,7 @@ export default function UsersPage() {
             const phone = (form.elements.namedItem('phone') as HTMLInputElement).value;
             const nickname = (form.elements.namedItem('nickname') as HTMLInputElement).value;
             const password = (form.elements.namedItem('password') as HTMLInputElement).value;
-            const role = (form.elements.namedItem('role') as HTMLSelectElement).value as 'user' | 'admin';
+            const role = (form.elements.namedItem('role') as HTMLSelectElement).value;
             handleAddUser(phone, nickname, password, role);
           }}>
             <div className="space-y-4 py-4">
@@ -351,6 +504,7 @@ export default function UsersPage() {
                 <Input
                   id="nickname"
                   name="nickname"
+                  type="text"
                   placeholder="请输入昵称（选填）"
                   defaultValue={editUser?.nickname}
                 />
@@ -361,7 +515,7 @@ export default function UsersPage() {
                   id="password"
                   name="password"
                   type="password"
-                  placeholder="请输入密码（至少6位）"
+                  placeholder="请输入密码"
                   required
                   minLength={6}
                 />
@@ -383,9 +537,7 @@ export default function UsersPage() {
               <Button type="button" variant="outline" onClick={() => setEditUser(null)}>
                 取消
               </Button>
-              <Button type="submit">
-                {editUser?.id ? '保存' : '添加'}
-              </Button>
+              <Button type="submit">创建</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -397,14 +549,14 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
-              确定要删除该用户吗？此操作不可恢复。
+              确定要删除该用户吗？此操作不可撤销。
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
               取消
             </Button>
-            <Button variant="destructive" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
+            <Button variant="destructive" onClick={() => handleDelete(deleteConfirm!)}>
               删除
             </Button>
           </DialogFooter>

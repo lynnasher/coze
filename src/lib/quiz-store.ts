@@ -590,11 +590,11 @@ export const categoryStore = {
     const idsToDelete = new Set<string>();
     idsToDelete.add(id);
     // 查找所有子分类
-    let children = categories.filter(c => c.parentId === id);
+    const children = categories.filter(c => c.parentId === id);
     children.forEach(child => {
       idsToDelete.add(child.id);
       // 递归查找子分类
-      let grandchildren = categories.filter(c => c.parentId === child.id);
+      const grandchildren = categories.filter(c => c.parentId === child.id);
       grandchildren.forEach(gc => idsToDelete.add(gc.id));
     });
     

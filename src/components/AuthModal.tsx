@@ -3,17 +3,21 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User as UserIcon, LogOut, UserCircle, Shield } from 'lucide-react';
-import { sessionStore, registerUser, loginUser, logoutUser, initDefaultAdmin } from '@/lib/user-store';
 import type { User as UserType } from '@/lib/types';
 
-interface AuthModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAuthChange?: () => void;
+// Token 存储
+const TOKEN_KEY = 'quiz_user_token';
+const USER_KEY = 'quiz_user_data';
+
+interface StoredUser {
+  id: string;
+  phone: string;
+  nickname?: string;
+  role: string;
+  activated_categories: string[];
 }
 
 export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) {
@@ -25,10 +29,6 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    initDefaultAdmin();
-  }, []);
 
   // 倒计时效果
   useEffect(() => {
@@ -59,7 +59,6 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
 
       if (data.success) {
         setCountdown(60);
-        // 测试模式下显示验证码
         if (data.testCode) {
           alert(`【测试模式】验证码: ${data.testCode}`);
         }
@@ -80,12 +79,22 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
 
     try {
       if (mode === 'login') {
-        const result = loginUser(phone, password);
-        if (result.success) {
+        // 用户登录
+        const response = await fetch('/api/auth/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'login', phone, password }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
           onOpenChange(false);
           onAuthChange?.();
         } else {
-          setError(result.error || '登录失败');
+          setError(data.error || '登录失败');
         }
       } else {
         // 注册时验证验证码
@@ -110,14 +119,26 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           return;
         }
 
-        const result = registerUser(phone, password, nickname);
-        if (result.success) {
+        // 注册
+        const response = await fetch('/api/auth/user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'register', phone, password, nickname }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
           onOpenChange(false);
           onAuthChange?.();
         } else {
-          setError(result.error || '注册失败');
+          setError(data.error || '注册失败');
         }
       }
+    } catch {
+      setError('网络错误，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -261,25 +282,40 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
 }
 
 // 用户状态显示组件
+interface AuthModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAuthChange?: () => void;
+}
+
 interface UserStatusProps {
   className?: string;
 }
 
 export function UserStatus({ className }: UserStatusProps) {
-  const [user, setUser] = useState<UserType | null>(null);
+  const [user, setUser] = useState<StoredUser | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  const checkAuth = () => {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const userData = localStorage.getItem(USER_KEY);
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
+    }
+  };
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  const checkAuth = () => {
-    const currentUser = sessionStore.getCurrentUser();
-    setUser(currentUser);
-  };
-
   const handleLogout = () => {
-    logoutUser();
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setUser(null);
   };
 
@@ -327,39 +363,20 @@ export function UserStatus({ className }: UserStatusProps) {
   );
 }
 
-// 需要登录的高阶组件
-interface RequireAuthProps {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+// 获取当前用户
+export function getCurrentUser(): StoredUser | null {
+  const userData = localStorage.getItem(USER_KEY);
+  if (userData) {
+    try {
+      return JSON.parse(userData);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
-export function RequireAuth({ children, fallback }: RequireAuthProps) {
-  const [user, setUser] = useState<UserType | null>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-
-  useEffect(() => {
-    const currentUser = sessionStore.getCurrentUser();
-    setUser(currentUser);
-    if (!currentUser) {
-      setAuthModalOpen(true);
-    }
-  }, []);
-
-  if (!user) {
-    return (
-      <>
-        {fallback}
-        <AuthModal
-          open={authModalOpen}
-          onOpenChange={setAuthModalOpen}
-          onAuthChange={() => {
-            const currentUser = sessionStore.getCurrentUser();
-            setUser(currentUser);
-          }}
-        />
-      </>
-    );
-  }
-
-  return <>{children}</>;
+// 获取用户 Token
+export function getUserToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
 }

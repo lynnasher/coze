@@ -101,8 +101,8 @@ D、低于800亿元
 - 支持多种变体格式
 
 ### 3.5 数据存储
-- 浏览器 localStorage
-- 可扩展至 Supabase
+- 浏览器 localStorage（题库、分类等前端数据）
+- Supabase PostgreSQL（用户账号、激活码系统）
 
 ## 4. 目录结构
 
@@ -150,9 +150,17 @@ src/
 ├── lib/
 │   ├── utils.ts                 # 工具函数
 │   ├── quiz-store.ts            # 刷题状态管理
-│   ├── user-store.ts            # 用户状态管理
 │   ├── pdf-parser.ts            # PDF 解析工具
-│   └── types.ts                 # 类型定义
+│   ├── types.ts                 # 类型定义
+│   └── services/                 # 服务层
+│       ├── user-service.ts      # 用户服务（Supabase）
+│       └── activation-service.ts # 激活码服务（Supabase）
+├── storage/
+│   └── database/                # 数据库配置
+│       ├── supabase-client.ts    # Supabase 客户端
+│       └── shared/               # 共享数据库代码
+│           ├── schema.ts         # 数据库表结构
+│           └── relations.ts      # 表关系定义
 └── hooks/
     └── use-quiz.ts              # 刷题 Hook
 ```
@@ -213,6 +221,44 @@ interface Category {
   createdAt?: number;
 }
 ```
+
+### 5.5 数据库表（Supabase）
+
+**users 表**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid | 主键 |
+| phone | varchar(11) | 手机号（唯一） |
+| password | text | 加密密码 |
+| nickname | varchar | 昵称 |
+| role | varchar | 角色（admin/user） |
+| status | varchar | 状态（active/banned） |
+| activated_categories | jsonb | 已激活的分类ID数组 |
+| created_at | timestamp | 创建时间 |
+| last_login_at | timestamp | 最后登录时间 |
+
+**activation_codes 表**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid | 主键 |
+| code | varchar(10) | 激活码（唯一） |
+| category_id | varchar | 对应分类ID |
+| category_name | varchar | 对应分类名称 |
+| type | varchar | 类型（once/multi） |
+| max_uses | int | 最大使用次数 |
+| uses | int | 已使用次数 |
+| status | varchar | 状态（active/used/expired） |
+| expires_at | timestamp | 过期时间 |
+| created_at | timestamp | 创建时间 |
+
+**user_activations 表**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | uuid | 主键 |
+| user_id | uuid | 用户ID |
+| category_id | varchar | 分类ID |
+| category_name | varchar | 分类名称 |
+| activated_at | timestamp | 激活时间 |
 
 ## 6. 页面布局
 
@@ -309,6 +355,51 @@ DELETE /api/questions/:id
 - 默认密码: `admin123`
 - Token 有效期: 24小时
 
+### 9.7 用户认证接口（Supabase）
+```
+POST /api/auth/user
+Request (登录): { type: 'login', phone: string, password: string }
+Request (注册): { type: 'register', phone: string, password: string, nickname?: string }
+Response: { success: boolean, user: User, token: string }
+```
+
+### 9.8 激活码接口（Supabase）
+```
+GET /api/activation-codes
+Headers: Authorization: Bearer <admin_token>
+Response: { success: boolean, codes: ActivationCode[] }
+
+POST /api/activation-codes
+Headers: Authorization: Bearer <admin_token>
+Request: { categoryId: string, categoryName: string, quantity?: number, type?: 'once'|'multi', maxUses?: number, expiresAt?: string }
+Response: { success: boolean, codes: ActivationCode[] }
+
+POST /api/activation-codes/use
+Request: { code: string, userId: string }
+Response: { success: boolean, activation: { category_id, category_name, activated_at } }
+```
+
+### 9.9 用户管理接口（Supabase）
+```
+GET /api/admin/users
+Headers: Authorization: Bearer <admin_token>
+Response: { success: boolean, users: User[] }
+
+POST /api/admin/users
+Headers: Authorization: Bearer <admin_token>
+Request: { phone: string, password: string, nickname?: string, role?: 'user'|'admin' }
+Response: { success: boolean, user: User }
+
+PUT /api/admin/users/:id
+Headers: Authorization: Bearer <admin_token>
+Request: { status?: 'active'|'banned', role?: 'user'|'admin', activated_categories?: string[] }
+Response: { success: boolean }
+
+DELETE /api/admin/users/:id
+Headers: Authorization: Bearer <admin_token>
+Response: { success: boolean }
+```
+
 ## 10. 测试清单
 
 - [ ] PDF 导入功能
@@ -320,6 +411,9 @@ DELETE /api/questions/:id
 - [x] 响应式布局正常
 - [x] 题库分类管理（后台，支持二级分类）
 - [x] 前台题库按分类显示（二级分类）
-- [x] 用户注册/登录功能
-- [x] 后台用户管理功能
+- [x] 用户注册/登录功能（Supabase）
+- [x] 后台用户管理功能（Supabase）
 - [x] 前台账号入口显示
+- [x] 激活码生成功能（Supabase）
+- [x] 激活码使用功能（Supabase）
+- [x] 用户分类权限管理（Supabase）
