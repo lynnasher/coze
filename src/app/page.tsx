@@ -1054,13 +1054,25 @@ export default function QuizApp() {
                     </div>
                   )}
                   
-                  {/* 按分类显示题库 */}
-                  {categories.map(category => {
+                  {/* 按分类显示题库 - 支持二级分类 */}
+                  {categories.filter(c => !c.parentId).map(category => {
+                    // 获取该分类下的所有直接子分类
+                    const childCategories = categories.filter(c => c.parentId === category.id);
+                    
+                    // 获取该分类的直接题库
                     const categoryBanks = banks.filter(b => b.categoryId === category.id);
-                    if (categoryBanks.length === 0) return null;
+                    
+                    // 获取所有子分类的题库
+                    const childCategoryBanks = childCategories.flatMap(child => 
+                      banks.filter(b => b.categoryId === child.id)
+                    );
+                    
+                    // 如果该分类和子分类都没有题库，则不显示
+                    if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
                     
                     return (
                       <div key={category.id}>
+                        {/* 顶级分类 */}
                         <div className="flex items-center gap-2 mb-3">
                           <Folder className="w-4 h-4 text-slate-500" />
                           <h3 className={`font-medium px-2 py-0.5 rounded ${
@@ -1075,9 +1087,13 @@ export default function QuizApp() {
                           }`}>
                             {category.name}
                           </h3>
-                          <span className="text-sm text-slate-400">({categoryBanks.length})</span>
+                          <span className="text-sm text-slate-400">
+                            ({categoryBanks.length + childCategoryBanks.length})
+                          </span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        
+                        {/* 该分类的直接题库 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                           {categoryBanks.map((bank) => (
                             <BankCard 
                               key={bank.id} 
@@ -1092,6 +1108,48 @@ export default function QuizApp() {
                             />
                           ))}
                         </div>
+                        
+                        {/* 子分类 */}
+                        {childCategories.map(child => {
+                          const childBanks = banks.filter(b => b.categoryId === child.id);
+                          if (childBanks.length === 0) return null;
+                          
+                          return (
+                            <div key={child.id} className="ml-4 mb-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <FolderOpen className="w-4 h-4 text-slate-400" />
+                                <h4 className={`text-sm font-medium px-2 py-0.5 rounded ${
+                                  child.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+                                  child.color === 'green' ? 'bg-green-50 text-green-600' :
+                                  child.color === 'red' ? 'bg-red-50 text-red-600' :
+                                  child.color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
+                                  child.color === 'purple' ? 'bg-purple-50 text-purple-600' :
+                                  child.color === 'pink' ? 'bg-pink-50 text-pink-600' :
+                                  child.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+                                  'bg-cyan-50 text-cyan-600'
+                                }`}>
+                                  {child.name}
+                                </h4>
+                                <span className="text-xs text-slate-400">({childBanks.length})</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {childBanks.map((bank) => (
+                                  <BankCard 
+                                    key={bank.id} 
+                                    bank={bank} 
+                                    questions={questions}
+                                    onDelete={handleDeleteBank}
+                                    onStartPractice={(bankId) => {
+                                      setPracticeBankId(bankId);
+                                      setActiveTab('practice');
+                                      setTimeout(() => startQuiz('sequential', bankId), 100);
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}

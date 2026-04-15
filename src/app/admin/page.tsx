@@ -86,6 +86,7 @@ interface Category {
   name: string;
   color: string;
   order: number;
+  parentId?: string; // 父分类ID，如果为空则是顶级分类
 }
 
 interface AdminStats {
@@ -415,6 +416,7 @@ export default function AdminPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryName, setCategoryName] = useState('');
   const [categoryColor, setCategoryColor] = useState('blue');
+  const [categoryParentId, setCategoryParentId] = useState<string | undefined>(undefined);
 
   // 验证登录状态
   useEffect(() => {
@@ -515,6 +517,15 @@ export default function AdminPage() {
     }
   };
 
+  // 重置分类表单
+  const resetCategoryForm = () => {
+    setIsCategoryModalOpen(false);
+    setEditingCategory(null);
+    setCategoryName('');
+    setCategoryColor('blue');
+    setCategoryParentId(undefined);
+  };
+
   // 保存分类
   const saveCategory = () => {
     if (!categoryName.trim()) {
@@ -522,13 +533,14 @@ export default function AdminPage() {
       return;
     }
 
+    // 获取所有分类
     const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
     
     if (editingCategory) {
       // 更新
       const updated = existingCategories.map((c: Category) => 
         c.id === editingCategory.id 
-          ? { ...c, name: categoryName.trim(), color: categoryColor }
+          ? { ...c, name: categoryName.trim(), color: categoryColor, parentId: categoryParentId }
           : c
       );
       localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updated));
@@ -536,11 +548,13 @@ export default function AdminPage() {
       setSuccess('分类已更新');
     } else {
       // 新增
+      const siblings = existingCategories.filter((c: Category) => c.parentId === categoryParentId);
       const newCategory: Category = {
         id: generateId(),
         name: categoryName.trim(),
         color: categoryColor,
-        order: existingCategories.length,
+        order: siblings.length,
+        parentId: categoryParentId,
       };
       const updated = [...existingCategories, newCategory];
       localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updated));
@@ -548,26 +562,39 @@ export default function AdminPage() {
       setSuccess('分类已添加');
     }
 
-    setIsCategoryModalOpen(false);
-    setEditingCategory(null);
-    setCategoryName('');
-    setCategoryColor('blue');
+    resetCategoryForm();
   };
 
-  // 删除分类
+  // 删除分类（包括子分类）
   const deleteCategory = (category: Category) => {
-    // 将该分类下的题库移至未分类
+    const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
+    
+    // 收集所有要删除的分类ID（包括子分类）
+    const idsToDelete = new Set<string>();
+    idsToDelete.add(category.id);
+    
+    // 递归查找子分类
+    const findChildren = (parentId: string) => {
+      existingCategories.forEach((c: Category) => {
+        if (c.parentId === parentId) {
+          idsToDelete.add(c.id);
+          findChildren(c.id);
+        }
+      });
+    };
+    findChildren(category.id);
+    
+    // 将该分类及子分类下的题库移至未分类
     const existingBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
     const updatedBanks = existingBanks.map((b: QuestionBank) => 
-      b.categoryId === category.id 
+      idsToDelete.has(b.categoryId || '') 
         ? { ...b, categoryId: undefined }
         : b
     );
     localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
     
     // 删除分类
-    const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
-    const updatedCategories = existingCategories.filter((c: Category) => c.id !== category.id);
+    const updatedCategories = existingCategories.filter((c: Category) => !idsToDelete.has(c.id));
     localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updatedCategories));
     
     setCategories(updatedCategories);
@@ -688,8 +715,9 @@ export default function AdminPage() {
       pink: 'bg-pink-100 text-pink-700',
       indigo: 'bg-indigo-100 text-indigo-700',
       cyan: 'bg-cyan-100 text-cyan-700',
+      gray: 'bg-gray-100 text-gray-600',
     };
-    return colorMap[color] || 'bg-gray-100 text-gray-700';
+    return colorMap[color] || 'bg-gray-100 text-gray-600';
   };
 
   // 格式化时间
@@ -843,8 +871,15 @@ export default function AdminPage() {
                   <SelectContent>
                     <SelectItem value="all">全部分类</SelectItem>
                     <SelectItem value="uncategorized">未分类</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    {/* 顶级分类 */}
+                    {categories.filter(c => !c.parentId).map((cat) => (
+                      <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                    {/* 子分类 */}
+                    {categories.filter(c => c.parentId).map((child) => (
+                      <SelectItem key={`child-${child.id}`} value={child.id}>
+                        &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -898,8 +933,15 @@ export default function AdminPage() {
                   <SelectContent>
                     <SelectItem value="all">全部分类</SelectItem>
                     <SelectItem value="uncategorized">未分类</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    {/* 顶级分类 */}
+                    {categories.filter(c => !c.parentId).map((cat) => (
+                      <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                    {/* 子分类 */}
+                    {categories.filter(c => c.parentId).map((child) => (
+                      <SelectItem key={`child-${child.id}`} value={child.id}>
+                        &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -916,15 +958,35 @@ export default function AdminPage() {
             ) : (
               <div className="space-y-6">
                 {Object.entries(groupedBanks).map(([categoryId, categoryBanks]) => {
-                  const categoryName = categoryId === 'uncategorized' ? '未分类' : 
-                    categories.find(c => c.id === categoryId)?.name || '未知分类';
-                  const categoryColor = categoryId === 'uncategorized' ? 'gray' :
-                    categories.find(c => c.id === categoryId)?.color || 'gray';
+                  const category = categories.find(c => c.id === categoryId);
+                  let categoryName: string;
+                  let categoryColor: string;
+                  
+                  if (categoryId === 'uncategorized') {
+                    categoryName = '未分类';
+                    categoryColor = 'gray';
+                  } else if (category) {
+                    // 如果是子分类，显示完整的分类路径
+                    if (category.parentId) {
+                      const parentCategory = categories.find(c => c.id === category.parentId);
+                      categoryName = parentCategory ? `${parentCategory.name} > ${category.name}` : category.name;
+                    } else {
+                      categoryName = category.name;
+                    }
+                    categoryColor = category.color;
+                  } else {
+                    categoryName = '未知分类';
+                    categoryColor = 'gray';
+                  }
                   
                   return (
                     <div key={categoryId}>
                       <div className="flex items-center gap-2 mb-3">
-                        <Folder className="h-4 w-4 text-slate-500" />
+                        {category?.parentId ? (
+                          <FolderOpen className="h-4 w-4 text-slate-400" />
+                        ) : (
+                          <Folder className="h-4 w-4 text-slate-500" />
+                        )}
                         <h3 className={`font-medium px-2 py-0.5 rounded ${getCategoryColorClass(categoryColor)}`}>
                           {categoryName}
                         </h3>
@@ -1025,45 +1087,99 @@ export default function AdminPage() {
 
       {/* 分类管理弹窗 */}
       <Dialog open={isCategoryModalOpen} onOpenChange={setIsCategoryModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>管理分类</DialogTitle>
+            <DialogDescription>支持创建一级分类和二级分类（子分类）</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* 已有分类列表 */}
-            <div className="space-y-2">
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+            {/* 已有分类列表 - 二级结构 */}
+            <div className="space-y-3">
               {categories.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">暂无分类</p>
+                <p className="text-sm text-slate-500 text-center py-4">暂无分类，请添加一级分类</p>
               ) : (
-                categories.map((cat) => (
-                  <div key={cat.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Badge className={getCategoryColorClass(cat.color)}>{cat.name}</Badge>
+                <>
+                  {/* 顶级分类 */}
+                  {categories.filter(c => !c.parentId).map((cat) => (
+                    <div key={cat.id} className="space-y-2">
+                      {/* 顶级分类项 */}
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex items-center gap-2">
+                          <Folder className="w-4 h-4 text-slate-500" />
+                          <Badge className={getCategoryColorClass(cat.color)}>{cat.name}</Badge>
+                          <span className="text-xs text-slate-400">
+                            ({categories.filter(c => c.parentId === cat.id).length}个子分类)
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            setEditingCategory(cat);
+                            setCategoryName(cat.name);
+                            setCategoryColor(cat.color);
+                            setCategoryParentId(cat.parentId);
+                          }}>
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => deleteCategory(cat)}>
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* 子分类 */}
+                      <div className="ml-6 space-y-1">
+                        {categories.filter(c => c.parentId === cat.id).map((child) => (
+                          <div key={child.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <FolderOpen className="w-3 h-3 text-slate-400" />
+                              <Badge className={getCategoryColorClass(child.color)} variant="outline">{child.name}</Badge>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => {
+                                setEditingCategory(child);
+                                setCategoryName(child.name);
+                                setCategoryColor(child.color);
+                                setCategoryParentId(child.parentId);
+                              }}>
+                                <Edit3 className="h-3 w-3" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => deleteCategory(child)}>
+                                <Trash2 className="h-3 w-3 text-red-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => {
-                        setEditingCategory(cat);
-                        setCategoryName(cat.name);
-                        setCategoryColor(cat.color);
-                      }}>
-                        <Edit3 className="h-3 w-3" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => deleteCategory(cat)}>
-                        <Trash2 className="h-3 w-3 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </>
               )}
             </div>
             
             {/* 添加/编辑分类表单 */}
             <div className="border-t pt-4 space-y-3">
               <div className="flex items-center gap-2">
+                <Select 
+                  value={categoryParentId || 'root'} 
+                  onValueChange={(v) => setCategoryParentId(v === 'root' ? undefined : v)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="root">一级分类</SelectItem>
+                    {categories.filter(c => !c.parentId).map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name} 的子分类
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
-                  placeholder="新分类名称"
+                  placeholder="分类名称"
                   value={categoryName}
                   onChange={(e) => setCategoryName(e.target.value)}
+                  className="flex-1"
                 />
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1092,11 +1208,7 @@ export default function AdminPage() {
                 {editingCategory ? '保存修改' : '添加分类'}
               </Button>
               {editingCategory && (
-                <Button variant="outline" onClick={() => {
-                  setEditingCategory(null);
-                  setCategoryName('');
-                  setCategoryColor('blue');
-                }} className="w-full">
+                <Button variant="outline" onClick={resetCategoryForm} className="w-full">
                   取消编辑
                 </Button>
               )}

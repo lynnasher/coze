@@ -65,6 +65,8 @@ export interface Category {
   name: string;
   color: string;
   order: number;
+  parentId?: string; // 父分类ID，如果为空则是顶级分类
+  createdAt?: number;
 }
 
 export interface QuizState {

@@ -209,7 +209,8 @@ interface Category {
   name: string;
   color: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'pink' | 'indigo' | 'cyan';
   order: number;
-  createdAt: number;
+  parentId?: string; // 父分类ID，如果为空则是顶级分类
+  createdAt?: number;
 }
 ```
 
@@ -317,8 +318,8 @@ DELETE /api/questions/:id
 - [x] 进度统计正确
 - [x] 数据持久化正常
 - [x] 响应式布局正常
-- [x] 题库分类管理（后台）
-- [x] 前台题库按分类显示
+- [x] 题库分类管理（后台，支持二级分类）
+- [x] 前台题库按分类显示（二级分类）
 - [x] 用户注册/登录功能
 - [x] 后台用户管理功能
 - [x] 前台账号入口显示

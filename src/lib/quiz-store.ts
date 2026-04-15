@@ -1,4 +1,4 @@
-import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel } from './types';
+import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel, Category } from './types';
 
 // 统一存储 Keys - 前后台共用
 const STORAGE_KEYS = {
@@ -511,5 +511,112 @@ export const wrongStatsStore = {
       mastered: stats.filter(s => s.memoryLevel === 'mastered').length,
       dueReview: wrongStatsStore.getForReview().length,
     };
+  },
+};
+
+// 分类管理（支持二级分类）
+export const categoryStore = {
+  // 获取所有分类
+  getAll: (): Category[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // 保存所有分类
+  save: (categories: Category[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
+    } catch (e) {
+      console.error('保存分类失败:', e);
+    }
+  },
+
+  // 获取顶级分类
+  getRootCategories: (): Category[] => {
+    return categoryStore.getAll().filter(c => !c.parentId).sort((a, b) => a.order - b.order);
+  },
+
+  // 获取子分类
+  getChildCategories: (parentId: string): Category[] => {
+    return categoryStore.getAll().filter(c => c.parentId === parentId).sort((a, b) => a.order - b.order);
+  },
+
+  // 获取分类（包括父分类信息）
+  getWithParent: (): (Category & { parentName?: string })[] => {
+    const categories = categoryStore.getAll();
+    return categories.map(c => {
+      if (c.parentId) {
+        const parent = categories.find(p => p.id === c.parentId);
+        return { ...c, parentName: parent?.name };
+      }
+      return c;
+    }).sort((a, b) => a.order - b.order);
+  },
+
+  // 添加分类
+  add: (category: Omit<Category, 'id'>): Category => {
+    const categories = categoryStore.getAll();
+    const newCategory: Category = {
+      ...category,
+      id: generateId(),
+      createdAt: Date.now(),
+    };
+    categories.push(newCategory);
+    categoryStore.save(categories);
+    return newCategory;
+  },
+
+  // 更新分类
+  update: (category: Category): Category => {
+    const categories = categoryStore.getAll();
+    const index = categories.findIndex(c => c.id === category.id);
+    if (index !== -1) {
+      categories[index] = category;
+      categoryStore.save(categories);
+    }
+    return category;
+  },
+
+  // 删除分类（同时删除子分类）
+  remove: (id: string) => {
+    const categories = categoryStore.getAll();
+    // 获取所有要删除的分类ID（包括子分类）
+    const idsToDelete = new Set<string>();
+    idsToDelete.add(id);
+    // 查找所有子分类
+    let children = categories.filter(c => c.parentId === id);
+    children.forEach(child => {
+      idsToDelete.add(child.id);
+      // 递归查找子分类
+      let grandchildren = categories.filter(c => c.parentId === child.id);
+      grandchildren.forEach(gc => idsToDelete.add(gc.id));
+    });
+    
+    const filteredCategories = categories.filter(c => !idsToDelete.has(c.id));
+    categoryStore.save(filteredCategories);
+    
+    // 将该分类下的题库移至未分类
+    const banks = bankStore.getAll();
+    const updatedBanks = banks.map(b => {
+      if (idsToDelete.has(b.categoryId || '')) {
+        return { ...b, categoryId: undefined };
+      }
+      return b;
+    });
+    bankStore.save(updatedBanks);
+    
+    return filteredCategories;
+  },
+
+  // 清除所有分类
+  clear: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
   },
 };
