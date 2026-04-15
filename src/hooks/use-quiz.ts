@@ -181,7 +181,6 @@ export function useQuiz() {
     if (currentBankId && questions.length > 0) {
       const existingRecord = recentPracticeStore.getByBankId(currentBankId);
       recentPracticeStore.update({
-        id: existingRecord?.id || '',
         bankId: currentBankId,
         bankName: currentBankName,
         categoryId: currentCategoryId,
@@ -207,8 +206,8 @@ export function useQuiz() {
       mode,
       timeSpent: 0,
       isComplete: false,
-      bankId: currentBankId,
-      bankName: currentBankName,
+      bankId: currentBankId || undefined,
+      bankName: currentBankName || undefined,
       categoryId: currentCategoryId,
       categoryName: currentCategoryName,
     });
