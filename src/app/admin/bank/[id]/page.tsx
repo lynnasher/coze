@@ -140,27 +140,45 @@ export default function BankEditPage() {
     }
   }, [router]);
 
-  // 加载数据
-  const loadData = useCallback(() => {
-    const storedBanks = localStorage.getItem('questionBanks');
-    const storedQuestions = localStorage.getItem('questions');
-    
-    if (storedBanks) {
-      const banks: QuestionBank[] = JSON.parse(storedBanks);
-      const foundBank = banks.find(b => b.id === bankId);
+  // 从数据库加载数据
+  const loadData = useCallback(async () => {
+    try {
+      // 从数据库加载题库
+      const bankResponse = await fetch('/api/admin/banks');
+      if (!bankResponse.ok) {
+        throw new Error('获取题库失败');
+      }
+      const bankData = await bankResponse.json();
+      const dbBanks = bankData.banks || [];
+      const foundBank = dbBanks.find((b: { id: string }) => b.id === bankId);
+      
       if (foundBank) {
-        setBank(foundBank);
+        setBank({
+          id: foundBank.id,
+          name: foundBank.name,
+          description: foundBank.description || undefined,
+          questionIds: [],
+          createdAt: new Date(foundBank.created_at).getTime(),
+          updatedAt: new Date(foundBank.updated_at).getTime()
+        });
       } else {
         router.push('/admin');
         return;
       }
-    }
-    
-    if (storedQuestions) {
-      const allQuestions: Question[] = JSON.parse(storedQuestions);
-      const bankQuestions = allQuestions.filter(q => q.bankId === bankId);
-      setQuestions(bankQuestions);
-      setFilteredQuestions(bankQuestions);
+      
+      // 从数据库加载题目
+      const questionsResponse = await fetch(`/api/admin/banks/${bankId}/questions`);
+      if (!questionsResponse.ok) {
+        throw new Error('获取题目失败');
+      }
+      const questionsData = await questionsResponse.json();
+      const dbQuestions: Question[] = questionsData.questions || [];
+      
+      setQuestions(dbQuestions);
+      setFilteredQuestions(dbQuestions);
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      setError('加载数据失败，请刷新重试');
     }
   }, [bankId, router]);
 
@@ -189,41 +207,56 @@ export default function BankEditPage() {
     setFilteredQuestions(filtered);
   }, [questions, searchTerm, filterType]);
 
-  // 保存题目
-  const saveQuestion = (question: Question) => {
-    const storedQuestions = localStorage.getItem('questions');
-    const allQuestions: Question[] = storedQuestions ? JSON.parse(storedQuestions) : [];
-    
-    const existingIndex = allQuestions.findIndex(q => q.id === question.id);
-    if (existingIndex >= 0) {
-      allQuestions[existingIndex] = question;
-    } else {
-      allQuestions.push(question);
+  // 保存题目（更新到数据库）
+  const saveQuestion = async (question: Question) => {
+    try {
+      const response = await fetch(`/api/admin/questions/${question.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: question.type,
+          content: question.content,
+          options: question.options,
+          answer: question.answer,
+          explanation: question.explanation,
+          difficulty: question.difficulty,
+          tags: question.tags,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('保存失败');
+      }
+
+      await loadData();
+    } catch (error) {
+      console.error('保存题目失败:', error);
+      setError('保存题目失败，请重试');
     }
-    
-    localStorage.setItem('questions', JSON.stringify(allQuestions));
-    loadData();
   };
 
   // 添加题目
-  const addQuestion = (question: Question) => {
-    const newQuestion = { ...question, id: generateId(), bankId, createdAt: Date.now() };
-    saveQuestion(newQuestion);
-    
-    // 更新题库的 questionIds
-    const storedBanks = localStorage.getItem('questionBanks');
-    if (storedBanks) {
-      const banks: QuestionBank[] = JSON.parse(storedBanks);
-      const updatedBanks = banks.map(b => 
-        b.id === bankId 
-          ? { ...b, questionIds: [...b.questionIds, newQuestion.id], updatedAt: Date.now() }
-          : b
-      );
-      localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+  const addQuestion = async (question: Question) => {
+    try {
+      const newQuestion = { ...question, id: generateId(), bankId, createdAt: Date.now() };
+      
+      const response = await fetch(`/api/admin/banks/${bankId}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: newQuestion }),
+      });
+
+      if (!response.ok) {
+        throw new Error('添加失败');
+      }
+
+      await loadData();
+      setSuccess('题目添加成功');
+      setIsAddModalOpen(false);
+    } catch (error) {
+      console.error('添加题目失败:', error);
+      setError('添加题目失败，请重试');
     }
-    
-    setSuccess('题目添加成功');
-    setIsAddModalOpen(false);
   };
 
   // 更新题目
@@ -235,32 +268,26 @@ export default function BankEditPage() {
   };
 
   // 删除题目
-  const deleteQuestion = () => {
+  const deleteQuestion = async () => {
     if (!questionToDelete) return;
     
-    const storedQuestions = localStorage.getItem('questions');
-    if (storedQuestions) {
-      const allQuestions: Question[] = JSON.parse(storedQuestions);
-      const updatedQuestions = allQuestions.filter(q => q.id !== questionToDelete.id);
-      localStorage.setItem('questions', JSON.stringify(updatedQuestions));
+    try {
+      const response = await fetch(`/api/admin/questions/${questionToDelete.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('删除失败');
+      }
+
+      await loadData();
+      setSuccess('题目已删除');
+      setIsDeleteDialogOpen(false);
+      setQuestionToDelete(null);
+    } catch (error) {
+      console.error('删除题目失败:', error);
+      setError('删除题目失败，请重试');
     }
-    
-    // 更新题库的 questionIds
-    const storedBanks = localStorage.getItem('questionBanks');
-    if (storedBanks) {
-      const banks: QuestionBank[] = JSON.parse(storedBanks);
-      const updatedBanks = banks.map(b => 
-        b.id === bankId 
-          ? { ...b, questionIds: b.questionIds.filter(id => id !== questionToDelete.id), updatedAt: Date.now() }
-          : b
-      );
-      localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
-    }
-    
-    setSuccess('题目已删除');
-    setIsDeleteDialogOpen(false);
-    setQuestionToDelete(null);
-    loadData();
   };
 
   // 打开编辑弹窗

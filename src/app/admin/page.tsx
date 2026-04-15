@@ -557,10 +557,12 @@ export default function AdminPage() {
         }));
         
         setBanks(dbBanks);
+        // 计算总题目数（使用数据库中的 question_count）
+        const totalQ = (data.banks || []).reduce((sum: number, b: { question_count?: number }) => sum + (b.question_count || 0), 0);
         setStats(prev => ({
           ...prev,
           totalBanks: dbBanks.length,
-          totalQuestions: dbBanks.reduce((sum, bank) => sum + (bank.questionIds?.length || 0), 0)
+          totalQuestions: totalQ
         }));
       }
     } catch (error) {
