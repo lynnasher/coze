@@ -96,7 +96,7 @@ export default function QuizApp() {
   const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   
   // 统计页面日期筛选状态
-  const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('all');
+  const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('day');
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentUser, setCurrentUser] = useState<{
     id: string;
