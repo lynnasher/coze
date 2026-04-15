@@ -243,7 +243,7 @@ function flattenQuestions(questions: Record<string, unknown>[], bankId: string):
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { questions, bankName } = body;
+    const { questions, bankName, categoryId } = body;
 
     if (!Array.isArray(questions) || questions.length === 0) {
       return NextResponse.json(
@@ -255,7 +255,9 @@ export async function POST(request: Request) {
     // 创建题库到数据库
     const newBank = await bankService.createBank(
       bankName || `题库_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`,
-      '从 JSON 文件导入'
+      '从 JSON 文件导入',
+      undefined,
+      categoryId
     );
 
     // 处理题目

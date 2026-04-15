@@ -620,10 +620,37 @@ export default function AdminPage() {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      const result = localImportJson(data, file.name, filterCategory !== 'all' ? filterCategory : undefined);
+      const questions = data.questions;
+      
+      if (!Array.isArray(questions)) {
+        throw new Error('JSON 格式错误：缺少 questions 数组');
+      }
+
+      if (questions.length === 0) {
+        throw new Error('JSON 中没有有效的题目');
+      }
+
+      const bankName = (data.subjectName as string) || (data.bankName as string) || (data.title as string) || file.name.replace('.json', '') || '导入题库';
+
+      // 调用 API 保存到数据库
+      const response = await fetch('/api/admin/import-json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questions,
+          bankName,
+          categoryId: filterCategory !== 'all' ? filterCategory : undefined
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || '导入失败');
+      }
 
       setSuccess(`成功导入 ${result.count} 道题目到"${result.bankName}"题库`);
-      loadBanks();
+      loadBanks(); // 重新加载题库
       
       e.target.value = '';
     } catch (err) {
