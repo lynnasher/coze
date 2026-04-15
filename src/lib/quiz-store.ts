@@ -12,7 +12,153 @@ const STORAGE_KEYS = {
   RECENT_PRACTICE: 'quiz_recent_practice', // 最近练习记录
 };
 
-// 题目管理
+// ==================== API 数据缓存层 ====================
+interface CacheItem<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
+}
+
+interface CacheStore {
+  get<T>(key: string): T | null;
+  set<T>(key: string, data: T, ttlMs?: number): void;
+  remove(key: string): void;
+  clear(): void;
+}
+
+// 缓存有效期配置（毫秒）
+export const CACHE_TTL = {
+  BANKS: 5 * 60 * 1000,      // 题库列表缓存 5 分钟
+  CATEGORIES: 5 * 60 * 1000, // 分类缓存 5 分钟
+  QUESTIONS: 2 * 60 * 1000,  // 题目缓存 2 分钟
+  USER: 1 * 60 * 1000,       // 用户信息缓存 1 分钟
+};
+
+// 内存缓存（页面刷新后失效，但同会话内可复用）
+const memoryCache = new Map<string, CacheItem<unknown>>();
+const MEMORY_CACHE_TTL = 5 * 60 * 1000; // 内存缓存 5 分钟
+
+export const cacheStore: CacheStore = {
+  get<T>(key: string): T | null {
+    // 先检查内存缓存
+    const memItem = memoryCache.get(key);
+    if (memItem && memItem.expiresAt > Date.now()) {
+      return memItem.data as T;
+    }
+    
+    // 再检查 localStorage
+    if (typeof window === 'undefined') return null;
+    try {
+      const data = localStorage.getItem(`cache_${key}`);
+      if (data) {
+        const item = JSON.parse(data) as CacheItem<T>;
+        if (item.expiresAt > Date.now()) {
+          // 回填内存缓存
+          memoryCache.set(key, item);
+          return item.data;
+        } else {
+          localStorage.removeItem(`cache_${key}`);
+        }
+      }
+    } catch {}
+    return null;
+  },
+
+  set<T>(key: string, data: T, ttlMs: number = MEMORY_CACHE_TTL): void {
+    const now = Date.now();
+    const item: CacheItem<T> = {
+      data,
+      timestamp: now,
+      expiresAt: now + ttlMs,
+    };
+    
+    // 设置内存缓存
+    memoryCache.set(key, item);
+    
+    // 设置 localStorage 缓存
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`cache_${key}`, JSON.stringify(item));
+      } catch (e) {
+        console.error('缓存写入失败:', e);
+      }
+    }
+  },
+
+  remove(key: string): void {
+    memoryCache.delete(key);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`cache_${key}`);
+    }
+  },
+
+  clear(): void {
+    memoryCache.clear();
+    if (typeof window !== 'undefined') {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('cache_'))
+        .forEach(k => localStorage.removeItem(k));
+    }
+  },
+};
+
+// ==================== 题目预加载管理 ====================
+interface PreloadState {
+  questions: Map<string, Question>; // 预加载的题目
+  lastPreloadIndex: number;          // 上次预加载到的位置
+}
+
+const preloadState: PreloadState = {
+  questions: new Map(),
+  lastPreloadIndex: -1,
+};
+
+// 预加载题目（批量获取）
+export const preloadQuestions = async (questionIds: string[]): Promise<void> => {
+  const uncachedIds = questionIds.filter(id => !preloadState.questions.has(id));
+  if (uncachedIds.length === 0) return;
+  
+  try {
+    const response = await fetch('/api/questions/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: uncachedIds }),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      data.questions?.forEach((q: Question) => {
+        preloadState.questions.set(q.id, q);
+      });
+    }
+  } catch (e) {
+    console.error('预加载失败:', e);
+  }
+};
+
+// 获取预加载的题目
+export const getPreloadedQuestion = (id: string): Question | undefined => {
+  return preloadState.questions.get(id);
+};
+
+// 清除预加载缓存
+export const clearPreloadCache = (): void => {
+  preloadState.questions.clear();
+  preloadState.lastPreloadIndex = -1;
+};
+
+// ==================== 防抖工具 ====================
+export function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timer: NodeJS.Timeout | null = null;
+  return (...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+// ==================== 题目管理 ====================
 export const questionStore = {
   getAll: (): Question[] => {
     if (typeof window === 'undefined') return [];

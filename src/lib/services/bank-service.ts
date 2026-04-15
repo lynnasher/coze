@@ -339,6 +339,22 @@ export const bankService = {
     return this.convertToFrontendQuestions((data || []) as DbQuestion[]);
   },
 
+  // 批量通过题目ID获取题目（用于预加载）
+  async getQuestionsByIds(ids: string[]): Promise<Question[]> {
+    if (ids.length === 0) return [];
+    
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('questions')
+      .select('*')
+      .in('id', ids)
+      .eq('status', 'active');
+
+    if (error) throw new Error(`批量获取题目失败: ${error.message}`);
+
+    return this.convertToFrontendQuestions((data || []) as DbQuestion[]);
+  },
+
   // 转换数据库题目为前端格式
   convertToFrontendQuestions(dbQuestions: DbQuestion[]): Question[] {
     const result: Question[] = [];

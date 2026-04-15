@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -17,6 +17,30 @@ export function useQuiz() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
+  const preloadIndexRef = useRef(-1); // 记录已预加载到的位置
+
+  // 预加载题目（当 currentIndex 变化时，提前加载后续题目）
+  useEffect(() => {
+    if (!hasStarted || quizState.questions.length === 0) return;
+    
+    const currentIdx = quizState.currentIndex;
+    const totalQuestions = quizState.questions.length;
+    
+    // 只预加载还没预加载过的题目
+    if (currentIdx <= preloadIndexRef.current) return;
+    
+    // 预加载当前题之后的 2 道题目
+    const toPreload: string[] = [];
+    for (let i = currentIdx + 1; i <= Math.min(currentIdx + 2, totalQuestions - 1); i++) {
+      const q = quizState.questions[i];
+      if (q) toPreload.push(q.id);
+    }
+    
+    if (toPreload.length > 0) {
+      preloadIndexRef.current = currentIdx;
+      preloadQuestions(toPreload);
+    }
+  }, [hasStarted, quizState.currentIndex, quizState.questions]);
 
   // 从数据库加载题目
   const loadQuestionsFromDb = useCallback(async (bankId?: string) => {
@@ -371,6 +395,8 @@ export function useQuiz() {
 
   // 重置练习状态（返回首页时调用）
   const resetQuiz = useCallback(() => {
+    clearPreloadCache(); // 清除预加载缓存
+    preloadIndexRef.current = -1; // 重置预加载位置
     setQuizState({
       questions: [],
       currentIndex: 0,
