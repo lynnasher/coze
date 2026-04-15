@@ -929,6 +929,7 @@ export default function QuizApp() {
                         onClick={() => {
                           setHasStarted(false);
                           setPracticeBankId(null);
+                          setQuizState(prev => ({ ...prev, isComplete: false }));
                         }}
                         className="gap-2 rounded-xl border-2"
                       >
