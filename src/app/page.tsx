@@ -75,7 +75,7 @@ export default function QuizApp() {
     goToQuestion,
     restartQuiz,
     resetQuiz,
-    getStats,
+    stats,
     setHasStarted,
   } = useQuiz();
   const [activeTab, setActiveTab] = useState('practice');
