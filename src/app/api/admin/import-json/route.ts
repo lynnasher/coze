@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { bankService } from '@/lib/services/bank-service';
 
 // 生成 ID
 function generateId(): string {
@@ -251,11 +252,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // 生成题库 ID
-    const bankId = `bank_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // 创建题库到数据库
+    const newBank = await bankService.createBank(
+      bankName || `题库_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`,
+      '从 JSON 文件导入'
+    );
 
     // 处理题目
-    const processedQuestions = flattenQuestions(questions, bankId);
+    const processedQuestions = flattenQuestions(questions, newBank.id);
 
     if (processedQuestions.length === 0) {
       return NextResponse.json(
@@ -264,31 +268,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // 获取现有数据
-    const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
-    const existingBanks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+    // 保存题目到数据库
+    const questionCount = await bankService.createQuestions(processedQuestions, newBank.id);
 
-    // 创建新题库
-    const newBank = {
-      id: bankId,
-      name: bankName || `题库_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`,
-      description: '从 JSON 文件导入',
-      questionIds: processedQuestions.map(q => q.id),
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
+    // 在客户端环境下同步保存到 localStorage（兼容前端）
+    if (typeof window !== 'undefined') {
+      const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+      const existingBanks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
 
-    // 合并数据
-    const updatedQuestions = [...existingQuestions, ...processedQuestions];
-    const updatedBanks = [...existingBanks, newBank];
+      const localBank = {
+        id: newBank.id,
+        name: newBank.name,
+        description: '从 JSON 文件导入',
+        questionIds: processedQuestions.map(q => q.id),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
 
-    // 保存
-    localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-    localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+      localStorage.setItem('questions', JSON.stringify([...existingQuestions, ...processedQuestions]));
+      localStorage.setItem('questionBanks', JSON.stringify([...existingBanks, localBank]));
+    }
 
     return NextResponse.json({
       success: true,
-      count: processedQuestions.length,
+      count: questionCount,
       bankId: newBank.id,
       bankName: newBank.name
     });

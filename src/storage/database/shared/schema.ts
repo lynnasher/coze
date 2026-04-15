@@ -67,3 +67,65 @@ export const userActivations = pgTable(
     index("user_activations_category_idx").on(table.category_id),
   ]
 );
+
+// 题库分类表
+export const categories = pgTable(
+  "categories",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 100 }).notNull(),
+    color: varchar("color", { length: 20 }).default("blue"),
+    order: integer("order").default(0),
+    parent_id: varchar("parent_id", { length: 36 }), // 父分类ID
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("categories_parent_idx").on(table.parent_id),
+  ]
+);
+
+// 题库表
+export const questionBanks = pgTable(
+  "question_banks",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    name: varchar("name", { length: 200 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    source_file: varchar("source_file", { length: 255 }),
+    question_count: integer("question_count").default(0),
+    category_id: varchar("category_id", { length: 36 }).references(() => categories.id),
+    status: varchar("status", { length: 20 }).default("active"), // active=正常, disabled=禁用
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("question_banks_category_idx").on(table.category_id),
+    index("question_banks_status_idx").on(table.status),
+  ]
+);
+
+// 题目表
+export const questions = pgTable(
+  "questions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    bank_id: varchar("bank_id", { length: 36 }).notNull().references(() => questionBanks.id),
+    parent_id: varchar("parent_id", { length: 36 }), // 父题目ID（综合案例题的子题目）
+    type: varchar("type", { length: 20 }).notNull().default("single"), // single, multiple, true-false, fill-blank, comprehensive
+    content: varchar("content", { length: 4000 }).notNull(),
+    options: varchar("options", { length: 4000 }), // JSON array of options
+    answer: varchar("answer", { length: 1000 }), // 正确答案
+    explanation: varchar("explanation", { length: 4000 }), // 解析
+    difficulty: varchar("difficulty", { length: 20 }).default("medium"), // easy, medium, hard
+    tags: varchar("tags", { length: 1000 }), // JSON array of tags
+    case_background: varchar("case_background", { length: 4000 }), // 案例背景（综合题）
+    case_context: varchar("case_context", { length: 4000 }), // 案例上下文
+    status: varchar("status", { length: 20 }).default("active"), // active=正常, disabled=禁用
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("questions_bank_idx").on(table.bank_id),
+    index("questions_parent_idx").on(table.parent_id),
+    index("questions_type_idx").on(table.type),
+  ]
+);

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { bankService } from '@/lib/services/bank-service';
 
 // 验证管理员 token
 function verifyToken(request: Request): boolean {
@@ -16,36 +17,29 @@ function verifyToken(request: Request): boolean {
   }
 }
 
-// 读取现有数据
-function getData() {
-  if (typeof window === 'undefined') {
-    return { questions: [], banks: [] };
-  }
-  
-  const questions = JSON.parse(localStorage.getItem('questions') || '[]');
-  const banks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
-  return { questions, banks };
-}
-
-// 保存数据
-function saveData(questions: unknown[], banks: unknown[]) {
-  if (typeof window === 'undefined') return;
-  
-  localStorage.setItem('questions', JSON.stringify(questions));
-  localStorage.setItem('questionBanks', JSON.stringify(banks));
-}
-
-// 生成 ID
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
 // GET - 获取所有题库
 export async function GET() {
   try {
-    const { banks } = getData();
+    // 从数据库获取题库
+    const banks = await bankService.getAllBanks();
     return NextResponse.json({ banks });
   } catch (error) {
+    console.error('Failed to get banks:', error);
     return NextResponse.json({ error: '获取失败' }, { status: 500 });
+  }
+}
+
+// POST - 获取题库统计
+export async function POST(request: Request) {
+  try {
+    if (!verifyToken(request)) {
+      return NextResponse.json({ error: '未授权' }, { status: 401 });
+    }
+
+    const stats = await bankService.getStats();
+    return NextResponse.json({ stats });
+  } catch (error) {
+    console.error('Failed to get stats:', error);
+    return NextResponse.json({ error: '获取统计失败' }, { status: 500 });
   }
 }

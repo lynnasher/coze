@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { bankService } from '@/lib/services/bank-service';
 
 // 解析 Word 文档（使用 mammoth.js 格式）
 async function parseDocx(buffer: ArrayBuffer): Promise<string> {
@@ -234,32 +235,38 @@ export async function POST(request: Request) {
       id: generateId()
     }));
 
-    // 获取现有数据
-    const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
-    const existingBanks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+    // 创建题库到数据库
+    const newBank = await bankService.createBank(
+      bankName,
+      `从 ${fileName} 导入`,
+      file.name
+    );
 
-    // 创建新题库
-    const newBank = {
-      id: generateId(),
-      name: bankName,
-      description: `从 ${fileName} 导入`,
-      sourceFile: file.name,
-      questionIds: questionsWithIds.map(q => q.id),
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
+    // 保存题目到数据库
+    const questionCount = await bankService.createQuestions(questionsWithIds, newBank.id);
 
-    // 合并数据
-    const updatedQuestions = [...existingQuestions, ...questionsWithIds];
-    const updatedBanks = [...existingBanks, newBank];
+    // 在客户端环境下同步保存到 localStorage（兼容前端）
+    if (typeof window !== 'undefined') {
+      const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+      const existingBanks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
 
-    // 保存
-    localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-    localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+      const localBank = {
+        id: newBank.id,
+        name: newBank.name,
+        description: `从 ${fileName} 导入`,
+        sourceFile: file.name,
+        questionIds: questionsWithIds.map(q => q.id),
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      localStorage.setItem('questions', JSON.stringify([...existingQuestions, ...questionsWithIds]));
+      localStorage.setItem('questionBanks', JSON.stringify([...existingBanks, localBank]));
+    }
 
     return NextResponse.json({
       success: true,
-      count: questionsWithIds.length,
+      count: questionCount,
       bankId: newBank.id,
       bankName: newBank.name
     });
