@@ -112,11 +112,36 @@ export default function QuizApp() {
     loadCategories();
   }, [loadCategories]);
 
+  // 刷新用户激活的分类（检查过期时间）
+  const refreshActivatedCategories = async (userId: string) => {
+    try {
+      const token = localStorage.getItem('quiz_user_token');
+      const response = await fetch('/api/auth/user/activations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.activatedCategories) {
+          setCurrentUser(prev => prev ? { ...prev, activatedCategories: data.activatedCategories } : null);
+        }
+      }
+    } catch (error) {
+      console.error('刷新激活分类失败:', error);
+    }
+  };
+
   useEffect(() => {
     loadQuestions();
     // 获取当前登录用户
     const user = getCurrentUser();
     setCurrentUser(user);
+    
+    // 如果用户已登录，刷新激活的分类（检查过期）
+    if (user) {
+      refreshActivatedCategories(user.id);
+    }
   }, [loadQuestions]);
 
   // 获取用户激活的分类ID列表（未登录用户返回所有分类）

@@ -62,6 +62,7 @@ import {
   Folder,
   Plus,
   User,
+  Key,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -867,6 +868,19 @@ export default function AdminPage() {
               <CardContent>
                 <div className="text-3xl font-bold">管理</div>
                 <p className="text-xs text-slate-500 mt-1">查看/添加用户</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/codes">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-500">激活码管理</CardTitle>
+                <Key className="h-5 w-5 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">生成</div>
+                <p className="text-xs text-slate-500 mt-1">创建/管理激活码</p>
               </CardContent>
             </Card>
           </Link>

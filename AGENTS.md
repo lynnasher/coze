@@ -48,7 +48,14 @@
 - 题库导出功能（JSON 格式）
 - 统计数据概览（题库总数、题目总数等）
 - **用户管理（查看、添加、禁用/启用、删除）**
+- **激活码管理（生成、关联最小子分类、设置过期时间、删除）**
 - 分类管理
+
+### 2.6 激活码系统
+- 每个激活码对应一个最小子分类
+- 支持设置过期时间（7天/30天/90天/180天/1年/永久）
+- 过期后用户该分类权限自动失效
+- 激活码使用记录追踪
 
 ## 3. 技术架构
 
@@ -400,6 +407,13 @@ Headers: Authorization: Bearer <admin_token>
 Response: { success: boolean }
 ```
 
+### 9.10 用户激活分类接口
+```
+GET /api/auth/user/activations
+Headers: Authorization: Bearer <user_token>
+Response: { success: boolean, activatedCategories: string[] }
+```
+
 ## 10. 测试清单
 
 - [ ] PDF 导入功能
@@ -417,3 +431,6 @@ Response: { success: boolean }
 - [x] 激活码生成功能（Supabase）
 - [x] 激活码使用功能（Supabase）
 - [x] 用户分类权限管理（Supabase）
+- [x] 激活码过期时间设置
+- [x] 过期激活码权限自动失效
+- [x] 后台激活码管理页面

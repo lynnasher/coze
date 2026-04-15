@@ -110,15 +110,29 @@ export const userService = {
     if (error) throw new Error(`更新激活分类失败: ${error.message}`);
   },
 
-  // 获取用户激活的分类
+  // 获取用户激活的分类（检查过期时间）
   async getActivatedCategories(userId: string): Promise<string[]> {
-    const user = await this.findById(userId);
-    if (!user) return [];
-    try {
-      return JSON.parse(user.activated_categories || '[]');
-    } catch {
-      return [];
-    }
+    const client = getSupabaseClient();
+    
+    // 查询用户的激活记录，过滤掉过期的
+    const { data, error } = await client.from('user_activations')
+      .select('category_id, expires_at')
+      .eq('user_id', userId);
+    
+    if (error) return [];
+    
+    const now = new Date();
+    const validCategories = (data || [])
+      .filter((record: { category_id: string; expires_at: string | null }) => {
+        // 如果没有过期时间，则永久有效
+        if (!record.expires_at) return true;
+        // 检查是否过期
+        return new Date(record.expires_at) > now;
+      })
+      .map((record: { category_id: string }) => record.category_id);
+    
+    // 去重
+    return [...new Set(validCategories)];
   },
 
   // 管理员登录
