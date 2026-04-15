@@ -522,21 +522,60 @@ export default function AdminPage() {
     }
   }, []);
 
-  // 加载题库数据
-  const loadBanks = useCallback(() => {
-    const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
-    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
-    
-    if (storedBanks) {
-      const parsedBanks: QuestionBank[] = JSON.parse(storedBanks);
-      setBanks(parsedBanks);
-      setStats(prev => ({
-        ...prev,
-        totalBanks: parsedBanks.length,
-        totalQuestions: parsedBanks.reduce((sum, bank) => sum + bank.questionIds.length, 0)
-      }));
+  // 加载题库数据（从数据库）
+  const loadBanks = useCallback(async () => {
+    try {
+      // 从数据库加载题库
+      const response = await fetch('/api/admin/banks');
+      if (response.ok) {
+        const data = await response.json();
+        // 转换数据库题库格式为前端格式
+        const dbBanks: QuestionBank[] = (data.banks || []).map((b: {
+          id: string;
+          name: string;
+          description: string | null;
+          question_count: number;
+          category_id: string | null;
+          created_at: string;
+        }) => ({
+          id: b.id,
+          name: b.name,
+          description: b.description || undefined,
+          questionIds: [], // 数据库题库不需要这个字段
+          categoryId: b.category_id || undefined,
+          createdAt: new Date(b.created_at).getTime()
+        }));
+        
+        // 从 localStorage 获取本地题库（去重）
+        const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
+        const localBanks: QuestionBank[] = storedBanks ? JSON.parse(storedBanks) : [];
+        const localFiltered = localBanks.filter(lb => !dbBanks.some(db => db.id === lb.id));
+        
+        const allBanks = [...dbBanks, ...localFiltered];
+        setBanks(allBanks);
+        setStats(prev => ({
+          ...prev,
+          totalBanks: allBanks.length,
+          totalQuestions: allBanks.reduce((sum, bank) => sum + (bank.questionIds?.length || 0), 0)
+        }));
+      }
+    } catch (error) {
+      console.error('加载题库失败:', error);
+      // 降级到 localStorage
+      const storedBanks = localStorage.getItem(STORAGE_KEYS.BANKS);
+      if (storedBanks) {
+        const parsedBanks: QuestionBank[] = JSON.parse(storedBanks);
+        setBanks(parsedBanks);
+        setStats(prev => ({
+          ...prev,
+          totalBanks: parsedBanks.length,
+          totalQuestions: parsedBanks.reduce((sum, bank) => sum + bank.questionIds.length, 0)
+        }));
+      }
     }
 
+    // 从 localStorage 获取最近导入统计
+    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
     if (storedQuestions) {
       const questions = JSON.parse(storedQuestions);
       const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -1253,6 +1292,17 @@ export default function AdminPage() {
                                     <DropdownMenuItem onClick={() => handleExportBank(bank)}>
                                       <Download className="h-4 w-4 mr-2" />
                                       导出 JSON
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setBankToDelete(bank);
+                                        setIsDeleteDialogOpen(true);
+                                      }}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      删除题库
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
