@@ -805,7 +805,7 @@ export default function QuizApp() {
                             onStartPractice={(bankId) => {
                               setPracticeBankId(bankId);
                               setActiveTab('practice');
-                              setTimeout(() => startQuiz('sequential', bankId), 100);
+                              startQuiz('sequential', bankId);
                             }}
                           />
                         ))}
@@ -892,7 +892,7 @@ export default function QuizApp() {
                                             onStartPractice={(bankId) => {
                                               setPracticeBankId(bankId);
                                               setActiveTab('practice');
-                                              setTimeout(() => startQuiz('sequential', bankId), 100);
+                                              startQuiz('sequential', bankId);
                                             }}
                                           />
                                         ))}
@@ -931,7 +931,7 @@ export default function QuizApp() {
                                               onStartPractice={(bankId) => {
                                                 setPracticeBankId(bankId);
                                                 setActiveTab('practice');
-                                                setTimeout(() => startQuiz('sequential', bankId), 100);
+                                                startQuiz('sequential', bankId);
                                               }}
                                             />
                                           ))}

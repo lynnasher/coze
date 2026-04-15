@@ -98,6 +98,9 @@ export function useQuiz() {
 
   // 开始练习
   const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
+    // 立即设置 hasStarted 为 true，避免页面闪烁
+    setHasStarted(true);
+    
     let questions: Question[] = [];
     let currentBankId = bankId;
     let currentBankName = '全部题目';
@@ -197,7 +200,6 @@ export function useQuiz() {
       });
     }
 
-    setHasStarted(true); // 标记已开始练习
     setQuizState({
       questions,
       currentIndex: 0,
