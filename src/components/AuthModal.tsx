@@ -286,7 +286,7 @@ export function UserStatus({ className }: UserStatusProps) {
   if (user) {
     return (
       <div className={`flex items-center gap-2 ${className || ''}`}>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
+        <a href="/profile" className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
           <UserCircle className="w-4 h-4 text-slate-600" />
           <span className="text-sm font-medium text-slate-700">
             {user.nickname || user.phone}
@@ -294,7 +294,7 @@ export function UserStatus({ className }: UserStatusProps) {
           {user.role === 'admin' && (
             <Shield className="w-3.5 h-3.5 text-amber-500" />
           )}
-        </div>
+        </a>
         <Button
           variant="ghost"
           size="sm"

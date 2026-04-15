@@ -40,6 +40,8 @@ import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId 
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus } from '@/components/AuthModal';
+import { sessionStore } from '@/lib/user-store';
+import type { User } from '@/lib/types';
 
 // Duolingo 风格颜色
 const COLORS = {
@@ -84,6 +86,7 @@ export default function QuizApp() {
   // 统计页面日期筛选状态
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('all');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const banks = useMemo(() => bankStore.getAll(), [questions]);
   
@@ -102,7 +105,21 @@ export default function QuizApp() {
 
   useEffect(() => {
     loadQuestions();
+    // 获取当前登录用户
+    const user = sessionStore.getCurrentUser();
+    setCurrentUser(user);
   }, [loadQuestions]);
+
+  // 获取用户激活的分类ID列表
+  const getActivatedCategoryIds = useCallback(() => {
+    return currentUser?.activatedCategories || [];
+  }, [currentUser]);
+
+  // 过滤出已激活的一级分类
+  const getActivatedCategories = useCallback(() => {
+    const activatedIds = getActivatedCategoryIds();
+    return categories.filter(c => !c.parentId && activatedIds.includes(c.id));
+  }, [categories, getActivatedCategoryIds]);
 
   // 处理单选答案
   const handleSingleSelect = (value: string) => {
@@ -861,48 +878,58 @@ export default function QuizApp() {
                   </h2>
                   
                   {!selectedCategoryId ? (
-                    /* 显示一级分类列表 */
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {/* 一级分类卡片 - 紧凑显示 */}
-                      {categories.filter(c => !c.parentId).map((category) => {
-                        const subCategories = categories.filter(c => c.parentId === category.id);
-                        const categoryBanks = banks.filter(b => b.categoryId === category.id);
-                        const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
-                        const isSelected = practiceBankId === category.id;
-                        
-                        return (
-                          <Card 
-                            key={category.id}
-                            className={`cursor-pointer transition-all border-0 shadow-md rounded-xl overflow-hidden hover:shadow-lg ${
-                              isSelected ? 'ring-2 ring-blue-500' : ''
-                            }`}
-                            onClick={() => {
-                              setSelectedCategoryId(category.id);
-                              setPracticeBankId(null);
-                            }}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1 truncate">{category.name}</h3>
-                                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                                    <span>{categoryQuestions.length} 题</span>
-                                    {subCategories.length > 0 && (
-                                      <span className="text-blue-400">{subCategories.length} 子分类</span>
-                                    )}
+                    /* 显示已激活的一级分类列表 */
+                    getActivatedCategories().length === 0 ? (
+                      <Card className="border-dashed border-2 bg-gray-50">
+                        <CardContent className="p-6 text-center">
+                          <BookOpen className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                          <p className="text-gray-500 text-sm mb-2">暂无激活的分类</p>
+                          <p className="text-gray-400 text-xs">请在个人中心激活分类后开始练习</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {/* 已激活的一级分类卡片 - 紧凑显示 */}
+                        {getActivatedCategories().map((category) => {
+                          const subCategories = categories.filter(c => c.parentId === category.id);
+                          const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                          const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
+                          const isSelected = practiceBankId === category.id;
+                          
+                          return (
+                            <Card 
+                              key={category.id}
+                              className={`cursor-pointer transition-all border-0 shadow-md rounded-xl overflow-hidden hover:shadow-lg ${
+                                isSelected ? 'ring-2 ring-blue-500' : ''
+                              }`}
+                              onClick={() => {
+                                setSelectedCategoryId(category.id);
+                                setPracticeBankId(null);
+                              }}
+                            >
+                              <CardContent className="p-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1 truncate">{category.name}</h3>
+                                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                                      <span>{categoryQuestions.length} 题</span>
+                                      {subCategories.length > 0 && (
+                                        <span className="text-blue-400">{subCategories.length} 子分类</span>
+                                      )}
+                                    </div>
                                   </div>
+                                  {isSelected && (
+                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
+                                      <Check className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
                                 </div>
-                                {isSelected && (
-                                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
-                                    <Check className="w-3 h-3 text-white" />
-                                  </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )
                   ) : (
                     /* 显示选中分类下的子分类和题库 */
                     <div className="space-y-3">

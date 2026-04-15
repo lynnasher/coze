@@ -109,6 +109,7 @@ export interface User {
   lastLoginAt?: number;
   role: 'user' | 'admin';  // 用户角色
   status: 'active' | 'banned';  // 账号状态
+  activatedCategories?: string[];  // 用户激活的分类ID列表
 }
 
 // 用户会话

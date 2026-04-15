@@ -100,6 +100,41 @@ export const userStore = {
     return undefined;
   },
 
+  // 激活分类
+  activateCategory: (id: string, categoryId: string): User | undefined => {
+    const user = userStore.getById(id);
+    if (user) {
+      if (!user.activatedCategories) {
+        user.activatedCategories = [];
+      }
+      if (!user.activatedCategories.includes(categoryId)) {
+        user.activatedCategories.push(categoryId);
+      }
+      return userStore.update(user);
+    }
+    return undefined;
+  },
+
+  // 取消激活分类
+  deactivateCategory: (id: string, categoryId: string): User | undefined => {
+    const user = userStore.getById(id);
+    if (user && user.activatedCategories) {
+      user.activatedCategories = user.activatedCategories.filter(c => c !== categoryId);
+      return userStore.update(user);
+    }
+    return undefined;
+  },
+
+  // 批量激活分类（用于初始化）
+  activateCategories: (id: string, categoryIds: string[]): User | undefined => {
+    const user = userStore.getById(id);
+    if (user) {
+      user.activatedCategories = [...new Set([...(user.activatedCategories || []), ...categoryIds])];
+      return userStore.update(user);
+    }
+    return undefined;
+  },
+
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(USER_STORAGE_KEYS.USERS);
