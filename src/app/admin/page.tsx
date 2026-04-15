@@ -66,6 +66,285 @@ interface AdminStats {
   recentImports: number;
 }
 
+// 生成 ID
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
+
+interface Question {
+  id: string;
+  parentId?: string;
+  type: QuestionType;
+  content: string;
+  options?: { id: string; text: string }[];
+  answer: string | string[];
+  explanation?: string;
+  difficulty: string;
+  tags: string[];
+  bankId?: string;
+  createdAt: number;
+  caseBackground?: string;
+  children?: Question[];
+}
+
+// 类型映射
+const typeMap: Record<number, QuestionType> = {
+  1: 'single',
+  2: 'multiple',
+  3: 'true-false',
+  4: 'fill-blank',
+  5: 'comprehensive',
+};
+
+// 检测题型
+function detectQuestionType(qType: unknown): QuestionType {
+  if (typeof qType === 'number') {
+    return typeMap[qType] || 'single';
+  } else if (typeof qType === 'string') {
+    const t = qType.toLowerCase().trim();
+    if (t === 'single') return 'single';
+    else if (t === 'multiple') return 'multiple';
+    else if (t === 'true-false' || t === 'truefalse' || t === 'judge') return 'true-false';
+    else if (t === 'fill-blank' || t === 'fillblank' || t === 'fill') return 'fill-blank';
+    else if (t === 'comprehensive') return 'comprehensive';
+    else if (t.includes('多选')) return 'multiple';
+    else if (t.includes('判断')) return 'true-false';
+    else if (t.includes('填空')) return 'fill-blank';
+    else if (t.includes('综合') || t.includes('案例')) return 'comprehensive';
+    return 'single';
+  }
+  return 'single';
+}
+
+// 处理选项
+function processOptions(q: Record<string, unknown>): { id: string; text: string }[] | undefined {
+  const isExportFormat = !!q.stem;
+  
+  if (isExportFormat) {
+    const opts: { id: string; text: string }[] = [];
+    if (q.optiona) opts.push({ id: 'a', text: String(q.optiona) });
+    if (q.optionb) opts.push({ id: 'b', text: String(q.optionb) });
+    if (q.optionc) opts.push({ id: 'c', text: String(q.optionc) });
+    if (q.optiond) opts.push({ id: 'd', text: String(q.optiond) });
+    return opts.length > 0 ? opts : undefined;
+  } else {
+    const qOptions = q.options;
+    if (qOptions && typeof qOptions === 'object') {
+      if (Array.isArray(qOptions)) {
+        return qOptions as { id: string; text: string }[];
+      } else {
+        return Object.entries(qOptions).map(([key, val]) => ({
+          id: key.toLowerCase(),
+          text: String(val),
+        })).sort((a, b) => a.id.localeCompare(b.id));
+      }
+    }
+  }
+  return undefined;
+}
+
+// 处理答案
+function processAnswer(q: Record<string, unknown>): string | string[] {
+  let answer: string | string[] = 'a';
+  const qAnswer = q.answer || q.ans;
+  if (qAnswer) {
+    if (typeof qAnswer === 'string') {
+      const ans = qAnswer.trim().toLowerCase();
+      if (ans.length > 1) {
+        answer = ans.split('');
+      } else {
+        answer = ans;
+      }
+    } else if (Array.isArray(qAnswer)) {
+      answer = qAnswer as string[];
+    }
+  }
+  return answer;
+}
+
+// 处理子题目选项
+function processChildOptions(child: Record<string, unknown>): { id: string; text: string }[] | undefined {
+  const childIsExportFormat = !!child.stem;
+  if (childIsExportFormat) {
+    const opts: { id: string; text: string }[] = [];
+    if (child.optiona) opts.push({ id: 'a', text: String(child.optiona) });
+    if (child.optionb) opts.push({ id: 'b', text: String(child.optionb) });
+    if (child.optionc) opts.push({ id: 'c', text: String(child.optionc) });
+    if (child.optiond) opts.push({ id: 'd', text: String(child.optiond) });
+    return opts.length > 0 ? opts : undefined;
+  } else {
+    const childQOptions = child.options;
+    if (childQOptions && typeof childQOptions === 'object') {
+      if (Array.isArray(childQOptions)) {
+        return childQOptions as { id: string; text: string }[];
+      } else {
+        return Object.entries(childQOptions).map(([key, val]) => ({
+          id: key.toLowerCase(),
+          text: String(val),
+        })).sort((a, b) => a.id.localeCompare(b.id));
+      }
+    }
+  }
+  return undefined;
+}
+
+// 处理子题目答案
+function processChildAnswer(child: Record<string, unknown>): string | string[] {
+  let answer: string | string[] = 'a';
+  const childQAnswer = child.answer || child.ans;
+  if (childQAnswer) {
+    if (typeof childQAnswer === 'string') {
+      const ans = childQAnswer.trim().toLowerCase();
+      if (ans.length > 1) {
+        answer = ans.split('');
+      } else {
+        answer = ans;
+      }
+    } else if (Array.isArray(childQAnswer)) {
+      answer = childQAnswer as string[];
+    }
+  }
+  return answer;
+}
+
+// 处理子题目
+function processChildren(children: Record<string, unknown>[], parentId: string, bankId: string): Question[] {
+  return children.map((child) => {
+    const childContent = (child.question as string) || (child.content as string) || (child.stem as string) || '';
+    const childQType = child.type || child.qtype;
+    return {
+      id: generateId(),
+      parentId: parentId,
+      type: detectQuestionType(childQType),
+      content: childContent,
+      options: processChildOptions(child),
+      answer: processChildAnswer(child),
+      explanation: ((child.explanation as string) || (child.parsetext as string)) || undefined,
+      difficulty: (child.difficulty as string) || 'medium',
+      tags: [],
+      bankId,
+      createdAt: Date.now(),
+    } as Question;
+  }).filter(q => q.content);
+}
+
+// 处理单个题目
+function processQuestion(q: Record<string, unknown>, bankId: string, parentId?: string): Question | null {
+  const isExportFormat = !!q.stem;
+  const qType = q.type || q.qtype;
+  const questionType = detectQuestionType(qType);
+  
+  const options = processOptions(q);
+  const answer = processAnswer(q);
+  const questionId = generateId();
+  const content = (q.question as string) || (q.content as string) || (q.stem as string) || '';
+  const explanation = (q.explanation as string) || (q.parsetext as string) || '';
+  
+  return {
+    id: questionId,
+    parentId,
+    type: questionType,
+    content,
+    options,
+    answer,
+    explanation,
+    difficulty: (q.difficulty as string) || 'medium',
+    tags: (q.tags as string[]) || [],
+    bankId,
+    createdAt: Date.now(),
+  };
+}
+
+// 扁平化处理题目（支持综合题）
+function flattenQuestions(questions: Record<string, unknown>[], bankId: string): Question[] {
+  const result: Question[] = [];
+  
+  for (const q of questions) {
+    const children = q.children as Record<string, unknown>[] | undefined;
+    const hasChildren = Array.isArray(children) && children.length > 0;
+    
+    const qType = q.type || q.qtype;
+    const isComprehensive = 
+      (typeof qType === 'number' && qType === 5) ||
+      (typeof qType === 'string' && (qType.toLowerCase().trim() === 'comprehensive' || qType.includes('综合') || qType.includes('案例')));
+    
+    if (hasChildren && isComprehensive) {
+      const questionId = generateId();
+      const caseBackground = (q.question as string) || (q.content as string) || (q.stem as string) || '';
+      const childQuestions = processChildren(children, questionId, bankId);
+      
+      const comprehensiveQuestion: Question = {
+        id: questionId,
+        parentId: undefined,
+        type: 'comprehensive',
+        content: '',
+        caseBackground,
+        children: childQuestions,
+        options: undefined,
+        answer: '',
+        explanation: '',
+        difficulty: 'medium',
+        tags: [],
+        bankId,
+        createdAt: Date.now(),
+      };
+      
+      result.push(comprehensiveQuestion);
+    } else {
+      const processed = processQuestion(q, bankId);
+      if (processed) {
+        result.push(processed);
+      }
+    }
+  }
+  
+  return result;
+}
+
+// 本地导入 JSON
+function localImportJson(data: Record<string, unknown>, fileName: string): { count: number; bankId: string; bankName: string } {
+  const questions = data.questions;
+  
+  if (!Array.isArray(questions)) {
+    throw new Error('JSON 格式错误：缺少 questions 数组');
+  }
+  
+  const bankId = `bank_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const bankName = (data.subjectName as string) || (data.bankName as string) || (data.title as string) || fileName.replace('.json', '') || '导入题库';
+  
+  const processedQuestions = flattenQuestions(questions, bankId);
+  
+  if (processedQuestions.length === 0) {
+    throw new Error('JSON 中没有有效的题目');
+  }
+  
+  // 读取现有数据
+  const existingQuestions = JSON.parse(localStorage.getItem('questions') || '[]');
+  const existingBanks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+  
+  // 创建新题库
+  const newBank = {
+    id: bankId,
+    name: bankName,
+    description: `从 ${fileName} 导入`,
+    questionIds: processedQuestions.map(q => q.id),
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  
+  // 合并数据
+  const updatedQuestions = [...existingQuestions, ...processedQuestions];
+  const updatedBanks = [...existingBanks, newBank];
+  
+  // 保存
+  localStorage.setItem('questions', JSON.stringify(updatedQuestions));
+  localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+  
+  return { count: processedQuestions.length, bankId, bankName };
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -147,7 +426,7 @@ export default function AdminPage() {
     router.push('/admin/login');
   };
 
-  // 处理文件上传
+  // 处理文件上传（Word/PDF）
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -183,7 +462,7 @@ export default function AdminPage() {
     }
   };
 
-  // 导入 JSON 文件
+  // 导入 JSON 文件（直接在前端处理）
   const handleJsonImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -196,24 +475,8 @@ export default function AdminPage() {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      // 支持两种格式：直接是题目数组，或包含 questions 字段
-      const questions = Array.isArray(data) ? data : data.questions;
-
-      if (!Array.isArray(questions)) {
-        throw new Error('JSON 格式不正确');
-      }
-
-      const response = await fetch('/api/admin/import-json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions, bankName: data.name || file.name.replace('.json', '') }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || '导入失败');
-      }
+      // 直接在前端导入（复用前台逻辑）
+      const result = localImportJson(data, file.name);
 
       setSuccess(`成功导入 ${result.count} 道题目到"${result.bankName}"题库`);
       loadBanks();
@@ -231,17 +494,25 @@ export default function AdminPage() {
   };
 
   // 删除题库
-  const handleDeleteBank = async () => {
+  const handleDeleteBank = () => {
     if (!bankToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/banks/${bankToDelete.id}`, {
-        method: 'DELETE',
-      });
+      // 获取现有数据
+      const questions = JSON.parse(localStorage.getItem('questions') || '[]');
+      const banks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+      
+      // 从题库列表中移除
+      const updatedBanks = banks.filter((b: { id: string }) => b.id !== bankToDelete.id);
+      
+      // 从题目列表中移除该题库的所有题目
+      const updatedQuestions = questions.filter(
+        (q: { bankId?: string }) => q.bankId !== bankToDelete.id
+      );
 
-      if (!response.ok) {
-        throw new Error('删除失败');
-      }
+      // 保存更新后的数据
+      localStorage.setItem('questions', JSON.stringify(updatedQuestions));
+      localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
 
       setSuccess(`题库"${bankToDelete.name}"已删除`);
       loadBanks();
@@ -435,16 +706,24 @@ export default function AdminPage() {
               <p className="text-sm font-medium text-slate-700 mb-2">JSON 格式说明：</p>
               <pre className="text-xs text-slate-600 overflow-x-auto">
 {`{
-  "name": "题库名称",
+  "bankName": "题库名称",
+  "subjectName": "科目名称",
   "questions": [
     {
       "type": "single", // single|multiple|true-false|fill-blank|comprehensive
       "content": "题目内容",
-      "options": [{"id": "A", "text": "选项A"}, ...],
-      "answer": "A",
+      "options": [{"id": "a", "text": "选项A"}, ...],
+      "answer": "a",
       "explanation": "解析内容",
       "tags": ["标签1"],
       "difficulty": "medium"
+    },
+    // 也支持导出格式
+    {
+      "stem": "题目内容",
+      "optiona": "A选项",
+      "optionb": "B选项",
+      "answer": "a"
     }
   ]
 }`}
