@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
 import { 
   Play, 
   Library, 
@@ -31,7 +32,8 @@ import {
   ArrowLeft,
   TrendingUp,
   RotateCcw,
-  BookMarked
+  BookMarked,
+  Settings
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty } from '@/lib/types';
@@ -627,39 +629,47 @@ export default function QuizApp() {
             </div>
           </div>
           
-          <Dialog open={importModalOpen} onOpenChange={setImportModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-lg shadow-orange-200 gap-2">
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">导入</span>
+          <div className="flex items-center gap-2">
+            <Link href="/admin">
+              <Button variant="outline" size="sm" className="rounded-xl gap-1">
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">管理</span>
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-w-[calc(100%-32px)] rounded-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-lg flex items-center gap-2">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center">
-                    <Upload className="w-5 h-5 text-white" />
+            </Link>
+            <Dialog open={importModalOpen} onOpenChange={setImportModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white rounded-xl shadow-lg shadow-orange-200 gap-2">
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">导入</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] max-w-[calc(100%-32px)] rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="text-lg flex items-center gap-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center">
+                      <Upload className="w-5 h-5 text-white" />
+                    </div>
+                    导入题库
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="text-center py-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                      <FileText className="w-8 h-8 text-blue-500" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2">选择 JSON 题库文件</h3>
+                    <p className="text-sm text-gray-500 mb-4">支持标准格式、导出格式和题库.json格式</p>
+                    <Input
+                      type="file"
+                      accept=".json"
+                      onChange={handleJsonImport}
+                      className="max-w-xs mx-auto rounded-xl"
+                    />
                   </div>
-                  导入题库
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="text-center py-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <FileText className="w-8 h-8 text-blue-500" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">选择 JSON 题库文件</h3>
-                  <p className="text-sm text-gray-500 mb-4">支持标准格式、导出格式和题库.json格式</p>
-                  <Input
-                    type="file"
-                    accept=".json"
-                    onChange={handleJsonImport}
-                    className="max-w-xs mx-auto rounded-xl"
-                  />
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </header>
 

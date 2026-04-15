@@ -35,6 +35,14 @@
 - 错题本功能
 - 学习进度可视化
 
+### 2.5 后台管理系统
+- 管理员登录验证
+- 题库导入管理（支持 Word/PDF/JSON 格式）
+- 题库列表查看与管理
+- 题库删除功能
+- 题库导出功能（JSON 格式）
+- 统计数据概览（题库总数、题目总数等）
+
 ## 3. 技术架构
 
 ### 3.1 前端框架
@@ -96,7 +104,22 @@ src/
 ├── app/
 │   ├── page.tsx                 # 主页面
 │   ├── layout.tsx               # 布局组件
-│   └── globals.css              # 全局样式
+│   ├── globals.css              # 全局样式
+│   ├── admin/                   # 后台管理
+│   │   ├── page.tsx            # 管理主页
+│   │   └── login/              # 登录页面
+│   │       └── page.tsx
+│   └── api/
+│       └── admin/              # 管理员 API
+│           ├── login/         # 登录接口
+│           │   └── route.ts
+│           ├── banks/         # 题库管理
+│           │   ├── route.ts
+│           │   └── [id]/route.ts
+│           ├── import/        # 文件导入
+│           │   └── route.ts
+│           └── import-json/   # JSON 导入
+│               └── route.ts
 ├── components/
 │   ├── ui/                      # shadcn/ui 组件
 │   ├── quiz/                    # 刷题相关组件
@@ -213,19 +236,51 @@ interface QuestionBank {
 
 ## 9. API 接口
 
-### 9.1 PDF 解析接口
+### 9.1 管理员登录接口
+```
+POST /api/admin/login
+Request: { username: string, password: string }
+Response: { success: boolean, token: string, user: { username: string } }
+```
+
+### 9.2 题库管理接口
+```
+GET /api/admin/banks
+Response: { banks: QuestionBank[] }
+
+DELETE /api/admin/banks/:id
+Response: { success: boolean }
+```
+
+### 9.3 题库导入接口
+```
+POST /api/admin/import
+Request: FormData { file: File }
+Response: { success: boolean, count: number, bankId: string, bankName: string }
+
+POST /api/admin/import-json
+Request: { questions: Question[], bankName?: string }
+Response: { success: boolean, count: number, bankId: string, bankName: string }
+```
+
+### 9.4 PDF 解析接口
 ```
 POST /api/parse-pdf
 Request: FormData { file: File }
 Response: { questions: Question[] }
 ```
 
-### 9.2 题库接口
+### 9.5 题库接口
 ```
 GET /api/questions
 POST /api/questions
 DELETE /api/questions/:id
 ```
+
+### 9.6 后台管理登录凭证
+- 默认用户名: `admin`
+- 默认密码: `admin123`
+- Token 有效期: 24小时
 
 ## 10. 测试清单
 
