@@ -758,6 +758,8 @@ export default function AdminPage() {
   const handleDeleteBank = async () => {
     if (!bankToDelete) return;
 
+    setIsDeleteDialogOpen(false);
+    
     try {
       // 删除数据库中的题库和题目
       const response = await fetch(`/api/admin/banks/${bankToDelete.id}`, {
@@ -786,7 +788,6 @@ export default function AdminPage() {
 
       setSuccess(`题库"${bankToDelete.name}"已删除`);
       loadBanks();
-      setIsDeleteDialogOpen(false);
       setBankToDelete(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '删除失败');
@@ -1295,7 +1296,8 @@ export default function AdminPage() {
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.preventDefault();
                                         setBankToDelete(bank);
                                         setIsDeleteDialogOpen(true);
                                       }}
