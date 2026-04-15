@@ -89,6 +89,9 @@ export default function QuizApp() {
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   
+  // 客户端挂载状态（防止 hydration mismatch）
+  const [mounted, setMounted] = useState(false);
+  
   // 最近练习记录状态
   const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   
@@ -163,6 +166,11 @@ export default function QuizApp() {
     // 加载最近练习记录
     setRecentPractices(recentPracticeStore.getRecent(3));
   }, [loadCategories, loadBanksFromDb]);
+
+  // 确保组件在客户端挂载后才渲染依赖 localStorage 的数据
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 刷新用户激活的分类（检查过期时间）
   const refreshActivatedCategories = async (userId: string) => {
@@ -608,11 +616,11 @@ export default function QuizApp() {
                 {/* 已掌握和正确率 */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-2xl font-bold">{getStats().masteredCount}</p>
+                    <p className="text-2xl font-bold">{mounted ? getStats().masteredCount : '-'}</p>
                     <p className="text-xs opacity-80">已掌握</p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-2xl font-bold">{getStats().accuracy}%</p>
+                    <p className="text-2xl font-bold">{mounted ? getStats().accuracy : 0}%</p>
                     <p className="text-xs opacity-80">正确率</p>
                   </div>
                 </div>
@@ -626,7 +634,7 @@ export default function QuizApp() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-gray-800">错题本</p>
-                        <p className="text-xs text-gray-500">{getStats().wrongQuestionIds.length} 道待复习</p>
+                        <p className="text-xs text-gray-500">{mounted ? getStats().wrongQuestionIds.length : '-'} 道待复习</p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-gray-400" />
                     </div>
@@ -1054,7 +1062,7 @@ export default function QuizApp() {
                           </div>
                           <div className="flex-1 text-white">
                             <p className="text-lg font-bold">错题本</p>
-                            <p className="text-sm opacity-80">{getWrongQuestionIds().length} 道待复习</p>
+                            <p className="text-sm opacity-80">{mounted ? getWrongQuestionIds().length : '-'} 道待复习</p>
                           </div>
                           <ChevronRight className="w-6 h-6 text-white/60" />
                         </div>
