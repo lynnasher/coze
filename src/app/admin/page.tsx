@@ -80,6 +80,7 @@ interface QuestionBank {
   description?: string;
   categoryId?: string;
   questionIds: string[];
+  questionCount?: number; // 题目数量（来自数据库）
   createdAt: number;
   updatedAt: number;
 }
@@ -552,6 +553,7 @@ export default function AdminPage() {
           name: b.name,
           description: b.description || undefined,
           questionIds: [],
+          questionCount: b.question_count || 0,
           categoryId: b.category_id || undefined,
           createdAt: new Date(b.created_at).getTime()
         }));
@@ -685,56 +687,70 @@ export default function AdminPage() {
     setCategoryParentId(undefined);
   };
 
-  // 保存分类
-  const saveCategory = () => {
+  // 保存分类（添加/更新到数据库）
+  const saveCategory = async () => {
     if (!categoryName.trim()) {
       setError('分类名称不能为空');
       return;
     }
 
-    // 获取所有分类
-    const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
-    
-    if (editingCategory) {
-      // 更新
-      const updated = existingCategories.map((c: Category) => 
-        c.id === editingCategory.id 
-          ? { ...c, name: categoryName.trim(), color: categoryColor, parentId: categoryParentId }
-          : c
-      );
-      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updated));
-      setCategories(updated);
-      setSuccess('分类已更新');
-    } else {
-      // 新增
-      const siblings = existingCategories.filter((c: Category) => c.parentId === categoryParentId);
-      const newCategory: Category = {
-        id: generateId(),
-        name: categoryName.trim(),
-        color: categoryColor,
-        order: siblings.length,
-        parentId: categoryParentId,
-      };
-      const updated = [...existingCategories, newCategory];
-      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updated));
-      setCategories(updated);
-      setSuccess('分类已添加');
-    }
+    try {
+      if (editingCategory) {
+        // 更新分类
+        const response = await fetch(`/api/admin/categories/${editingCategory.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: categoryName.trim(),
+            color: categoryColor,
+            parentId: categoryParentId,
+          }),
+        });
 
+        if (!response.ok) {
+          throw new Error('更新失败');
+        }
+        setSuccess('分类已更新');
+      } else {
+        // 添加分类
+        const siblings = categories.filter((c: Category) => c.parentId === categoryParentId);
+        const response = await fetch('/api/admin/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: categoryName.trim(),
+            color: categoryColor,
+            order: siblings.length,
+            parentId: categoryParentId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('添加失败');
+        }
+        setSuccess('分类已添加');
+      }
+      
+      // 重新加载分类
+      await loadCategories();
+    } catch (err) {
+      console.error('保存分类失败:', err);
+      setError('保存失败，请重试');
+    }
+    
     resetCategoryForm();
   };
 
   // 删除分类（包括子分类）
-  const deleteCategory = (category: Category) => {
-    const existingCategories = JSON.parse(localStorage.getItem(STORAGE_KEYS.CATEGORIES) || '[]');
-    
+  // 删除分类（从数据库）
+  const deleteCategory = async (category: Category) => {
     // 收集所有要删除的分类ID（包括子分类）
     const idsToDelete = new Set<string>();
     idsToDelete.add(category.id);
     
     // 递归查找子分类
     const findChildren = (parentId: string) => {
-      existingCategories.forEach((c: Category) => {
+      categories.forEach((c: Category) => {
         if (c.parentId === parentId) {
           idsToDelete.add(c.id);
           findChildren(c.id);
@@ -743,22 +759,27 @@ export default function AdminPage() {
     };
     findChildren(category.id);
     
-    // 将该分类及子分类下的题库移至未分类
-    const existingBanks = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
-    const updatedBanks = existingBanks.map((b: QuestionBank) => 
-      idsToDelete.has(b.categoryId || '') 
-        ? { ...b, categoryId: undefined }
-        : b
-    );
-    localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(updatedBanks));
-    
-    // 删除分类
-    const updatedCategories = existingCategories.filter((c: Category) => !idsToDelete.has(c.id));
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(updatedCategories));
-    
-    setCategories(updatedCategories);
-    setBanks(updatedBanks);
-    setSuccess('分类已删除');
+    try {
+      // 逐个删除分类
+      for (const id of idsToDelete) {
+        const response = await fetch(`/api/admin/categories/${id}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          setError(data.error || '删除失败');
+          return;
+        }
+      }
+      
+      // 重新加载分类
+      await loadCategories();
+      setSuccess('分类已删除');
+    } catch (err) {
+      console.error('删除分类失败:', err);
+      setError('删除失败，请重试');
+    }
   };
 
   // 开始编辑题库名称
@@ -1321,7 +1342,7 @@ export default function AdminPage() {
                               </TableCell>
                               <TableCell onClick={() => goToBankEdit(bank)}>
                                 <Badge variant="secondary">
-                                  {bank.questionIds.length} 题
+                                  {bank.questionCount || 0} 题
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-slate-500" onClick={() => goToBankEdit(bank)}>
