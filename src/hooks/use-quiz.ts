@@ -15,7 +15,7 @@ export function useQuiz() {
     isComplete: false,
   });
 
-  const [isLoading, setIsLoading] = useState(typeof window !== 'undefined');
+  const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
 
   // 从数据库加载题目
