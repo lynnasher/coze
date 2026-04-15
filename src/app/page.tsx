@@ -167,7 +167,19 @@ export default function QuizApp() {
       if (response.ok) {
         const data = await response.json();
         if (data.activatedCategories) {
+          // 更新 React state
           setCurrentUser(prev => prev ? { ...prev, activatedCategories: data.activatedCategories } : null);
+          // 同时更新 localStorage，确保刷新页面后数据一致
+          const storedUser = localStorage.getItem('quiz_user_data');
+          if (storedUser) {
+            try {
+              const userData = JSON.parse(storedUser);
+              userData.activatedCategories = data.activatedCategories;
+              localStorage.setItem('quiz_user_data', JSON.stringify(userData));
+            } catch {
+              // 忽略解析错误
+            }
+          }
         }
       }
     } catch (error) {
