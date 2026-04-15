@@ -237,10 +237,12 @@ export default function QuizApp() {
   const getActivatedCategoryIds = useCallback(() => {
     if (!currentUser) {
       // 未登录用户：不能做任何题库
+      console.log('getActivatedCategoryIds - 未登录用户');
       return [];
     }
     // 已登录用户：只能做已激活分类的题库
     const activated = currentUser.activatedCategories || [];
+    console.log('getActivatedCategoryIds - 已登录用户, activatedCategories:', activated);
     // 如果没有激活任何分类，返回空数组
     return activated;
   }, [currentUser]);
@@ -248,7 +250,11 @@ export default function QuizApp() {
   // 过滤出可用的分类（用于显示）
   const getAvailableCategories = useCallback(() => {
     const activatedIds = getActivatedCategoryIds();
-    return categories.filter(c => !c.parentId && activatedIds.includes(c.id));
+    console.log('getAvailableCategories - activatedIds:', activatedIds);
+    console.log('getAvailableCategories - categories:', categories.length);
+    const result = categories.filter(c => !c.parentId && activatedIds.includes(c.id));
+    console.log('getAvailableCategories - result:', result.length);
+    return result;
   }, [categories, getActivatedCategoryIds]);
 
   // 处理单选答案
@@ -937,9 +943,9 @@ export default function QuizApp() {
                   </div>
                 </div>
               </div>
-            ) : questions.length > 0 ? (
-              /* 练习开始页面 - 题库管理风格 */
-              <div className="space-y-5">
+            ) : (
+              /* 练习开始页面 */
+              <div className="space-y-4">
                 {/* 选择分类模块 - 清新卡片风格 */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -1150,8 +1156,8 @@ export default function QuizApp() {
                     </div>
                   ) : (
                     <>
-                  {/* 练习模式卡片 - 清新风格 */}
-                  <div className="space-y-2">
+                      {/* 练习模式卡片 - 清新风格 */}
+                      <div className="space-y-2">
                     {/* 顺序练习 */}
                     <div 
                       className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50 flex items-center gap-3"
@@ -1197,18 +1203,9 @@ export default function QuizApp() {
                       <ChevronRight className="w-4 h-4 text-gray-300" />
                     </div>
                   </div>
-                    </>
+                  </>
                   )}
                 </div>
-              </div>
-            ) : (
-              /* 题库为空 - 简洁空状态 */
-              <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
-                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-2xl flex items-center justify-center">
-                  <BookOpen className="w-10 h-10 text-gray-300" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-800 mb-2">开始你的学习之旅</h2>
-                <p className="text-gray-400 text-sm">请在右上角登录后开始练习</p>
               </div>
             )}
           </TabsContent>
