@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -18,12 +17,19 @@ import {
   ArrowLeft,
   FileCheck,
   Grid3X3,
-  FileText
+  FileText,
+  Trophy,
+  Target,
+  BarChart3,
+  Settings,
+  History,
+  Flame,
+  Puzzle
 } from 'lucide-react';
 import { questionStore, recordStore, getWrongQuestionIds, generateId, wrongStreakStore } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { UserStatus } from '@/components/AuthModal';
 
 // 题型统计
 interface QuestionTypeStat {
@@ -35,7 +41,6 @@ interface QuestionTypeStat {
 }
 
 export default function WrongBookPage() {
-  const router = useRouter();
   const [selectedType, setSelectedType] = useState<QuestionType | 'all'>('all');
   const [reviewMode, setReviewMode] = useState<'forgot' | 'byType' | 'all'>('forgot');
   const [showExplanation, setShowExplanation] = useState(false);
@@ -45,10 +50,21 @@ export default function WrongBookPage() {
   const [localAnswer, setLocalAnswer] = useState<string | string[] | undefined>(undefined);
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
   const questionContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
+    // 获取当前登录用户
+    const storedUser = localStorage.getItem('quiz_user_data');
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        setCurrentUser(user);
+      } catch (e) {
+        console.error('解析用户数据失败', e);
+      }
+    }
   }, []);
 
   // 获取错题列表（只获取实际答过且答错的题目）
@@ -266,7 +282,7 @@ export default function WrongBookPage() {
     return styles[type] || { bg: 'bg-gray-500', label: '未知' };
   };
 
-  // 错题复习页面（与正常做题页面一致的风格）
+  // 错题复习做题页面（与正常做题页面一致的风格）
   if (isReviewing && currentReviewQuestion) {
     const wrongInfo = getWrongInfo(currentReviewQuestion.id);
     const typeStyle = getTypeStyle(currentReviewQuestion.type);
@@ -443,12 +459,13 @@ export default function WrongBookPage() {
                 ) : (
                   /* 填空题 */
                   <div className="mb-4">
-                    <Input
+                    <input
+                      type="text"
                       placeholder="输入你的答案"
                       value={(localAnswer as string) || ''}
                       onChange={(e) => !showExplanation && setLocalAnswer(e.target.value)}
                       disabled={showExplanation}
-                      className="text-base"
+                      className="w-full px-4 py-3 text-base rounded-xl border-2 border-gray-200 focus:border-indigo-300 focus:outline-none bg-white disabled:bg-gray-50"
                     />
                   </div>
                 )}
@@ -536,22 +553,42 @@ export default function WrongBookPage() {
 
   // 错题本列表页面
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* 头部 */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="text-slate-600">
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              返回
-            </Button>
-          </Link>
-          <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-orange-500" />
-            错题本
-          </h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* 顶部导航栏 - 与首页一致 */}
+      <header className="bg-white sticky top-0 z-50 shadow-sm">
+        <div className="max-w-[970px] mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {/* 产品标识 */}
+            <div className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
+                  <p className="text-xs text-gray-400">错题本</p>
+                </div>
+              </Link>
+            </div>
+            
+            {/* 用户信息 */}
+            <div className="flex items-center gap-2">
+              {currentUser?.role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">管理</span>
+                  </Button>
+                </Link>
+              )}
+              <UserStatus />
+            </div>
+          </div>
         </div>
+      </header>
 
+      {/* 主内容 */}
+      <main className="max-w-[970px] mx-auto px-4 py-4">
         {wrongQuestions.length === 0 ? (
           /* 空状态 */
           <div className="text-center py-16">
@@ -567,158 +604,164 @@ export default function WrongBookPage() {
             </Link>
           </div>
         ) : (
-          <>
+          <div className="space-y-4">
             {/* 统计概览 */}
-            <Card className="border-0 shadow-sm rounded-2xl mb-4 overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-sm font-semibold text-slate-700">题型分布</h2>
-                  <span className="text-sm text-slate-400">共 {wrongQuestions.length} 题</span>
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Puzzle className="w-3.5 h-3.5 text-purple-500" />
                 </div>
-                <div className="flex gap-2 flex-wrap">
+                题型分布
+              </h3>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setSelectedType('all')}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    selectedType === 'all'
+                      ? 'bg-slate-800 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  全部 {wrongQuestions.length}
+                </button>
+                {typeStats.map(stat => (
                   <button
-                    onClick={() => setSelectedType('all')}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                      selectedType === 'all'
-                        ? 'bg-slate-800 text-white'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    key={stat.type}
+                    onClick={() => setSelectedType(stat.type)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium text-white transition-all ${stat.color} ${
+                      selectedType === stat.type ? 'ring-2 ring-offset-2 ring-slate-800' : 'opacity-80 hover:opacity-100'
                     }`}
                   >
-                    全部 {wrongQuestions.length}
+                    {stat.label} {stat.count}
                   </button>
-                  {typeStats.map(stat => (
-                    <button
-                      key={stat.type}
-                      onClick={() => setSelectedType(stat.type)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium text-white transition-all ${stat.color} ${
-                        selectedType === stat.type ? 'ring-2 ring-offset-2 ring-slate-800' : 'opacity-80 hover:opacity-100'
-                      }`}
-                    >
-                      {stat.label} {stat.count}
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+            </div>
 
             {/* 复习模式选择 */}
-            <Card className="border-0 shadow-sm rounded-2xl mb-4 overflow-hidden">
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">复习模式</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setReviewMode('forgot')}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      reviewMode === 'forgot'
-                        ? 'border-indigo-500 bg-indigo-50'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-indigo-500" />
-                      <span className="text-sm font-medium text-slate-700">优先复习</span>
-                    </div>
-                    <p className="text-xs text-slate-400">遗忘久的优先</p>
-                  </button>
-                  <button
-                    onClick={() => setReviewMode('byType')}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      reviewMode === 'byType'
-                        ? 'border-purple-500 bg-purple-50'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Filter className="w-4 h-4 text-purple-500" />
-                      <span className="text-sm font-medium text-slate-700">按题型</span>
-                    </div>
-                    <p className="text-xs text-slate-400">单选→多选→判断</p>
-                  </button>
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <Target className="w-3.5 h-3.5 text-amber-500" />
                 </div>
-              </CardContent>
-            </Card>
+                复习模式
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setReviewMode('forgot')}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    reviewMode === 'forgot'
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-indigo-500" />
+                    <span className="text-sm font-medium text-gray-700">优先复习</span>
+                  </div>
+                  <p className="text-xs text-gray-400">遗忘久的优先</p>
+                </button>
+                <button
+                  onClick={() => setReviewMode('byType')}
+                  className={`p-3 rounded-xl border-2 transition-all ${
+                    reviewMode === 'byType'
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Filter className="w-4 h-4 text-purple-500" />
+                    <span className="text-sm font-medium text-gray-700">按题型</span>
+                  </div>
+                  <p className="text-xs text-gray-400">单选→多选→判断</p>
+                </button>
+              </div>
+            </div>
 
             {/* 开始复习按钮 */}
             <Button
               onClick={() => startReview(selectedType)}
-              className="w-full h-12 text-base mb-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl"
+              className="w-full h-12 text-base bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl shadow-md"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               开始复习 ({filteredQuestions.length}题)
             </Button>
 
             {/* 错题列表 */}
-            <Card className="border-0 shadow-sm rounded-2xl overflow-hidden">
-              <CardContent className="p-4">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">错题详情</h3>
-                <div className="space-y-3">
-                  {filteredQuestions.slice(0, 10).map((question, index) => {
-                    const info = getWrongInfo(question.id);
-                    const typeStyle = getTypeStyle(question.type);
-                    return (
-                      <div
-                        key={question.id}
-                        className="p-4 bg-slate-50 rounded-xl border border-slate-100"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center text-xs text-slate-500 flex-shrink-0">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${typeStyle.bg}`}>
-                                {typeStyle.label}
-                              </span>
-                              <span className="text-xs text-slate-400">
-                                错 {info.wrongCount} 次
-                              </span>
-                              <span className="text-xs text-slate-400">
-                                掌握 {info.streak}/3
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-700 line-clamp-2 mb-2">
-                              {question.content}
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setReviewQuestions([question]);
-                                setReviewIndex(0);
-                                setShowExplanation(false);
-                                setLocalAnswer(undefined);
-                                setIsAnswerCorrect(false);
-                                setIsReviewing(true);
-                              }}
-                              className="text-xs h-7 rounded-lg"
-                            >
-                              复习此题
-                            </Button>
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <History className="w-3.5 h-3.5 text-orange-500" />
+                </div>
+                错题详情
+              </h3>
+              <div className="space-y-3">
+                {filteredQuestions.slice(0, 10).map((question, index) => {
+                  const info = getWrongInfo(question.id);
+                  const typeStyle = getTypeStyle(question.type);
+                  return (
+                    <div
+                      key={question.id}
+                      className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
+                          {index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${typeStyle.bg}`}>
+                              {typeStyle.label}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              错 {info.wrongCount} 次
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              掌握 {info.streak}/3
+                            </span>
                           </div>
+                          <p className="text-sm text-gray-700 line-clamp-2 mb-2">
+                            {question.content}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setReviewQuestions([question]);
+                              setReviewIndex(0);
+                              setShowExplanation(false);
+                              setLocalAnswer(undefined);
+                              setIsAnswerCorrect(false);
+                              setIsReviewing(true);
+                            }}
+                            className="text-xs h-7 rounded-lg"
+                          >
+                            复习此题
+                          </Button>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-                
-                {filteredQuestions.length > 10 && (
-                  <p className="text-center text-sm text-slate-400 mt-3">
-                    还有 {filteredQuestions.length - 10} 道错题，点击上方「开始复习」查看全部
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {filteredQuestions.length > 10 && (
+                <p className="text-center text-sm text-gray-400 mt-3">
+                  还有 {filteredQuestions.length - 10} 道错题，点击上方「开始复习」查看全部
+                </p>
+              )}
+            </div>
 
             {/* 提示 */}
-            <div className="mt-4 p-3 bg-amber-50 rounded-xl text-sm text-amber-700 border border-amber-100">
+            <div className="p-3 bg-amber-50 rounded-xl text-sm text-amber-700 border border-amber-100">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <p>做对同一道题 <strong>3次</strong> 将自动移出错题本，你也可以点击「已掌握」立即移出。</p>
               </div>
             </div>
-          </>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }
