@@ -95,3 +95,23 @@ export interface ParsedQuestion {
   explanation?: string;
   difficulty: Difficulty;
 }
+
+// 用户相关类型
+export interface User {
+  id: string;
+  phone: string;        // 手机号（唯一标识）
+  nickname?: string;    // 昵称
+  avatar?: string;      // 头像 URL
+  password: string;     // 密码（加密存储）
+  createdAt: number;
+  lastLoginAt?: number;
+  role: 'user' | 'admin';  // 用户角色
+  status: 'active' | 'banned';  // 账号状态
+}
+
+// 用户会话
+export interface UserSession {
+  userId: string;
+  token: string;
+  expiresAt: number;
+}

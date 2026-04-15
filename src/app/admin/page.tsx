@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ import {
   FolderOpen,
   Folder,
   Plus,
+  User,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -765,7 +767,7 @@ export default function AdminPage() {
         )}
 
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-slate-500">题库总数</CardTitle>
@@ -798,6 +800,19 @@ export default function AdminPage() {
               <p className="text-xs text-slate-500 mt-1">道题目</p>
             </CardContent>
           </Card>
+
+          <Link href="/admin/users">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-slate-500">用户管理</CardTitle>
+                <User className="h-5 w-5 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">管理</div>
+                <p className="text-xs text-slate-500 mt-1">查看/添加用户</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* 导入区域 */}
