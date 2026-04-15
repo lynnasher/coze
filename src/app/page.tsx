@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { 
-  Play, 
   Library, 
   BarChart3, 
   ChevronLeft, 
@@ -605,6 +604,18 @@ export default function QuizApp() {
                     <p className="text-xs text-gray-500">连续学习天数</p>
                   </div>
                 </div>
+                
+                {/* 已掌握和正确率 */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
+                    <p className="text-2xl font-bold">{getStats().masteredCount}</p>
+                    <p className="text-xs opacity-80">已掌握</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl p-3 text-white text-center">
+                    <p className="text-2xl font-bold">{getStats().accuracy}%</p>
+                    <p className="text-xs opacity-80">正确率</p>
+                  </div>
+                </div>
               </div>
 
                 {/* 最近练习 */}
@@ -676,115 +687,6 @@ export default function QuizApp() {
                     </div>
                   </div>
                 )}
-
-                {/* 开始练习 */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <div className="w-6 h-6 bg-violet-100 rounded-lg flex items-center justify-center">
-                      <Play className="w-3.5 h-3.5 text-violet-500" />
-                    </div>
-                    开始练习
-                  </h3>
-                  
-                  {/* 选择分类 */}
-                  {!selectedCategoryId ? (
-                    <div className="space-y-3">
-                      {getAvailableCategories().length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          {getAvailableCategories().slice(0, 4).map((category) => {
-                            const categoryBanks = banks.filter(b => b.categoryId === category.id);
-                            const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
-                            
-                            return (
-                              <div 
-                                key={category.id}
-                                className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
-                                onClick={() => {
-                                  setSelectedCategoryId(category.id);
-                                  setPracticeBankId(null);
-                                }}
-                              >
-                                <h4 className="text-sm font-semibold text-gray-800 leading-tight mb-1 truncate">{category.name}</h4>
-                                <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                  <span>{categoryQuestions.length} 题</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4 text-sm text-gray-400">
-                          <p>暂无可用题库</p>
-                          <p className="text-xs mt-1">请先激活分类或导入题库</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => {
-                            setSelectedCategoryId(null);
-                            setPracticeBankId(null);
-                          }}
-                          className="text-xs"
-                        >
-                          <ArrowLeft className="w-3 h-3 mr-1" />
-                          返回
-                        </Button>
-                        <span className="text-sm text-gray-500">
-                          {categories.find(c => c.id === selectedCategoryId)?.name}
-                        </span>
-                      </div>
-                      
-                      {/* 子分类 */}
-                      {categories.filter(c => c.parentId === selectedCategoryId).length > 0 && (
-                        <div className="space-y-1">
-                          {categories.filter(c => c.parentId === selectedCategoryId).slice(0, 6).map((subCategory) => {
-                            const subCategoryBanks = banks.filter(b => b.categoryId === subCategory.id);
-                            const subCategoryQuestions = questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId));
-                            
-                            return (
-                              <div
-                                key={subCategory.id}
-                                className="cursor-pointer transition-all rounded-lg p-2.5 border border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
-                                onClick={() => startQuiz('sequential', `cat_${subCategory.id}`)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-700 truncate">{subCategory.name}</span>
-                                  <span className="text-xs text-gray-400 ml-2">{subCategoryQuestions.length}题</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      
-                      {/* 直接关联题库 */}
-                      {banks.filter(b => b.categoryId === selectedCategoryId).length > 0 && (
-                        <div className="space-y-1">
-                          {banks.filter(b => b.categoryId === selectedCategoryId).map((bank) => {
-                            const bankQuestions = questions.filter(q => q.bankId === bank.id);
-                            return (
-                              <div
-                                key={bank.id}
-                                className="cursor-pointer transition-all rounded-lg p-2.5 border border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
-                                onClick={() => startQuiz('sequential', bank.id)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-medium text-gray-700 truncate">{bank.name}</span>
-                                  <span className="text-xs text-gray-400 ml-2">{bankQuestions.length}题</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
 
               {/* 登录提示 */}
                 {!currentUser && (
