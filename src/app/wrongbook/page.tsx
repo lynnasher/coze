@@ -289,8 +289,41 @@ export default function WrongBookPage() {
     
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* 顶部导航栏 */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
+        {/* Logo 头部导航 - 与首页一致 */}
+        <header className="bg-white border-b border-slate-100">
+          <div className="max-w-[970px] mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              {/* 产品标识 */}
+              <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
+                    <p className="text-xs text-gray-400">错题复习</p>
+                  </div>
+                </Link>
+              </div>
+              
+              {/* 用户信息 */}
+              <div className="flex items-center gap-2">
+                {currentUser?.role === 'admin' && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                      <Settings className="w-4 h-4" />
+                      <span className="hidden sm:inline">管理</span>
+                    </Button>
+                  </Link>
+                )}
+                <UserStatus />
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        {/* 返回按钮栏 */}
+        <div className="bg-white border-b border-slate-200 px-4 py-2 sticky top-[68px] z-20">
           <div className="max-w-[970px] mx-auto">
             <div className="flex items-center justify-between">
               <Button
