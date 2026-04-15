@@ -716,10 +716,24 @@ export default function AdminPage() {
   };
 
   // 删除题库
-  const handleDeleteBank = () => {
+  const handleDeleteBank = async () => {
     if (!bankToDelete) return;
 
     try {
+      // 删除数据库中的题库和题目
+      const response = await fetch(`/api/admin/banks/${bankToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '删除失败');
+      }
+
+      // 删除 localStorage 中的数据
       const questions = JSON.parse(localStorage.getItem(STORAGE_KEYS.QUESTIONS) || '[]');
       const banksList = JSON.parse(localStorage.getItem(STORAGE_KEYS.BANKS) || '[]');
       
