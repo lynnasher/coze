@@ -510,6 +510,11 @@ export default function QuizApp() {
         {hasStarted ? (
           <PracticeView 
             onExit={() => {
+              // 交卷时记录所有答案
+              finishQuiz();
+              // 重置练习状态
+              resetQuiz();
+              // 返回首页
               setHasStarted(false);
               setPracticeBankId(null);
             }} 
@@ -566,6 +571,11 @@ export default function QuizApp() {
             {hasStarted ? (
               <PracticeView 
                 onExit={() => {
+                  // 交卷时记录所有答案
+                  finishQuiz();
+                  // 重置练习状态
+                  resetQuiz();
+                  // 返回首页
                   setHasStarted(false);
                   setPracticeBankId(null);
                 }} 
@@ -1192,13 +1202,11 @@ function PracticeView({
   // 交卷并返回首页（不显示完成弹窗）
   const handleFinishAndExit = useCallback(() => {
     if (confirm('确定要交卷吗？')) {
-      finishQuiz();
-      // 延迟返回首页，让 finishQuiz 完成记录，然后重置所有状态
-      setTimeout(() => {
-        resetQuiz();
-      }, 100);
+      // 直接返回首页，PracticeView 会被卸载
+      // onExit 会处理状态重置
+      onExit();
     }
-  }, [finishQuiz, resetQuiz]);
+  }, [onExit]);
   
   // 如果正在加载，显示加载状态
   if (isLoading) {
@@ -1214,55 +1222,16 @@ function PracticeView({
     );
   }
   
-  // 交卷后直接返回首页
+  // 交卷后直接返回首页，不显示完成页面
+  // PracticeView 会被立即卸载，所以这个分支不会被渲染
   if (quizState.isComplete) {
-    // 计算当前练习的统计
-    const totalQuestions = quizState.questions.length;
-    const answeredQuestions = quizState.questions.filter(q => quizState.answers[q.id] !== undefined);
-    const correctCount = answeredQuestions.filter(q => {
-      const userAnswer = quizState.answers[q.id];
-      if (Array.isArray(q.answer)) {
-        return Array.isArray(userAnswer) && q.answer.every(a => userAnswer.includes(a));
-      }
-      return userAnswer === q.answer;
-    }).length;
-    const accuracy = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
-    
     return (
-      <div className="min-h-screen -mx-4 sm:mx-0 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-white pointer-events-none" />
-          <div className="relative z-10">
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-400 to-blue-500 rounded-3xl flex items-center justify-center shadow-xl shadow-blue-200 animate-pulse">
-              <FileCheck className="w-12 h-12 text-white" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">已交卷!</h2>
-            <p className="text-gray-500 mb-6">正在返回首页...</p>
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 border border-blue-100">
-                <p className="text-3xl font-bold text-blue-600">{totalQuestions}</p>
-                <p className="text-xs text-gray-500 mt-1">总题数</p>
-              </div>
-              <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-4 border border-emerald-100">
-                <p className="text-3xl font-bold text-emerald-600">{correctCount}</p>
-                <p className="text-xs text-gray-500 mt-1">正确</p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl p-4 border border-purple-100">
-                <p className="text-3xl font-bold text-purple-600">{accuracy}%</p>
-                <p className="text-xs text-gray-500 mt-1">正确率</p>
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <Button 
-                onClick={() => onExit()} 
-                variant="outline"
-                className="border-2 border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                返回首页
-              </Button>
-            </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+        <div className="text-center">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center animate-pulse">
+            <FileCheck className="w-10 h-10 text-white" />
           </div>
+          <p className="text-gray-600 font-medium">正在返回首页...</p>
         </div>
       </div>
     );
