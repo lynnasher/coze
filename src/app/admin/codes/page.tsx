@@ -235,6 +235,8 @@ export default function ActivationCodesPage() {
 
   // 删除激活码
   const handleDelete = async (codeId: string) => {
+    if (!codeId) return;
+    
     try {
       const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/activation-codes', {
@@ -245,13 +247,19 @@ export default function ActivationCodesPage() {
         },
         body: JSON.stringify({ ids: [codeId] }),
       });
-      if (response.ok) {
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setDeleteConfirm(null);
         loadCodes();
+      } else {
+        alert(data.error || '删除失败');
       }
     } catch (error) {
       console.error('删除激活码失败:', error);
+      alert('删除失败，请重试');
     }
-    setDeleteConfirm(null);
   };
 
   // 复制激活码
@@ -671,7 +679,14 @@ export default function ActivationCodesPage() {
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
               取消
             </Button>
-            <Button variant="destructive" onClick={() => handleDelete(deleteConfirm!)}>
+            <Button 
+              variant="destructive" 
+              onClick={() => {
+                const codeId = deleteConfirm;
+                setDeleteConfirm(null);
+                if (codeId) handleDelete(codeId);
+              }}
+            >
               删除
             </Button>
           </DialogFooter>
