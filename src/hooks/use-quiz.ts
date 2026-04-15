@@ -468,12 +468,19 @@ export function useQuiz() {
     const totalCount = records.length;
     const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
     
+    // 已掌握题数：做对过的题目去重数量
+    const correctQuestionIds = new Set(
+      records.filter(r => r.isCorrect).map(r => r.questionId)
+    );
+    const masteredCount = correctQuestionIds.size;
+    
     return {
       correctCount,
       totalCount,
       accuracy,
       wrongCount: totalCount - correctCount,
       wrongQuestionIds: getWrongQuestionIds(),
+      masteredCount,
     };
   }, []);
 
