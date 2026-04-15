@@ -182,10 +182,20 @@ export const activationCodeService = {
     return !!data;
   },
 
-  // 获取用户已激活的分类ID列表
+  // 获取用户已激活的分类ID列表（过滤过期的激活记录）
   async getUserActivatedCategoryIds(userId: string): Promise<string[]> {
     const activations = await this.getUserActivations(userId);
-    return [...new Set(activations.map(a => a.category_id))];
+    const now = new Date();
+    
+    // 过滤出未过期的激活记录
+    const validActivations = activations.filter(a => {
+      // 如果没有过期时间，说明是永久激活
+      if (!a.expires_at) return true;
+      // 如果过期时间在当前时间之后，说明还未过期
+      return new Date(a.expires_at) > now;
+    });
+    
+    return [...new Set(validActivations.map(a => a.category_id))];
   },
 
   // 禁用激活码

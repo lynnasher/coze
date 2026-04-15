@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check } from 'lucide-react';
+import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Clock, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/components/AuthModal';
+import { format } from 'date-fns';
 
 interface StoredUser {
   id: string;
@@ -25,11 +26,35 @@ interface Category {
   parentId?: string;
 }
 
+interface UserActivation {
+  id: string;
+  user_id: string;
+  category_id: string;
+  category_name: string;
+  activation_code: string | null;
+  activated_at: string;
+  expires_at: string | null;
+}
+
+interface ActivationCode {
+  id: string;
+  code: string;
+  category_id: string;
+  category_name: string;
+  type: string;
+  max_uses: number;
+  uses: number;
+  expires_at: string | null;
+  status: string;
+  created_at: string;
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState<StoredUser | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [banks, setBanks] = useState<{ id: string; name: string; questionIds: string[]; categoryId?: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userActivations, setUserActivations] = useState<UserActivation[]>([]);
   
   // 激活码相关状态
   const [activationCode, setActivationCode] = useState('');
@@ -69,6 +94,23 @@ export default function ProfilePage() {
       setCategories(JSON.parse(storedCategories));
     }
     
+    // 从 API 获取用户已激活的分类记录
+    const token = localStorage.getItem('quiz_user_token');
+    if (token) {
+      try {
+        const activationsRes = await fetch('/api/auth/user/activations', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (activationsRes.ok) {
+          const activationsData = await activationsRes.json();
+          // 设置用户激活记录
+          setUserActivations(activationsData.activations || []);
+        }
+      } catch (error) {
+        console.error('加载激活记录失败:', error);
+      }
+    }
+    
     setLoading(false);
   };
 
@@ -101,6 +143,9 @@ export default function ProfilePage() {
         const updatedUser = { ...user, activated_categories: updatedCategories };
         setUser(updatedUser);
         localStorage.setItem('quiz_user_data', JSON.stringify(updatedUser));
+        
+        // 刷新激活记录
+        loadData();
       } else {
         setActivationError(data.error || '激活失败');
       }
@@ -143,6 +188,43 @@ export default function ProfilePage() {
   const getCategoryQuestionCount = (categoryId: string) => {
     const categoryBanks = banks.filter(b => b.categoryId === categoryId);
     return categoryBanks.reduce((sum, bank) => sum + bank.questionIds.length, 0);
+  };
+
+  // 获取分类的完整路径（包含父分类名称）
+  const getCategoryFullPath = (categoryId: string): string => {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return categoryId;
+    
+    if (category.parentId) {
+      const parent = categories.find(c => c.id === category.parentId);
+      if (parent) {
+        return `${parent.name} > ${category.name}`;
+      }
+    }
+    return category.name;
+  };
+
+  // 格式化过期时间
+  const formatExpireTime = (expiresAt: string | null): string => {
+    if (!expiresAt) return '永久有效';
+    const expireDate = new Date(expiresAt);
+    const now = new Date();
+    if (expireDate < now) return '已过期';
+    
+    const diff = expireDate.getTime() - now.getTime();
+    const days = Math.ceil(diff / (24 * 60 * 60 * 1000));
+    if (days <= 7) return `${days}天后过期`;
+    return expireDate.toLocaleDateString();
+  };
+
+  // 获取分类对应的激活码信息
+  const getActivationForCategory = (categoryId: string): UserActivation | undefined => {
+    return userActivations.find(a => a.category_id === categoryId);
+  };
+
+  // 复制激活码
+  const copyToClipboard = (code: string) => {
+    navigator.clipboard.writeText(code);
   };
 
   const activatedCategories = user?.activated_categories || [];
@@ -199,7 +281,7 @@ export default function ProfilePage() {
                 )}
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">{activatedCategories.length}</div>
+                <div className="text-2xl font-bold text-blue-600">{userActivations.length}</div>
                 <p className="text-xs text-gray-500">已激活分类</p>
               </div>
             </div>
@@ -241,7 +323,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* 分类激活管理 */}
+        {/* 分类激活管理 - 显示已激活的分类和对应的激活码 */}
         <Card className="mb-6">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
@@ -251,58 +333,82 @@ export default function ProfilePage() {
                   我的分类
                 </CardTitle>
                 <CardDescription>
-                  已激活的分类可以在练习页面中选择和练习
+                  已激活的分类及其激活码信息
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {topLevelCategories.length === 0 ? (
+            {userActivations.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>暂无分类</p>
+                <p>暂无已激活的分类</p>
                 <p className="text-xs mt-1">请使用激活码激活分类</p>
               </div>
             ) : (
-              topLevelCategories.map((category) => {
-                const isActivated = activatedCategories.includes(category.id);
-                const questionCount = getCategoryQuestionCount(category.id);
+              userActivations.map((activation) => {
+                const questionCount = getCategoryQuestionCount(activation.category_id);
+                const category = categories.find(c => c.id === activation.category_id);
                 
                 return (
-                  <div key={category.id}>
-                    <div className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                      isActivated ? 'bg-blue-50' : 'bg-gray-50 hover:bg-gray-100'
-                    }`}>
+                  <div key={activation.id} className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                    <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          isActivated ? 'bg-blue-100' : 'bg-gray-200'
-                        }`}>
-                          <BookOpen className={`w-5 h-5 ${isActivated ? 'text-blue-600' : 'text-gray-400'}`} />
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <BookOpen className="w-5 h-5 text-blue-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">{category.name}</div>
+                          <div className="font-medium text-gray-900">{activation.category_name}</div>
                           <div className="text-xs text-gray-400">
                             {questionCount} 道题目
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {isActivated ? (
-                          <Badge variant="default" className="bg-blue-500">已激活</Badge>
-                        ) : (
-                          <Badge variant="outline">未激活</Badge>
-                        )}
-                        {user?.role === 'admin' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleCategory(category.id, isActivated)}
-                          >
-                            {isActivated ? '取消' : '激活'}
-                          </Button>
-                        )}
-                      </div>
+                      <Badge variant="default" className="bg-blue-500 flex-shrink-0">已激活</Badge>
                     </div>
+                    
+                    {/* 激活码信息 */}
+                    {activation.activation_code && (
+                      <div className="mt-3 pt-3 border-t border-blue-100">
+                        <div className="flex items-center justify-between bg-white rounded-lg p-2">
+                          <div className="flex items-center gap-2">
+                            <Key className="w-4 h-4 text-gray-400" />
+                            <span className="font-mono text-sm font-medium text-gray-700">
+                              {activation.activation_code}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(activation.activation_code!)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <Clock className="w-3 h-3" />
+                            <span>{formatExpireTime(activation.expires_at)}</span>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1 px-1">
+                          激活时间：{new Date(activation.activated_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 管理员可取消激活 */}
+                    {user?.role === 'admin' && (
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleCategory(activation.category_id, true)}
+                          className="text-red-500 border-red-200 hover:bg-red-50"
+                        >
+                          取消激活
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })

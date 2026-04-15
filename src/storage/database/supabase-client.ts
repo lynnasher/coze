@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { execSync } from 'child_process';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 import dotenv from 'dotenv';
 
 let envLoaded = false;
