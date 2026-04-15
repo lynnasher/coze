@@ -279,7 +279,6 @@ export default function ActivationCodesPage() {
     );
   });
 
-  const leafCategories = getLeafCategories();
   const validCodes = codes.filter(isCodeValid).length;
   const expiredCodes = codes.filter(c => c.expires_at && new Date(c.expires_at) < new Date()).length;
   const usedCodes = codes.filter(c => c.status === 'used').length;

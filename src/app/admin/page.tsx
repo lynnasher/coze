@@ -970,21 +970,25 @@ export default function AdminPage() {
                   />
                 </div>
                 <Select value={filterCategory} onValueChange={setFilterCategory}>
-                  <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="筛选分类" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">全部分类</SelectItem>
                     <SelectItem value="uncategorized">未分类</SelectItem>
-                    {/* 顶级分类 */}
+                    {/* 一级分类 */}
                     {categories.filter(c => !c.parentId).map((cat) => (
-                      <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                    {/* 子分类 */}
-                    {categories.filter(c => c.parentId).map((child) => (
-                      <SelectItem key={`child-${child.id}`} value={child.id}>
-                        &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
-                      </SelectItem>
+                      <>
+                        <SelectItem key={`parent-${cat.id}`} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                        {/* 子分类 - 缩进显示 */}
+                        {categories.filter(c => c.parentId === cat.id).map((child) => (
+                          <SelectItem key={`child-${child.id}`} value={child.id}>
+                            &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
+                          </SelectItem>
+                        ))}
+                      </>
                     ))}
                   </SelectContent>
                 </Select>
