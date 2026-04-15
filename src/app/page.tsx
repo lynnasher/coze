@@ -568,32 +568,6 @@ export default function QuizApp() {
 
           {/* 练习页面 */}
           <TabsContent value="practice">
-            {hasStarted ? (
-              <PracticeView 
-                onExit={() => {
-                  // 交卷时记录所有答案
-                  finishQuiz();
-                  // 重置练习状态
-                  resetQuiz();
-                  // 返回首页
-                  setHasStarted(false);
-                  setPracticeBankId(null);
-                }} 
-                quizState={quizState}
-                currentQuestion={currentQuestion}
-                currentAnswer={currentAnswer}
-                isAnswerCorrect={isAnswerCorrect}
-                isLoading={isLoading}
-                selectAnswer={selectAnswer}
-                nextQuestion={nextQuestion}
-                prevQuestion={prevQuestion}
-                submitAnswer={submitAnswer}
-                finishQuiz={finishQuiz}
-                goToQuestion={goToQuestion}
-                restartQuiz={restartQuiz}
-                resetQuiz={resetQuiz}
-              />
-            ) : (
               /* 首页布局 - 宣传图 + 简洁内容 */
               <div className="space-y-4">
                 {/* 宣传图区域 */}
@@ -825,7 +799,6 @@ export default function QuizApp() {
                   </div>
                 )}
               </div>
-            )}
           </TabsContent>
 
           {/* 题库浏览页面 */}
