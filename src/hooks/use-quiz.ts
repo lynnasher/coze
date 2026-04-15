@@ -18,41 +18,84 @@ export function useQuiz() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
 
+  // 从数据库加载题目
+  const loadQuestionsFromDb = useCallback(async (bankId?: string) => {
+    try {
+      const url = bankId ? `/api/questions?bankId=${bankId}` : '/api/questions';
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        return data.questions as Question[];
+      }
+    } catch (error) {
+      console.error('从数据库加载题目失败:', error);
+    }
+    return null;
+  }, []);
+
   // 初始化加载题目
   useEffect(() => {
-    const questions = questionStore.getAll();
-    if (questions.length === 0) {
-      // 导入示例数据
-      import('@/lib/quiz-store').then(({ initSampleQuestions }) => {
-        initSampleQuestions();
-        setQuizState(prev => ({
-          ...prev,
-          questions: questionStore.getAll(),
-          isComplete: false,
-        }));
-      });
-    } else {
+    const loadQuestions = async () => {
+      // 先尝试从数据库加载
+      const dbQuestions = await loadQuestionsFromDb();
+      
+      let questions = questionStore.getAll();
+      
+      // 如果数据库有题目，合并到 localStorage
+      if (dbQuestions && dbQuestions.length > 0) {
+        // 合并数据库题目和本地题目，去重
+        const existingIds = new Set(questions.map(q => q.id));
+        const newQuestions = dbQuestions.filter(q => !existingIds.has(q.id));
+        if (newQuestions.length > 0) {
+          questions = [...questions, ...newQuestions];
+          questionStore.save(questions);
+        }
+      }
+      
+      if (questions.length === 0) {
+        // 导入示例数据
+        try {
+          const { initSampleQuestions } = await import('@/lib/quiz-store');
+          initSampleQuestions();
+          questions = questionStore.getAll();
+        } catch {
+          // 忽略
+        }
+      }
+
       setQuizState(prev => ({
         ...prev,
         questions,
       }));
-    }
-    setIsLoading(false);
-  }, []);
+      setIsLoading(false);
+    };
+    
+    loadQuestions();
+  }, [loadQuestionsFromDb]);
 
   // 开始练习
-  const startQuiz = useCallback((mode: PracticeMode = 'sequential', bankId?: string | null) => {
-    let questions = questionStore.getAll();
+  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
+    let questions: Question[] = [];
     
-    // 优先使用题库的 questionIds 获取题目（更可靠）
     if (bankId) {
-      const bank = bankStore.getById(bankId);
-      if (bank && bank.questionIds.length > 0) {
-        questions = questions.filter(q => bank.questionIds.includes(q.id));
-      } else {
-        // 降级：按 bankId 属性筛选
-        questions = questions.filter(q => q.bankId === bankId);
+      // 从数据库加载该题库的题目
+      const dbQuestions = await loadQuestionsFromDb(bankId);
+      if (dbQuestions && dbQuestions.length > 0) {
+        questions = dbQuestions;
       }
+      
+      // 如果数据库没有，再从 localStorage 获取
+      if (questions.length === 0) {
+        const localQuestions = questionStore.getAll();
+        const bank = bankStore.getById(bankId);
+        if (bank && bank.questionIds.length > 0) {
+          questions = localQuestions.filter(q => bank.questionIds.includes(q.id));
+        } else {
+          questions = localQuestions.filter(q => q.bankId === bankId);
+        }
+      }
+    } else {
+      questions = questionStore.getAll();
     }
     
     if (mode === 'random') {
@@ -80,7 +123,7 @@ export function useQuiz() {
       timeSpent: 0,
       isComplete: false,
     });
-  }, []);
+  }, [loadQuestionsFromDb]);
 
   // 选择答案（自动提交）
   const selectAnswer = useCallback((questionId: string, answer: string | string[]) => {

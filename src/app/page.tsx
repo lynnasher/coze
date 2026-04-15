@@ -97,7 +97,30 @@ export default function QuizApp() {
     activatedCategories?: string[];
   } | null>(null);
   
+  const [dbBanks, setDbBanks] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    question_count?: number;
+    category_id?: string;
+  }>>([]);
+  
   const banks = useMemo(() => bankStore.getAll(), [questions]);
+  const allBanks = useMemo(() => {
+    // 合并 localStorage 题库和数据库题库
+    const dbBanksFormatted = dbBanks.map(b => ({
+      id: b.id,
+      name: b.name,
+      description: b.description || '',
+      questionIds: [],
+      questionCount: b.question_count || 0,
+      categoryId: b.category_id
+    }));
+    
+    // 去重：以数据库为主
+    const localFiltered = banks.filter(lb => !dbBanks.some(db => db.id === lb.id));
+    return [...dbBanksFormatted, ...localFiltered];
+  }, [banks, dbBanks]);
   
   // 加载分类
   const loadCategories = useCallback(() => {
@@ -107,10 +130,24 @@ export default function QuizApp() {
     }
   }, []);
   
+  // 从数据库加载题库
+  const loadBanksFromDb = useCallback(async () => {
+    try {
+      const response = await fetch('/api/banks');
+      if (response.ok) {
+        const data = await response.json();
+        setDbBanks(data.banks || []);
+      }
+    } catch (error) {
+      console.error('从数据库加载题库失败:', error);
+    }
+  }, []);
+  
   const loadQuestions = useCallback(() => {
     setQuestions(questionStore.getAll());
     loadCategories();
-  }, [loadCategories]);
+    loadBanksFromDb();
+  }, [loadCategories, loadBanksFromDb]);
 
   // 刷新用户激活的分类（检查过期时间）
   const refreshActivatedCategories = async (userId: string) => {
