@@ -451,11 +451,26 @@ export default function WrongBookPage() {
                         optionStyle = 'bg-emerald-50 border-emerald-400';
                       }
                       
+                      // 多选题处理逻辑
+                      const handleOptionClick = () => {
+                        if (showExplanation) return;
+                        if (isMulti) {
+                          const current = Array.isArray(localAnswer) ? localAnswer : [];
+                          if (current.includes(option.id)) {
+                            setLocalAnswer(current.filter(id => id !== option.id));
+                          } else {
+                            setLocalAnswer([...current, option.id]);
+                          }
+                        } else {
+                          setLocalAnswer(option.id);
+                        }
+                      };
+                      
                       return (
                         <div
                           key={option.id}
                           className={`flex items-center p-3.5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${optionStyle}`}
-                          onClick={() => !showExplanation && handleSelectAnswer(option.id, currentReviewQuestion)}
+                          onClick={handleOptionClick}
                         >
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 font-bold text-xs transition-colors ${
                             isSelected && showExplanation

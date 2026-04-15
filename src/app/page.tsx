@@ -1345,8 +1345,9 @@ function PracticeView({
               {/* 选项列表 */}
               <div className="space-y-2.5">
                 {displayQuestion?.options?.map((option, index) => {
-                  const isSelected = Array.isArray(currentAnswer) 
-                    ? currentAnswer.includes(option.id)
+                  const isMulti = displayQuestion.type === 'multiple';
+                  const isSelected = isMulti
+                    ? Array.isArray(currentAnswer) && currentAnswer.includes(option.id)
                     : currentAnswer === option.id;
                   const isCorrectAnswer = Array.isArray(displayQuestion.answer)
                     ? displayQuestion.answer.includes(option.id)
@@ -1367,11 +1368,28 @@ function PracticeView({
                     optionStyle = 'bg-emerald-50 border-emerald-400';
                   }
                   
+                  // 多选题处理逻辑
+                  const handleOptionClick = () => {
+                    if (showExplanation || !displayQuestion) return;
+                    if (isMulti) {
+                      // 多选题：切换选项选中状态
+                      const current = Array.isArray(currentAnswer) ? currentAnswer : [];
+                      if (current.includes(option.id)) {
+                        selectAnswer(displayQuestion.id, current.filter(id => id !== option.id));
+                      } else {
+                        selectAnswer(displayQuestion.id, [...current, option.id]);
+                      }
+                    } else {
+                      // 单选题/判断题：直接选择
+                      selectAnswer(displayQuestion.id, option.id);
+                    }
+                  };
+                  
                   return (
                     <div
                       key={option.id}
                       className={`flex items-center p-3.5 rounded-xl border-2 transition-all duration-200 cursor-pointer ${optionStyle}`}
-                      onClick={() => !showExplanation && displayQuestion && selectAnswer(displayQuestion.id, option.id)}
+                      onClick={handleOptionClick}
                     >
                       <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 font-bold text-xs transition-colors ${
                         isSelected && showExplanation
