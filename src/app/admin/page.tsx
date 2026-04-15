@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,9 +36,7 @@ import {
   BookOpen,
   FileText,
   Trash2,
-  Upload,
   LogOut,
-  Plus,
   MoreHorizontal,
   RefreshCw,
   AlertCircle,
@@ -48,6 +46,11 @@ import {
   Search,
   Download,
   FileJson,
+  Edit3,
+  Check,
+  X,
+  ChevronRight,
+  List,
 } from 'lucide-react';
 
 interface QuestionBank {
@@ -349,7 +352,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [stats, setStats] = useState<AdminStats>({
     totalBanks: 0,
@@ -361,7 +364,11 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [bankToDelete, setBankToDelete] = useState<QuestionBank | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
+  
+  // 题库名称编辑状态
+  const [editingBankId, setEditingBankId] = useState<string | null>(null);
+  const [editingBankName, setEditingBankName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // 验证登录状态
   useEffect(() => {
@@ -426,43 +433,7 @@ export default function AdminPage() {
     router.push('/admin/login');
   };
 
-  // 处理文件上传（Word/PDF）
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/admin/import', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || '导入失败');
-      }
-
-      setSuccess(`成功导入 ${data.count} 道题目`);
-      loadBanks();
-      
-      // 清空 input
-      e.target.value = '';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '导入失败');
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // 导入 JSON 文件（直接在前端处理）
+  // 导入 JSON 文件
   const handleJsonImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -475,7 +446,6 @@ export default function AdminPage() {
       const text = await file.text();
       const data = JSON.parse(text);
 
-      // 直接在前端导入（复用前台逻辑）
       const result = localImportJson(data, file.name);
 
       setSuccess(`成功导入 ${result.count} 道题目到"${result.bankName}"题库`);
@@ -493,24 +463,60 @@ export default function AdminPage() {
     }
   };
 
+  // 开始编辑题库名称
+  const startEditBankName = (bank: QuestionBank) => {
+    setEditingBankId(bank.id);
+    setEditingBankName(bank.name);
+    setTimeout(() => inputRef.current?.select(), 0);
+  };
+
+  // 保存题库名称
+  const saveBankName = () => {
+    if (!editingBankId || !editingBankName.trim()) {
+      setEditingBankId(null);
+      return;
+    }
+
+    try {
+      const storedBanks = localStorage.getItem('questionBanks');
+      if (!storedBanks) return;
+      
+      const banksList: QuestionBank[] = JSON.parse(storedBanks);
+      const updatedBanks = banksList.map(b => 
+        b.id === editingBankId 
+          ? { ...b, name: editingBankName.trim(), updatedAt: Date.now() }
+          : b
+      );
+      
+      localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
+      setBanks(updatedBanks);
+      setSuccess('题库名称已更新');
+    } catch (err) {
+      setError('更新失败');
+    } finally {
+      setEditingBankId(null);
+    }
+  };
+
+  // 取消编辑
+  const cancelEditBankName = () => {
+    setEditingBankId(null);
+    setEditingBankName('');
+  };
+
   // 删除题库
   const handleDeleteBank = () => {
     if (!bankToDelete) return;
 
     try {
-      // 获取现有数据
       const questions = JSON.parse(localStorage.getItem('questions') || '[]');
-      const banks = JSON.parse(localStorage.getItem('questionBanks') || '[]');
+      const banksList = JSON.parse(localStorage.getItem('questionBanks') || '[]');
       
-      // 从题库列表中移除
-      const updatedBanks = banks.filter((b: { id: string }) => b.id !== bankToDelete.id);
-      
-      // 从题目列表中移除该题库的所有题目
+      const updatedBanks = banksList.filter((b: { id: string }) => b.id !== bankToDelete.id);
       const updatedQuestions = questions.filter(
         (q: { bankId?: string }) => q.bankId !== bankToDelete.id
       );
 
-      // 保存更新后的数据
       localStorage.setItem('questions', JSON.stringify(updatedQuestions));
       localStorage.setItem('questionBanks', JSON.stringify(updatedBanks));
 
@@ -547,6 +553,11 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
+  // 进入题库编辑页面
+  const goToBankEdit = (bank: QuestionBank) => {
+    router.push(`/admin/bank/${bank.id}`);
+  };
+
   // 格式化时间
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('zh-CN', {
@@ -563,6 +574,15 @@ export default function AdminPage() {
     bank.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     bank.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // 题型显示映射
+  const typeLabels: Record<string, string> = {
+    single: '单选题',
+    multiple: '多选题',
+    'true-false': '判断题',
+    'fill-blank': '填空题',
+    comprehensive: '综合题'
+  };
 
   if (!isAuthenticated) {
     return null;
@@ -646,60 +666,36 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* 导入区域 */}
+        {/* 导入区域 - 仅保留 JSON 导入 */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
+              <FileJson className="h-5 w-5" />
               导入题库
             </CardTitle>
             <CardDescription>
-              支持 Word (.docx)、PDF (.pdf) 和 JSON (.json) 格式的题库文件
+              仅支持 JSON 格式的题库文件
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Word/PDF 导入 */}
-              <div className="flex-1">
-                <Label htmlFor="file-upload" className="cursor-pointer">
-                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors">
-                    <Upload className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                    <p className="font-medium">上传 Word/PDF 文件</p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {isUploading ? '正在解析...' : '支持 .docx, .pdf 格式'}
-                    </p>
-                  </div>
-                </Label>
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept=".docx,.pdf"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                />
-              </div>
-
-              {/* JSON 导入 */}
-              <div className="flex-1">
-                <Label htmlFor="json-upload" className="cursor-pointer">
-                  <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-green-500 hover:bg-green-50 transition-colors">
-                    <FileJson className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                    <p className="font-medium">导入 JSON 题目</p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {isImporting ? '正在导入...' : '支持 .json 格式题目数据'}
-                    </p>
-                  </div>
-                </Label>
-                <input
-                  id="json-upload"
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={handleJsonImport}
-                  disabled={isImporting}
-                />
-              </div>
+            <div>
+              <Label htmlFor="json-upload" className="cursor-pointer">
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-green-500 hover:bg-green-50 transition-colors">
+                  <FileJson className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                  <p className="font-medium">导入 JSON 题目</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    {isImporting ? '正在导入...' : '点击选择 JSON 文件'}
+                  </p>
+                </div>
+              </Label>
+              <input
+                id="json-upload"
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleJsonImport}
+                disabled={isImporting}
+              />
             </div>
 
             <div className="mt-4 p-3 bg-slate-100 rounded-lg">
@@ -707,23 +703,13 @@ export default function AdminPage() {
               <pre className="text-xs text-slate-600 overflow-x-auto">
 {`{
   "bankName": "题库名称",
-  "subjectName": "科目名称",
   "questions": [
     {
-      "type": "single", // single|multiple|true-false|fill-blank|comprehensive
+      "type": "single",
       "content": "题目内容",
       "options": [{"id": "a", "text": "选项A"}, ...],
       "answer": "a",
-      "explanation": "解析内容",
-      "tags": ["标签1"],
-      "difficulty": "medium"
-    },
-    // 也支持导出格式
-    {
-      "stem": "题目内容",
-      "optiona": "A选项",
-      "optionb": "B选项",
-      "answer": "a"
+      "explanation": "解析内容"
     }
   ]
 }`}
@@ -759,14 +745,13 @@ export default function AdminPage() {
               <div className="text-center py-12 text-slate-500">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>暂无题库</p>
-                <p className="text-sm mt-1">请上传文件导入题库</p>
+                <p className="text-sm mt-1">请上传 JSON 文件导入题库</p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>题库名称</TableHead>
-                    <TableHead>描述</TableHead>
                     <TableHead>题目数量</TableHead>
                     <TableHead>创建时间</TableHead>
                     <TableHead className="text-right">操作</TableHead>
@@ -774,27 +759,67 @@ export default function AdminPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredBanks.map((bank) => (
-                    <TableRow key={bank.id}>
-                      <TableCell className="font-medium">{bank.name}</TableCell>
-                      <TableCell className="text-slate-500">
-                        {bank.description || '-'}
+                    <TableRow key={bank.id} className="cursor-pointer hover:bg-slate-50">
+                      <TableCell onClick={() => goToBankEdit(bank)}>
+                        {editingBankId === bank.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              ref={inputRef}
+                              value={editingBankName}
+                              onChange={(e) => setEditingBankName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveBankName();
+                                if (e.key === 'Escape') cancelEditBankName();
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-8 max-w-[200px]"
+                              autoFocus
+                            />
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); saveBankName(); }}>
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); cancelEditBankName(); }}>
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{bank.name}</span>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={(e) => { e.stopPropagation(); startEditBankName(bank); }}
+                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Edit3 className="h-3 w-3 text-slate-400" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={() => goToBankEdit(bank)}>
                         <Badge variant="secondary">
                           {bank.questionIds.length} 题
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-500">
+                      <TableCell className="text-slate-500" onClick={() => goToBankEdit(bank)}>
                         {formatDate(bank.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => startEditBankName(bank)}>
+                              <Edit3 className="h-4 w-4 mr-2" />
+                              修改名称
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => goToBankEdit(bank)}>
+                              <List className="h-4 w-4 mr-2" />
+                              编辑题目
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleExportBank(bank)}>
                               <Download className="h-4 w-4 mr-2" />
                               导出 JSON
