@@ -35,9 +35,10 @@ import {
   Folder,
   FolderOpen,
   Home,
-  User
+  User,
+  History
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -87,6 +88,9 @@ export default function QuizApp() {
   // 练习模式状态
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  
+  // 最近练习记录状态
+  const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   
   // 统计页面日期筛选状态
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('all');
@@ -156,6 +160,8 @@ export default function QuizApp() {
     setQuestions(questionStore.getAll());
     await loadCategories();
     loadBanksFromDb();
+    // 加载最近练习记录
+    setRecentPractices(recentPracticeStore.getRecent(3));
   }, [loadCategories, loadBanksFromDb]);
 
   // 刷新用户激活的分类（检查过期时间）
@@ -634,149 +640,184 @@ export default function QuizApp() {
                   </div>
                 </div>
 
-                {/* 快捷练习入口 */}
-                {currentUser && getActivatedCategoryIds().length > 0 && (
+                {/* 最近练习 */}
+                {recentPractices.length > 0 && (
                   <div className="bg-white rounded-2xl p-4 shadow-sm">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                       <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <Play className="w-3.5 h-3.5 text-orange-500" />
+                        <History className="w-3.5 h-3.5 text-orange-500" />
                       </div>
-                      快捷练习
+                      最近练习
                     </h3>
                     
-                    {/* 选择分类 */}
-                    {!selectedCategoryId ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        {getAvailableCategories().slice(0, 4).map((category) => {
-                          const categoryBanks = banks.filter(b => b.categoryId === category.id);
-                          const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
-                          
-                          return (
-                            <div 
-                              key={category.id}
-                              className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
-                              onClick={() => {
-                                setSelectedCategoryId(category.id);
-                                setPracticeBankId(null);
-                              }}
-                            >
-                              <h4 className="text-sm font-semibold text-gray-800 leading-tight mb-1 truncate">{category.name}</h4>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                                <span>{categoryQuestions.length} 题</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                    <div className="space-y-2">
+                      {recentPractices.map((practice) => {
+                        const progress = practice.totalCount > 0 
+                          ? Math.round((practice.answeredCount / practice.totalCount) * 100) 
+                          : 0;
+                        const accuracy = practice.answeredCount > 0 
+                          ? Math.round((practice.correctCount / practice.answeredCount) * 100) 
+                          : 0;
+                        
+                        return (
+                          <div 
+                            key={practice.id}
+                            className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 hover:border-blue-200 hover:bg-blue-50/50"
                             onClick={() => {
-                              setSelectedCategoryId(null);
-                              setPracticeBankId(null);
+                              startQuiz(practice.mode, practice.bankId);
                             }}
-                            className="text-xs"
                           >
-                            <ArrowLeft className="w-3 h-3 mr-1" />
-                            返回
-                          </Button>
-                          <span className="text-sm text-gray-500">
-                            {categories.find(c => c.id === selectedCategoryId)?.name}
-                          </span>
-                        </div>
-                        
-                        {/* 子分类 */}
-                        {categories.filter(c => c.parentId === selectedCategoryId).length > 0 && (
-                          <div className="space-y-1">
-                            {categories.filter(c => c.parentId === selectedCategoryId).slice(0, 3).map((subCategory) => {
-                              const subCategoryBanks = banks.filter(b => b.categoryId === subCategory.id);
-                              const subCategoryQuestions = questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId));
-                              const isSelected = practiceBankId === `cat_${subCategory.id}`;
-                              
-                              return (
-                                <div
-                                  key={subCategory.id}
-                                  className={`cursor-pointer transition-all rounded-lg p-2 border ${
-                                    isSelected ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-gray-50'
-                                  }`}
-                                  onClick={() => setPracticeBankId(`cat_${subCategory.id}`)}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700 truncate">{subCategory.name}</span>
-                                    <span className="text-xs text-gray-400 ml-2">{subCategoryQuestions.length}题</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium text-white ${
+                                  practice.mode === 'sequential' ? 'bg-indigo-500' :
+                                  practice.mode === 'random' ? 'bg-purple-500' : 'bg-orange-500'
+                                }`}>
+                                  {practice.mode === 'sequential' ? '顺序' : practice.mode === 'random' ? '随机' : '错题'}
+                                </span>
+                                <h4 className="text-sm font-semibold text-gray-800 truncate max-w-[120px]">
+                                  {practice.bankName}
+                                </h4>
+                              </div>
+                              {practice.isCompleted ? (
+                                <span className="text-xs text-emerald-500 font-medium">已完成</span>
+                              ) : (
+                                <span className="text-xs text-blue-500 font-medium">继续</span>
+                              )}
+                            </div>
+                            
+                            {/* 进度条 */}
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-400 min-w-[3rem]">
+                                {practice.answeredCount}/{practice.totalCount}
+                              </span>
+                            </div>
+                            
+                            {/* 统计信息 */}
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                              <span>正确率 {accuracy}%</span>
+                            </div>
                           </div>
-                        )}
-                        
-                        {/* 直接关联题库 */}
-                        {banks.filter(b => b.categoryId === selectedCategoryId).length > 0 && (
-                          <div className="space-y-1">
-                            {banks.filter(b => b.categoryId === selectedCategoryId).map((bank) => {
-                              const bankQuestions = questions.filter(q => q.bankId === bank.id);
-                              const isSelected = practiceBankId === bank.id;
-                              return (
-                                <div
-                                  key={bank.id}
-                                  className={`cursor-pointer transition-all rounded-lg p-2 border ${
-                                    isSelected ? 'border-blue-400 bg-blue-50' : 'border-gray-100 bg-gray-50'
-                                  }`}
-                                  onClick={() => setPracticeBankId(bank.id)}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700 truncate">{bank.name}</span>
-                                    <span className="text-xs text-gray-400 ml-2">{bankQuestions.length}题</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 练习模式 */}
-                {practiceBankId && (
-                  <div className="bg-white rounded-2xl p-4 shadow-sm">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <div className="w-6 h-6 bg-violet-100 rounded-lg flex items-center justify-center">
-                        <Play className="w-3.5 h-3.5 text-violet-500" />
-                      </div>
-                      选择练习模式
-                    </h3>
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                      <div 
-                        className="cursor-pointer transition-all rounded-xl p-3 border-2 border-blue-100 bg-blue-50 hover:border-blue-300 text-center"
-                        onClick={() => startQuiz('sequential', practiceBankId)}
-                      >
-                        <Target className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-                        <p className="text-xs font-medium text-gray-700">顺序</p>
-                      </div>
-                      <div 
-                        className="cursor-pointer transition-all rounded-xl p-3 border-2 border-purple-100 bg-purple-50 hover:border-purple-300 text-center"
-                        onClick={() => startQuiz('random', practiceBankId)}
-                      >
-                        <RefreshCw className="w-5 h-5 mx-auto mb-1 text-purple-500" />
-                        <p className="text-xs font-medium text-gray-700">随机</p>
-                      </div>
-                      <div 
-                        className="cursor-pointer transition-all rounded-xl p-3 border-2 border-orange-100 bg-orange-50 hover:border-orange-300 text-center"
-                        onClick={() => startQuiz('wrong', practiceBankId)}
-                      >
-                        <Star className="w-5 h-5 mx-auto mb-1 text-orange-500" />
-                        <p className="text-xs font-medium text-gray-700">错题</p>
-                      </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
+
+                {/* 快捷入口：选择分类开始练习 */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-violet-100 rounded-lg flex items-center justify-center">
+                      <Play className="w-3.5 h-3.5 text-violet-500" />
+                    </div>
+                    开始练习
+                  </h3>
+                  
+                  {/* 选择分类 */}
+                  {!selectedCategoryId ? (
+                    <div className="space-y-3">
+                      {getAvailableCategories().length > 0 ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          {getAvailableCategories().slice(0, 4).map((category) => {
+                            const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                            const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
+                            
+                            return (
+                              <div 
+                                key={category.id}
+                                className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
+                                onClick={() => {
+                                  setSelectedCategoryId(category.id);
+                                  setPracticeBankId(null);
+                                }}
+                              >
+                                <h4 className="text-sm font-semibold text-gray-800 leading-tight mb-1 truncate">{category.name}</h4>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                                  <span>{categoryQuestions.length} 题</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-sm text-gray-400">
+                          <p>暂无可用题库</p>
+                          <p className="text-xs mt-1">请先激活分类或导入题库</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            setSelectedCategoryId(null);
+                            setPracticeBankId(null);
+                          }}
+                          className="text-xs"
+                        >
+                          <ArrowLeft className="w-3 h-3 mr-1" />
+                          返回
+                        </Button>
+                        <span className="text-sm text-gray-500">
+                          {categories.find(c => c.id === selectedCategoryId)?.name}
+                        </span>
+                      </div>
+                      
+                      {/* 子分类 */}
+                      {categories.filter(c => c.parentId === selectedCategoryId).length > 0 && (
+                        <div className="space-y-1">
+                          {categories.filter(c => c.parentId === selectedCategoryId).slice(0, 6).map((subCategory) => {
+                            const subCategoryBanks = banks.filter(b => b.categoryId === subCategory.id);
+                            const subCategoryQuestions = questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId));
+                            
+                            return (
+                              <div
+                                key={subCategory.id}
+                                className="cursor-pointer transition-all rounded-lg p-2.5 border border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
+                                onClick={() => startQuiz('sequential', `cat_${subCategory.id}`)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700 truncate">{subCategory.name}</span>
+                                  <span className="text-xs text-gray-400 ml-2">{subCategoryQuestions.length}题</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* 直接关联题库 */}
+                      {banks.filter(b => b.categoryId === selectedCategoryId).length > 0 && (
+                        <div className="space-y-1">
+                          {banks.filter(b => b.categoryId === selectedCategoryId).map((bank) => {
+                            const bankQuestions = questions.filter(q => q.bankId === bank.id);
+                            return (
+                              <div
+                                key={bank.id}
+                                className="cursor-pointer transition-all rounded-lg p-2.5 border border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
+                                onClick={() => startQuiz('sequential', bank.id)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700 truncate">{bank.name}</span>
+                                  <span className="text-xs text-gray-400 ml-2">{bankQuestions.length}题</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* 登录提示 */}
                 {!currentUser && (

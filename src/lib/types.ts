@@ -77,6 +77,10 @@ export interface QuizState {
   mode: PracticeMode;
   timeSpent: number;
   isComplete: boolean;
+  bankId?: string;     // 当前练习的题库ID
+  bankName?: string;   // 当前练习的题库名称
+  categoryId?: string; // 当前练习的分类ID
+  categoryName?: string; // 当前练习的分类名称
 }
 
 export interface Stats {

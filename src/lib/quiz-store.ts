@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   WRONG_STATS: 'quiz_wrong_stats', // 错题记忆状态
   WRONG_STREAK: 'quiz_wrong_streak', // 错题连续正确次数
   CATEGORIES: 'quiz_categories',
+  RECENT_PRACTICE: 'quiz_recent_practice', // 最近练习记录
 };
 
 // 题目管理
@@ -618,5 +619,96 @@ export const categoryStore = {
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.CATEGORIES);
+  },
+};
+
+// 最近练习记录类型
+export interface RecentPractice {
+  id: string;
+  bankId: string;           // 题库ID
+  bankName: string;         // 题库名称
+  categoryId?: string;      // 分类ID
+  categoryName?: string;     // 分类名称
+  mode: 'sequential' | 'random' | 'wrong';
+  totalCount: number;       // 总题数
+  currentIndex: number;     // 当前进度
+  answeredCount: number;    // 已答题数
+  correctCount: number;     // 正确数
+  wrongCount: number;       // 错误数
+  startedAt: number;        // 开始时间
+  lastPracticeAt: number;   // 最后练习时间
+  isCompleted: boolean;      // 是否已完成
+}
+
+// 最近练习记录管理
+export const recentPracticeStore = {
+  // 获取最近练习记录
+  getAll: (): RecentPractice[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.RECENT_PRACTICE);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // 保存所有记录
+  save: (practices: RecentPractice[]) => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.RECENT_PRACTICE, JSON.stringify(practices));
+    } catch (e) {
+      console.error('保存最近练习失败:', e);
+    }
+  },
+
+  // 添加或更新练习记录
+  update: (practice: Omit<RecentPractice, 'id'>): RecentPractice => {
+    const practices = recentPracticeStore.getAll();
+    const existingIndex = practices.findIndex(p => p.bankId === practice.bankId && p.mode === practice.mode);
+    
+    const newPractice: RecentPractice = {
+      ...practice,
+      id: existingIndex >= 0 ? practices[existingIndex].id : generateId(),
+    };
+
+    if (existingIndex >= 0) {
+      practices[existingIndex] = newPractice;
+    } else {
+      // 新增：放在最前面
+      practices.unshift(newPractice);
+      // 只保留最近10条
+      if (practices.length > 10) {
+        practices.pop();
+      }
+    }
+    
+    recentPracticeStore.save(practices);
+    return newPractice;
+  },
+
+  // 获取最近的练习记录（用于首页显示）
+  getRecent: (limit: number = 3): RecentPractice[] => {
+    return recentPracticeStore.getAll()
+      .sort((a, b) => b.lastPracticeAt - a.lastPracticeAt)
+      .slice(0, limit);
+  },
+
+  // 根据题库ID获取记录
+  getByBankId: (bankId: string): RecentPractice | undefined => {
+    return recentPracticeStore.getAll().find(p => p.bankId === bankId);
+  },
+
+  // 删除记录
+  remove: (id: string) => {
+    const practices = recentPracticeStore.getAll().filter(p => p.id !== id);
+    recentPracticeStore.save(practices);
+  },
+
+  // 清除所有记录
+  clear: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.RECENT_PRACTICE);
   },
 };

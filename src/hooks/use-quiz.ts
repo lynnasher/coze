@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -99,6 +99,47 @@ export function useQuiz() {
   // 开始练习
   const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
     let questions: Question[] = [];
+    let currentBankId = bankId;
+    let currentBankName = '全部题目';
+    let currentCategoryId: string | undefined;
+    let currentCategoryName: string | undefined;
+    
+    // 如果有题库ID，获取题库名称
+    if (bankId) {
+      // 检查是否是分类ID格式
+      if (bankId.startsWith('cat_')) {
+        currentCategoryId = bankId.replace('cat_', '');
+        // 尝试获取分类名称（通过 API 或本地存储）
+        try {
+          const storedCategories = localStorage.getItem('quiz_categories');
+          if (storedCategories) {
+            const cats = JSON.parse(storedCategories);
+            const cat = cats.find((c: { id: string }) => c.id === currentCategoryId);
+            if (cat) {
+              currentCategoryName = cat.name;
+            }
+          }
+        } catch {}
+        currentBankName = currentCategoryName || '分类练习';
+      } else {
+        // 尝试从数据库获取题库名称
+        try {
+          const response = await fetch(`/api/banks/${bankId}`);
+          if (response.ok) {
+            const data = await response.json();
+            currentBankName = data.bank?.name || '题库练习';
+          }
+        } catch {}
+        
+        // 如果 API 失败，尝试从本地存储获取
+        if (currentBankName === '题库练习') {
+          const bank = bankStore.getById(bankId);
+          if (bank) {
+            currentBankName = bank.name;
+          }
+        }
+      }
+    }
     
     if (bankId) {
       // 从数据库加载该题库的题目
@@ -136,6 +177,27 @@ export function useQuiz() {
       }
     }
 
+    // 保存最近练习记录
+    if (currentBankId && questions.length > 0) {
+      const existingRecord = recentPracticeStore.getByBankId(currentBankId);
+      recentPracticeStore.update({
+        id: existingRecord?.id || '',
+        bankId: currentBankId,
+        bankName: currentBankName,
+        categoryId: currentCategoryId,
+        categoryName: currentCategoryName,
+        mode,
+        totalCount: questions.length,
+        currentIndex: 0,
+        answeredCount: existingRecord?.answeredCount || 0,
+        correctCount: existingRecord?.correctCount || 0,
+        wrongCount: existingRecord?.wrongCount || 0,
+        startedAt: existingRecord?.startedAt || Date.now(),
+        lastPracticeAt: Date.now(),
+        isCompleted: false,
+      });
+    }
+
     setHasStarted(true); // 标记已开始练习
     setQuizState({
       questions,
@@ -145,6 +207,10 @@ export function useQuiz() {
       mode,
       timeSpent: 0,
       isComplete: false,
+      bankId: currentBankId,
+      bankName: currentBankName,
+      categoryId: currentCategoryId,
+      categoryName: currentCategoryName,
     });
   }, [loadQuestionsFromDb]);
 
@@ -167,7 +233,21 @@ export function useQuiz() {
   // 下一题
   const nextQuestion = useCallback(() => {
     setQuizState(prev => {
-      if (prev.currentIndex < prev.questions.length - 1) {
+      const isLastQuestion = prev.currentIndex >= prev.questions.length - 1;
+      
+      // 更新最近练习记录
+      if (prev.bankId && !isLastQuestion) {
+        const existingRecord = recentPracticeStore.getByBankId(prev.bankId);
+        if (existingRecord) {
+          recentPracticeStore.update({
+            ...existingRecord,
+            currentIndex: prev.currentIndex + 1,
+            lastPracticeAt: Date.now(),
+          });
+        }
+      }
+      
+      if (!isLastQuestion) {
         return {
           ...prev,
           currentIndex: prev.currentIndex + 1,
@@ -212,6 +292,36 @@ export function useQuiz() {
         };
         
         recordStore.add(record);
+        
+        // 更新最近练习记录
+        if (prev.bankId) {
+          const existingRecord = recentPracticeStore.getByBankId(prev.bankId);
+          if (existingRecord) {
+            // 计算当前已答数量和正确数量
+            let answeredCount = existingRecord.answeredCount;
+            let correctCount = existingRecord.correctCount;
+            
+            // 检查之前是否已经答过这道题
+            const alreadyAnswered = existingRecord.answeredCount > prev.currentIndex;
+            
+            if (!alreadyAnswered) {
+              answeredCount++;
+              if (isCorrect) {
+                correctCount++;
+              }
+            }
+            
+            recentPracticeStore.update({
+              ...existingRecord,
+              totalCount: prev.questions.length,
+              answeredCount,
+              correctCount,
+              wrongCount: answeredCount - correctCount,
+              lastPracticeAt: Date.now(),
+              isCompleted: prev.currentIndex === prev.questions.length - 1,
+            });
+          }
+        }
       }
       
       return {
@@ -291,9 +401,27 @@ export function useQuiz() {
       recordStore.add(record);
     }
     
-    // 将所有未作答题目标记为错误
-    quizState.questions.forEach((q, idx) => {
-      if (!quizState.answers[q.id]) {
+    // 计算所有题目的答题统计
+    let correctCount = 0;
+    let answeredCount = 0;
+    quizState.questions.forEach((q) => {
+      if (quizState.answers[q.id]) {
+        answeredCount++;
+        if (checkAnswer(q, quizState.answers[q.id])) {
+          correctCount++;
+        } else {
+          // 记录错误答案
+          const record: PracticeRecord = {
+            id: generateId(),
+            questionId: q.id,
+            isCorrect: false,
+            selectedAnswer: quizState.answers[q.id] || '',
+            timestamp: Date.now(),
+          };
+          recordStore.add(record);
+        }
+      } else {
+        // 未作答的题目记录为错误
         const record: PracticeRecord = {
           id: generateId(),
           questionId: q.id,
@@ -304,6 +432,22 @@ export function useQuiz() {
         recordStore.add(record);
       }
     });
+    
+    // 更新最近练习记录
+    if (quizState.bankId) {
+      const existingRecord = recentPracticeStore.getByBankId(quizState.bankId);
+      if (existingRecord) {
+        recentPracticeStore.update({
+          ...existingRecord,
+          totalCount: quizState.questions.length,
+          answeredCount: answeredCount,
+          correctCount: correctCount,
+          wrongCount: answeredCount - correctCount,
+          lastPracticeAt: Date.now(),
+          isCompleted: true,
+        });
+      }
+    }
     
     setQuizState(prev => ({
       ...prev,
