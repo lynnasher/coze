@@ -862,44 +862,18 @@ export default function QuizApp() {
                   
                   {!selectedCategoryId ? (
                     /* 显示一级分类列表 */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {/* 全部题目卡片 */}
-                      <Card 
-                        className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                          practiceBankId === null && selectedCategoryId === null ? 'ring-2 ring-blue-500' : ''
-                        }`}
-                        onClick={() => {
-                          setSelectedCategoryId(null);
-                          setPracticeBankId(null);
-                        }}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">全部题目</h3>
-                              <div className="flex items-center gap-1 text-sm text-gray-400">
-                                <BookOpen className="w-3 h-3" />
-                                <span>{questions.length} 道题</span>
-                              </div>
-                            </div>
-                            {practiceBankId === null && selectedCategoryId === null && (
-                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                <Check className="w-4 h-4 text-white" />
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                      
-                      {/* 一级分类卡片 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {/* 一级分类卡片 - 紧凑显示 */}
                       {categories.filter(c => !c.parentId).map((category) => {
+                        const subCategories = categories.filter(c => c.parentId === category.id);
                         const categoryBanks = banks.filter(b => b.categoryId === category.id);
                         const categoryQuestions = questions.filter(q => categoryBanks.some(b => b.id === q.bankId));
-                        const isSelected = selectedCategoryId === category.id;
+                        const isSelected = practiceBankId === category.id;
+                        
                         return (
                           <Card 
                             key={category.id}
-                            className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
+                            className={`cursor-pointer transition-all border-0 shadow-md rounded-xl overflow-hidden hover:shadow-lg ${
                               isSelected ? 'ring-2 ring-blue-500' : ''
                             }`}
                             onClick={() => {
@@ -907,21 +881,20 @@ export default function QuizApp() {
                               setPracticeBankId(null);
                             }}
                           >
-                            <CardContent className="p-4">
+                            <CardContent className="p-3">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">{category.name}</h3>
-                                  <div className="flex items-center gap-3 text-sm text-gray-400">
-                                    <span className="flex items-center gap-1">
-                                      <BookOpen className="w-3 h-3" />
-                                      {categoryQuestions.length} 道题
-                                    </span>
-                                    <span>{categoryBanks.length} 个题库</span>
+                                  <h3 className="text-sm font-semibold text-gray-900 leading-tight mb-1 truncate">{category.name}</h3>
+                                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                                    <span>{categoryQuestions.length} 题</span>
+                                    {subCategories.length > 0 && (
+                                      <span className="text-blue-400">{subCategories.length} 子分类</span>
+                                    )}
                                   </div>
                                 </div>
                                 {isSelected && (
-                                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                                    <Check className="w-4 h-4 text-white" />
+                                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-1">
+                                    <Check className="w-3 h-3 text-white" />
                                   </div>
                                 )}
                               </div>
@@ -932,7 +905,7 @@ export default function QuizApp() {
                     </div>
                   ) : (
                     /* 显示选中分类下的子分类和题库 */
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {/* 返回按钮和当前分类标题 */}
                       <div className="flex items-center gap-2">
                         <Button 
@@ -945,45 +918,48 @@ export default function QuizApp() {
                           className="text-xs"
                         >
                           <ArrowLeft className="w-3 h-3 mr-1" />
-                          返回分类
+                          返回
                         </Button>
                         <span className="text-sm text-gray-500">
                           {categories.find(c => c.id === selectedCategoryId)?.name}
                         </span>
                       </div>
                       
-                      {/* 子分类卡片 */}
+                      {/* 子分类列表 - 单列紧凑 */}
                       {categories.filter(c => c.parentId === selectedCategoryId).length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-400 px-1">子分类</p>
                           {categories.filter(c => c.parentId === selectedCategoryId).map((subCategory) => {
                             const subCategoryBanks = banks.filter(b => b.categoryId === subCategory.id);
                             const subCategoryQuestions = questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId));
-                            const isSelected = practiceBankId === subCategory.id && practiceBankId.startsWith('cat_');
+                            const isSelected = practiceBankId === `cat_${subCategory.id}`;
+                            const hasBanks = banks.some(b => b.categoryId === subCategory.id);
+                            
                             return (
                               <Card 
                                 key={subCategory.id}
-                                className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                                  isSelected ? 'ring-2 ring-blue-500' : ''
+                                className={`cursor-pointer transition-all border-0 shadow-sm rounded-lg overflow-hidden hover:shadow-md ${
+                                  isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'
                                 }`}
                                 onClick={() => {
                                   setPracticeBankId(`cat_${subCategory.id}`);
                                 }}
                               >
-                                <CardContent className="p-4">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <h3 className="text-base font-semibold text-gray-900 leading-tight mb-1">{subCategory.name}</h3>
-                                      <div className="flex items-center gap-3 text-sm text-gray-400">
-                                        <span className="flex items-center gap-1">
-                                          <BookOpen className="w-3 h-3" />
-                                          {subCategoryQuestions.length} 道题
-                                        </span>
-                                        <span>{subCategoryBanks.length} 个题库</span>
-                                      </div>
+                                <CardContent className="p-2 px-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <Folder className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                                      <span className="text-sm font-medium text-gray-700 truncate">{subCategory.name}</span>
+                                      <span className="text-xs text-gray-400 flex-shrink-0">{subCategoryQuestions.length}题</span>
+                                      {hasBanks && (
+                                        <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5 flex-shrink-0">
+                                          {subCategoryBanks.length}库
+                                        </Badge>
+                                      )}
                                     </div>
                                     {isSelected && (
-                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                                        <Check className="w-4 h-4 text-white" />
+                                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                        <Check className="w-3 h-3 text-white" />
                                       </div>
                                     )}
                                   </div>
@@ -994,35 +970,31 @@ export default function QuizApp() {
                         </div>
                       )}
                       
-                      {/* 该分类下的题库列表 */}
+                      {/* 该分类直接关联的题库列表 - 单列紧凑 */}
                       {banks.filter(b => b.categoryId === selectedCategoryId).length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-400 px-1">题库</p>
                           {banks.filter(b => b.categoryId === selectedCategoryId).map((bank) => {
                             const bankQuestions = questions.filter(q => q.bankId === bank.id);
                             const isSelected = practiceBankId === bank.id;
                             return (
                               <Card 
                                 key={bank.id}
-                                className={`cursor-pointer transition-all border-0 shadow-lg rounded-2xl overflow-hidden hover:shadow-xl ${
-                                  isSelected ? 'ring-2 ring-blue-500' : ''
+                                className={`cursor-pointer transition-all border-0 shadow-sm rounded-lg overflow-hidden hover:shadow-md ${
+                                  isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'bg-white'
                                 }`}
                                 onClick={() => setPracticeBankId(bank.id)}
                               >
-                                <CardContent className="p-4">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1 min-w-0">
-                                      <h3 className="text-base font-semibold text-gray-900 leading-tight line-clamp-2">{bank.name}</h3>
-                                      <div className="flex items-center gap-3 text-sm text-gray-400">
-                                        <span className="flex items-center gap-1">
-                                          <BookOpen className="w-3 h-3" />
-                                          {bankQuestions.length} 道题
-                                        </span>
-                                        <span>{new Date(bank.createdAt).toLocaleDateString()}</span>
-                                      </div>
+                                <CardContent className="p-2 px-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <BookOpen className="w-4 h-4 text-green-400 flex-shrink-0" />
+                                      <span className="text-sm font-medium text-gray-700 truncate">{bank.name}</span>
+                                      <span className="text-xs text-gray-400 flex-shrink-0">{bankQuestions.length}题</span>
                                     </div>
                                     {isSelected && (
-                                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
-                                        <Check className="w-4 h-4 text-white" />
+                                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 ml-2">
+                                        <Check className="w-3 h-3 text-white" />
                                       </div>
                                     )}
                                   </div>
@@ -1043,21 +1015,32 @@ export default function QuizApp() {
                       <Play className="w-4 h-4 text-white" />
                     </div>
                     选择练习模式
-                    <span className="text-sm font-normal text-gray-400 ml-2">
-                      共 {(() => {
-                        if (!practiceBankId) {
-                          return questions.length;
-                        } else if (practiceBankId.startsWith('cat_')) {
-                          const subCategoryId = practiceBankId.replace('cat_', '');
-                          const subCategoryBanks = banks.filter(b => b.categoryId === subCategoryId);
-                          return questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId)).length;
-                        } else {
-                          return questions.filter(q => q.bankId === practiceBankId).length;
-                        }
-                      })()} 道题
-                    </span>
+                    {practiceBankId && (
+                      <span className="text-sm font-normal text-gray-400 ml-2">
+                        ({(() => {
+                          if (practiceBankId.startsWith('cat_')) {
+                            const subCategoryId = practiceBankId.replace('cat_', '');
+                            const subCategoryBanks = banks.filter(b => b.categoryId === subCategoryId);
+                            return questions.filter(q => subCategoryBanks.some(b => b.id === q.bankId)).length;
+                          } else if (selectedCategoryId) {
+                            // 一级分类
+                            return questions.filter(q => banks.some(b => b.categoryId === selectedCategoryId && b.id === q.bankId)).length;
+                          } else {
+                            return questions.filter(q => q.bankId === practiceBankId).length;
+                          }
+                        })()} 道题)
+                      </span>
+                    )}
                   </h2>
                   
+                  {!practiceBankId ? (
+                    <Card className="border-dashed border-2 bg-gray-50">
+                      <CardContent className="p-4 text-center text-gray-400 text-sm">
+                        请先选择上方分类后开始练习
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
                   {/* 顺序练习 + 随机练习 一行 */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     {/* 顺序练习 */}
@@ -1114,6 +1097,8 @@ export default function QuizApp() {
                       </div>
                     </CardContent>
                   </Card>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
