@@ -415,7 +415,7 @@ export default function AdminPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [categoryName, setCategoryName] = useState('');
   const [categoryColor, setCategoryColor] = useState('blue');
-  const [categoryParentId, setCategoryParentId] = useState<string | undefined>(undefined);
+  const [categoryParentId, setCategoryParentId] = useState<string | null>(null);
 
   // 移动题库分类状态
   const [isMoveCategoryDialogOpen, setIsMoveCategoryDialogOpen] = useState(false);
@@ -583,7 +583,7 @@ export default function AdminPage() {
     setEditingCategory(null);
     setCategoryName('');
     setCategoryColor('blue');
-    setCategoryParentId(undefined);
+    setCategoryParentId(null);
   };
 
   // 保存分类（添加/更新到数据库）
@@ -1282,7 +1282,7 @@ export default function AdminPage() {
                             setEditingCategory(cat);
                             setCategoryName(cat.name);
                             setCategoryColor(cat.color);
-                            setCategoryParentId(cat.parentId);
+                            setCategoryParentId(cat.parentId || null);
                           }}>
                             <Edit3 className="h-3 w-3" />
                           </Button>
@@ -1305,7 +1305,7 @@ export default function AdminPage() {
                                 setEditingCategory(child);
                                 setCategoryName(child.name);
                                 setCategoryColor(child.color);
-                                setCategoryParentId(child.parentId);
+                                setCategoryParentId(child.parentId || null);
                               }}>
                                 <Edit3 className="h-3 w-3" />
                               </Button>
@@ -1326,8 +1326,8 @@ export default function AdminPage() {
             <div className="border-t pt-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Select 
-                  value={categoryParentId || 'root'} 
-                  onValueChange={(v) => setCategoryParentId(v === 'root' ? undefined : v)}
+                  value={categoryParentId === null ? 'root' : (categoryParentId || 'root')} 
+                  onValueChange={(v) => setCategoryParentId(v === 'root' ? null : v)}
                 >
                   <SelectTrigger className="w-32">
                     <SelectValue />
