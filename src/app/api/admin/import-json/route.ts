@@ -48,7 +48,24 @@ async function migrateImagesInText(text: string): Promise<string> {
           originalUrl.startsWith('/')) {
         continue;
       }
-      const key = await storage.uploadFromUrl({ url: originalUrl, timeout: 30000 });
+      // 先下载图片内容，再上传到指定路径
+      const response = await fetch(originalUrl);
+      if (!response.ok) {
+        console.error(`[ImageMigration] Failed to fetch: ${originalUrl}`);
+        continue;
+      }
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      // 从 URL 提取原始文件名
+      const urlObj = new URL(originalUrl);
+      const originalFileName = urlObj.pathname.split('/').pop() || 'image.jpg';
+      // 构建目标路径
+      const targetPath = `${getImagePath()}/${originalFileName}`;
+      const key = await storage.uploadFile({
+        fileContent: Buffer.from(buffer),
+        fileName: targetPath,
+        contentType,
+      });
       result = result.replace(new RegExp(escapeRegExp(originalUrl), 'g'), key);
       console.log(`[ImageMigration] Uploaded: ${originalUrl} -> ${key}`);
     } catch (error) {
@@ -56,6 +73,52 @@ async function migrateImagesInText(text: string): Promise<string> {
     }
   }
   return result;
+}
+
+// 获取图片存储路径（按年月）
+function getImagePath(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `upload/image/${year}-${month}-${day}`;
+}
+
+// 迁移单个图片 URL 到对象存储
+async function migrateImageUrl(url: string): Promise<string> {
+  const storage = getStorage();
+  const bucketEndpoint = process.env.COZE_BUCKET_ENDPOINT_URL || '';
+  
+  // 跳过已经是对象存储的 URL 或 data URL 或相对路径
+  if (url.includes(bucketEndpoint) || url.startsWith('data:') || url.startsWith('/')) {
+    return url;
+  }
+  
+  try {
+    // 先下载图片内容，再上传到指定路径
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`[ImageMigration] Failed to fetch: ${url}`);
+      return url;
+    }
+    const buffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    // 从 URL 提取原始文件名
+    const urlObj = new URL(url);
+    const originalFileName = urlObj.pathname.split('/').pop() || 'image.jpg';
+    // 构建目标路径
+    const targetPath = `${getImagePath()}/${originalFileName}`;
+    const key = await storage.uploadFile({
+      fileContent: Buffer.from(buffer),
+      fileName: targetPath,
+      contentType,
+    });
+    console.log(`[ImageMigration] Uploaded: ${url} -> ${key}`);
+    return key;
+  } catch (error) {
+    console.error(`[ImageMigration] Failed to upload: ${url}`, error);
+    return url;
+  }
 }
 
 // 迁移题目中的图片
@@ -68,24 +131,12 @@ async function migrateQuestionImages(question: {
 }) {
   const result: typeof question = {};
   
-  // 处理 images 数组：将图片 URL 合并到 content 中
+  // 处理 images 数组：将图片 URL 迁移到对象存储
   let migratedImages: string[] = [];
   if (question.images && question.images.length > 0) {
     migratedImages = await Promise.all(
       question.images.map(async (url) => {
-        try {
-          const storage = getStorage();
-          const bucketEndpoint = process.env.COZE_BUCKET_ENDPOINT_URL || '';
-          if (url.includes(bucketEndpoint) || url.startsWith('data:') || url.startsWith('/')) {
-            return url;
-          }
-          const key = await storage.uploadFromUrl({ url, timeout: 30000 });
-          console.log(`[ImageMigration] Uploaded from images: ${url} -> ${key}`);
-          return key;
-        } catch (error) {
-          console.error(`[ImageMigration] Failed to upload: ${url}`, error);
-          return url;
-        }
+        return await migrateImageUrl(url);
       })
     );
   }

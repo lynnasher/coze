@@ -48,7 +48,24 @@ async function migrateImagesInText(text: string): Promise<string> {
           originalUrl.startsWith('/')) {
         continue;
       }
-      const key = await storage.uploadFromUrl({ url: originalUrl, timeout: 30000 });
+      // 先下载图片内容，再上传到指定路径
+      const response = await fetch(originalUrl);
+      if (!response.ok) {
+        console.error(`[ImageMigration] Failed to fetch: ${originalUrl}`);
+        continue;
+      }
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      // 从 URL 提取原始文件名
+      const urlObj = new URL(originalUrl);
+      const originalFileName = urlObj.pathname.split('/').pop() || 'image.jpg';
+      // 构建目标路径
+      const targetPath = `${getImagePath()}/${originalFileName}`;
+      const key = await storage.uploadFile({
+        fileContent: Buffer.from(buffer),
+        fileName: targetPath,
+        contentType,
+      });
       result = result.replace(new RegExp(escapeRegExp(originalUrl), 'g'), key);
       console.log(`[ImageMigration] Uploaded: ${originalUrl} -> ${key}`);
     } catch (error) {
@@ -56,6 +73,15 @@ async function migrateImagesInText(text: string): Promise<string> {
     }
   }
   return result;
+}
+
+// 获取图片存储路径（按年月）
+function getImagePath(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `upload/image/${year}-${month}-${day}`;
 }
 
 // 迁移题目中的图片
