@@ -670,7 +670,7 @@ export default function QuizApp() {
 
             {/* 未登录或无激活分类时的提示 */}
             {(!currentUser || getActivatedCategoryIds().length === 0) && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm text-center">
+              <div className="bg-white rounded-2xl p-6 shadow-sm text-center mb-4">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center">
                   <BookOpen className="w-8 h-8 text-amber-500" />
                 </div>
