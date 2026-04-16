@@ -94,6 +94,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
           onOpenChange(false);
           onAuthChange?.();
+          // 通知其他组件用户状态变化
+          window.dispatchEvent(new Event('user-auth-change'));
           
           // 登录成功后同步云端数据
           cloudSyncService.syncOnLogin().then(success => {
@@ -143,6 +145,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
           onOpenChange(false);
           onAuthChange?.();
+          // 通知其他组件用户状态变化
+          window.dispatchEvent(new Event('user-auth-change'));
         } else {
           setError(data.error || '注册失败');
         }
@@ -315,12 +319,28 @@ export function UserStatus({ className }: UserStatusProps) {
       } catch {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        setUser(null);
       }
+    } else {
+      setUser(null);
     }
   };
 
   useEffect(() => {
     checkAuth();
+    
+    // 监听 localStorage 变化
+    const handleStorageChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('user-auth-change', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-auth-change', handleStorageChange);
+    };
   }, []);
 
   const handleLogout = () => {
