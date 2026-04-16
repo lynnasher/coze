@@ -785,15 +785,39 @@ export default function AdminPage() {
         return;
       }
 
+      console.log('[Export] Starting export for bank:', bank.id);
       const response = await fetch(`/api/admin/banks/export/${bank.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
+      console.log('[Export] Response status:', response.status);
+      
+      // 检查响应状态
       if (!response.ok) {
-        const data = await response.json().catch(() => ({ error: '导出失败' }));
-        throw new Error(data.error || '导出失败');
+        let errorMsg = '导出失败';
+        try {
+          const data = await response.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          errorMsg = `导出失败 (HTTP ${response.status})`;
+        }
+        console.error('[Export] Error response:', errorMsg);
+        setError(errorMsg);
+        return;
+      }
+      
+      // 检查 Content-Type
+      const contentType = response.headers.get('Content-Type');
+      console.log('[Export] Content-Type:', contentType);
+      
+      if (!contentType?.includes('application/vnd.openxmlformats')) {
+        // 可能是错误响应
+        const text = await response.text();
+        console.error('[Export] Unexpected content:', text.substring(0, 200));
+        setError('导出失败：服务器返回了非预期格式');
+        return;
       }
       
       // 获取文件名
@@ -808,6 +832,13 @@ export default function AdminPage() {
       
       // 下载文件
       const blob = await response.blob();
+      console.log('[Export] Blob size:', blob.size);
+      
+      if (blob.size === 0) {
+        setError('导出失败：文件为空');
+        return;
+      }
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -816,8 +847,9 @@ export default function AdminPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      console.log('[Export] Success!');
     } catch (err) {
-      console.error('导出失败:', err);
+      console.error('[Export] Exception:', err);
       setError(err instanceof Error ? err.message : '导出失败，请重试');
     }
   };

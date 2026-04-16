@@ -8,6 +8,8 @@ export async function GET(
 ) {
   try {
     const { id: bankId } = await params;
+    console.log('[Word Export] Starting export for bank:', bankId);
+    
     const adminClient = getSupabaseAdminClient();
 
     // 获取题库信息
@@ -18,8 +20,10 @@ export async function GET(
       .single();
 
     if (bankError || !bank) {
+      console.error('[Word Export] Bank not found:', bankError);
       return Response.json({ error: '题库不存在' }, { status: 404 });
     }
+    console.log('[Word Export] Bank found:', bank.name);
 
     // 获取题库下的所有题目
     const { data: questions, error: questionsError } = await adminClient
@@ -29,8 +33,10 @@ export async function GET(
       .order('index_order', { ascending: true });
 
     if (questionsError) {
+      console.error('[Word Export] Questions fetch error:', questionsError);
       return Response.json({ error: '获取题目失败' }, { status: 500 });
     }
+    console.log('[Word Export] Questions count:', questions?.length || 0);
 
     // 构建文档内容
     const paragraphs: Paragraph[] = [];
@@ -136,18 +142,23 @@ export async function GET(
             // 子题目选项
             if (child.options && child.options.length > 0) {
               for (const option of child.options) {
-                paragraphs.push(
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: `    ${option.id.toUpperCase()}. ${option.text}`,
-                        color: '333333',
-                      }),
-                    ],
-                    spacing: { after: 50 },
-                    indent: { left: convertInchesToTwip(0.3) },
-                  })
-                );
+                // 安全检查：确保 option 存在且有有效属性
+                const optionId = option?.id ? String(option.id).toUpperCase() : '';
+                const optionText = option?.text || '';
+                if (optionId && optionText) {
+                  paragraphs.push(
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: `    ${optionId}. ${optionText}`,
+                          color: '333333',
+                        }),
+                      ],
+                      spacing: { after: 50 },
+                      indent: { left: convertInchesToTwip(0.3) },
+                    })
+                  );
+                }
               }
             }
 
@@ -216,18 +227,23 @@ export async function GET(
         // 题目选项
         if (question.options && question.options.length > 0) {
           for (const option of question.options) {
-            paragraphs.push(
-              new Paragraph({
-                children: [
-                  new TextRun({
-                    text: `    ${option.id.toUpperCase()}. ${option.text}`,
-                    color: '333333',
-                  }),
-                ],
-                spacing: { after: 50 },
-                indent: { left: convertInchesToTwip(0.3) },
-              })
-            );
+            // 安全检查：确保 option 存在且有有效属性
+            const optionId = option?.id ? String(option.id).toUpperCase() : '';
+            const optionText = option?.text || '';
+            if (optionId && optionText) {
+              paragraphs.push(
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: `    ${optionId}. ${optionText}`,
+                      color: '333333',
+                    }),
+                  ],
+                  spacing: { after: 50 },
+                  indent: { left: convertInchesToTwip(0.3) },
+                })
+              );
+            }
           }
         }
 
@@ -328,6 +344,8 @@ export async function GET(
     // 返回文件
     const fileName = `${bank.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}.docx`;
     
+    console.log('[Word Export] Success, fileName:', fileName);
+    
     return new Response(uint8Array, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -335,7 +353,8 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Export error:', error);
-    return Response.json({ error: '导出失败' }, { status: 500 });
+    console.error('[Word Export] Export error:', error);
+    const errorMessage = error instanceof Error ? error.message : '导出失败';
+    return Response.json({ error: errorMessage }, { status: 500 });
   }
 }
