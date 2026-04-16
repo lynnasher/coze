@@ -1,5 +1,3 @@
-'use server';
-
 import { S3Storage } from 'coze-coding-dev-sdk';
 
 // 初始化存储客户端
