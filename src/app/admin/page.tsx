@@ -576,8 +576,10 @@ export default function AdminPage() {
   };
 
   // 重置分类表单
-  const resetCategoryForm = () => {
-    setIsCategoryModalOpen(false);
+  const resetCategoryForm = (closeModal = true) => {
+    if (closeModal) {
+      setIsCategoryModalOpen(false);
+    }
     setEditingCategory(null);
     setCategoryName('');
     setCategoryColor('blue');
@@ -608,6 +610,8 @@ export default function AdminPage() {
           throw new Error('更新失败');
         }
         setSuccess('分类已更新');
+        // 编辑成功后关闭模态框
+        resetCategoryForm();
       } else {
         // 添加分类
         const siblings = categories.filter((c: Category) => c.parentId === categoryParentId);
@@ -626,16 +630,15 @@ export default function AdminPage() {
           throw new Error('添加失败');
         }
         setSuccess('分类已添加');
+        // 添加成功后保留表单，方便连续添加（只清除名称）
+        setCategoryName('');
+        // 重新加载分类
+        await loadCategories();
       }
-      
-      // 重新加载分类
-      await loadCategories();
     } catch (err) {
       console.error('保存分类失败:', err);
       setError('保存失败，请重试');
     }
-    
-    resetCategoryForm();
   };
 
   // 删除分类（包括子分类）
