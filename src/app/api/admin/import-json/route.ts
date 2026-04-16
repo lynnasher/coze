@@ -19,8 +19,12 @@ function escapeRegExp(string: string): string {
 // 从文本中提取所有图片 URL
 function extractImageUrls(text: string): string[] {
   const urls: string[] = [];
+  // HTML img 标签
   const htmlImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  // Markdown 图片
   const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  // 自定义格式 [img:url]
+  const customImgRegex = /\[img:([^\]]+)\]/gi;
   let match;
   while ((match = htmlImgRegex.exec(text)) !== null) {
     if (match[1] && !match[1].startsWith('data:')) urls.push(match[1]);
@@ -28,12 +32,22 @@ function extractImageUrls(text: string): string[] {
   while ((match = mdImgRegex.exec(text)) !== null) {
     if (match[2] && !match[2].startsWith('data:')) urls.push(match[2]);
   }
+  while ((match = customImgRegex.exec(text)) !== null) {
+    if (match[1] && !match[1].startsWith('data:')) urls.push(match[1]);
+  }
   return [...new Set(urls)];
+}
+
+// 将 [img:url] 格式转换为 <img> 标签
+function convertCustomImgTags(text: string): string {
+  return text.replace(/\[img:([^\]]+)\]/gi, '<img src="$1" />');
 }
 
 // 迁移文本中的图片到对象存储
 async function migrateImagesInText(text: string): Promise<string> {
   if (!text) return text;
+  // 先将 [img:url] 格式转换为 <img> 标签
+  text = convertCustomImgTags(text);
   const urls = extractImageUrls(text);
   if (urls.length === 0) return text;
   
