@@ -1044,12 +1044,53 @@ function PracticeView({
   resetQuiz,
 }: PracticeViewProps) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
+  // 结果弹窗状态（交卷后显示）
+  const [showResultSheet, setShowResultSheet] = useState(false);
   // 答案与解析显示状态（不自动显示，需手动点击按钮）
   const [showExplanation, setShowExplanation] = useState(false);
   // 当前综合题的子题目索引
   const [currentChildIndex, setCurrentChildIndex] = useState(0);
   // 题目内容区域的 ref，用于滚动聚焦
   const questionContentRef = useRef<HTMLDivElement>(null);
+  
+  // 计算答题结果统计
+  const resultStats = useMemo(() => {
+    let correct = 0;
+    let wrong = 0;
+    let unanswered = 0;
+    
+    quizState.questions.forEach(q => {
+      const answer = quizState.answers[q.id];
+      if (answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
+        unanswered++;
+      } else {
+        // 检查是否正确
+        const qAnswer = q.answer;
+        if (Array.isArray(qAnswer)) {
+          // 多选题
+          const userAnswer = Array.isArray(answer) ? answer.sort() : [answer];
+          const correctAnswer = qAnswer.sort();
+          if (JSON.stringify(userAnswer) === JSON.stringify(correctAnswer)) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        } else {
+          // 单选/判断/填空
+          if (String(answer).toLowerCase() === String(qAnswer).toLowerCase()) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        }
+      }
+    });
+    
+    const total = quizState.questions.length;
+    const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+    
+    return { correct, wrong, unanswered, total, accuracy };
+  }, [quizState.questions, quizState.answers]);
   
   // 切换题目时重置答案与解析显示状态
   useEffect(() => {
@@ -1086,14 +1127,23 @@ function PracticeView({
     return { answeredCount: count, progressPercent: percent };
   }, [quizState.questions, quizState.answers]);
   
-  // 交卷并返回首页（不显示完成弹窗）
+  // 交卷并显示结果（显示答题卡反馈）
   const handleFinishAndExit = useCallback(() => {
     if (confirm('确定要交卷吗？')) {
-      // 直接返回首页，PracticeView 会被卸载
-      // onExit 会处理状态重置
-      onExit();
+      // 先完成答题，记录答案
+      finishQuiz();
+      // 显示结果弹窗
+      setShowResultSheet(true);
     }
-  }, [onExit]);
+  }, [finishQuiz]);
+  
+  // 处理返回首页
+  const handleReturnHome = useCallback(() => {
+    // 重置练习状态
+    resetQuiz();
+    // 返回首页
+    onExit();
+  }, [resetQuiz, onExit]);
   
   // 滚动到题目内容区域
   const scrollToQuestion = useCallback(() => {
@@ -1580,6 +1630,151 @@ function PracticeView({
                 <span>未答</span>
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 交卷结果弹窗 */}
+      <Dialog open={showResultSheet} onOpenChange={(open) => {
+        setShowResultSheet(open);
+        if (!open) {
+          // 关闭时返回首页
+          handleReturnHome();
+        }
+      }}>
+        <DialogContent className="max-w-[90vw] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5">
+          <DialogHeader className="pb-3 text-center">
+            <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <FileCheck className="w-8 h-8 text-white" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-slate-800">答题完成</DialogTitle>
+          </DialogHeader>
+          
+          {/* 统计卡片 */}
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
+              <p className="text-2xl font-bold">{resultStats.accuracy}%</p>
+              <p className="text-xs opacity-80">正确率</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-3 text-white text-center">
+              <p className="text-2xl font-bold">{resultStats.total}</p>
+              <p className="text-xs opacity-80">总题数</p>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl p-3 text-white text-center">
+              <p className="text-2xl font-bold">{resultStats.correct}</p>
+              <p className="text-xs opacity-80">做对</p>
+            </div>
+            <div className="bg-gradient-to-br from-red-500 to-rose-500 rounded-xl p-3 text-white text-center">
+              <p className="text-2xl font-bold">{resultStats.wrong + resultStats.unanswered}</p>
+              <p className="text-xs opacity-80">错误</p>
+            </div>
+          </div>
+          
+          {/* 详细说明 */}
+          <div className="text-center text-sm text-slate-500 mb-4">
+            <p>做对 {resultStats.correct} 题，做错 {resultStats.wrong} 题，未答 {resultStats.unanswered} 题</p>
+          </div>
+          
+          {/* 答题卡 */}
+          <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
+            {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
+              const typeQuestions = quizState.questions
+                .map((q, idx) => ({ q, idx }))
+                .filter(item => item.q.type === type);
+              if (typeQuestions.length === 0) return null;
+              const typeLabel = type === 'single' ? '单选题' : 
+                               type === 'multiple' ? '多选题' : 
+                               type === 'true-false' ? '判断题' : 
+                               type === 'fill-blank' ? '填空题' : '综合题';
+              const typeColor = type === 'single' ? 'bg-indigo-500' : 
+                               type === 'multiple' ? 'bg-purple-500' : 
+                               type === 'true-false' ? 'bg-cyan-500' : 
+                               type === 'fill-blank' ? 'bg-teal-500' : 'bg-rose-500';
+              return (
+                <div key={type}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
+                    <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
+                    <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {typeQuestions.map(({ q, idx }) => {
+                      const answer = quizState.answers[q.id];
+                      const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
+                      
+                      let isCorrect = false;
+                      let isWrong = false;
+                      
+                      if (!isUnanswered) {
+                        const qAnswer = q.answer;
+                        if (Array.isArray(qAnswer)) {
+                          const userAnswer = Array.isArray(answer) ? answer.sort() : [answer];
+                          const correctAnswer = qAnswer.sort();
+                          isCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctAnswer);
+                          isWrong = !isCorrect;
+                        } else {
+                          isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
+                          isWrong = !isCorrect;
+                        }
+                      }
+                      
+                      return (
+                        <div
+                          key={q.id}
+                          className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                            isCorrect
+                              ? 'bg-emerald-500 text-white'
+                              : isWrong
+                                ? 'bg-red-500 text-white'
+                                : 'bg-slate-200 text-slate-600'
+                          }`}
+                          title={isCorrect ? '正确' : isWrong ? '错误' : '未答'}
+                        >
+                          {idx + 1}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* 图例 */}
+          <div className="flex items-center justify-center gap-6 text-xs text-slate-500 pt-3 border-t border-slate-100 mt-4">
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded bg-emerald-500"></div>
+              <span>做对</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded bg-red-500"></div>
+              <span>做错</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded bg-slate-200"></div>
+              <span>未答</span>
+            </div>
+          </div>
+          
+          {/* 操作按钮 */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              variant="outline"
+              className="flex-1 h-11 rounded-xl"
+              onClick={() => {
+                setShowResultSheet(false);
+                handleReturnHome();
+              }}
+            >
+              返回首页
+            </Button>
+            {resultStats.wrong > 0 && (
+              <Link href="/wrongbook" className="flex-1" onClick={() => handleReturnHome()}>
+                <Button className="w-full h-11 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl">
+                  查看错题
+                </Button>
+              </Link>
+            )}
           </div>
         </DialogContent>
       </Dialog>
