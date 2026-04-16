@@ -159,7 +159,7 @@ export default function UsersPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ userId, action: 'status', value: newStatus }),
       });
       if (response.ok) {
         loadUsers();
@@ -178,7 +178,7 @@ export default function UsersPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ role: newRole }),
+        body: JSON.stringify({ userId, action: 'role', value: newRole }),
       });
       if (response.ok) {
         loadUsers();
@@ -197,7 +197,7 @@ export default function UsersPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ activated_categories }),
+        body: JSON.stringify({ userId, action: 'categories', value: activated_categories }),
       });
       if (response.ok) {
         loadUsers();

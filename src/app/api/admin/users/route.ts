@@ -25,18 +25,18 @@ export async function GET() {
     // 获取所有用户激活记录（用于显示用户使用的具体激活码）
     const { data: userActivationsData, error: userActivationsError } = await client
       .from('user_activations')
-      .select('id, user_id, category_id, activation_code_id, activated_at');
+      .select('id, user_id, category_id, activation_code, activated_at, expires_at');
     if (userActivationsError) {
       console.error('获取用户激活记录失败:', userActivationsError);
     }
     // 按 user_id 和 category_id 建立索引
-    const userActivationsMap = new Map<string, { codeId: string; code: string | null; activatedAt: string }>();
+    const userActivationsMap = new Map<string, { code: string | null; activatedAt: string; expiresAt: string | null }>();
     (userActivationsData || []).forEach(ua => {
       const key = `${ua.user_id}-${ua.category_id}`;
       userActivationsMap.set(key, {
-        codeId: ua.activation_code_id,
-        code: ua.activation_code_id ? codesMap.get(ua.activation_code_id)?.code : null,
+        code: ua.activation_code,
         activatedAt: ua.activated_at,
+        expiresAt: ua.expires_at,
       });
     });
     
@@ -57,14 +57,17 @@ export async function GET() {
         // 尝试从用户激活记录中获取具体激活码
         const userActivation = userActivationsMap.get(`${u.id}-${catId}`);
         const codeInfo = codesMap.get(catId);
+        
+        // 优先使用用户激活记录中的激活码，其次是激活码模板
+        const activationCode = userActivation?.code || codeInfo?.code || null;
+        
         return {
           id: `manual-${idx}`,
           category_id: catId,
           category_name: categoryName,
-          // 优先使用用户激活记录中的激活码
-          activation_code: userActivation?.code || codeInfo?.code || '手动激活',
+          activation_code: activationCode,
           activated_at: userActivation?.activatedAt || u.last_login_at || u.created_at,
-          expires_at: codeInfo?.expires_at || null,
+          expires_at: userActivation?.expiresAt || codeInfo?.expires_at || null,
         };
       });
       
