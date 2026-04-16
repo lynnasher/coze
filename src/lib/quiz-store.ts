@@ -325,14 +325,19 @@ export const wrongStreakStore = {
   },
 };
 
-// 修改 getWrongQuestionIds 函数：只返回真正答错过的题目，且连续正确次数未达3次
+// 修改 getWrongQuestionIds 函数：只返回真正答错过的题目（排除空答题记录），且连续正确次数未达3次
 export const getWrongQuestionIds = (): string[] => {
   const records = recordStore.getAll();
   const streaks = wrongStreakStore.getAll();
   
-  // 收集所有答错过的题目ID
+  // 收集所有答错过的题目ID（只统计真正作答过的题目，排除空答题记录）
   const wrongQuestions = new Set<string>();
   records.forEach(record => {
+    // 排除空答题记录（没有实际作答过的题目）
+    if (!record.selectedAnswer) return;
+    const answer = Array.isArray(record.selectedAnswer) ? record.selectedAnswer : String(record.selectedAnswer);
+    if (answer.length === 0) return;
+    
     if (!record.isCorrect) {
       wrongQuestions.add(record.questionId);
     }
