@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { bankService } from '@/lib/services/bank-service';
+import { bankService, Question as BankQuestion } from '@/lib/services/bank-service';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { convertQuestionImageKeys } from '@/lib/image-utils';
 
 type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
 
@@ -26,7 +27,20 @@ export async function GET(
     const { id } = await params;
     const questions = await bankService.getQuestionsByBankId(id);
     
-    return NextResponse.json({ questions });
+    // 将图片 key 转换为签名 URL
+    const processedQuestions = await Promise.all(
+      questions.map(async (q: BankQuestion) => {
+        const converted = await convertQuestionImageKeys({
+          content: q.content,
+          options: q.options,
+          explanation: q.explanation,
+          caseBackground: q.caseBackground,
+        });
+        return { ...q, ...converted };
+      })
+    );
+    
+    return NextResponse.json({ questions: processedQuestions });
   } catch (error) {
     console.error('Failed to get questions:', error);
     return NextResponse.json({ error: '获取题目失败' }, { status: 500 });

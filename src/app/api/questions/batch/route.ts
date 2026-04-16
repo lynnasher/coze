@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { bankService } from '@/lib/services/bank-service';
+import { bankService, Question } from '@/lib/services/bank-service';
+import { convertQuestionImageKeys } from '@/lib/image-utils';
 
 // 批量获取题目（用于预加载）
 export async function POST(request: Request) {
@@ -14,7 +15,20 @@ export async function POST(request: Request) {
     const limitedIds = ids.slice(0, 10);
     const questions = await bankService.getQuestionsByIds(limitedIds);
     
-    return NextResponse.json({ questions });
+    // 将图片 key 转换为签名 URL
+    const processedQuestions = await Promise.all(
+      questions.map(async (q: Question) => {
+        const converted = await convertQuestionImageKeys({
+          content: q.content,
+          options: q.options,
+          explanation: q.explanation,
+          caseBackground: q.caseBackground,
+        });
+        return { ...q, ...converted };
+      })
+    );
+    
+    return NextResponse.json({ questions: processedQuestions });
   } catch (error) {
     console.error('Failed to batch get questions:', error);
     return NextResponse.json({ 
