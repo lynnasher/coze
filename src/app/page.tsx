@@ -646,28 +646,6 @@ export default function QuizApp() {
                   </Link>
                 )}
               </div>
-
-              {/* 登录提示 */}
-                {!currentUser && (
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <User className="w-6 h-6 text-amber-500" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-gray-800">登录解锁全部功能</h4>
-                        <p className="text-xs text-gray-500 mt-0.5">激活码激活、错题本、学习统计</p>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg"
-                        onClick={() => setAuthModalOpen(true)}
-                      >
-                        登录
-                      </Button>
-                    </div>
-                  </div>
-                )}
             </div>
           </TabsContent>
 
@@ -690,29 +668,13 @@ export default function QuizApp() {
                 <div className="w-14 h-14 mx-auto mb-3 bg-amber-50 rounded-2xl flex items-center justify-center">
                   <BookOpen className="w-7 h-7 text-amber-400" />
                 </div>
-                {!currentUser ? (
-                  <>
-                    <h3 className="text-base font-semibold text-gray-800 mb-1">请先登录</h3>
-                    <p className="text-gray-400 text-sm mb-3">登录后才能访问题库</p>
-                    <Button 
-                      size="sm" 
-                      className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg"
-                      onClick={() => setAuthModalOpen(true)}
-                    >
-                      去登录
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-base font-semibold text-gray-800 mb-1">暂无激活分类</h3>
-                    <p className="text-gray-400 text-sm mb-3">您还没有激活任何分类，请使用激活码激活</p>
-                    <Link href="/profile">
-                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
-                        去激活
-                      </Button>
-                    </Link>
-                  </>
-                )}
+                <h3 className="text-base font-semibold text-gray-800 mb-1">暂无激活分类</h3>
+                <p className="text-gray-400 text-sm mb-3">您还没有激活任何分类，请使用激活码激活</p>
+                <Link href="/profile">
+                  <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
+                    去激活
+                  </Button>
+                </Link>
               </div>
             )}
 
