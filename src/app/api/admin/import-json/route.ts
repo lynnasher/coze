@@ -132,6 +132,7 @@ interface Question {
   createdAt: number;
   caseBackground?: string;
   children?: Question[];
+  images?: string[];
 }
 
 // 类型映射
@@ -271,6 +272,7 @@ function processChildren(children: Record<string, unknown>[], parentId: string, 
       tags: [],
       bankId,
       createdAt: Date.now(),
+      images: (child.images as string[]) || undefined,
     } as Question;
   }).filter(q => q.content);
 }
@@ -299,6 +301,7 @@ function processQuestion(q: Record<string, unknown>, bankId: string, parentId?: 
     tags: (q.tags as string[]) || [],
     bankId,
     createdAt: Date.now(),
+    images: (q.images as string[]) || undefined,
   };
 }
 
@@ -389,6 +392,7 @@ export async function POST(request: Request) {
           options: q.options,
           explanation: q.explanation,
           caseBackground: q.caseBackground,
+          images: q.images,
         });
 
         // 迁移子题目（综合题）
@@ -400,6 +404,7 @@ export async function POST(request: Request) {
                 content: child.content,
                 options: child.options,
                 explanation: child.explanation,
+                images: child.images,
               });
               return {
                 ...child,
