@@ -64,8 +64,32 @@ async function migrateQuestionImages(question: {
   options?: { id: string; text: string }[];
   explanation?: string;
   caseBackground?: string;
+  images?: string[];
 }) {
   const result: typeof question = {};
+  
+  // 处理 images 数组：将图片 URL 合并到 content 中
+  let migratedImages: string[] = [];
+  if (question.images && question.images.length > 0) {
+    migratedImages = await Promise.all(
+      question.images.map(async (url) => {
+        try {
+          const storage = getStorage();
+          const bucketEndpoint = process.env.COZE_BUCKET_ENDPOINT_URL || '';
+          if (url.includes(bucketEndpoint) || url.startsWith('data:') || url.startsWith('/')) {
+            return url;
+          }
+          const key = await storage.uploadFromUrl({ url, timeout: 30000 });
+          console.log(`[ImageMigration] Uploaded from images: ${url} -> ${key}`);
+          return key;
+        } catch (error) {
+          console.error(`[ImageMigration] Failed to upload: ${url}`, error);
+          return url;
+        }
+      })
+    );
+  }
+  
   if (question.content) result.content = await migrateImagesInText(question.content);
   if (question.options) {
     result.options = await Promise.all(
@@ -77,6 +101,13 @@ async function migrateQuestionImages(question: {
   }
   if (question.explanation) result.explanation = await migrateImagesInText(question.explanation);
   if (question.caseBackground) result.caseBackground = await migrateImagesInText(question.caseBackground);
+  
+  // 将迁移后的图片 URL 添加到 content 中
+  if (migratedImages.length > 0) {
+    const imagesHtml = migratedImages.map(url => `<img src="${url}" />`).join('\n');
+    result.content = (result.content || '') + '\n\n' + imagesHtml;
+  }
+  
   return result;
 }
 
