@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       token,
-      user: { username }
+      user: { username, role: 'admin' }
     });
   } catch (error) {
     return NextResponse.json(
