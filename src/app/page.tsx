@@ -857,6 +857,9 @@ export default function QuizApp() {
                 </>
               )}
             </div>
+            
+            {/* 底部安全间距 */}
+            <div className="h-8"></div>
           </TabsContent>
 
           {/* 统计页面 - Duolingo 风格 */}

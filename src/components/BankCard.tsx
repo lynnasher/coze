@@ -17,7 +17,7 @@ export function BankCard({ bank, onStartPractice }: BankCardProps) {
   
   return (
     <div 
-      className={`bg-white rounded-xl p-3 border-2 border-gray-100 hover:border-blue-200 transition-all cursor-pointer ${
+      className={`bg-white rounded-xl p-3 border-2 border-gray-100 hover:border-blue-200 hover:shadow-sm transition-all cursor-pointer ${
         questionCount === 0 ? 'opacity-60' : ''
       }`}
       onClick={() => questionCount > 0 && onStartPractice(bank.id)}
