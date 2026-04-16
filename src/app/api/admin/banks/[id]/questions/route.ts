@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getSupabaseClient } from '@/storage/database/server-supabase-client';
 
 type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
 

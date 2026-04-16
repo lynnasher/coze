@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getSupabaseClient } from '@/storage/database/server-supabase-client';
 
 // 默认分类数据
 const defaultCategories = [
