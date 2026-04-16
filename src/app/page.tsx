@@ -596,51 +596,42 @@ export default function QuizApp() {
                 />
               </div>
 
-              {/* 学习成就卡片 */}
+              {/* 学习数据概览 */}
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                   <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
                     <Trophy className="w-3.5 h-3.5 text-amber-500" />
                   </div>
-                  学习成就
+                  学习数据
                 </h3>
                 
-                {/* 连续学习天数 */}
-                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl mb-3">
-                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                    <Flame className="w-5 h-5 text-orange-500" />
+                {/* 数据统计网格 */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white text-center">
+                    <p className="text-xl font-bold">{mounted ? (stats.wrongQuestionIds.length || '-') : '-'}</p>
+                    <p className="text-xs opacity-80">错题</p>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-orange-600">7</p>
-                    <p className="text-xs text-gray-500">连续学习天数</p>
-                  </div>
-                </div>
-                
-                {/* 已掌握和正确率 */}
-                <div className="grid grid-cols-2 gap-2">
                   <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-2xl font-bold">{mounted ? stats.masteredCount : '-'}</p>
+                    <p className="text-xl font-bold">{mounted ? stats.masteredCount : '-'}</p>
                     <p className="text-xs opacity-80">已掌握</p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-2xl font-bold">{mounted ? stats.accuracy : 0}%</p>
+                    <p className="text-xl font-bold">{mounted ? stats.accuracy : 0}%</p>
                     <p className="text-xs opacity-80">正确率</p>
                   </div>
                 </div>
                 
                 {/* 错题本入口 */}
                 <Link href="/wrongbook">
-                  <div className="mt-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 cursor-pointer hover:border-red-200 transition-all">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-red-500" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-800">错题本</p>
-                        <p className="text-xs text-gray-500">{mounted ? stats.wrongQuestionIds.length : '-'} 道待复习</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 hover:border-red-200 hover:shadow-sm transition-all">
+                    <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-red-500" />
                     </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-800">错题本</p>
+                      <p className="text-xs text-gray-500">{mounted ? stats.wrongQuestionIds.length : '-'} 道待复习</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
                 </Link>
               </div>
@@ -648,12 +639,12 @@ export default function QuizApp() {
               {/* 登录解锁提示 - 无按钮 */}
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 bg-white/80 rounded-xl flex items-center justify-center shadow-sm">
                     <User className="w-6 h-6 text-amber-500" />
                   </div>
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-gray-800">登录解锁全部功能</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">激活码激活、错题本、学习统计</p>
+                    <p className="text-xs text-gray-500 mt-0.5">激活码激活 · 错题本 · 学习统计</p>
                   </div>
                 </div>
               </div>
@@ -663,41 +654,45 @@ export default function QuizApp() {
           {/* 题库浏览页面 */}
           <TabsContent value="library">
             {/* 标题区域 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Library className="w-4 h-4 text-blue-500" />
+            <div className="mb-4">
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-100">
+                    <Library className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-800">题库浏览</h2>
+                    <p className="text-sm text-gray-400">点击题库开始练习</p>
+                  </div>
                 </div>
-                题库浏览
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">点击题库开始练习</p>
+              </div>
             </div>
 
-            {/* 未登录或无激活分类时的提示 - 清新简洁风格 */}
+            {/* 未登录或无激活分类时的提示 */}
             {(!currentUser || getActivatedCategoryIds().length === 0) && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 bg-amber-50 rounded-2xl flex items-center justify-center">
-                  <BookOpen className="w-7 h-7 text-amber-400" />
+              <div className="bg-white rounded-2xl p-6 shadow-sm text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-amber-500" />
                 </div>
-                <h3 className="text-base font-semibold text-gray-800 mb-1">暂无激活分类</h3>
-                <p className="text-gray-400 text-sm mb-3">您还没有激活任何分类，请使用激活码激活</p>
+                <h3 className="text-base font-semibold text-gray-800 mb-2">暂无激活分类</h3>
+                <p className="text-gray-400 text-sm mb-4">您还没有激活任何分类，请使用激活码激活</p>
                 <Link href="/profile">
-                  <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
+                  <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl px-6">
                     去激活
                   </Button>
                 </Link>
               </div>
             )}
 
-            {/* 题库列表 - 按分类分组，默认折叠 */}
-            <div className="space-y-3">
+            {/* 题库列表 - 按分类分组 */}
+            <div className="space-y-4">
               {banks.length === 0 ? (
                 <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
-                  <div className="w-14 h-14 mx-auto mb-3 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <Library className="w-7 h-7 text-gray-300" />
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-2xl flex items-center justify-center">
+                    <Library className="w-8 h-8 text-gray-300" />
                   </div>
-                  <p className="text-gray-500 text-sm">暂无题库</p>
-                  <p className="text-gray-400 text-xs mt-1">请联系管理员导入题库</p>
+                  <p className="text-gray-500 font-medium">暂无题库</p>
+                  <p className="text-gray-400 text-sm mt-1">请联系管理员导入题库</p>
                 </div>
               ) : (
                 <>
