@@ -628,23 +628,34 @@ export default function QuizApp() {
                   </div>
                 </div>
                 
-                {/* 错题本入口 - 仅登录用户可见 */}
-                {currentUser && (
-                  <Link href="/wrongbook">
-                    <div className="mt-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 cursor-pointer hover:border-red-200 transition-all">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-red-500" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-800">错题本</p>
-                          <p className="text-xs text-gray-500">{mounted ? stats.wrongQuestionIds.length : '-'} 道待复习</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                {/* 错题本入口 */}
+                <Link href="/wrongbook">
+                  <div className="mt-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 cursor-pointer hover:border-red-200 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-red-500" />
                       </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-800">错题本</p>
+                        <p className="text-xs text-gray-500">{mounted ? stats.wrongQuestionIds.length : '-'} 道待复习</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
                     </div>
-                  </Link>
-                )}
+                  </div>
+                </Link>
+              </div>
+
+              {/* 登录解锁提示 - 无按钮 */}
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <User className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-800">登录解锁全部功能</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">激活码激活、错题本、学习统计</p>
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>
