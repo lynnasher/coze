@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -126,7 +126,7 @@ export function useQuiz() {
     setHasStarted(true);
     
     let questions: Question[] = [];
-    let currentBankId = bankId;
+    const currentBankId = bankId;
     let currentBankName = '全部题目';
     let currentCategoryId: string | undefined;
     let currentCategoryName: string | undefined;
@@ -481,6 +481,21 @@ export function useQuiz() {
       isComplete: true,
       showResult: true,
     }));
+    
+    // 交卷后同步数据到云端
+    const userId = getCurrentUserId();
+    if (userId) {
+      const records = recordStore.getAll();
+      const streaks = wrongStreakStore.getAll();
+      cloudSyncService.saveRecords(userId, records);
+      cloudSyncService.saveStreaks(userId, streaks);
+      if (quizState.bankId) {
+        const recent = recentPracticeStore.getByBankId(quizState.bankId);
+        if (recent) {
+          cloudSyncService.saveRecentPractice(userId, recent);
+        }
+      }
+    }
   }, [quizState]);
 
   // 获取当前题目

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User as UserIcon, LogOut, UserCircle, Shield } from 'lucide-react';
 import type { User as UserType } from '@/lib/types';
+import { cloudSyncService } from '@/lib/quiz-store';
 
 // Token 存储
 const TOKEN_KEY = 'quiz_user_token';
@@ -93,6 +94,15 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
           onOpenChange(false);
           onAuthChange?.();
+          
+          // 登录成功后同步云端数据
+          cloudSyncService.syncOnLogin().then(success => {
+            if (success) {
+              console.log('数据同步成功');
+              // 通知页面刷新数据
+              window.dispatchEvent(new Event('storage'));
+            }
+          });
         } else {
           setError(data.error || '登录失败');
         }

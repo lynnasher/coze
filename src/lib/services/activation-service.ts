@@ -1,3 +1,4 @@
+import 'server-only';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 激活码类型定义

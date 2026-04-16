@@ -129,3 +129,68 @@ export const questions = pgTable(
     index("questions_type_idx").on(table.type),
   ]
 );
+
+// 用户练习记录表
+export const practiceRecords = pgTable(
+  "practice_records",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull(), // 用户ID
+    question_id: varchar("question_id", { length: 36 }).notNull(), // 题目ID
+    is_correct: boolean("is_correct").notNull().default(false), // 是否正确
+    selected_answer: varchar("selected_answer", { length: 1000 }), // 用户选择的答案
+    bank_id: varchar("bank_id", { length: 36 }), // 题库ID
+    bank_name: varchar("bank_name", { length: 200 }), // 题库名称（冗余存储）
+    question_type: varchar("question_type", { length: 20 }), // 题目类型
+    time_spent: integer("time_spent").default(0), // 花费时间（秒）
+    timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("practice_records_user_idx").on(table.user_id),
+    index("practice_records_question_idx").on(table.question_id),
+    index("practice_records_bank_idx").on(table.bank_id),
+    index("practice_records_timestamp_idx").on(table.timestamp),
+  ]
+);
+
+// 用户错题连续正确次数表（用于智能错题本）
+export const wrongQuestionStreaks = pgTable(
+  "wrong_question_streaks",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull(), // 用户ID
+    question_id: varchar("question_id", { length: 36 }).notNull(), // 题目ID
+    streak: integer("streak").notNull().default(0), // 连续正确次数
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("wrong_streaks_user_idx").on(table.user_id),
+    index("wrong_streaks_question_idx").on(table.question_id),
+    index("wrong_streaks_user_question_idx").on(table.user_id, table.question_id),
+  ]
+);
+
+// 用户最近练习记录表
+export const recentPractices = pgTable(
+  "recent_practices",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    user_id: varchar("user_id", { length: 36 }).notNull(), // 用户ID
+    bank_id: varchar("bank_id", { length: 36 }).notNull(), // 题库ID
+    bank_name: varchar("bank_name", { length: 200 }), // 题库名称
+    mode: varchar("mode", { length: 20 }).default("sequential"), // 练习模式
+    total_count: integer("total_count").default(0), // 总题数
+    answered_count: integer("answered_count").default(0), // 已答题数
+    correct_count: integer("correct_count").default(0), // 正确数
+    wrong_count: integer("wrong_count").default(0), // 错题数
+    current_index: integer("current_index").default(0), // 当前题目索引
+    is_completed: boolean("is_completed").default(false), // 是否完成
+    started_at: timestamp("started_at", { withTimezone: true }).defaultNow(),
+    last_practice_at: timestamp("last_practice_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index("recent_practices_user_idx").on(table.user_id),
+    index("recent_practices_bank_idx").on(table.bank_id),
+    index("recent_practices_last_at_idx").on(table.last_practice_at),
+  ]
+);

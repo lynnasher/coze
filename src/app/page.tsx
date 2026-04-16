@@ -1122,6 +1122,41 @@ function PracticeView({
   // 题目内容区域的 ref，用于滚动聚焦
   const questionContentRef = useRef<HTMLDivElement>(null);
   
+  // 切换题目时重置答案与解析显示状态
+  useEffect(() => {
+    setShowExplanation(false);
+    setCurrentChildIndex(0);
+  }, [quizState.currentIndex]);
+  
+  // 获取当前要显示的题目（综合题显示子题目）
+  const displayQuestion = useMemo(() => {
+    if (!currentQuestion) return null;
+    // 如果是综合题且有子题目，返回当前子题目
+    if (currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0) {
+      const child = currentQuestion.children[currentChildIndex];
+      if (child) return child;
+    }
+    return currentQuestion;
+  }, [currentQuestion, currentChildIndex]);
+  
+  const isCurrentCorrect = useMemo(() => {
+    if (!displayQuestion || !currentAnswer) return false;
+    if (Array.isArray(displayQuestion.answer)) {
+      return Array.isArray(currentAnswer) && 
+        displayQuestion.answer.every(a => currentAnswer.includes(a));
+    }
+    return currentAnswer === displayQuestion.answer;
+  }, [displayQuestion, currentAnswer]);
+  
+  // 计算进度 - 使用 useMemo 避免重复计算
+  const { answeredCount, progressPercent } = useMemo(() => {
+    const count = quizState.questions.filter(q => quizState.answers[q.id] !== undefined).length;
+    const percent = quizState.questions.length > 0 
+      ? Math.round((count / quizState.questions.length) * 100) 
+      : 0;
+    return { answeredCount: count, progressPercent: percent };
+  }, [quizState.questions, quizState.answers]);
+  
   // 交卷并返回首页（不显示完成弹窗）
   const handleFinishAndExit = useCallback(() => {
     if (confirm('确定要交卷吗？')) {
@@ -1169,34 +1204,6 @@ function PracticeView({
       </div>
     );
   }
-  
-  // 切换题目时重置答案与解析显示状态
-  useEffect(() => {
-    setShowExplanation(false);
-    setCurrentChildIndex(0);
-  }, [quizState.currentIndex]);
-  
-  // 获取当前要显示的题目（综合题显示子题目）
-  const getDisplayQuestion = useMemo(() => {
-    if (!currentQuestion) return null;
-    // 如果是综合题且有子题目，返回当前子题目
-    if (currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0) {
-      const child = currentQuestion.children[currentChildIndex];
-      if (child) return child;
-    }
-    return currentQuestion;
-  }, [currentQuestion, currentChildIndex]);
-  
-  const displayQuestion = getDisplayQuestion;
-  
-  const isCurrentCorrect = useMemo(() => {
-    if (!displayQuestion || !currentAnswer) return false;
-    if (Array.isArray(displayQuestion.answer)) {
-      return Array.isArray(currentAnswer) && 
-        displayQuestion.answer.every(a => currentAnswer.includes(a));
-    }
-    return currentAnswer === displayQuestion.answer;
-  }, [displayQuestion, currentAnswer]);
 
   if (!currentQuestion) {
     return (
@@ -1205,15 +1212,6 @@ function PracticeView({
       </div>
     );
   }
-
-  // 计算进度 - 使用 useMemo 避免重复计算
-  const { answeredCount, progressPercent } = useMemo(() => {
-    const count = quizState.questions.filter(q => quizState.answers[q.id] !== undefined).length;
-    const percent = quizState.questions.length > 0 
-      ? Math.round((count / quizState.questions.length) * 100) 
-      : 0;
-    return { answeredCount: count, progressPercent: percent };
-  }, [quizState.questions, quizState.answers]);
 
   return (
     <div className="min-h-screen bg-slate-50">

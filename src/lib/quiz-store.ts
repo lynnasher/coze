@@ -12,6 +12,19 @@ const STORAGE_KEYS = {
   RECENT_PRACTICE: 'quiz_recent_practice', // 最近练习记录
 };
 
+// 获取当前用户 ID（从 localStorage 的 token 中解析）
+export function getCurrentUserId(): string | null {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem('user_token');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token));
+    return payload.userId || null;
+  } catch {
+    return null;
+  }
+}
+
 // ==================== API 数据缓存层 ====================
 interface CacheItem<T> {
   data: T;
@@ -547,6 +560,215 @@ export const calculateStats = (): Stats => {
 // 生成唯一ID
 export const generateId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// ==================== 云端数据同步服务 ====================
+export interface CloudSyncStatus {
+  lastSyncTime: number | null;
+  isSyncing: boolean;
+  error: string | null;
+}
+
+// 云端同步状态
+const syncStatus: CloudSyncStatus = {
+  lastSyncTime: null,
+  isSyncing: false,
+  error: null,
+};
+
+// 获取用户ID（从 localStorage）
+const getUserId = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const userData = localStorage.getItem('quiz_user_data');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.id || null;
+    }
+  } catch {}
+  return null;
+};
+
+// 云端同步服务
+export const cloudSyncService = {
+  // 获取同步状态
+  getStatus: (): CloudSyncStatus => ({ ...syncStatus }),
+
+  // 保存练习记录到云端
+  async saveRecords(userId: string, records: PracticeRecord[]): Promise<boolean> {
+    try {
+      const response = await fetch('/api/user-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_records',
+          userId,
+          data: { records },
+        }),
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('保存记录到云端失败:', error);
+      return false;
+    }
+  },
+
+  // 保存错题连续正确次数到云端
+  async saveStreaks(userId: string, streaks: Record<string, number>): Promise<boolean> {
+    try {
+      const response = await fetch('/api/user-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_streaks',
+          userId,
+          data: { streaks },
+        }),
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('保存错题次数到云端失败:', error);
+      return false;
+    }
+  },
+
+  // 保存最近练习记录到云端
+  async saveRecentPractice(userId: string, practice: RecentPractice): Promise<boolean> {
+    try {
+      const response = await fetch('/api/user-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save_recent',
+          userId,
+          data: practice,
+        }),
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('保存最近练习到云端失败:', error);
+      return false;
+    }
+  },
+
+  // 从云端拉取数据
+  async pullData(userId: string): Promise<{
+    records: PracticeRecord[];
+    streaks: Record<string, number>;
+    recentPractices: RecentPractice[];
+  } | null> {
+    try {
+      // 并行获取所有数据
+      const [recordsRes, streaksRes, recentRes] = await Promise.all([
+        fetch(`/api/user-data?userId=${userId}&type=records`),
+        fetch(`/api/user-data?userId=${userId}&type=streaks`),
+        fetch(`/api/user-data?userId=${userId}&type=recent`),
+      ]);
+
+      const [recordsData, streaksData, recentData] = await Promise.all([
+        recordsRes.json(),
+        streaksRes.json(),
+        recentRes.json(),
+      ]);
+
+      // 转换云端记录格式为前端格式
+      const records: PracticeRecord[] = (recordsData.records || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        questionId: r.question_id as string,
+        isCorrect: r.is_correct as boolean,
+        selectedAnswer: r.selected_answer ? (r.selected_answer as string).split(',') : '',
+        timestamp: new Date(r.timestamp as string).getTime(),
+      }));
+
+      const streaks: Record<string, number> = {};
+      (streaksData.streaks || []).forEach((s: Record<string, unknown>) => {
+        streaks[s.question_id as string] = s.streak as number;
+      });
+
+      const recentPractices: RecentPractice[] = (recentData.recentPractices || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        bankId: r.bank_id as string,
+        bankName: r.bank_name as string,
+        mode: r.mode as 'sequential' | 'random' | 'wrong',
+        totalCount: r.total_count as number,
+        answeredCount: r.answered_count as number,
+        correctCount: r.correct_count as number,
+        wrongCount: r.wrong_count as number,
+        currentIndex: r.current_index as number,
+        isCompleted: r.is_completed as boolean,
+        startedAt: new Date(r.started_at as string).getTime(),
+        lastPracticeAt: new Date(r.last_practice_at as string).getTime(),
+      }));
+
+      return { records, streaks, recentPractices };
+    } catch (error) {
+      console.error('从云端拉取数据失败:', error);
+      return null;
+    }
+  },
+
+  // 合并并同步所有数据
+  async syncAll(userId: string): Promise<boolean> {
+    if (syncStatus.isSyncing) return false;
+
+    syncStatus.isSyncing = true;
+    syncStatus.error = null;
+
+    try {
+      // 获取本地数据
+      const localRecords = recordStore.getAll();
+      const localStreaks = wrongStreakStore.getAll();
+      const localRecentPractices = recentPracticeStore.getAll();
+
+      // 调用合并接口
+      const response = await fetch('/api/user-data', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          localRecords,
+          localStreaks,
+          localRecentPractices,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          // 更新本地数据
+          if (result.data.records?.length > 0) {
+            recordStore.save(result.data.records);
+          }
+          if (result.data.streaks && Object.keys(result.data.streaks).length > 0) {
+            wrongStreakStore.save(result.data.streaks);
+          }
+          if (result.data.recentPractices?.length > 0) {
+            recentPracticeStore.save(result.data.recentPractices);
+          }
+        }
+
+        syncStatus.lastSyncTime = Date.now();
+        return true;
+      }
+
+      syncStatus.error = '同步失败';
+      return false;
+    } catch (error) {
+      console.error('云端同步失败:', error);
+      syncStatus.error = '网络错误';
+      return false;
+    } finally {
+      syncStatus.isSyncing = false;
+    }
+  },
+
+  // 登录后自动同步（拉取云端数据并合并）
+  async syncOnLogin(): Promise<boolean> {
+    const userId = getUserId();
+    if (!userId) return false;
+
+    return this.syncAll(userId);
+  },
 };
 
 // 初始化示例数据（已禁用）

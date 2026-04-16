@@ -481,3 +481,4 @@ Response: { success: boolean, activatedCategories: string[] }
 - [x] 激活码过期时间设置
 - [x] 过期激活码权限自动失效
 - [x] 后台激活码管理页面
+- [x] 云端数据同步（用户练习记录、错题连续正确次数、最近练习记录）
