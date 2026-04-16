@@ -256,22 +256,26 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-semibold text-gray-900">智能刷题助手</span>
-              </Link>
-            </div>
+      <header className="bg-white sticky top-0 z-50 shadow-sm">
+        <div className="max-w-[970px] mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            {/* 产品标识 */}
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                <BookOpen className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
+                <p className="text-xs text-gray-400">{userActivations.length} 个已激活分类</p>
+              </div>
+            </Link>
+            
+            {/* 用户信息 */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-600 hidden sm:block">
                 {user?.nickname || user?.phone}
               </span>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="rounded-xl">
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
