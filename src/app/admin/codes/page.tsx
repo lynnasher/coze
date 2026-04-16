@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getLoginPath } from '@/lib/admin-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,14 +105,14 @@ export default function ActivationCodesPage() {
     const token = localStorage.getItem('admin_token');
     const userData = localStorage.getItem('admin_user');
     if (!token || !userData) {
-      router.push('/admin/login');
+      router.push(getLoginPath());
       return;
     }
     try {
       const user = JSON.parse(userData);
       setCurrentUser(user);
     } catch {
-      router.push('/admin/login');
+      router.push(getLoginPath());
     }
   };
 
@@ -154,7 +155,7 @@ export default function ActivationCodesPage() {
         }
       } else if (response.status === 401) {
         // token 过期，跳转登录
-        router.push('/admin/login');
+        router.push(getLoginPath());
       }
     } catch (error) {
       console.error('加载激活码失败:', error);
@@ -172,7 +173,7 @@ export default function ActivationCodesPage() {
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
-    router.push('/admin/login');
+    router.push(getLoginPath());
   };
 
   // 获取分类的完整路径
@@ -254,7 +255,7 @@ export default function ActivationCodesPage() {
       const token = localStorage.getItem('admin_token');
       if (!token) {
         alert('请先登录');
-        router.push('/admin/login');
+        router.push(getLoginPath());
         return;
       }
       

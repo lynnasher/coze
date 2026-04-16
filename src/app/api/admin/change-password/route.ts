@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-// 管理员凭据存储（实际生产环境应使用数据库和加密存储）
+// 管理员凭据存储（与 login/route.ts 共享）
 interface AdminCredential {
   password: string;
   isDefaultPassword: boolean;
@@ -10,18 +10,9 @@ interface AdminCredential {
 const adminCredentials: Record<string, AdminCredential> = {
   admin: {
     password: 'admin123',
-    isDefaultPassword: true, // 标记为默认密码，首次登录需强制修改
+    isDefaultPassword: true,
   },
 };
-
-// 生成 token
-function generateToken(user: { username: string }): string {
-  const payload = {
-    username: user.username,
-    exp: Date.now() + 24 * 60 * 60 * 1000, // 24小时后过期
-  };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
-}
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -43,35 +34,49 @@ function validatePasswordStrength(password: string): { valid: boolean; message?:
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    const { username, oldPassword, newPassword } = body;
 
-    if (!username || !password) {
+    // 验证请求参数
+    if (!username || !oldPassword || !newPassword) {
       return NextResponse.json(
-        { error: '请提供用户名和密码' },
+        { error: '请提供完整的参数' },
         { status: 400 }
       );
     }
 
     const admin = adminCredentials[username];
-
-    // 验证凭据
-    if (!admin || admin.password !== password) {
+    if (!admin) {
       return NextResponse.json(
-        { error: '用户名或密码错误' },
+        { error: '管理员不存在' },
+        { status: 404 }
+      );
+    }
+
+    // 验证旧密码
+    if (admin.password !== oldPassword) {
+      return NextResponse.json(
+        { error: '当前密码错误' },
         { status: 401 }
       );
     }
 
-    const token = generateToken({ username });
+    // 验证新密码强度
+    const validation = validatePasswordStrength(newPassword);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.message },
+        { status: 400 }
+      );
+    }
 
-    // 检查是否需要强制修改密码
-    const needChangePassword = admin.isDefaultPassword;
+    // 更新密码
+    adminCredentials[username].password = newPassword;
+    adminCredentials[username].isDefaultPassword = false;
+    adminCredentials[username].lastChanged = Date.now();
 
     return NextResponse.json({
       success: true,
-      token,
-      user: { username, role: 'admin' },
-      needChangePassword,
+      message: '密码修改成功',
     });
   } catch (error) {
     return NextResponse.json(
@@ -80,6 +85,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-// 导出修改密码的方法供其他路由使用
-export { adminCredentials, validatePasswordStrength };

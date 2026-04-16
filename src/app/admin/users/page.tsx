@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getLoginPath } from '@/lib/admin-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -87,18 +88,18 @@ export default function UsersPage() {
     const token = localStorage.getItem('admin_token');
     const userData = localStorage.getItem('admin_user');
     if (!token || !userData) {
-      router.push('/admin/login');
+      router.push(getLoginPath());
       return;
     }
     try {
       const user = JSON.parse(userData);
       if (user.role !== 'admin') {
-        router.push('/admin/login');
+        router.push(getLoginPath());
         return;
       }
       setCurrentUser(user);
     } catch {
-      router.push('/admin/login');
+      router.push(getLoginPath());
     }
   };
 
@@ -146,7 +147,7 @@ export default function UsersPage() {
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
-    router.push('/admin/login');
+    router.push(getLoginPath());
   };
 
   const handleStatusToggle = async (userId: string, currentStatus: string) => {

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { getLoginPath } from '@/lib/admin-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -428,7 +429,7 @@ export default function AdminPage() {
     const user = localStorage.getItem('admin_user');
     
     if (!token || !user) {
-      router.push('/admin/login');
+      router.push(getLoginPath());
       return;
     }
 
@@ -437,12 +438,12 @@ export default function AdminPage() {
       if (payload.exp < Date.now()) {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
-        router.push('/admin/login');
+        router.push(getLoginPath());
         return;
       }
       setIsAuthenticated(true);
     } catch {
-      router.push('/admin/login');
+      router.push(getLoginPath());
     }
   }, [router]);
 
@@ -515,7 +516,7 @@ export default function AdminPage() {
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
-    router.push('/admin/login');
+    router.push(getLoginPath());
   };
 
   // 导入 JSON 文件
