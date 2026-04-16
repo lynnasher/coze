@@ -775,28 +775,51 @@ export default function AdminPage() {
     }
   };
 
-  // 导出题库为 JSON
-  const handleExportBank = (bank: QuestionBank) => {
-    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
-    if (!storedQuestions) return;
+  // 导出题库为 Word
+  const handleExportBank = async (bank: QuestionBank) => {
+    try {
+      setError('');
+      const token = localStorage.getItem('admin_token');
+      if (!token) {
+        setError('请先登录');
+        return;
+      }
 
-    const allQuestions = JSON.parse(storedQuestions);
-    const bankQuestions = allQuestions.filter((q: { id: string }) => bank.questionIds.includes(q.id));
-
-    const data = {
-      name: bank.name,
-      description: bank.description,
-      exportedAt: new Date().toISOString(),
-      questions: bankQuestions
-    };
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${bank.name}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const response = await fetch(`/api/admin/banks/export/${bank.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: '导出失败' }));
+        throw new Error(data.error || '导出失败');
+      }
+      
+      // 获取文件名
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${bank.name}.docx`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (match) {
+          filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+        }
+      }
+      
+      // 下载文件
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('导出失败:', err);
+      setError(err instanceof Error ? err.message : '导出失败，请重试');
+    }
   };
 
   // 移动题库到指定分类
@@ -1224,7 +1247,7 @@ export default function AdminPage() {
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleExportBank(bank)}>
                                       <Download className="h-4 w-4 mr-2" />
-                                      导出 JSON
+                                      导出 Word
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem 
