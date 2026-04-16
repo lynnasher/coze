@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Clock, Copy } from 'lucide-react';
+import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/components/AuthModal';
 import { format } from 'date-fns';
@@ -284,39 +284,36 @@ export default function ProfilePage() {
       </header>
 
       {/* 主内容 */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 用户信息卡片 */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
-                <UserCircle className="w-10 h-10 text-white" />
+      <main className="max-w-[970px] mx-auto px-4 py-4">
+        {/* 用户信息卡片 - 紧凑横向布局 */}
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                <UserCircle className="w-7 h-7 text-white" />
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-gray-900">{user?.nickname || '用户'}</h2>
-                <p className="text-gray-500 text-sm">{user?.phone}</p>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-bold text-gray-900 truncate">{user?.nickname || '用户'}</h2>
+                <p className="text-xs text-gray-500">{user?.phone}</p>
                 {user?.role === 'admin' && (
-                  <Badge variant="secondary" className="mt-1">管理员</Badge>
+                  <Badge variant="secondary" className="mt-0.5 text-xs">管理员</Badge>
                 )}
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">{userActivations.length}</div>
-                <p className="text-xs text-gray-500">已激活分类</p>
+              <div className="text-right flex-shrink-0">
+                <div className="text-xl font-bold text-orange-500">{userActivations.length}</div>
+                <p className="text-xs text-gray-400">已激活</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* 激活码激活 */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Key className="w-5 h-5 text-green-500" />
+        {/* 激活码激活 - 紧凑卡片 */}
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Key className="w-4 h-4 text-green-500" />
               激活码激活
             </CardTitle>
-            <CardDescription>
-              输入激活码获取分类访问权限
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
@@ -324,44 +321,38 @@ export default function ProfilePage() {
                 placeholder="请输入激活码"
                 value={activationCode}
                 onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
-                className="flex-1"
+                className="flex-1 text-sm h-9"
               />
-              <Button onClick={handleActivateCode} disabled={activationLoading}>
+              <Button onClick={handleActivateCode} disabled={activationLoading} size="sm" className="px-4">
                 {activationLoading ? '激活中...' : '激活'}
               </Button>
             </div>
             {activationError && (
-              <p className="text-sm text-red-500 mt-2">{activationError}</p>
+              <p className="text-xs text-red-500 mt-2">{activationError}</p>
             )}
             {activationSuccess && (
-              <p className="text-sm text-green-500 mt-2 flex items-center gap-1">
-                <Check className="w-4 h-4" />
+              <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+                <Check className="w-3 h-3" />
                 {activationSuccess}
               </p>
             )}
           </CardContent>
         </Card>
 
-        {/* 分类激活管理 - 显示已激活的分类和对应的激活码 */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-blue-500" />
-                  我的分类
-                </CardTitle>
-                <CardDescription>
-                  已激活的分类及其激活码信息
-                </CardDescription>
-              </div>
-            </div>
+        {/* 分类激活管理 - 紧凑列表 */}
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-500" />
+              我的分类
+              <Badge variant="secondary" className="ml-auto text-xs">{userActivations.length}</Badge>
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2">
             {userActivations.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>暂无已激活的分类</p>
+              <div className="text-center py-6 text-gray-400">
+                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">暂无已激活的分类</p>
                 <p className="text-xs mt-1">请使用激活码激活分类</p>
               </div>
             ) : (
@@ -370,62 +361,59 @@ export default function ProfilePage() {
                 const category = categories.find(c => c.id === activation.category_id);
                 
                 return (
-                  <div key={activation.id} className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <BookOpen className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900">{activation.category_name}</div>
-                          <div className="text-xs text-gray-400">
-                            {questionCount} 道题目
-                          </div>
-                        </div>
+                  <div key={activation.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        category?.color === 'blue' ? 'bg-blue-100' :
+                        category?.color === 'green' ? 'bg-green-100' :
+                        category?.color === 'purple' ? 'bg-purple-100' :
+                        category?.color === 'orange' ? 'bg-orange-100' :
+                        'bg-gray-100'
+                      }`}>
+                        <BookOpen className={`w-4 h-4 ${
+                          category?.color === 'blue' ? 'text-blue-600' :
+                          category?.color === 'green' ? 'text-green-600' :
+                          category?.color === 'purple' ? 'text-purple-600' :
+                          category?.color === 'orange' ? 'text-orange-600' :
+                          'text-gray-600'
+                        }`} />
                       </div>
-                      <Badge variant="default" className="bg-blue-500 flex-shrink-0">已激活</Badge>
-                    </div>
-                    
-                    {/* 激活码信息 */}
-                    {activation.activation_code && (
-                      <div className="mt-3 pt-3 border-t border-blue-100">
-                        <div className="flex items-center justify-between bg-white rounded-lg p-2">
-                          <div className="flex items-center gap-2">
-                            <Key className="w-4 h-4 text-gray-400" />
-                            <span className="font-mono text-sm font-medium text-gray-700">
-                              {activation.activation_code}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(activation.activation_code!)}
-                              className="h-6 w-6 p-0"
-                            >
-                              <Copy className="w-3 h-3" />
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatExpireTime(activation.expires_at)}</span>
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1 px-1">
-                          激活时间：{new Date(activation.activated_at).toLocaleDateString()}
-                        </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 text-sm truncate">{activation.category_name}</div>
+                        <div className="text-xs text-gray-400">{questionCount} 道题目</div>
                       </div>
-                    )}
-                    
-                    {/* 管理员可取消激活 */}
-                    {user?.role === 'admin' && (
-                      <div className="mt-3 flex justify-end">
+                      {user?.role === 'admin' && (
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleToggleCategory(activation.category_id, true)}
-                          className="text-red-500 border-red-200 hover:bg-red-50"
+                          className="text-red-400 hover:text-red-500 hover:bg-red-50 h-7 w-7 p-0"
                         >
-                          取消激活
+                          <LogOut className="w-3 h-3" />
                         </Button>
+                      )}
+                    </div>
+                    
+                    {/* 激活码信息 - 紧凑显示 */}
+                    {activation.activation_code && (
+                      <div className="mt-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Key className="w-3 h-3 text-gray-400" />
+                          <span className="font-mono font-medium text-gray-600 bg-white px-2 py-0.5 rounded border">
+                            {activation.activation_code}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(activation.activation_code!)}
+                            className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                          <span className="text-gray-400 ml-auto">
+                            {formatExpireTime(activation.expires_at)}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -435,43 +423,38 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* 快捷入口 */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">开始练习</div>
-                    <div className="text-xs text-gray-400">进入练习页面</div>
-                  </div>
+        {/* 快捷入口 - 单列显示 */}
+        <Link href="/">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium text-gray-900 text-sm">开始练习</div>
+                <div className="text-xs text-gray-400">进入题库浏览</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </CardContent>
+          </Card>
+        </Link>
+
+        {user?.role === 'admin' && (
+          <Link href="/admin">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-purple-500 mt-2">
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-purple-600" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900 text-sm">后台管理</div>
+                  <div className="text-xs text-gray-400">题库和用户管理</div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
               </CardContent>
             </Card>
           </Link>
-          {user?.role === 'admin' && (
-            <Link href="/admin">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Settings className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">后台管理</div>
-                      <div className="text-xs text-gray-400">题库和用户管理</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </CardContent>
-              </Card>
-            </Link>
-          )}
-        </div>
+        )}
       </main>
     </div>
   );
