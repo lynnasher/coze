@@ -69,49 +69,13 @@ export function useQuiz() {
     return null;
   }, []);
 
-  // 初始化加载题目
+  // 初始化加载题目 - 仅用于首页展示，不加载题目详情
+  // 题目加载由 startQuiz 统一管理
   useEffect(() => {
-    const loadQuestions = async () => {
-      try {
-        // 先尝试从数据库加载
-        const dbQuestions = await loadQuestionsFromDb();
-        
-        let questions = questionStore.getAll();
-        
-        // 如果数据库有题目，合并到 localStorage
-        if (dbQuestions && dbQuestions.length > 0) {
-          // 合并数据库题目和本地题目，去重
-          const existingIds = new Set(questions.map(q => q.id));
-          const newQuestions = dbQuestions.filter(q => !existingIds.has(q.id));
-          if (newQuestions.length > 0) {
-            questions = [...questions, ...newQuestions];
-            questionStore.save(questions);
-          }
-        }
-        
-        if (questions.length === 0) {
-          // 导入示例数据
-          try {
-            const { initSampleQuestions } = await import('@/lib/quiz-store');
-            initSampleQuestions();
-            questions = questionStore.getAll();
-          } catch {
-            // 忽略
-          }
-        }
-
-        setQuizState(prev => ({
-          ...prev,
-          questions,
-        }));
-        setIsLoading(false);
-      } catch (error) {
-        setIsLoading(false);
-      }
-    };
-    
-    loadQuestions();
-  }, [loadQuestionsFromDb]);
+    // 初始化时不加载任何题目，题目加载由 startQuiz 统一管理
+    // 避免在用户开始练习某个题库后，初始化 effect 加载所有题目覆盖掉
+    setIsLoading(false);
+  }, []); // 空依赖，确保只执行一次
 
   // 开始练习
   const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
