@@ -736,40 +736,62 @@ export default function QuizApp() {
 
           {/* 题库浏览页面 */}
           <TabsContent value="library">
-            {/* 标题区域 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <Library className="w-4 h-4 text-blue-500" />
+            {/* 标题区域 - 现代化设计 */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-5 mb-4 shadow-lg">
+              {/* 背景装饰 */}
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white rounded-full" />
+                <div className="absolute -bottom-5 -left-5 w-24 h-24 bg-white rounded-full" />
+              </div>
+              
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center shadow-inner">
+                      <Library className="w-5 h-5 text-white" />
+                    </div>
+                    题库中心
+                  </h2>
+                  <p className="text-white/80 text-sm mt-1.5 ml-1">选择分类，开始你的学习之旅</p>
                 </div>
-                题库浏览
-              </h2>
-              <p className="text-sm text-gray-400 mt-1">点击题库开始练习</p>
+                
+                {/* 统计信息 */}
+                <div className="hidden sm:flex items-center gap-4">
+                  <div className="text-center px-3 py-1.5 bg-white/10 backdrop-blur rounded-lg">
+                    <div className="text-lg font-bold text-white">{banks.length}</div>
+                    <div className="text-xs text-white/70">个题库</div>
+                  </div>
+                  <div className="text-center px-3 py-1.5 bg-white/10 backdrop-blur rounded-lg">
+                    <div className="text-lg font-bold text-white">{categories.length}</div>
+                    <div className="text-xs text-white/70">个分类</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* 未登录或无激活分类时的提示 - 清新简洁风格 */}
+            {/* 未登录或无激活分类时的提示 */}
             {(!currentUser || getActivatedCategoryIds().length === 0) && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm mb-4 text-center">
-                <div className="w-14 h-14 mx-auto mb-3 bg-amber-50 rounded-2xl flex items-center justify-center">
-                  <BookOpen className="w-7 h-7 text-amber-400" />
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 mb-4 text-center border border-amber-100">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-400 to-orange-400 rounded-2xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="w-8 h-8 text-white" />
                 </div>
                 {!currentUser ? (
                   <>
-                    <h3 className="text-base font-semibold text-gray-800 mb-1">请先登录</h3>
-                    <p className="text-gray-400 text-sm mb-3">登录后才能访问题库</p>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">欢迎来到题库中心</h3>
+                    <p className="text-slate-500 text-sm mb-4">登录后即可开始练习，开始你的学习之旅</p>
                     <Link href="/profile">
-                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
-                        去登录
+                      <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md">
+                        立即登录
                       </Button>
                     </Link>
                   </>
                 ) : (
                   <>
-                    <h3 className="text-base font-semibold text-gray-800 mb-1">暂无激活分类</h3>
-                    <p className="text-gray-400 text-sm mb-3">您还没有激活任何分类，请使用激活码激活</p>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">激活分类权限</h3>
+                    <p className="text-slate-500 text-sm mb-4">使用激活码解锁更多题库，开启学习之旅</p>
                     <Link href="/profile">
-                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
-                        去激活
+                      <Button size="sm" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl shadow-md">
+                        激活题库
                       </Button>
                     </Link>
                   </>
@@ -784,20 +806,22 @@ export default function QuizApp() {
                   <div className="w-14 h-14 mx-auto mb-3 bg-gray-100 rounded-2xl flex items-center justify-center">
                     <Library className="w-7 h-7 text-gray-300" />
                   </div>
-                  <p className="text-gray-500 text-sm">暂无题库</p>
-                  <p className="text-gray-400 text-xs mt-1">请联系管理员导入题库</p>
+                  <p className="text-slate-500 text-sm font-medium">暂无题库</p>
+                  <p className="text-slate-400 text-xs mt-1">管理员正在准备学习资料</p>
                 </div>
               ) : (
                 <>
                   {/* 未分类题库 - 只有已登录用户才能访问 */}
                   {currentUser && banks.filter(b => !b.categoryId).length > 0 && (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm">
+                    <div className="bg-white/60 backdrop-blur rounded-2xl p-4 border border-slate-100">
                       <div className="flex items-center gap-2 mb-3">
-                        <FolderOpen className="w-4 h-4 text-slate-400" />
-                        <h3 className="text-sm font-semibold text-gray-700">未分类</h3>
-                        <span className="text-xs text-gray-400">({banks.filter(b => !b.categoryId).length})</span>
+                        <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+                          <FolderOpen className="w-3.5 h-3.5 text-slate-500" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-slate-700">其他题库</h3>
+                        <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{banks.filter(b => !b.categoryId).length}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-2 gap-3">
                         {banks.filter(b => !b.categoryId).map((bank) => (
                           <BankCard 
                             key={bank.id} 
@@ -846,18 +870,22 @@ export default function QuizApp() {
                           if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
                           
                           return (
-                            <div key={category.id} className="bg-white rounded-2xl p-4 shadow-sm">
+                            <div key={category.id} className="bg-white/80 backdrop-blur rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                               {/* 顶级分类 - 可点击展开 */}
                               <div 
-                                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-lg transition-colors"
+                                className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 -m-2 rounded-lg transition-colors"
                                 onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                               >
-                                {selectedCategoryId === category.id ? (
-                                  <FolderOpen className="w-4 h-4 text-slate-600" />
-                                ) : (
-                                  <Folder className="w-4 h-4 text-slate-400" />
-                                )}
-                                <span className={`text-sm font-semibold px-2 py-0.5 rounded ${
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                                  selectedCategoryId === category.id ? 'bg-indigo-100' : 'bg-slate-100'
+                                }`}>
+                                  {selectedCategoryId === category.id ? (
+                                    <FolderOpen className="w-4 h-4 text-indigo-600" />
+                                  ) : (
+                                    <Folder className="w-4 h-4 text-slate-500" />
+                                  )}
+                                </div>
+                                <span className={`text-sm font-bold px-2.5 py-1 rounded-lg ${
                                   category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
                                   category.color === 'green' ? 'bg-green-100 text-green-700' :
                                   category.color === 'red' ? 'bg-red-100 text-red-700' :
@@ -869,10 +897,10 @@ export default function QuizApp() {
                                 }`}>
                                   {category.name}
                                 </span>
-                                <span className="text-xs text-gray-400">
-                                  ({categoryBanks.length + childCategoryBanks.length})
+                                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  {categoryBanks.length + childCategoryBanks.length} 个题库
                                 </span>
-                                <ChevronRight className={`w-4 h-4 text-gray-300 ml-auto transition-transform ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
+                                <ChevronRight className={`w-4 h-4 text-slate-400 ml-auto transition-transform ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
                               </div>
                             
                               {/* 展开时显示题库 */}
@@ -881,10 +909,11 @@ export default function QuizApp() {
                                   {/* 该分类的直接题库 */}
                                   {categoryBanks.length > 0 && (
                                     <div>
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-xs text-gray-400">直接题库</span>
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-1 h-4 bg-indigo-400 rounded-full" />
+                                        <span className="text-xs font-medium text-slate-600">该分类题库</span>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-2">
+                                      <div className="grid grid-cols-2 gap-3">
                                         {categoryBanks.map((bank) => (
                                           <BankCard 
                                             key={bank.id} 
@@ -907,23 +936,34 @@ export default function QuizApp() {
                                     
                                     return (
                                       <div key={child.id}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FolderOpen className="w-3 h-3 text-gray-400" />
-                                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                                            child.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                                            child.color === 'green' ? 'bg-green-50 text-green-600' :
-                                            child.color === 'red' ? 'bg-red-50 text-red-600' :
-                                            child.color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
-                                            child.color === 'purple' ? 'bg-purple-50 text-purple-600' :
-                                            child.color === 'pink' ? 'bg-pink-50 text-pink-600' :
-                                            child.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-                                            'bg-cyan-50 text-cyan-600'
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${
+                                            child.color === 'blue' ? 'bg-blue-100' :
+                                            child.color === 'green' ? 'bg-green-100' :
+                                            child.color === 'red' ? 'bg-red-100' :
+                                            child.color === 'yellow' ? 'bg-yellow-100' :
+                                            child.color === 'purple' ? 'bg-purple-100' :
+                                            child.color === 'pink' ? 'bg-pink-100' :
+                                            child.color === 'indigo' ? 'bg-indigo-100' :
+                                            'bg-cyan-100'
+                                          }`}>
+                                            <FolderOpen className="w-3 h-3 text-slate-600" />
+                                          </div>
+                                          <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${
+                                            child.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                            child.color === 'green' ? 'bg-green-100 text-green-700' :
+                                            child.color === 'red' ? 'bg-red-100 text-red-700' :
+                                            child.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                            child.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                            child.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                            child.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                            'bg-cyan-100 text-cyan-700'
                                           }`}>
                                             {child.name}
                                           </span>
-                                          <span className="text-xs text-gray-400">({childBanks.length})</span>
+                                          <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{childBanks.length}</span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-3">
                                           {childBanks.map((bank) => (
                                             <BankCard 
                                               key={bank.id} 
