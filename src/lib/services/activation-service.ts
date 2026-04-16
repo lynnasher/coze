@@ -1,6 +1,15 @@
 import 'server-only';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+// 用户信息类型定义（简化版）
+export interface ActivationUser {
+  user_id: string;
+  user_phone?: string;
+  user_nickname?: string;
+  activated_at: string;
+  expires_at: string | null;
+}
+
 // 激活码类型定义
 export interface ActivationCode {
   id: string;
@@ -14,6 +23,8 @@ export interface ActivationCode {
   status: 'active' | 'used' | 'expired' | 'disabled';
   description: string | null;
   created_at: string;
+  // 关联的用户信息
+  activated_users?: ActivationUser[];
 }
 
 // 用户激活记录类型定义
@@ -102,12 +113,52 @@ export const activationCodeService = {
     return data as ActivationCode | null;
   },
 
-  // 获取所有激活码
+  // 获取所有激活码（包含关联的用户信息）
   async getAll(): Promise<ActivationCode[]> {
     const client = getSupabaseClient();
     const { data, error } = await client.from('activation_codes').select('*').order('created_at', { ascending: false });
     if (error) throw new Error(`查询激活码失败: ${error.message}`);
-    return (data || []) as ActivationCode[];
+    
+    const codes = (data || []) as ActivationCode[];
+    
+    // 查询所有用户激活记录和用户信息
+    const { data: activations, error: activationsError } = await client
+      .from('user_activations')
+      .select('*, users(phone, nickname)')
+      .order('activated_at', { ascending: false });
+    
+    if (activationsError) {
+      console.error('查询用户激活记录失败:', activationsError);
+    }
+    
+    // 将用户激活记录按激活码分组
+    const activationsByCode: Record<string, ActivationUser[]> = {};
+    if (activations) {
+      for (const activation of activations) {
+        const code = activation.activation_code;
+        if (code) {
+          if (!activationsByCode[code]) {
+            activationsByCode[code] = [];
+          }
+          // 提取用户信息
+          const userInfo = activation.users as { phone?: string; nickname?: string } | null;
+          activationsByCode[code].push({
+            user_id: activation.user_id,
+            user_phone: userInfo?.phone,
+            user_nickname: userInfo?.nickname,
+            activated_at: activation.activated_at,
+            expires_at: activation.expires_at,
+          });
+        }
+      }
+    }
+    
+    // 为每个激活码添加用户信息
+    for (const code of codes) {
+      code.activated_users = activationsByCode[code.code] || [];
+    }
+    
+    return codes;
   },
 
   // 获取某个分类的激活码

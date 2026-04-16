@@ -49,6 +49,7 @@ import {
   XCircle,
   AlertCircle,
   Calendar as CalendarIcon,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -59,6 +60,14 @@ interface Category {
   color: string;
   order: number;
   parentId?: string;
+}
+
+interface ActivationUser {
+  user_id: string;
+  user_phone?: string;
+  user_nickname?: string;
+  activated_at: string;
+  expires_at: string | null;
 }
 
 interface ActivationCode {
@@ -73,6 +82,7 @@ interface ActivationCode {
   status: string;
   description: string | null;
   created_at: string;
+  activated_users?: ActivationUser[];
 }
 
 export default function ActivationCodesPage() {
@@ -467,24 +477,23 @@ export default function ActivationCodesPage() {
                   <TableRow>
                     <TableHead>激活码</TableHead>
                     <TableHead>对应分类</TableHead>
+                    <TableHead>激活用户</TableHead>
                     <TableHead>类型</TableHead>
-                    <TableHead>使用情况</TableHead>
                     <TableHead>过期时间</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>创建时间</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         加载中...
                       </TableCell>
                     </TableRow>
                   ) : filteredCodes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         暂无激活码
                       </TableCell>
                     </TableRow>
@@ -492,7 +501,7 @@ export default function ActivationCodesPage() {
                     filteredCodes.map((code) => {
                       const isExpired = code.expires_at && new Date(code.expires_at) < new Date();
                       const isUsed = code.status === 'used' || code.uses >= code.max_uses;
-                      const isValid = !isExpired && !isUsed;
+                      const activatedUsers = code.activated_users || [];
                       
                       return (
                         <TableRow key={code.id}>
@@ -509,14 +518,28 @@ export default function ActivationCodesPage() {
                               </Button>
                             </div>
                           </TableCell>
-                          <TableCell>{getCategoryPath(code.category_id)}</TableCell>
+                          <TableCell className="text-sm">{getCategoryPath(code.category_id)}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">{code.type === 'once' ? '单次' : '多次'}</Badge>
+                            {activatedUsers.length === 0 ? (
+                              <span className="text-sm text-gray-400">-</span>
+                            ) : (
+                              <div className="space-y-1">
+                                {activatedUsers.map((user, idx) => (
+                                  <div key={user.user_id} className="flex items-center gap-1.5 text-sm bg-gray-50 rounded px-2 py-1">
+                                    <User className="w-3 h-3 text-gray-400" />
+                                    <span className="truncate max-w-[120px]">
+                                      {user.user_nickname || user.user_phone || '未知用户'}
+                                    </span>
+                                    <span className="text-xs text-gray-400 ml-auto">
+                                      {new Date(user.activated_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm">
-                              {code.uses} / {code.max_uses}
-                            </span>
+                            <Badge variant="outline">{code.type === 'once' ? '单次' : '多次'}</Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1 text-sm">
@@ -532,9 +555,6 @@ export default function ActivationCodesPage() {
                             ) : (
                               <Badge variant="default" className="bg-green-500">可用</Badge>
                             )}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-500">
-                            {new Date(code.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
