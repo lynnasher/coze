@@ -24,7 +24,8 @@ import {
   Settings,
   History,
   Flame,
-  Puzzle
+  Puzzle,
+  User
 } from 'lucide-react';
 import { questionStore, recordStore, getWrongQuestionIds, generateId, wrongStreakStore } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -637,7 +638,28 @@ export default function WrongBookPage() {
 
       {/* 主内容 */}
       <main className="max-w-[970px] mx-auto px-4 py-4">
-        {wrongQuestions.length === 0 ? (
+        {/* 未登录提示 */}
+        {!currentUser && mounted && (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <User className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">请先登录</h2>
+            <p className="text-slate-400 mb-6">登录后才能使用错题本功能</p>
+            <Button 
+              onClick={() => {
+                // 跳转到首页触发登录弹窗
+                window.location.href = '/?login=true';
+              }}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 rounded-xl h-11 px-6"
+            >
+              去登录
+            </Button>
+          </div>
+        )}
+        
+        {/* 错题列表 - 仅登录用户可见 */}
+        {currentUser && wrongQuestions.length === 0 && (
           /* 空状态 */
           <div className="text-center py-16">
             <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -651,7 +673,9 @@ export default function WrongBookPage() {
               </Button>
             </Link>
           </div>
-        ) : (
+        )}
+        
+        {currentUser && wrongQuestions.length > 0 && (
           <div className="space-y-4">
             {/* 统计概览 */}
             <div className="bg-white rounded-2xl p-4 shadow-sm">
