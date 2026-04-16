@@ -1436,7 +1436,7 @@ function PracticeView({
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="ml-1 text-sm font-medium">
-                {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一子题' : '上一题'}
+                {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一题' : '上一题'}
               </span>
             </Button>
 
@@ -1454,7 +1454,7 @@ function PracticeView({
               <span className="ml-1.5 text-sm">查看答案</span>
             </Button>
 
-            {/* 下一题 / 下一子题 / 交卷 */}
+            {/* 下一题 / 下一题 / 交卷 */}
             {(() => {
               const isComprehensive = currentQuestion?.type === 'comprehensive';
               const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
@@ -1484,7 +1484,7 @@ function PracticeView({
                     }}
                     className="h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
                   >
-                    <span className="text-sm">下一子题</span>
+                    <span className="text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 );
