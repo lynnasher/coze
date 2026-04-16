@@ -98,7 +98,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           // 登录成功后同步云端数据
           cloudSyncService.syncOnLogin().then(success => {
             if (success) {
-              console.log('数据同步成功');
+              // 数据同步成功
               // 通知页面刷新数据
               window.dispatchEvent(new Event('storage'));
             }

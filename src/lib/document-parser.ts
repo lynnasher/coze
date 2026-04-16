@@ -520,7 +520,6 @@ export const parseDocx = async (buffer: Buffer): Promise<string> => {
     const result = await mammoth.extractRawText({ buffer });
     return result.value;
   } catch (error) {
-    console.error('DOCX 解析失败:', error);
     throw new Error('DOCX 文件解析失败');
   }
 };
@@ -534,7 +533,7 @@ export const parsePdf = async (buffer: Buffer): Promise<string> => {
     const pdfData = await pdfParse(buffer);
     return pdfData.text;
   } catch (error) {
-    console.error('PDF 解析失败:', error);
+    // PDF 解析失败
     throw new Error('PDF 文件解析失败');
   }
 };

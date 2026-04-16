@@ -63,7 +63,7 @@ export default function WrongBookPage() {
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
       } catch (e) {
-        console.error('解析用户数据失败', e);
+        // 忽略解析错误
       }
     }
   }, []);

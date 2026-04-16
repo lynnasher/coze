@@ -156,7 +156,6 @@ export const importFromJson = (jsonStr: string): Question[] => {
     
     return [];
   } catch {
-    console.error('JSON 解析失败');
     return [];
   }
 };

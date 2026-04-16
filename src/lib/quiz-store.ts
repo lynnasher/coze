@@ -26,6 +26,94 @@ export function getCurrentUserId(): string | null {
 }
 
 // ==================== API 数据缓存层 ====================
+// 缓存有效期配置（毫秒）
+export const CACHE_TTL = {
+  BANKS: 5 * 60 * 1000,      // 题库列表缓存 5 分钟
+  CATEGORIES: 5 * 60 * 1000, // 分类缓存 5 分钟
+  QUESTIONS: 2 * 60 * 1000,  // 题目缓存 2 分钟
+  USER: 1 * 60 * 1000,       // 用户信息缓存 1 分钟
+};
+
+// 缓存 key 生成器
+export const getCacheKey = (prefix: string, id?: string): string => {
+  return id ? `${prefix}_${id}` : prefix;
+};
+
+// 带缓存的 fetch 封装
+export async function cachedFetch<T>(
+  url: string,
+  cacheKey: string,
+  ttlMs: number = CACHE_TTL.QUESTIONS
+): Promise<{ data: T | null; fromCache: boolean }> {
+  // 检查缓存
+  const cached = cacheStore.get<T>(cacheKey);
+  if (cached) {
+    return { data: cached, fromCache: true };
+  }
+  
+  // 发起请求
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      // 存入缓存
+      cacheStore.set(cacheKey, data, ttlMs);
+      return { data, fromCache: false };
+    }
+  } catch (error) {
+    // 请求失败
+  }
+  
+  return { data: null, fromCache: false };
+}
+
+// ==================== API 请求去重 ====================
+const pendingRequests = new Map<string, Promise<unknown>>();
+
+export async function deduplicatedFetch<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+  // 如果已有相同 key 的请求正在进行，返回该请求的 Promise
+  const existing = pendingRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+  
+  // 创建新请求
+  const requestPromise = fetchFn().finally(() => {
+    // 请求完成后移除
+    pendingRequests.delete(key);
+  });
+  
+  pendingRequests.set(key, requestPromise);
+  return requestPromise;
+}
+
+// 带超时控制的 fetch 封装（默认 10 秒超时）
+export async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs: number = 10000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+// 缓存失效
+export function invalidateCache(keys: string[]): void {
+  keys.forEach(key => cacheStore.remove(key));
+}
+
 interface CacheItem<T> {
   data: T;
   timestamp: number;
@@ -38,14 +126,6 @@ interface CacheStore {
   remove(key: string): void;
   clear(): void;
 }
-
-// 缓存有效期配置（毫秒）
-export const CACHE_TTL = {
-  BANKS: 5 * 60 * 1000,      // 题库列表缓存 5 分钟
-  CATEGORIES: 5 * 60 * 1000, // 分类缓存 5 分钟
-  QUESTIONS: 2 * 60 * 1000,  // 题目缓存 2 分钟
-  USER: 1 * 60 * 1000,       // 用户信息缓存 1 分钟
-};
 
 // 内存缓存（页面刷新后失效，但同会话内可复用）
 const memoryCache = new Map<string, CacheItem<unknown>>();
@@ -93,7 +173,7 @@ export const cacheStore: CacheStore = {
       try {
         localStorage.setItem(`cache_${key}`, JSON.stringify(item));
       } catch (e) {
-        console.error('缓存写入失败:', e);
+        // 缓存写入失败
       }
     }
   },
@@ -144,7 +224,7 @@ export const preloadQuestions = async (questionIds: string[]): Promise<void> => 
       });
     }
   } catch (e) {
-    console.error('预加载失败:', e);
+    // 预加载失败
   }
 };
 

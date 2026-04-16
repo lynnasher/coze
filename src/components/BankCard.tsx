@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, BookOpen } from 'lucide-react';
 
@@ -11,7 +12,7 @@ interface BankCardProps {
   onStartPractice: (bankId: string) => void;
 }
 
-export function BankCard({ bank, onStartPractice }: BankCardProps) {
+export const BankCard = memo(function BankCard({ bank, onStartPractice }: BankCardProps) {
   // 如果有 questionCount 直接使用，否则显示 - 
   const questionCount = bank.questionCount ?? 0;
   
@@ -40,4 +41,4 @@ export function BankCard({ bank, onStartPractice }: BankCardProps) {
       </div>
     </div>
   );
-}
+});

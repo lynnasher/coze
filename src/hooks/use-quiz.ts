@@ -64,23 +64,19 @@ export function useQuiz() {
         return data.questions as Question[];
       }
     } catch (error) {
-      console.error('从数据库加载题目失败:', error);
+      // 忽略错误
     }
     return null;
   }, []);
 
   // 初始化加载题目
   useEffect(() => {
-    console.log('useQuiz: 开始加载题目...');
     const loadQuestions = async () => {
       try {
-        console.log('useQuiz: 调用 loadQuestionsFromDb...');
         // 先尝试从数据库加载
         const dbQuestions = await loadQuestionsFromDb();
-        console.log('useQuiz: dbQuestions:', dbQuestions?.length);
         
         let questions = questionStore.getAll();
-        console.log('useQuiz: local questions:', questions.length);
         
         // 如果数据库有题目，合并到 localStorage
         if (dbQuestions && dbQuestions.length > 0) {
@@ -104,15 +100,12 @@ export function useQuiz() {
           }
         }
 
-        console.log('useQuiz: 最终题目数:', questions.length);
         setQuizState(prev => ({
           ...prev,
           questions,
         }));
-        console.log('useQuiz: 设置 isLoading = false');
         setIsLoading(false);
       } catch (error) {
-        console.error('加载题目失败:', error);
         setIsLoading(false);
       }
     };

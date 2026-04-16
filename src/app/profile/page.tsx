@@ -74,8 +74,6 @@ export default function ProfilePage() {
       return;
     }
     setUser(currentUser);
-    console.log('当前用户:', currentUser);
-    console.log('用户已激活分类:', currentUser.activated_categories);
   };
 
   const loadData = async (retryCount = 0) => {
@@ -89,7 +87,6 @@ export default function ProfilePage() {
         
         if (activationsRes.status === 401) {
           // Token 过期，需要重新登录
-          console.error('Token 已过期，请重新登录');
           alert('登录已过期，请重新登录');
           localStorage.removeItem('quiz_user_token');
           localStorage.removeItem('quiz_user_data');
@@ -99,30 +96,15 @@ export default function ProfilePage() {
         
         if (activationsRes.ok) {
           const activationsData = await activationsRes.json();
-          console.log('激活记录数据:', activationsData);
           // 设置用户激活记录
           setUserActivations(activationsData.activations || []);
-        } else {
-          console.error('获取激活记录失败:', activationsRes.status);
-          // 如果失败，重试最多3次
-          if (retryCount < 3) {
-            console.log(`重试获取激活记录 (${retryCount + 1}/3)...`);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await loadData(retryCount + 1);
-          }
         }
       } catch (error) {
-        console.error('加载激活记录失败:', error);
-        // 网络错误时重试
-        if (retryCount < 3) {
-          console.log(`重试获取激活记录 (${retryCount + 1}/3)...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          await loadData(retryCount + 1);
-        }
+        // 忽略错误
       }
     }
     
-    // 从数据库加载分类
+    // 加载分类
     try {
       const response = await fetch('/api/categories');
       if (response.ok) {
@@ -130,10 +112,10 @@ export default function ProfilePage() {
         setCategories(data.categories || []);
       }
     } catch (error) {
-      console.error('加载分类失败:', error);
+      // 忽略错误
     }
     
-    // 从数据库加载题库
+    // 加载题库
     try {
       const banksResponse = await fetch('/api/banks');
       if (banksResponse.ok) {
@@ -141,7 +123,7 @@ export default function ProfilePage() {
         setBanks(banksData.banks || []);
       }
     } catch (error) {
-      console.error('加载题库失败:', error);
+      // 忽略错误
     }
     
     setLoading(false);
@@ -208,7 +190,7 @@ export default function ProfilePage() {
       setUser(updatedUser);
       localStorage.setItem('quiz_user_data', JSON.stringify(updatedUser));
     } catch {
-      console.error('更新分类失败');
+      // 忽略错误
     }
   };
 

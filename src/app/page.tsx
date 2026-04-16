@@ -38,7 +38,7 @@ import {
   Flame,
   Calendar
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -130,50 +130,49 @@ export default function QuizApp() {
       createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now()
     }));
   }, [dbBanks]);
-  
-  // 从数据库加载分类
-  const loadCategories = useCallback(async () => {
-    try {
-      const response = await fetch('/api/categories');
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.categories || []);
-      }
-    } catch (error) {
-      console.error('加载分类失败:', error);
-      // 备用：从 localStorage 获取
-      const storedCategories = localStorage.getItem('quiz_categories');
-      if (storedCategories) {
-        setCategories(JSON.parse(storedCategories));
-      }
-    }
-  }, []);
-  
-  // 从数据库加载题库
-  const loadBanksFromDb = useCallback(async () => {
-    try {
-      const response = await fetch('/api/banks');
-      if (response.ok) {
-        const data = await response.json();
-        setDbBanks(data.banks || []);
-      }
-    } catch (error) {
-      console.error('从数据库加载题库失败:', error);
-    }
-  }, []);
-  
-  const loadQuestions = useCallback(async () => {
-    setQuestions(questionStore.getAll());
-    await loadCategories();
-    loadBanksFromDb();
-    // 加载最近练习记录
-    setRecentPractices(recentPracticeStore.getRecent(3));
-  }, [loadCategories, loadBanksFromDb]);
 
-  // 确保组件在客户端挂载后才渲染依赖 localStorage 的数据
-  useEffect(() => {
-    setMounted(true);
+  // 统一的初始数据加载函数（使用缓存减少重复请求）
+  const loadAllData = useCallback(async () => {
+    // 加载本地数据（从 localStorage 立即获取）
+    setQuestions(questionStore.getAll());
+    setRecentPractices(recentPracticeStore.getRecent(3));
+    
+    // 获取当前用户
+    const user = getCurrentUser();
+    setCurrentUser(user);
+    
+    // 使用缓存加载分类
+    const { data: categoriesData } = await cachedFetch<{ categories: Category[] }>(
+      '/api/categories',
+      getCacheKey('categories'),
+      CACHE_TTL.CATEGORIES
+    );
+    if (categoriesData?.categories) {
+      setCategories(categoriesData.categories);
+    }
+    
+    // 使用缓存加载题库
+    const { data: banksData } = await cachedFetch<{ banks: any[] }>(
+      '/api/banks',
+      getCacheKey('banks'),
+      CACHE_TTL.BANKS
+    );
+    if (banksData?.banks) {
+      setDbBanks(banksData.banks);
+    }
+    
+    // 如果用户已登录，刷新激活的分类（检查过期）
+    if (user) {
+      refreshActivatedCategories(user.id);
+    }
   }, []);
+
+  // 初始化加载（只在首次渲染时执行）
+  useEffect(() => {
+    loadAllData();
+    // 确保组件在客户端挂载
+    setMounted(true);
+  }, [loadAllData]);
 
   // 刷新用户激活的分类（检查过期时间）
   const refreshActivatedCategories = async (userId: string) => {
@@ -187,9 +186,7 @@ export default function QuizApp() {
       if (response.ok) {
         const data = await response.json();
         if (data.activatedCategories) {
-          // 更新 React state
           setCurrentUser(prev => prev ? { ...prev, activatedCategories: data.activatedCategories } : null);
-          // 同时更新 localStorage，确保刷新页面后数据一致
           const storedUser = localStorage.getItem('quiz_user_data');
           if (storedUser) {
             try {
@@ -203,38 +200,9 @@ export default function QuizApp() {
         }
       }
     } catch (error) {
-      console.error('刷新激活分类失败:', error);
+      // 忽略错误
     }
   };
-
-  // 加载题库
-  useEffect(() => {
-    console.log('加载题库...');
-    fetch('/api/banks')
-      .then(res => {
-        console.log('响应状态:', res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log('题库数据:', data);
-        setDbBanks(data.banks || []);
-      })
-      .catch(err => {
-        console.error('加载题库失败:', err);
-      });
-  }, []);
-
-  useEffect(() => {
-    loadQuestions();
-    // 获取当前登录用户
-    const user = getCurrentUser();
-    setCurrentUser(user);
-    
-    // 如果用户已登录，刷新激活的分类（检查过期）
-    if (user) {
-      refreshActivatedCategories(user.id);
-    }
-  }, [loadQuestions]);
 
   // 监听 localStorage 变化，以便在用户登录/登出后刷新状态
   useEffect(() => {
@@ -257,12 +225,11 @@ export default function QuizApp() {
   const getActivatedCategoryIds = useCallback(() => {
     if (!currentUser) {
       // 未登录用户：不能做任何题库
-      console.log('getActivatedCategoryIds - 未登录用户');
       return [];
     }
     // 已登录用户：只能做已激活分类的题库
     const activated = currentUser.activatedCategories || [];
-    console.log('getActivatedCategoryIds - 已登录用户, activatedCategories:', activated);
+    // 已登录用户
     // 如果没有激活任何分类，返回空数组
     return activated;
   }, [currentUser]);
@@ -270,10 +237,8 @@ export default function QuizApp() {
   // 过滤出可用的分类（用于显示）
   const getAvailableCategories = useCallback(() => {
     const activatedIds = getActivatedCategoryIds();
-    console.log('getAvailableCategories - activatedIds:', activatedIds);
-    console.log('getAvailableCategories - categories:', categories.length);
+    // 计算可用分类
     const result = categories.filter(c => !c.parentId && activatedIds.includes(c.id));
-    console.log('getAvailableCategories - result:', result.length);
     return result;
   }, [categories, getActivatedCategoryIds]);
 
