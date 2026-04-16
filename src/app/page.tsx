@@ -801,15 +801,34 @@ export default function QuizApp() {
 
             {/* 题库列表 - 按分类分组，默认折叠 */}
             <div className="space-y-3">
-              {banks.length === 0 ? (
-                <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
-                  <div className="w-14 h-14 mx-auto mb-3 bg-gray-100 rounded-2xl flex items-center justify-center">
-                    <Library className="w-7 h-7 text-gray-300" />
+              {/* 没有任何题库时的空状态 */}
+              {banks.length === 0 && categories.length === 0 && (
+                <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-8 text-center border border-slate-200">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-2xl flex items-center justify-center">
+                    <Library className="w-8 h-8 text-slate-400" />
                   </div>
-                  <p className="text-slate-500 text-sm font-medium">暂无题库</p>
-                  <p className="text-slate-400 text-xs mt-1">管理员正在准备学习资料</p>
+                  <p className="text-slate-600 text-base font-medium mb-2">题库正在准备中</p>
+                  <p className="text-slate-400 text-sm">管理员正在上传学习资料，请稍后再来看看</p>
                 </div>
-              ) : (
+              )}
+              
+              {/* 有分类但该分类下暂无题库 */}
+              {banks.length === 0 && categories.length > 0 && (
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 text-center border border-indigo-100">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-2xl flex items-center justify-center">
+                    <BookOpen className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <p className="text-indigo-700 text-base font-medium mb-2">你的分类权限已激活</p>
+                  <p className="text-indigo-500 text-sm mb-4">该分类下的题库正在整理中</p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-100 rounded-lg text-xs text-indigo-600">
+                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" />
+                    即将上线
+                  </div>
+                </div>
+              )}
+
+              {/* 有题库时的显示 */}
+              {banks.length > 0 && (
                 <>
                   {/* 未分类题库 - 只有已登录用户才能访问 */}
                   {currentUser && banks.filter(b => !b.categoryId).length > 0 && (
@@ -986,7 +1005,7 @@ export default function QuizApp() {
                         })}
                       </>
                     );
-                  })()}
+                  })}
                 </>
               )}
             </div>
