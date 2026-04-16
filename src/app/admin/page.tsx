@@ -48,7 +48,6 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  Clock,
   BarChart3,
   Search,
   Download,
@@ -94,7 +93,6 @@ interface Category {
 interface AdminStats {
   totalBanks: number;
   totalQuestions: number;
-  recentImports: number;
 }
 
 // 生成 ID
@@ -399,7 +397,6 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats>({
     totalBanks: 0,
     totalQuestions: 0,
-    recentImports: 0
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -505,14 +502,6 @@ export default function AdminPage() {
       console.error('加载题库失败:', error);
     }
 
-    // 从 localStorage 获取最近导入统计
-    const storedQuestions = localStorage.getItem(STORAGE_KEYS.QUESTIONS);
-    if (storedQuestions) {
-      const questions = JSON.parse(storedQuestions);
-      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      const recentQuestions = questions.filter((q: { createdAt: number }) => q.createdAt > weekAgo);
-      setStats(prev => ({ ...prev, recentImports: recentQuestions.length }));
-    }
   }, []);
 
   useEffect(() => {
@@ -977,17 +966,6 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{stats.totalQuestions}</div>
-              <p className="text-xs text-slate-500 mt-1">道题目</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">本周导入</CardTitle>
-              <Clock className="h-5 w-5 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.recentImports}</div>
               <p className="text-xs text-slate-500 mt-1">道题目</p>
             </CardContent>
           </Card>
