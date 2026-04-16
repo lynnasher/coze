@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
+import { migrateQuestionImages } from '@/lib/image-migration';
 
 // 解析 Word 文档（使用 mammoth.js 格式）
 async function parseDocx(buffer: ArrayBuffer): Promise<string> {
@@ -236,6 +237,21 @@ export async function POST(request: Request) {
       type: q.type as 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive'
     }));
 
+    // 迁移题目中的图片到对象存储
+    const questionsWithMigratedImages = await Promise.all(
+      questionsWithIds.map(async (q) => {
+        const migrated = await migrateQuestionImages({
+          content: q.content,
+          options: q.options,
+          explanation: q.explanation,
+        });
+        return {
+          ...q,
+          ...migrated,
+        };
+      })
+    );
+
     // 创建题库到数据库
     const newBank = await bankService.createBank(
       bankName,
@@ -244,7 +260,7 @@ export async function POST(request: Request) {
     );
 
     // 保存题目到数据库
-    const questionCount = await bankService.createQuestions(questionsWithIds, newBank.id);
+    const questionCount = await bankService.createQuestions(questionsWithMigratedImages, newBank.id);
 
     // 在客户端环境下同步保存到 localStorage（兼容前端）
     if (typeof window !== 'undefined') {
@@ -256,12 +272,12 @@ export async function POST(request: Request) {
         name: newBank.name,
         description: `从 ${fileName} 导入`,
         sourceFile: file.name,
-        questionIds: questionsWithIds.map(q => q.id),
+        questionIds: questionsWithMigratedImages.map(q => q.id),
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
 
-      localStorage.setItem('questions', JSON.stringify([...existingQuestions, ...questionsWithIds]));
+      localStorage.setItem('questions', JSON.stringify([...existingQuestions, ...questionsWithMigratedImages]));
       localStorage.setItem('questionBanks', JSON.stringify([...existingBanks, localBank]));
     }
 

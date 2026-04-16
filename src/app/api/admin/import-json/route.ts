@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
+import { migrateQuestionImages } from '@/lib/image-migration';
 
 // 生成 ID
 function generateId(): string {
@@ -270,8 +271,45 @@ export async function POST(request: Request) {
       );
     }
 
+    // 迁移题目中的图片到对象存储
+    const questionsWithMigratedImages = await Promise.all(
+      processedQuestions.map(async (q) => {
+        // 迁移主题目
+        const migrated = await migrateQuestionImages({
+          content: q.content,
+          options: q.options,
+          explanation: q.explanation,
+          caseBackground: q.caseBackground,
+        });
+
+        // 迁移子题目（综合题）
+        let migratedChildren: Question[] | undefined;
+        if (q.children && q.children.length > 0) {
+          migratedChildren = await Promise.all(
+            q.children.map(async (child) => {
+              const childMigrated = await migrateQuestionImages({
+                content: child.content,
+                options: child.options,
+                explanation: child.explanation,
+              });
+              return {
+                ...child,
+                ...childMigrated,
+              };
+            })
+          );
+        }
+
+        return {
+          ...q,
+          ...migrated,
+          children: migratedChildren,
+        };
+      })
+    );
+
     // 保存题目到数据库
-    const questionCount = await bankService.createQuestions(processedQuestions, newBank.id);
+    const questionCount = await bankService.createQuestions(questionsWithMigratedImages, newBank.id);
 
     // 在客户端环境下同步保存到 localStorage（兼容前端）
     if (typeof window !== 'undefined') {
@@ -282,12 +320,12 @@ export async function POST(request: Request) {
         id: newBank.id,
         name: newBank.name,
         description: '从 JSON 文件导入',
-        questionIds: processedQuestions.map(q => q.id),
+        questionIds: questionsWithMigratedImages.map(q => q.id),
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
 
-      localStorage.setItem('questions', JSON.stringify([...existingQuestions, ...processedQuestions]));
+      localStorage.setItem('questions', JSON.stringify([...existingQuestions, ...questionsWithMigratedImages]));
       localStorage.setItem('questionBanks', JSON.stringify([...existingBanks, localBank]));
     }
 
