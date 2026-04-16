@@ -70,7 +70,7 @@ export const userService = {
 
     // 检查手机号是否已存在
     const existing = await client.from('users').select('id').eq('phone', phone).maybeSingle();
-    if (existing) {
+    if (existing && existing.data) {
       throw new Error('该手机号已注册');
     }
 
@@ -104,6 +104,43 @@ export const userService = {
     }
 
     const user = data as DbUser;
+
+    // 验证密码
+    if (!verifyPassword(password, user.password)) {
+      throw new Error('密码错误');
+    }
+
+    // 检查用户状态
+    if (user.status === 'banned') {
+      throw new Error('账号已被禁用');
+    }
+
+    // 更新最后登录时间
+    await client.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id);
+
+    // 生成 token
+    const token = generateToken(user.id);
+
+    return { user, token };
+  },
+
+  // 管理员登录
+  async adminLogin(username: string, password: string): Promise<{ user: DbUser; token: string }> {
+    const client = getSupabaseClient();
+
+    // 查找管理员用户（通过昵称或特定字段）
+    const { data, error } = await client.from('users').select('*').eq('nickname', username).maybeSingle();
+    if (error) throw new Error(`管理员登录失败: ${error.message}`);
+    if (!data) {
+      throw new Error('管理员账号不存在');
+    }
+
+    const user = data as DbUser;
+
+    // 验证是否为管理员
+    if (user.role !== 'admin') {
+      throw new Error('该账号不是管理员');
+    }
 
     // 验证密码
     if (!verifyPassword(password, user.password)) {

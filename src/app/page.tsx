@@ -1168,29 +1168,18 @@ function PracticeView({
       </div>
     );
   }
-  
-  // 交卷后直接返回首页，不显示完成页面
-  // PracticeView 会被立即卸载，所以这个分支不会被渲染
-  if (quizState.isComplete) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
-        <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center animate-pulse shadow-lg">
-            <FileCheck className="w-10 h-10 text-white" />
-          </div>
-          <p className="text-slate-600 font-medium">正在返回首页...</p>
-        </div>
-      </div>
-    );
-  }
 
-  if (!currentQuestion) {
+  // 如果没有当前题目，显示加载状态
+  if (!currentQuestion && !showResultSheet) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-slate-500">正在加载题目...</p>
       </div>
     );
   }
+
+  // 交卷后只显示结果弹窗，不显示练习页面内容
+  // 弹窗会在 resultStats 中使用 quizState.questions，所以需要保留 quizState
 
   return (
     <div className="min-h-screen bg-slate-50">

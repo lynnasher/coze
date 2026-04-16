@@ -1376,7 +1376,7 @@ export default function AdminPage() {
                 {editingCategory ? '保存修改' : '添加分类'}
               </Button>
               {editingCategory && (
-                <Button variant="outline" onClick={resetCategoryForm} className="w-full">
+                <Button variant="outline" onClick={() => resetCategoryForm(true)} className="w-full">
                   取消编辑
                 </Button>
               )}

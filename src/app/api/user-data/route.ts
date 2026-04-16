@@ -268,13 +268,13 @@ export async function PUT(request: Request) {
     
     // 合并练习记录（以时间戳最新的为准）
     const allRecords = [...(localRecords || []), ...(cloudRecords || [])];
-    const mergedRecords = allRecords.reduce((acc: Record<string, unknown>, record: Record<string, unknown>) => {
+    const mergedRecords = allRecords.reduce((acc: Record<string, Record<string, unknown>>, record: Record<string, unknown>) => {
       const existing = acc[record.id as string];
       if (!existing || new Date(record.timestamp as string) > new Date(existing.timestamp as string)) {
         acc[record.id as string] = record;
       }
       return acc;
-    }, {} as Record<string, unknown>);
+    }, {} as Record<string, Record<string, unknown>>);
     
     // 合并错题连续正确次数（取较大值）
     const allStreaks = { ...(localStreaks || {}), ...{} };
@@ -287,13 +287,13 @@ export async function PUT(request: Request) {
     
     // 合并最近练习记录（以最后练习时间最新的为准）
     const allRecentPractices = [...(localRecentPractices || []), ...(cloudRecentPractices || [])];
-    const mergedRecentPractices = allRecentPractices.reduce((acc: Record<string, unknown>, practice: Record<string, unknown>) => {
+    const mergedRecentPractices = allRecentPractices.reduce((acc: Record<string, Record<string, unknown>>, practice: Record<string, unknown>) => {
       const existing = acc[practice.id as string];
       if (!existing || new Date(practice.last_practice_at as string) > new Date(existing.last_practice_at as string)) {
         acc[practice.id as string] = practice;
       }
       return acc;
-    }, {} as Record<string, unknown>);
+    }, {} as Record<string, Record<string, unknown>>);
     
     // 上传合并后的数据到云端
     const mergedRecordsList = Object.values(mergedRecords) as Array<Record<string, unknown>>;

@@ -93,11 +93,7 @@ function getSupabaseServiceRoleKey(): string | undefined {
 function getSupabaseClient(token?: string): SupabaseClient {
   const { url, anonKey } = getSupabaseCredentials();
 
-  let key: string;
-  if (token) {
-    const serviceRoleKey = getSupabaseServiceRoleKey();
-    key = serviceRoleKey ?? anonKey;
-  }
+  const key = token ? (getSupabaseServiceRoleKey() ?? anonKey) : anonKey;
 
   if (token) {
     return createClient(url, key, {

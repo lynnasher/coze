@@ -38,8 +38,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: '该手机号已注册' }, { status: 400 });
       }
 
-      const user = await userService.create(phone, password, nickname);
-      const token = Buffer.from(JSON.stringify({ userId: user.id, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 })).toString('base64');
+      const { user, token } = await userService.register(phone, password, nickname);
 
       return NextResponse.json({
         success: true,
