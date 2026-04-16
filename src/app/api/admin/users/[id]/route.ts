@@ -38,10 +38,12 @@ export async function PUT(request: Request) {
 }
 
 // 删除用户
-export async function DELETE(request: Request) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const body = await request.json();
-    const { userId } = body;
+    const { id: userId } = await params;
 
     if (!userId) {
       return NextResponse.json({ success: false, error: '请提供用户ID' }, { status: 400 });

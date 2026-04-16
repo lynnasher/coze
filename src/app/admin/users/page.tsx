@@ -437,20 +437,27 @@ export default function UsersPage() {
                                 const isExpired = act.expires_at && new Date(act.expires_at) < new Date();
                                 const categoryName = act.category_name || act.category_id;
                                 return (
-                                  <div key={act.id || idx} className="flex items-center gap-1 text-xs">
-                                    <Key className="w-3 h-3 text-indigo-500" />
-                                    <span className={isExpired ? 'text-red-500 line-through' : 'text-gray-700'}>
-                                      {categoryName}
-                                    </span>
-                                    {act.expires_at ? (
-                                      <span className={`flex items-center gap-0.5 ${isExpired ? 'text-red-400' : 'text-gray-400'}`}>
-                                        <Clock className="w-2.5 h-2.5" />
-                                        {isExpired ? '已过期' : new Date(act.expires_at).toLocaleDateString()}
+                                  <div key={act.id || idx} className="flex flex-col gap-0.5 text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <Key className="w-3 h-3 text-indigo-500" />
+                                      <span className={isExpired ? 'text-red-500 line-through' : 'text-gray-700'}>
+                                        {categoryName}
                                       </span>
-                                    ) : (
-                                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-50 text-green-600 border-green-200">
-                                        永久
-                                      </Badge>
+                                      {act.expires_at ? (
+                                        <span className={`flex items-center gap-0.5 ${isExpired ? 'text-red-400' : 'text-gray-400'}`}>
+                                          <Clock className="w-2.5 h-2.5" />
+                                          {isExpired ? '已过期' : new Date(act.expires_at).toLocaleDateString()}
+                                        </span>
+                                      ) : (
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-50 text-green-600 border-green-200">
+                                          永久
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {act.activation_code && (
+                                      <div className="text-gray-400 text-[10px] ml-4">
+                                        激活码：<code className="bg-gray-100 px-1 rounded">{act.activation_code}</code>
+                                      </div>
                                     )}
                                   </div>
                                 );
