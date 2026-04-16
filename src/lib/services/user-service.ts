@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient, getSupabaseAdminClient } from '@/storage/database/supabase-client';
 
 // 用户类型定义
 export interface DbUser {
@@ -33,38 +33,6 @@ function generateToken(userId: string): string {
   return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
-// 获取 Supabase URL 和 Anon Key
-function getSupabaseConfig() {
-  const url = process.env.NEXT_PUBLIC_COZE_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_COZE_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error('Supabase configuration is missing');
-  }
-
-  return { url, anonKey, serviceRoleKey };
-}
-
-// 创建 Supabase 客户端
-function createSupabaseClient(token?: string) {
-  const { url, anonKey, serviceRoleKey } = getSupabaseConfig();
-  const key = token ? (serviceRoleKey ?? anonKey) : anonKey;
-
-  return createClient(url, key, {
-    global: token ? {
-      headers: { Authorization: `Bearer ${token}` },
-    } : undefined,
-    db: {
-      timeout: 60000,
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
-
 // 用户服务
 export const userService = {
   // 获取当前用户 ID（从 localStorage 的 token 中解析）
@@ -73,7 +41,7 @@ export const userService = {
     const token = localStorage.getItem('user_token');
     if (!token) return null;
     try {
-      const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+      const payload = JSON.parse(atob(token));
       return payload.userId || null;
     } catch {
       return null;
@@ -82,7 +50,7 @@ export const userService = {
 
   // 通过手机号查找用户
   async findByPhone(phone: string): Promise<DbUser | null> {
-    const client = createSupabaseClient();
+    const client = getSupabaseClient();
     const { data, error } = await client.from('users').select('*').eq('phone', phone).maybeSingle();
     if (error) throw new Error(`查询用户失败: ${error.message}`);
     return data as DbUser | null;
@@ -90,7 +58,7 @@ export const userService = {
 
   // 通过 ID 查找用户
   async findById(id: string): Promise<DbUser | null> {
-    const client = createSupabaseClient();
+    const client = getSupabaseClient();
     const { data, error } = await client.from('users').select('*').eq('id', id).maybeSingle();
     if (error) throw new Error(`查询用户失败: ${error.message}`);
     return data as DbUser | null;
@@ -98,7 +66,7 @@ export const userService = {
 
   // 注册用户
   async register(phone: string, password: string, nickname?: string): Promise<{ user: DbUser; token: string }> {
-    const client = createSupabaseClient();
+    const client = getSupabaseClient();
 
     // 检查手机号是否已存在
     const existing = await client.from('users').select('id').eq('phone', phone).maybeSingle();
@@ -126,7 +94,7 @@ export const userService = {
 
   // 登录
   async login(phone: string, password: string): Promise<{ user: DbUser; token: string }> {
-    const client = createSupabaseClient();
+    const client = getSupabaseClient();
 
     // 查找用户
     const { data, error } = await client.from('users').select('*').eq('phone', phone).maybeSingle();
@@ -158,7 +126,7 @@ export const userService = {
 
   // 更新用户激活的分类
   async updateActivatedCategories(userId: string, categoryIds: string[]): Promise<void> {
-    const client = createSupabaseClient();
+    const client = getSupabaseClient();
     const { error } = await client.from('users').update({
       activated_categories: JSON.stringify(categoryIds),
     }).eq('id', userId);
@@ -167,7 +135,7 @@ export const userService = {
 
   // 获取所有用户（管理员）
   async getAllUsers(): Promise<DbUser[]> {
-    const client = createSupabaseClient();
+    const client = getSupabaseAdminClient();
     const { data, error } = await client.from('users').select('*').order('created_at', { ascending: false });
     if (error) throw new Error(`查询用户失败: ${error.message}`);
     return (data || []) as DbUser[];
@@ -175,21 +143,21 @@ export const userService = {
 
   // 更新用户状态
   async updateUserStatus(userId: string, status: 'active' | 'banned'): Promise<void> {
-    const client = createSupabaseClient();
+    const client = getSupabaseAdminClient();
     const { error } = await client.from('users').update({ status }).eq('id', userId);
     if (error) throw new Error(`更新用户状态失败: ${error.message}`);
   },
 
   // 更新用户角色
   async updateUserRole(userId: string, role: 'user' | 'admin'): Promise<void> {
-    const client = createSupabaseClient();
+    const client = getSupabaseAdminClient();
     const { error } = await client.from('users').update({ role }).eq('id', userId);
     if (error) throw new Error(`更新用户角色失败: ${error.message}`);
   },
 
   // 删除用户
   async deleteUser(userId: string): Promise<void> {
-    const client = createSupabaseClient();
+    const client = getSupabaseAdminClient();
     const { error } = await client.from('users').delete().eq('id', userId);
     if (error) throw new Error(`删除用户失败: ${error.message}`);
   },
@@ -197,7 +165,7 @@ export const userService = {
 
 // 初始化默认管理员
 export async function initDefaultAdmin(): Promise<void> {
-  const client = createSupabaseClient();
+  const client = getSupabaseAdminClient();
 
   // 检查是否已存在管理员
   const { data: existingAdmin } = await client.from('users').select('id').eq('role', 'admin').maybeSingle();

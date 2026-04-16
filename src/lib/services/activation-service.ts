@@ -206,6 +206,17 @@ export const activationCodeService = {
     if (error) throw new Error(`禁用激活码失败: ${error.message}`);
   },
 
+  // 获取所有用户激活记录（管理员用）
+  async getAllActivations(): Promise<UserActivation[]> {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('user_activations')
+      .select('*')
+      .order('activated_at', { ascending: false });
+    if (error) throw new Error(`查询用户激活记录失败: ${error.message}`);
+    return (data || []) as UserActivation[];
+  },
+
   // 删除激活码（级联删除用户激活记录）
   async delete(codeId: string): Promise<void> {
     const client = getSupabaseClient();

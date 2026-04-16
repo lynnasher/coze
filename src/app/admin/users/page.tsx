@@ -41,8 +41,19 @@ import {
   ArrowLeft,
   Trash2,
   RefreshCw,
+  Key,
+  Clock,
 } from 'lucide-react';
 import Link from 'next/link';
+
+interface Activation {
+  id: string;
+  category_id: string;
+  category_name: string | null;
+  activation_code: string | null;
+  activated_at: string;
+  expires_at: string | null;
+}
 
 interface AdminUser {
   id: string;
@@ -52,6 +63,8 @@ interface AdminUser {
   status: string;
   activated_categories: string[];
   created_at: string;
+  last_login_at?: string;
+  activations: Activation[];
 }
 
 export default function UsersPage() {
@@ -373,7 +386,7 @@ export default function UsersPage() {
                     <TableHead>昵称</TableHead>
                     <TableHead>角色</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>已激活分类</TableHead>
+                    <TableHead>激活码</TableHead>
                     <TableHead>注册时间</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
@@ -418,16 +431,32 @@ export default function UsersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {categories
-                              .filter(cat => user.activated_categories?.includes(cat.id))
-                              .map(cat => (
-                                <Badge key={cat.id} variant="outline" className="text-xs">
-                                  {cat.name}
-                                </Badge>
-                              ))}
-                            {(!user.activated_categories || user.activated_categories.length === 0) && (
-                              <span className="text-xs text-gray-400">无</span>
+                          <div className="flex flex-col gap-1">
+                            {user.activations && user.activations.length > 0 ? (
+                              user.activations.map((act, idx) => {
+                                const isExpired = act.expires_at && new Date(act.expires_at) < new Date();
+                                const categoryName = act.category_name || act.category_id;
+                                return (
+                                  <div key={act.id || idx} className="flex items-center gap-1 text-xs">
+                                    <Key className="w-3 h-3 text-indigo-500" />
+                                    <span className={isExpired ? 'text-red-500 line-through' : 'text-gray-700'}>
+                                      {categoryName}
+                                    </span>
+                                    {act.expires_at ? (
+                                      <span className={`flex items-center gap-0.5 ${isExpired ? 'text-red-400' : 'text-gray-400'}`}>
+                                        <Clock className="w-2.5 h-2.5" />
+                                        {isExpired ? '已过期' : new Date(act.expires_at).toLocaleDateString()}
+                                      </span>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-50 text-green-600 border-green-200">
+                                        永久
+                                      </Badge>
+                                    )}
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <span className="text-xs text-gray-400">无激活码</span>
                             )}
                           </div>
                         </TableCell>

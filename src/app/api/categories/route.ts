@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
 import { categories } from '@/storage/database/shared/schema';
 import { eq, asc } from 'drizzle-orm';
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseAdminClient();
     
     // 获取所有分类，按 order 排序
     const { data, error } = await supabase
