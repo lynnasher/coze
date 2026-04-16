@@ -41,7 +41,7 @@ import {
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
-import { UserStatus, getCurrentUser as getStoredUser } from '@/components/AuthModal';
+import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
 
 // 从 AuthModal 获取当前用户
 const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
@@ -105,6 +105,9 @@ export default function QuizApp() {
     role: string;
     activatedCategories?: string[];
   } | null>(null);
+  
+  // 登录弹窗状态
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   
   const [dbBanks, setDbBanks] = useState<Array<{
     id: string;
@@ -642,76 +645,6 @@ export default function QuizApp() {
                 </Link>
               </div>
 
-                {/* 最近练习 */}
-                {recentPractices.length > 0 && (
-                  <div className="bg-white rounded-2xl p-4 shadow-sm">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                      <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
-                        <History className="w-3.5 h-3.5 text-orange-500" />
-                      </div>
-                      最近练习
-                    </h3>
-                    
-                    <div className="space-y-2">
-                      {recentPractices.map((practice) => {
-                        const progress = practice.totalCount > 0 
-                          ? Math.round((practice.answeredCount / practice.totalCount) * 100) 
-                          : 0;
-                        const accuracy = practice.answeredCount > 0 
-                          ? Math.round((practice.correctCount / practice.answeredCount) * 100) 
-                          : 0;
-                        
-                        return (
-                          <div 
-                            key={practice.id}
-                            className="cursor-pointer transition-all rounded-xl p-3 border-2 border-gray-100 hover:border-blue-200 hover:bg-blue-50/50"
-                            onClick={() => {
-                              startQuiz(practice.mode, practice.bankId);
-                            }}
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className={`inline-flex px-1.5 py-0.5 rounded text-xs font-medium text-white ${
-                                  practice.mode === 'sequential' ? 'bg-indigo-500' :
-                                  practice.mode === 'random' ? 'bg-purple-500' : 'bg-orange-500'
-                                }`}>
-                                  {practice.mode === 'sequential' ? '顺序' : practice.mode === 'random' ? '随机' : '错题'}
-                                </span>
-                                <h4 className="text-sm font-semibold text-gray-800 truncate max-w-[140px]">
-                                  {practice.bankName}
-                                </h4>
-                              </div>
-                              {practice.isCompleted ? (
-                                <span className="text-xs text-emerald-500 font-medium">已完成</span>
-                              ) : (
-                                <span className="text-xs text-blue-500 font-medium">继续</span>
-                              )}
-                            </div>
-                            
-                            {/* 进度条 */}
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                              <span className="text-xs text-gray-400 min-w-[3rem]">
-                                {practice.answeredCount}/{practice.totalCount}
-                              </span>
-                            </div>
-                            
-                            {/* 统计信息 */}
-                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                              <span>正确率 {accuracy}%</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
               {/* 登录提示 */}
                 {!currentUser && (
                   <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100">
@@ -723,11 +656,13 @@ export default function QuizApp() {
                         <h4 className="text-sm font-semibold text-gray-800">登录解锁全部功能</h4>
                         <p className="text-xs text-gray-500 mt-0.5">激活码激活、错题本、学习统计</p>
                       </div>
-                      <Link href="/profile">
-                        <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
-                          登录
-                        </Button>
-                      </Link>
+                      <Button 
+                        size="sm" 
+                        className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg"
+                        onClick={() => setAuthModalOpen(true)}
+                      >
+                        登录
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -757,11 +692,13 @@ export default function QuizApp() {
                   <>
                     <h3 className="text-base font-semibold text-gray-800 mb-1">请先登录</h3>
                     <p className="text-gray-400 text-sm mb-3">登录后才能访问题库</p>
-                    <Link href="/profile">
-                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg">
-                        去登录
-                      </Button>
-                    </Link>
+                    <Button 
+                      size="sm" 
+                      className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg"
+                      onClick={() => setAuthModalOpen(true)}
+                    >
+                      去登录
+                    </Button>
                   </>
                 ) : (
                   <>
@@ -1076,6 +1013,25 @@ export default function QuizApp() {
         </Tabs>
       )}
     </main>
+    
+    {/* 登录弹窗 */}
+    <AuthModal
+      open={authModalOpen}
+      onOpenChange={setAuthModalOpen}
+      onAuthChange={() => {
+        // 刷新用户状态
+        const user = getStoredUser();
+        if (user) {
+          setCurrentUser({
+            id: user.id,
+            phone: user.phone,
+            nickname: user.nickname,
+            role: user.role,
+            activatedCategories: user.activated_categories || [],
+          });
+        }
+      }}
+    />
     </div>
   );
 }
