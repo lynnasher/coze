@@ -1,6 +1,82 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
-import { migrateQuestionImages } from '@/lib/image-migration';
+import { S3Storage } from 'coze-coding-dev-sdk';
+
+// 初始化存储客户端
+const getStorage = () => {
+  return new S3Storage({
+    endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
+    bucketName: process.env.COZE_BUCKET_NAME,
+    region: 'cn-beijing',
+  });
+};
+
+// 转义正则表达式特殊字符
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 从文本中提取所有图片 URL
+function extractImageUrls(text: string): string[] {
+  const urls: string[] = [];
+  const htmlImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = htmlImgRegex.exec(text)) !== null) {
+    if (match[1] && !match[1].startsWith('data:')) urls.push(match[1]);
+  }
+  while ((match = mdImgRegex.exec(text)) !== null) {
+    if (match[2] && !match[2].startsWith('data:')) urls.push(match[2]);
+  }
+  return [...new Set(urls)];
+}
+
+// 迁移文本中的图片到对象存储
+async function migrateImagesInText(text: string): Promise<string> {
+  if (!text) return text;
+  const urls = extractImageUrls(text);
+  if (urls.length === 0) return text;
+  
+  let result = text;
+  const storage = getStorage();
+  const bucketEndpoint = process.env.COZE_BUCKET_ENDPOINT_URL || '';
+  
+  for (const originalUrl of urls) {
+    try {
+      if (originalUrl.includes(bucketEndpoint) || 
+          originalUrl.startsWith('data:') ||
+          originalUrl.startsWith('/')) {
+        continue;
+      }
+      const key = await storage.uploadFromUrl({ url: originalUrl, timeout: 30000 });
+      result = result.replace(new RegExp(escapeRegExp(originalUrl), 'g'), key);
+      console.log(`[ImageMigration] Uploaded: ${originalUrl} -> ${key}`);
+    } catch (error) {
+      console.error(`[ImageMigration] Failed to upload: ${originalUrl}`, error);
+    }
+  }
+  return result;
+}
+
+// 迁移题目中的图片
+async function migrateQuestionImages(question: {
+  content?: string;
+  options?: { id: string; text: string }[];
+  explanation?: string;
+}) {
+  const result: typeof question = {};
+  if (question.content) result.content = await migrateImagesInText(question.content);
+  if (question.options) {
+    result.options = await Promise.all(
+      question.options.map(async (opt) => ({
+        id: opt.id,
+        text: await migrateImagesInText(opt.text),
+      }))
+    );
+  }
+  if (question.explanation) result.explanation = await migrateImagesInText(question.explanation);
+  return result;
+}
 
 // 解析 Word 文档（使用 mammoth.js 格式）
 async function parseDocx(buffer: ArrayBuffer): Promise<string> {
