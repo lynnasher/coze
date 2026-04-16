@@ -130,17 +130,21 @@ export const bankService = {
     if (error) throw new Error(`更新题库题目数量失败: ${error.message}`);
   },
 
-  // 删除题库（软删除）
+  // 删除题库（物理删除）
   async deleteBank(id: string): Promise<void> {
     const client = getSupabaseClient();
 
     // 先删除题库下的所有题目
-    await client.from('questions').delete().eq('bank_id', id);
+    const { error: questionsError } = await client.from('questions').delete().eq('bank_id', id);
+    if (questionsError) {
+      console.error('删除题目失败:', questionsError);
+      throw new Error(`删除题目失败: ${questionsError.message}`);
+    }
 
-    // 删除题库
+    // 删除题库记录
     const { error } = await client
       .from('question_banks')
-      .update({ status: 'disabled' })
+      .delete()
       .eq('id', id);
 
     if (error) throw new Error(`删除题库失败: ${error.message}`);
