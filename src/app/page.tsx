@@ -671,7 +671,7 @@ export default function QuizApp() {
                         <h3 className="text-xs font-semibold text-slate-500 tracking-wide">未分类</h3>
                         <span className="text-xs text-gray-400">({banks.filter(b => !b.categoryId).length})</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {banks.filter(b => !b.categoryId).map((bank) => (
                           <BankCard 
                             key={bank.id} 
@@ -763,7 +763,7 @@ export default function QuizApp() {
                                         <div className="w-1 h-1 bg-slate-300 rounded-full" />
                                         <span className="text-xs text-gray-400 font-medium">直接题库</span>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-2">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {categoryBanks.map((bank) => (
                                           <BankCard 
                                             key={bank.id} 
@@ -802,7 +802,7 @@ export default function QuizApp() {
                                           </span>
                                           <span className="text-xs text-gray-400">({childBanks.length})</span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                           {childBanks.map((bank) => (
                                             <BankCard 
                                               key={bank.id} 
