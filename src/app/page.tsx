@@ -1205,9 +1205,9 @@ function PracticeView({
                 variant="ghost"
                 onClick={() => handleFinishAndExit()}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg px-2 h-9"
+                title="交卷"
               >
                 <FileCheck className="w-4 h-4" />
-                <span className="text-sm font-medium ml-1">交卷</span>
               </Button>
               
               {/* 答题卡 */}
@@ -1215,10 +1215,10 @@ function PracticeView({
                 size="sm"
                 variant="ghost"
                 onClick={() => setShowAnswerSheet(true)}
-                className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -mr-2"
+                className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9"
+                title="答题卡"
               >
                 <Grid3X3 className="w-4 h-4" />
-                <span className="text-sm font-medium ml-1.5">答题卡</span>
               </Button>
             </div>
           </div>
@@ -1248,7 +1248,7 @@ function PracticeView({
           {/* 题目卡片 */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             {/* 题干头部 */}
-            <div className="sm:px-4 py-2.5 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
+            <div className="sm:px-4 px-3 py-2.5 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
               <div className="flex items-center justify-between gap-2">
                 {/* 左侧：题型标签 */}
                 <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${
@@ -1295,10 +1295,10 @@ function PracticeView({
             </div>
             
             {/* 分隔线 */}
-            <div className="mx-4 h-px bg-slate-100" />
+            <div className="sm:mx-4 mx-3 h-px bg-slate-100" />
             
             {/* 选项区域 */}
-            <div className="sm:px-4 pb-4">
+            <div className="sm:px-4 px-3 pb-4">
               {/* 选项列表 */}
               <div className="space-y-2">
                 {displayQuestion?.options?.map((option, index) => {
