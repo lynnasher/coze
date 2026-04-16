@@ -31,6 +31,7 @@ import { questionStore, recordStore, getWrongQuestionIds, generateId, wrongStrea
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus } from '@/components/AuthModal';
+import { RichTextWithBreaks } from '@/lib/rich-text';
 
 // 题型统计
 interface QuestionTypeStat {
@@ -420,9 +421,9 @@ export default function WrongBookPage() {
               
               {/* 题目内容 */}
               <div className="px-4 py-4">
-                <p className="text-base font-medium text-slate-800 leading-relaxed">
-                  {currentReviewQuestion.content}
-                </p>
+                <div className="text-base font-medium text-slate-800 leading-relaxed">
+                  <RichTextWithBreaks content={currentReviewQuestion.content || ''} textClassName="whitespace-pre-wrap" />
+                </div>
               </div>
               
               {/* 分隔线 */}
@@ -490,7 +491,9 @@ export default function WrongBookPage() {
                               getOptionLabel(index)
                             )}
                           </div>
-                          <span className="flex-1 text-sm font-medium text-slate-700">{option.text}</span>
+                          <div className="flex-1 text-sm font-medium text-slate-700">
+                            <RichTextWithBreaks content={option.text} textClassName="whitespace-pre-wrap" />
+                          </div>
                           {showExplanation && isCorrectOption && (
                             <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
                               <Check className="w-3 h-3 text-white" />
@@ -552,9 +555,9 @@ export default function WrongBookPage() {
                         <BookOpen className="w-4 h-4" />
                         <span className="font-semibold text-sm">解析</span>
                       </div>
-                      <p className="text-amber-900 text-sm leading-relaxed">
-                        {currentReviewQuestion.explanation}
-                      </p>
+                      <div className="text-amber-900 text-sm leading-relaxed">
+                        <RichTextWithBreaks content={currentReviewQuestion.explanation} textClassName="whitespace-pre-wrap" />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -792,9 +795,9 @@ export default function WrongBookPage() {
                               掌握 {info.streak}/3
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700 line-clamp-2 mb-2">
-                            {question.content}
-                          </p>
+                          <div className="text-sm text-gray-700 line-clamp-2 mb-2">
+                            <RichTextWithBreaks content={question.content} textClassName="whitespace-pre-wrap" />
+                          </div>
                           <Button
                             variant="outline"
                             size="sm"

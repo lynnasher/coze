@@ -42,6 +42,7 @@ import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId,
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
+import { RichTextWithBreaks } from '@/lib/rich-text';
 
 // 从 AuthModal 获取当前用户
 const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
@@ -1279,8 +1280,8 @@ function PracticeView({
               <div className="mx-4 mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
                 <div className="flex items-start gap-2">
                   <FileText className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-indigo-700 leading-relaxed whitespace-pre-wrap">
-                    {currentQuestion.caseBackground}
+                  <div className="text-xs text-indigo-700 leading-relaxed flex-1">
+                    <RichTextWithBreaks content={currentQuestion.caseBackground} textClassName="whitespace-pre-wrap" />
                   </div>
                 </div>
               </div>
@@ -1288,9 +1289,9 @@ function PracticeView({
             
             {/* 题目内容 */}
             <div className="px-4 py-4">
-              <p className="text-base font-medium text-slate-800 leading-relaxed">
-                {displayQuestion?.content}
-              </p>
+              <div className="text-base font-medium text-slate-800 leading-relaxed">
+                <RichTextWithBreaks content={displayQuestion?.content || ''} textClassName="whitespace-pre-wrap" />
+              </div>
             </div>
             
             {/* 分隔线 */}
@@ -1363,7 +1364,9 @@ function PracticeView({
                           String.fromCharCode(65 + index)
                         )}
                       </div>
-                      <span className="flex-1 text-sm font-medium text-slate-700">{option.text}</span>
+                      <div className="flex-1 text-sm font-medium text-slate-700">
+                        <RichTextWithBreaks content={option.text} textClassName="whitespace-pre-wrap" />
+                      </div>
                       {showExplanation && isCorrectAnswer && (
                         <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
                           <Check className="w-3 h-3 text-white" />
@@ -1412,9 +1415,9 @@ function PracticeView({
                       <BookOpen className="w-4 h-4" />
                       <span className="font-semibold text-sm">解析</span>
                     </div>
-                    <p className="text-amber-900 text-sm leading-relaxed">
-                      {displayQuestion.explanation}
-                    </p>
+                    <div className="text-amber-900 text-sm leading-relaxed">
+                      <RichTextWithBreaks content={displayQuestion.explanation} textClassName="whitespace-pre-wrap" />
+                    </div>
                   </div>
                 )}
               </div>
