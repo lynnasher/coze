@@ -1028,15 +1028,17 @@ export default function AdminPage() {
                   <SelectContent>
                     <SelectItem value="all">全部分类</SelectItem>
                     <SelectItem value="uncategorized">未分类</SelectItem>
-                    {/* 顶级分类 */}
+                    {/* 按层级显示分类 */}
                     {categories.filter(c => !c.parentId).map((cat) => (
-                      <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                    {/* 子分类 */}
-                    {categories.filter(c => c.parentId).map((child) => (
-                      <SelectItem key={`child-${child.id}`} value={child.id}>
-                        &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
-                      </SelectItem>
+                      <div key={`parent-${cat.id}`}>
+                        <SelectItem value={cat.id}>{cat.name}</SelectItem>
+                        {/* 子分类 - 缩进显示 */}
+                        {categories.filter(c => c.parentId === cat.id).map((child) => (
+                          <SelectItem key={`child-${child.id}`} value={child.id}>
+                            &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
+                          </SelectItem>
+                        ))}
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>
