@@ -96,7 +96,7 @@ export const bankService = {
     const { data, error } = await client
       .from('question_banks')
       .select('*')
-      .eq('status', 'active')
+      .neq('status', 'disabled') // 排除已禁用的题库
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`获取题库列表失败: ${error.message}`);
