@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/server-supabase-client';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { categories } from '@/storage/database/shared/schema';
 import { eq, asc } from 'drizzle-orm';
 
@@ -12,12 +12,6 @@ export async function GET() {
       .from('categories')
       .select('*')
       .order('order', { ascending: true });
-    
-    console.log('[DEBUG] Categories query result:', {
-      dataLength: data?.length || 0,
-      error: error,
-      rawData: JSON.stringify(data)?.substring(0, 500)
-    });
     
     if (error) {
       console.error('获取分类失败:', error);

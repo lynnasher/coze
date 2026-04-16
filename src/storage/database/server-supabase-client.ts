@@ -1,46 +1,120 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { execSync } from 'child_process';
 
-// 服务端 Supabase 客户端
-// 服务端使用不带 NEXT_PUBLIC_ 前缀的环境变量
+import dotenv from 'dotenv';
 
-function getSupabaseCredentials() {
-  const url = process.env.COZE_SUPABASE_URL;
-  const anonKey = process.env.COZE_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
+let envLoaded = false;
 
-  console.log('[DEBUG] Server Supabase Config:');
-  console.log('  COZE_SUPABASE_URL:', url ? 'SET (' + url.substring(0, 30) + '...)' : 'NOT SET');
-  console.log('  COZE_SUPABASE_ANON_KEY:', anonKey ? 'SET (' + anonKey.substring(0, 20) + '...)' : 'NOT SET');
-  console.log('  COZE_SUPABASE_SERVICE_ROLE_KEY:', serviceRoleKey ? 'SET' : 'NOT SET');
-
-  if (!url || !anonKey) {
-    // 如果服务端变量没有设置，尝试从环境变量文件读取
-    // Next.js 会自动将 .env 文件中的变量加载到 process.env
-    const fallbackUrl = process.env.NEXT_PUBLIC_COZE_SUPABASE_URL;
-    const fallbackKey = process.env.NEXT_PUBLIC_COZE_SUPABASE_ANON_KEY;
-    
-    console.log('[DEBUG] Falling back to NEXT_PUBLIC_ vars:');
-    console.log('  NEXT_PUBLIC_COZE_SUPABASE_URL:', fallbackUrl ? 'SET' : 'NOT SET');
-    console.log('  NEXT_PUBLIC_COZE_SUPABASE_ANON_KEY:', fallbackKey ? 'SET' : 'NOT SET');
-    
-    if (fallbackUrl && fallbackKey) {
-      return { url: fallbackUrl, anonKey: fallbackKey, serviceRoleKey: process.env.NEXT_PUBLIC_COZE_SUPABASE_SERVICE_ROLE_KEY };
-    }
-    
-    throw new Error('Supabase configuration is missing: COZE_SUPABASE_URL=' + (url || 'unset') + ', COZE_SUPABASE_ANON_KEY=' + (anonKey ? 'SET' : 'unset'));
+function loadEnv(): void {
+  if (envLoaded || (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY)) {
+    return;
   }
 
-  return { url, anonKey, serviceRoleKey };
+  try {
+    try {
+      dotenv.config();
+      if (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY) {
+        envLoaded = true;
+        return;
+      }
+    } catch {
+      // dotenv not available
+    }
+
+    const pythonCode = `
+import os
+import sys
+try:
+    from coze_workload_identity import Client
+    client = Client()
+    env_vars = client.get_project_env_vars()
+    client.close()
+    for env_var in env_vars:
+        print(f"{env_var.key}={env_var.value}")
+except Exception as e:
+    print(f"# Error: {e}", file=sys.stderr)
+`;
+
+    const output = execSync(`python3 -c '${pythonCode.replace(/'/g, "'\"'\"'")}'`, {
+      encoding: 'utf-8',
+      timeout: 10000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const lines = output.trim().split('\n');
+    for (const line of lines) {
+      if (line.startsWith('#')) continue;
+      const eqIndex = line.indexOf('=');
+      if (eqIndex > 0) {
+        const key = line.substring(0, eqIndex);
+        let value = line.substring(eqIndex + 1);
+        if ((value.startsWith("'") && value.endsWith("'")) ||
+            (value.startsWith('"') && value.endsWith('"'))) {
+          value = value.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = value;
+        }
+      }
+    }
+
+    envLoaded = true;
+  } catch {
+    // Silently fail
+  }
 }
 
-export function getSupabaseClient(token?: string) {
-  const { url, anonKey, serviceRoleKey } = getSupabaseCredentials();
-  const key = token ? (serviceRoleKey ?? anonKey) : anonKey;
+interface SupabaseCredentials {
+  url: string;
+  anonKey: string;
+}
+
+function getSupabaseCredentials(): SupabaseCredentials {
+  loadEnv();
+
+  const url = process.env.COZE_SUPABASE_URL;
+  const anonKey = process.env.COZE_SUPABASE_ANON_KEY;
+
+  if (!url) {
+    throw new Error('COZE_SUPABASE_URL is not set');
+  }
+  if (!anonKey) {
+    throw new Error('COZE_SUPABASE_ANON_KEY is not set');
+  }
+
+  return { url, anonKey };
+}
+
+function getSupabaseServiceRoleKey(): string | undefined {
+  loadEnv();
+  return process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
+}
+
+function getSupabaseClient(token?: string): SupabaseClient {
+  const { url, anonKey } = getSupabaseCredentials();
+
+  let key: string;
+  if (token) {
+    const serviceRoleKey = getSupabaseServiceRoleKey();
+    key = serviceRoleKey ?? anonKey;
+  }
+
+  if (token) {
+    return createClient(url, key, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      db: {
+        timeout: 60000,
+      },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
 
   return createClient(url, key, {
-    global: token ? {
-      headers: { Authorization: `Bearer ${token}` },
-    } : undefined,
     db: {
       timeout: 60000,
     },
@@ -50,3 +124,5 @@ export function getSupabaseClient(token?: string) {
     },
   });
 }
+
+export { loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };

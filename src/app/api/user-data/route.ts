@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/server-supabase-client';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { practiceRecords, wrongQuestionStreaks, recentPractices } from '@/storage/database/shared/schema';
 
 // 获取用户练习记录

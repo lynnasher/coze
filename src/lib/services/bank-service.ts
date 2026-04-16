@@ -1,5 +1,5 @@
 import 'server-only';
-import { getSupabaseClient } from '@/storage/database/server-supabase-client';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 题库类型定义
 export interface DbQuestionBank {

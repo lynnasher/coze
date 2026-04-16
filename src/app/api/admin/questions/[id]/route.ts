@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/server-supabase-client';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 interface QuestionUpdate {
   type?: string;
