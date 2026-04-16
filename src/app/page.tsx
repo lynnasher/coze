@@ -513,6 +513,7 @@ export default function QuizApp() {
             goToQuestion={goToQuestion}
             restartQuiz={restartQuiz}
             resetQuiz={resetQuiz}
+            answers={quizState.answers}
           />
         ) : (
           <Tabs value={activeTab} onValueChange={(value) => {
@@ -997,6 +998,7 @@ interface PracticeViewProps {
   goToQuestion: ReturnType<typeof useQuiz>['goToQuestion'];
   restartQuiz: ReturnType<typeof useQuiz>['restartQuiz'];
   resetQuiz: ReturnType<typeof useQuiz>['resetQuiz'];
+  answers: Record<string, string | string[]>;
 }
 
 function PracticeView({ 
@@ -1014,6 +1016,7 @@ function PracticeView({
   goToQuestion,
   restartQuiz,
   resetQuiz,
+  answers,
 }: PracticeViewProps) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   // 结果弹窗状态（交卷后显示）
@@ -1081,14 +1084,26 @@ function PracticeView({
     return currentQuestion;
   }, [currentQuestion, currentChildIndex]);
   
-  const isCurrentCorrect = useMemo(() => {
-    if (!displayQuestion || !currentAnswer) return false;
-    if (Array.isArray(displayQuestion.answer)) {
-      return Array.isArray(currentAnswer) && 
-        displayQuestion.answer.every(a => currentAnswer.includes(a));
+  // 计算当前显示题目的答案（综合题的子题目使用子题目ID，普通题目使用父题目ID）
+  const displayQuestionAnswer = useMemo(() => {
+    if (!displayQuestion) return undefined;
+    // 子题目使用自己的ID获取答案
+    if (displayQuestion.id !== currentQuestion?.id) {
+      return answers[displayQuestion.id];
     }
-    return currentAnswer === displayQuestion.answer;
-  }, [displayQuestion, currentAnswer]);
+    // 父题目使用传入的 currentAnswer
+    return currentAnswer;
+  }, [displayQuestion, currentQuestion, currentAnswer, answers]);
+  
+  const isCurrentCorrect = useMemo(() => {
+    if (!displayQuestion || !displayQuestionAnswer) return false;
+    const answer = displayQuestionAnswer;
+    if (Array.isArray(displayQuestion.answer)) {
+      return Array.isArray(answer) && 
+        displayQuestion.answer.every(a => answer.includes(a));
+    }
+    return answer === displayQuestion.answer;
+  }, [displayQuestion, displayQuestionAnswer]);
   
   // 计算进度 - 使用 useMemo 避免重复计算
   const { answeredCount, progressPercent } = useMemo(() => {
@@ -1287,9 +1302,10 @@ function PracticeView({
               <div className="space-y-2.5">
                 {displayQuestion?.options?.map((option, index) => {
                   const isMulti = displayQuestion.type === 'multiple';
+                  // 使用 displayQuestionAnswer 来判断是否选中
                   const isSelected = isMulti
-                    ? Array.isArray(currentAnswer) && currentAnswer.includes(option.id)
-                    : currentAnswer === option.id;
+                    ? Array.isArray(displayQuestionAnswer) && displayQuestionAnswer.includes(option.id)
+                    : displayQuestionAnswer === option.id;
                   const isCorrectAnswer = Array.isArray(displayQuestion.answer)
                     ? displayQuestion.answer.includes(option.id)
                     : displayQuestion.answer === option.id;
@@ -1314,7 +1330,7 @@ function PracticeView({
                     if (showExplanation || !displayQuestion) return;
                     if (isMulti) {
                       // 多选题：切换选项选中状态
-                      const current = Array.isArray(currentAnswer) ? currentAnswer : [];
+                      const current = Array.isArray(displayQuestionAnswer) ? displayQuestionAnswer : [];
                       if (current.includes(option.id)) {
                         selectAnswer(displayQuestion.id, current.filter(id => id !== option.id));
                       } else {

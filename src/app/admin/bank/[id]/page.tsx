@@ -328,6 +328,52 @@ export default function BankEditPage() {
               <Plus className="h-4 w-4 mr-2" />
               添加题目
             </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  setError('');
+                  const token = localStorage.getItem('admin_token');
+                  const response = await fetch(`/api/admin/banks/export/${bankId}`, {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    }
+                  });
+                  
+                  if (!response.ok) {
+                    throw new Error('导出失败');
+                  }
+                  
+                  // 获取文件名
+                  const contentDisposition = response.headers.get('Content-Disposition');
+                  let filename = `${bank.name}.docx`;
+                  if (contentDisposition) {
+                    const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                    if (match) {
+                      filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+                    }
+                  }
+                  
+                  // 下载文件
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  document.body.removeChild(a);
+                  setSuccess('导出成功');
+                } catch (err) {
+                  console.error('导出失败:', err);
+                  setError('导出失败，请重试');
+                }
+              }}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              导出Word
+            </Button>
           </div>
         </div>
       </header>
