@@ -49,14 +49,14 @@ const getCurrentUser = (): { id: string; phone: string; nickname?: string; role:
   return getStoredUser();
 };
 
-// Duolingo 风格颜色
+// 淡雅色调
 const COLORS = {
-  purple: 'from-purple-500 to-violet-600',
-  green: 'from-emerald-500 to-teal-500',
-  blue: 'from-blue-500 to-cyan-500',
-  orange: 'from-orange-500 to-amber-500',
-  pink: 'from-pink-500 to-rose-500',
-  red: 'from-red-500 to-pink-500',
+  purple: 'from-slate-400 to-slate-500',
+  green: 'from-stone-400 to-stone-500',
+  blue: 'from-gray-400 to-gray-500',
+  orange: 'from-zinc-400 to-zinc-500',
+  pink: 'from-neutral-400 to-neutral-500',
+  red: 'from-slate-500 to-stone-500',
 };
 
 export default function QuizApp() {
@@ -646,12 +646,12 @@ export default function QuizApp() {
             setSelectedCategoryId(null);
             setPracticeBankId(null);
           }} className="space-y-6">
-        {/* 功能标签导航 - 清新风格 */}
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-4">
+        {/* 功能标签导航 - 淡雅风格 */}
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-4">
           {[
-            { key: 'practice', icon: Home, label: '首页', color: 'bg-emerald-500' },
-            { key: 'library', icon: Library, label: '题库', color: 'bg-blue-500' },
-            { key: 'stats', icon: BarChart3, label: '统计', color: 'bg-violet-500' },
+            { key: 'practice', icon: Home, label: '首页' },
+            { key: 'library', icon: Library, label: '题库' },
+            { key: 'stats', icon: BarChart3, label: '统计' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -663,8 +663,8 @@ export default function QuizApp() {
               }}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
-                  ? `${tab.color} text-white shadow-md`
-                  : 'text-gray-500 hover:bg-white/50'
+                  ? 'bg-white text-slate-700 shadow-sm'
+                  : 'text-slate-500 hover:bg-white/50'
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -697,40 +697,40 @@ export default function QuizApp() {
                 
                 {/* 数据统计网格 */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-xl font-bold">{mounted ? wrongCount : '-'}</p>
-                    <p className="text-xs opacity-80">错题</p>
+                  <div className="bg-slate-100 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-700">{mounted ? wrongCount : '-'}</p>
+                    <p className="text-xs text-slate-500">错题</p>
                   </div>
-                  <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-xl font-bold">{mounted ? stats.masteredCount : '-'}</p>
-                    <p className="text-xs opacity-80">已掌握</p>
+                  <div className="bg-slate-100 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-700">{mounted ? stats.masteredCount : '-'}</p>
+                    <p className="text-xs text-slate-500">已掌握</p>
                   </div>
-                  <div className="bg-gradient-to-br from-purple-500 to-violet-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-xl font-bold">{mounted ? stats.accuracy : 0}%</p>
-                    <p className="text-xs opacity-80">正确率</p>
+                  <div className="bg-slate-100 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-700">{mounted ? stats.accuracy : 0}%</p>
+                    <p className="text-xs text-slate-500">正确率</p>
                   </div>
                 </div>
                 
                 {/* 错题本入口 */}
                 <Link href="/wrongbook">
-                  <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 hover:border-red-200 hover:shadow-sm transition-all">
-                    <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-red-500" />
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-slate-600" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-800">错题本</p>
-                      <p className="text-xs text-gray-500">{mounted ? wrongCount : '-'} 道待复习</p>
+                      <p className="text-sm font-semibold text-slate-700">错题本</p>
+                      <p className="text-xs text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
                   </div>
                 </Link>
               </div>
 
               {/* 登录解锁提示 - 无按钮 */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100">
+              <div className="bg-slate-50 rounded-2xl p-4 shadow-sm border border-slate-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/80 rounded-xl flex items-center justify-center shadow-sm">
-                    <User className="w-6 h-6 text-amber-500" />
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <User className="w-6 h-6 text-slate-500" />
                   </div>
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-gray-800">登录解锁全部功能</h4>
