@@ -745,29 +745,29 @@ export default function QuizApp() {
           <TabsContent value="library">
             {/* 页面标题区块 */}
             <div className="mb-5 relative overflow-hidden">
-              {/* 背景卡片 */}
-              <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-5 shadow-lg shadow-indigo-200/50">
+              {/* 背景卡片 - 淡雅色调 */}
+              <div className="bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 rounded-2xl p-4 shadow-sm">
                 {/* 装饰圆形 */}
-                <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/10 rounded-full"></div>
-                <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/10 rounded-full"></div>
+                <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/30 rounded-full"></div>
+                <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/30 rounded-full"></div>
                 
                 {/* 内容 */}
-                <div className="relative flex items-center gap-4">
+                <div className="relative flex items-center gap-3">
                   {/* 图标区域 */}
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center shadow-lg">
-                    <Library className="w-7 h-7 text-white" />
+                  <div className="w-10 h-10 bg-white/60 backdrop-blur rounded-xl flex items-center justify-center shadow-sm">
+                    <Library className="w-5 h-5 text-slate-600" />
                   </div>
                   
                   {/* 文字区域 */}
                   <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-white tracking-tight">题库浏览</h1>
-                    <p className="text-white/80 text-sm mt-1">选择分类开始练习</p>
+                    <h1 className="text-lg font-semibold text-slate-700 tracking-tight">题库浏览</h1>
+                    <p className="text-slate-500 text-xs mt-0.5">选择分类开始练习</p>
                   </div>
                   
                   {/* 装饰徽章 */}
                   {currentUser && (
-                    <div className="px-3 py-1.5 bg-white/20 backdrop-blur rounded-full">
-                      <span className="text-white text-xs font-medium">
+                    <div className="px-2.5 py-1 bg-white/50 backdrop-blur rounded-full">
+                      <span className="text-slate-600 text-xs font-medium">
                         {currentUser.activatedCategories?.length || 0} 个分类
                       </span>
                     </div>
