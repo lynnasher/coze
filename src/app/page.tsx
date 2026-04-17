@@ -828,7 +828,6 @@ export default function QuizApp() {
                                             <BankCard
                                               key={bank.id}
                                               bank={bank}
-                                              questions={[]}
                                               onStartPractice={(bankId) => {
                                                 if (!currentUser) {
                                                   setAuthModalOpen(true);
