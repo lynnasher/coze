@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseDocument } from '@/lib/document-parser';
 import { generateId } from '@/lib/quiz-store';
+import { requireAdminAuth } from '@/lib/api-auth';
 
+// 解析文档文件（需要管理员认证）
 export async function POST(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

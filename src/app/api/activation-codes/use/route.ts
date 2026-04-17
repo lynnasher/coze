@@ -2,7 +2,29 @@ import { NextResponse } from 'next/server';
 import { activationCodeService } from '@/lib/services/activation-service';
 import { userService } from '@/lib/services/user-service';
 
-// 使用激活码
+// 验证用户 token
+function verifyUserToken(request: Request): { userId: string | null; isAdmin: boolean } {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { userId: null, isAdmin: false };
+  }
+
+  try {
+    const token = authHeader.substring(7);
+    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    // 支持 userId 或 id
+    const userId = payload.userId || payload.id || null;
+    
+    // 检查是否是管理员
+    const isAdmin = payload.role === 'admin' || payload.isAdmin === true;
+    
+    return { userId, isAdmin };
+  } catch {
+    return { userId: null, isAdmin: false };
+  }
+}
+
+// 使用激活码（用户接口）
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -48,18 +70,28 @@ export async function POST(request: Request) {
   }
 }
 
-// 获取用户的激活记录
+// 获取用户的激活记录（需要用户认证，普通用户只能查看自己的，管理员可以查看所有）
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
+    const { userId, isAdmin } = verifyUserToken(request);
+    
     if (!userId) {
-      return NextResponse.json({ success: false, error: '请提供用户ID' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });
     }
 
-    const activations = await activationCodeService.getUserActivations(userId);
-    const activatedCategoryIds = await activationCodeService.getUserActivatedCategoryIds(userId);
+    const { searchParams } = new URL(request.url);
+    const paramUserId = searchParams.get('userId');
+
+    // 如果是管理员请求，可以指定 userId；否则只能查看自己的
+    const targetUserId = isAdmin ? (paramUserId || userId) : userId;
+
+    // 验证权限：非管理员只能查看自己的记录
+    if (!isAdmin && paramUserId && paramUserId !== userId) {
+      return NextResponse.json({ success: false, error: '无权限查看其他用户的记录' }, { status: 403 });
+    }
+
+    const activations = await activationCodeService.getUserActivations(targetUserId);
+    const activatedCategoryIds = await activationCodeService.getUserActivatedCategoryIds(targetUserId);
 
     return NextResponse.json({
       success: true,

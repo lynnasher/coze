@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseWorkBank } from '@/lib/work-parser';
 import { questionStore } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 interface WorkQuestionItem {
   id?: string | number;
@@ -21,7 +22,14 @@ interface WorkQuestionItem {
   difficulty?: string;
 }
 
+// 解析 WORK 格式题库（需要管理员认证）
 export async function POST(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     let questions: Question[] = [];
     let isJson = false;

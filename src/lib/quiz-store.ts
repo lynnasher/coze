@@ -25,6 +25,36 @@ export function getCurrentUserId(): string | null {
   }
 }
 
+// 获取用户认证 token
+export function getUserToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('user_token');
+}
+
+// 带用户认证的 fetch 封装
+async function authenticatedFetch(
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const token = getUserToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  // 合并传入的 headers
+  if (options.headers) {
+    if (typeof options.headers === 'object' && !Array.isArray(options.headers)) {
+      Object.assign(headers, options.headers);
+    }
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return fetch(url, { ...options, headers });
+}
+
 // ==================== API 数据缓存层 ====================
 // 缓存有效期配置（毫秒）
 export const CACHE_TTL = {
@@ -212,9 +242,8 @@ export const preloadQuestions = async (questionIds: string[]): Promise<void> => 
   if (uncachedIds.length === 0) return;
   
   try {
-    const response = await fetch('/api/questions/batch', {
+    const response = await authenticatedFetch('/api/questions/batch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: uncachedIds }),
     });
     if (response.ok) {
@@ -682,14 +711,9 @@ export const cloudSyncService = {
   // 保存练习记录到云端
   async saveRecords(userId: string, records: PracticeRecord[]): Promise<boolean> {
     try {
-      const response = await fetch('/api/user-data', {
+      const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save_records',
-          userId,
-          data: { records },
-        }),
+        body: JSON.stringify({ practiceHistory: records }),
       });
       return response.ok;
     } catch (error) {
@@ -701,14 +725,18 @@ export const cloudSyncService = {
   // 保存错题连续正确次数到云端
   async saveStreaks(userId: string, streaks: Record<string, number>): Promise<boolean> {
     try {
-      const response = await fetch('/api/user-data', {
+      // 先获取现有数据
+      const getResponse = await authenticatedFetch('/api/user-data');
+      let existingStreaks: Record<string, number> = {};
+      if (getResponse.ok) {
+        const data = await getResponse.json();
+        existingStreaks = data.data?.streak_data || {};
+      }
+      // 合并数据
+      const mergedStreaks = { ...existingStreaks, ...streaks };
+      const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save_streaks',
-          userId,
-          data: { streaks },
-        }),
+        body: JSON.stringify({ streakData: mergedStreaks }),
       });
       return response.ok;
     } catch (error) {
@@ -720,14 +748,18 @@ export const cloudSyncService = {
   // 保存最近练习记录到云端
   async saveRecentPractice(userId: string, practice: RecentPractice): Promise<boolean> {
     try {
-      const response = await fetch('/api/user-data', {
+      // 先获取现有数据
+      const getResponse = await authenticatedFetch('/api/user-data');
+      let existingRecent: RecentPractice[] = [];
+      if (getResponse.ok) {
+        const data = await getResponse.json();
+        existingRecent = data.data?.recently_practiced || [];
+      }
+      // 添加新记录并限制数量
+      const updatedRecent = [practice, ...existingRecent].slice(0, 50);
+      const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save_recent',
-          userId,
-          data: practice,
-        }),
+        body: JSON.stringify({ recentlyPracticed: updatedRecent }),
       });
       return response.ok;
     } catch (error) {
@@ -743,46 +775,39 @@ export const cloudSyncService = {
     recentPractices: RecentPractice[];
   } | null> {
     try {
-      // 并行获取所有数据
-      const [recordsRes, streaksRes, recentRes] = await Promise.all([
-        fetch(`/api/user-data?userId=${userId}&type=records`),
-        fetch(`/api/user-data?userId=${userId}&type=streaks`),
-        fetch(`/api/user-data?userId=${userId}&type=recent`),
-      ]);
-
-      const [recordsData, streaksData, recentData] = await Promise.all([
-        recordsRes.json(),
-        streaksRes.json(),
-        recentRes.json(),
-      ]);
-
+      const response = await authenticatedFetch('/api/user-data');
+      
+      if (!response.ok) {
+        console.error('从云端拉取数据失败:', response.status);
+        return null;
+      }
+      
+      const data = await response.json();
+      
       // 转换云端记录格式为前端格式
-      const records: PracticeRecord[] = (recordsData.records || []).map((r: Record<string, unknown>) => ({
+      const records: PracticeRecord[] = (data.data?.practice_history || []).map((r: Record<string, unknown>) => ({
         id: r.id as string,
-        questionId: r.question_id as string,
-        isCorrect: r.is_correct as boolean,
-        selectedAnswer: r.selected_answer ? (r.selected_answer as string).split(',') : '',
-        timestamp: new Date(r.timestamp as string).getTime(),
+        questionId: r.questionId as string || r.question_id as string,
+        isCorrect: r.isCorrect as boolean ?? r.is_correct as boolean,
+        selectedAnswer: r.selectedAnswer as string || r.selected_answer as string || '',
+        timestamp: r.timestamp as number || new Date(r.created_at as string).getTime(),
       }));
 
-      const streaks: Record<string, number> = {};
-      (streaksData.streaks || []).forEach((s: Record<string, unknown>) => {
-        streaks[s.question_id as string] = s.streak as number;
-      });
+      const streaks: Record<string, number> = data.data?.streak_data || {};
 
-      const recentPractices: RecentPractice[] = (recentData.recentPractices || []).map((r: Record<string, unknown>) => ({
+      const recentPractices: RecentPractice[] = (data.data?.recently_practiced || []).map((r: Record<string, unknown>) => ({
         id: r.id as string,
-        bankId: r.bank_id as string,
-        bankName: r.bank_name as string,
+        bankId: r.bankId as string || r.bank_id as string,
+        bankName: r.bankName as string || r.bank_name as string,
         mode: r.mode as 'sequential' | 'random' | 'wrong',
-        totalCount: r.total_count as number,
-        answeredCount: r.answered_count as number,
-        correctCount: r.correct_count as number,
-        wrongCount: r.wrong_count as number,
-        currentIndex: r.current_index as number,
-        isCompleted: r.is_completed as boolean,
-        startedAt: new Date(r.started_at as string).getTime(),
-        lastPracticeAt: new Date(r.last_practice_at as string).getTime(),
+        totalCount: r.totalCount as number || r.total_count as number,
+        answeredCount: r.answeredCount as number || r.answered_count as number,
+        correctCount: r.correctCount as number || r.correct_count as number,
+        wrongCount: r.wrongCount as number || r.wrong_count as number,
+        currentIndex: r.currentIndex as number || r.current_index as number,
+        isCompleted: r.isCompleted as boolean || r.is_completed as boolean,
+        startedAt: r.startedAt as number || new Date(r.started_at as string).getTime(),
+        lastPracticeAt: r.lastPracticeAt as number || new Date(r.last_practice_at as string).getTime(),
       }));
 
       return { records, streaks, recentPractices };
@@ -805,15 +830,13 @@ export const cloudSyncService = {
       const localStreaks = wrongStreakStore.getAll();
       const localRecentPractices = recentPracticeStore.getAll();
 
-      // 调用合并接口
-      const response = await fetch('/api/user-data', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      // 调用合并接口（使用 POST 保存所有数据）
+      const response = await authenticatedFetch('/api/user-data', {
+        method: 'POST',
         body: JSON.stringify({
-          userId,
-          localRecords,
-          localStreaks,
-          localRecentPractices,
+          practiceHistory: localRecords,
+          streakData: localStreaks,
+          recentlyPracticed: localRecentPractices,
         }),
       });
 
@@ -821,14 +844,14 @@ export const cloudSyncService = {
         const result = await response.json();
         if (result.success && result.data) {
           // 更新本地数据
-          if (result.data.records?.length > 0) {
-            recordStore.save(result.data.records);
+          if (result.data.practice_history?.length > 0) {
+            recordStore.save(result.data.practice_history);
           }
-          if (result.data.streaks && Object.keys(result.data.streaks).length > 0) {
-            wrongStreakStore.save(result.data.streaks);
+          if (result.data.streak_data && Object.keys(result.data.streak_data).length > 0) {
+            wrongStreakStore.save(result.data.streak_data);
           }
-          if (result.data.recentPractices?.length > 0) {
-            recentPracticeStore.save(result.data.recentPractices);
+          if (result.data.recently_practiced?.length > 0) {
+            recentPracticeStore.save(result.data.recently_practiced);
           }
         }
 

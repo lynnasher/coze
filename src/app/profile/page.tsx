@@ -180,9 +180,17 @@ export default function ProfilePage() {
       : [...user.activated_categories, categoryId];
 
     try {
-      await fetch('/api/admin/users', {
+      // 使用管理员 token（如果有的话），否则使用用户 token
+      const adminToken = localStorage.getItem('admin_token');
+      const userToken = localStorage.getItem('quiz_user_token');
+      const token = adminToken || userToken;
+      
+      await fetch(`/api/admin/users/${user.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ userId: user.id, action: 'categories', value: updatedCategories }),
       });
 

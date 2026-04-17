@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { HeaderUtils } from 'coze-coding-dev-sdk';
 import { parsePdfText, convertToQuestions } from '@/lib/pdf-parser';
 import { questionStore } from '@/lib/quiz-store';
+import { requireAdminAuth } from '@/lib/api-auth';
 
+// 解析 PDF 文件（需要管理员认证）
 export async function POST(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
     
@@ -49,19 +57,16 @@ export async function POST(request: NextRequest) {
     const parsed = parsePdfText(textContent);
     const questions = convertToQuestions(parsed);
     
-    // 保存到数据库
-    questionStore.addMultiple(questions);
-    
+    // 返回解析结果
     return NextResponse.json({
       success: true,
-      message: `成功导入 ${questions.length} 道题目`,
+      count: questions.length,
       questions,
-      total: questions.length,
     });
   } catch (error) {
-    console.error('PDF 导入错误:', error);
+    console.error('PDF 解析失败:', error);
     return NextResponse.json(
-      { error: '导入失败，请重试' },
+      { error: 'PDF 解析失败' },
       { status: 500 }
     );
   }

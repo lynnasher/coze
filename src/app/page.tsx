@@ -135,56 +135,8 @@ export default function QuizApp() {
     }));
   }, [dbBanks]);
 
-  // 统一的初始数据加载函数（使用缓存减少重复请求）
-  const loadAllData = useCallback(async () => {
-    // 加载本地数据（从 localStorage 立即获取）
-    setQuestions(questionStore.getAll());
-    setRecentPractices(recentPracticeStore.getRecent(3));
-    
-    // 获取当前用户
-    const user = getCurrentUser();
-    setCurrentUser(user);
-    
-    // 使用缓存加载分类
-    const { data: categoriesData } = await cachedFetch<{ categories: Category[] }>(
-      '/api/categories',
-      getCacheKey('categories'),
-      CACHE_TTL.CATEGORIES
-    );
-    if (categoriesData?.categories) {
-      setCategories(categoriesData.categories);
-    }
-    
-    // 使用缓存加载题库
-    const { data: banksData } = await cachedFetch<{ banks: any[] }>(
-      '/api/banks',
-      getCacheKey('banks'),
-      CACHE_TTL.BANKS
-    );
-    if (banksData?.banks) {
-      setDbBanks(banksData.banks);
-    }
-    
-    // 如果用户已登录，刷新激活的分类（检查过期）
-    if (user) {
-      refreshActivatedCategories(user.id);
-    }
-  }, []);
-
-  // 初始化加载（只在首次渲染时执行）
-  useEffect(() => {
-    isMountedRef.current = true;
-    loadAllData();
-    // 确保组件在客户端挂载
-    setMounted(true);
-    
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, [loadAllData]);
-
   // 刷新用户激活的分类（检查过期时间）
-  const refreshActivatedCategories = async (userId: string) => {
+  const refreshActivatedCategories = useCallback(async (userId: string) => {
     try {
       const token = localStorage.getItem('quiz_user_token');
       const response = await fetch('/api/auth/user/activations', {
@@ -208,10 +160,65 @@ export default function QuizApp() {
           }
         }
       }
-    } catch (error) {
+    } catch {
       // 忽略错误
     }
-  };
+  }, []);
+
+  // 统一的初始数据加载函数（使用缓存减少重复请求）
+  const loadAllData = useCallback(async () => {
+    // 加载本地数据（从 localStorage 立即获取）
+    setQuestions(questionStore.getAll());
+    setRecentPractices(recentPracticeStore.getRecent(3));
+    
+    // 获取当前用户
+    const user = getCurrentUser();
+    setCurrentUser(user);
+    
+    // 使用缓存加载分类
+    const { data: categoriesData } = await cachedFetch<{ categories: Category[] }>(
+      '/api/categories',
+      getCacheKey('categories'),
+      CACHE_TTL.CATEGORIES
+    );
+    if (categoriesData?.categories) {
+      setCategories(categoriesData.categories);
+    }
+    
+    // 使用缓存加载题库
+    const { data: banksData } = await cachedFetch<{ banks: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      question_count?: number;
+      category_id?: string;
+      created_at?: string;
+    }> }>(
+      '/api/banks',
+      getCacheKey('banks'),
+      CACHE_TTL.BANKS
+    );
+    if (banksData?.banks) {
+      setDbBanks(banksData.banks);
+    }
+    
+    // 如果用户已登录，刷新激活的分类（检查过期）
+    if (user) {
+      refreshActivatedCategories(user.id);
+    }
+  }, [refreshActivatedCategories]);
+
+  // 初始化加载（只在首次渲染时执行）
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadAllData();
+    // 确保组件在客户端挂载
+    setMounted(true);
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadAllData]);
 
   // 监听 localStorage 变化，以便在用户登录/登出后刷新状态
   useEffect(() => {

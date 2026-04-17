@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { activationCodeService } from '@/lib/services/activation-service';
+import { requireAdminAuth } from '@/lib/api-auth';
 
-// 获取所有激活码
-export async function GET() {
+// 获取所有激活码（需要管理员认证）
+export async function GET(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const codes = await activationCodeService.getAll();
     return NextResponse.json({ success: true, codes });
@@ -12,8 +19,14 @@ export async function GET() {
   }
 }
 
-// 创建激活码
+// 创建激活码（需要管理员认证）
 export async function POST(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const body = await request.json();
     const { categoryId, categoryName, count, type, maxUses, expiresAt, description } = body;
@@ -40,8 +53,14 @@ export async function POST(request: Request) {
   }
 }
 
-// 批量删除激活码
+// 批量删除激活码（需要管理员认证）
 export async function DELETE(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     // 尝试从 JSON body 获取 IDs
     const contentType = request.headers.get('content-type');
