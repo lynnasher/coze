@@ -828,10 +828,10 @@ export default function QuizApp() {
                   {/* 未分类题库 */}
                   {banks.filter(b => !b.categoryId).length > 0 && (
                     <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-                      <div className="flex items-center gap-2 mb-3">
-                        <FolderOpen className="w-4 h-4 text-gray-400" />
-                        <h3 className="text-sm font-semibold text-gray-600 tracking-wide">未分类</h3>
-                        <span className="text-xs text-gray-500 font-medium">({banks.filter(b => !b.categoryId).length} 题库)</span>
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                        <FolderOpen className="w-4 h-4 text-slate-400" />
+                        <h3 className="text-sm font-semibold text-slate-700">未分类</h3>
+                        <span className="text-xs text-slate-400 ml-auto">({banks.filter(b => !b.categoryId).length} 题库)</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {banks.filter(b => !b.categoryId).map((bank) => (
@@ -892,18 +892,11 @@ export default function QuizApp() {
                             <div key={`parent-${parentId}`} className="mb-4">
                               {/* 父分类标题 */}
                               {parentCategory && (
-                                <div className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide inline-flex items-center gap-1.5 mb-2 ${
-                                  parentCategory.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                                  parentCategory.color === 'green' ? 'bg-green-100 text-green-700' :
-                                  parentCategory.color === 'red' ? 'bg-red-100 text-red-700' :
-                                  parentCategory.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                                  parentCategory.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                                  parentCategory.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                                  parentCategory.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                                  'bg-cyan-100 text-cyan-700'
-                                }`}>
-                                  <Folder className="w-3 h-3" />
-                                  {parentCategory.name}
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                                  <Folder className="w-4 h-4 text-slate-400" />
+                                  <span className="text-sm font-semibold text-slate-700">
+                                    {parentCategory.name}
+                                  </span>
                                 </div>
                               )}
                               {/* 子分类卡片列表 */}
@@ -917,7 +910,7 @@ export default function QuizApp() {
                                     <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm">
                                       {/* 子分类 - 可点击展开 */}
                                       <div 
-                                        className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
+                                        className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-3 -m-2 rounded-xl transition-all duration-200"
                                         onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                                       >
                                         {selectedCategoryId === category.id ? (
@@ -925,22 +918,13 @@ export default function QuizApp() {
                                         ) : (
                                           <Folder className="w-4 h-4 text-slate-400" />
                                         )}
-                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${
-                                          category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                                          category.color === 'green' ? 'bg-green-100 text-green-700' :
-                                          category.color === 'red' ? 'bg-red-100 text-red-700' :
-                                          category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                                          category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                                          category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                                          category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                                          'bg-cyan-100 text-cyan-700'
-                                        }`}>
+                                        <span className="text-sm font-medium text-slate-700 flex-1">
                                           {category.name}
                                         </span>
-                                        <span className="text-xs text-gray-400 ml-auto pr-1">
+                                        <span className="text-xs text-slate-400">
                                           {categoryBanks.length} 个题库
                                         </span>
-                                        <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
+                                        <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
                                       </div>
                                     
                                       {/* 展开时显示题库 */}
