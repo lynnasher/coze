@@ -13,37 +13,24 @@ import {
   Settings,
   User,
   RefreshCw,
-  FolderOpen,
-  Library,
-  ChevronDown,
-  ChevronUp,
+  Filter,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, bankStore, categoryStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
 // 题型样式配置
-const TYPE_STYLES: Record<QuestionType, { bg: string; label: string; light: string; text: string }> = {
-  'single': { bg: 'bg-indigo-500', label: '单选题', light: 'bg-indigo-50 border-indigo-200', text: 'text-indigo-600' },
-  'multiple': { bg: 'bg-purple-500', label: '多选题', light: 'bg-purple-50 border-purple-200', text: 'text-purple-600' },
-  'true-false': { bg: 'bg-cyan-500', label: '判断题', light: 'bg-cyan-50 border-cyan-200', text: 'text-cyan-600' },
-  'fill-blank': { bg: 'bg-teal-500', label: '填空题', light: 'bg-teal-50 border-teal-200', text: 'text-teal-600' },
-  'comprehensive': { bg: 'bg-rose-500', label: '综合题', light: 'bg-rose-50 border-rose-200', text: 'text-rose-600' },
+const TYPE_STYLES: Record<QuestionType, { bg: string; label: string; active: string; inactive: string; text: string; dot: string }> = {
+  'single': { bg: 'bg-indigo-500', label: '单选题', active: 'bg-indigo-500 text-white', inactive: 'bg-indigo-50 text-indigo-600 border border-indigo-200', text: 'text-indigo-600', dot: 'bg-indigo-500' },
+  'multiple': { bg: 'bg-purple-500', label: '多选题', active: 'bg-purple-500 text-white', inactive: 'bg-purple-50 text-purple-600 border border-purple-200', text: 'text-purple-600', dot: 'bg-purple-500' },
+  'true-false': { bg: 'bg-cyan-500', label: '判断题', active: 'bg-cyan-500 text-white', inactive: 'bg-cyan-50 text-cyan-600 border border-cyan-200', text: 'text-cyan-600', dot: 'bg-cyan-500' },
+  'fill-blank': { bg: 'bg-teal-500', label: '填空题', active: 'bg-teal-500 text-white', inactive: 'bg-teal-50 text-teal-600 border border-teal-200', text: 'text-teal-600', dot: 'bg-teal-500' },
+  'comprehensive': { bg: 'bg-rose-500', label: '综合题', active: 'bg-rose-500 text-white', inactive: 'bg-rose-50 text-rose-600 border border-rose-200', text: 'text-rose-600', dot: 'bg-rose-500' },
 };
 
-// 分类渐变色配置
-const CATEGORY_GRADIENTS = [
-  'from-indigo-500 to-blue-600',
-  'from-purple-500 to-violet-600',
-  'from-rose-500 to-pink-600',
-  'from-amber-500 to-orange-600',
-  'from-emerald-500 to-teal-600',
-  'from-cyan-500 to-sky-600',
-  'from-red-500 to-rose-600',
-  'from-fuchsia-500 to-purple-600',
-];
+const ALL_TYPES: (QuestionType | 'all')[] = ['all', 'single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
 
 export default function WrongBookPage() {
   const [showExplanation, setShowExplanation] = useState(false);
@@ -57,21 +44,19 @@ export default function WrongBookPage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
   const questionContentRef = useRef<HTMLDivElement>(null);
 
-  // 检查认证状态
   const checkAuth = useCallback(() => {
     const user = getStoredUser();
     setCurrentUser(user);
   }, []);
 
-  // 刷新数据
   const refreshData = useCallback(() => {
     setRefreshKey(k => k + 1);
   }, []);
 
-  // 重新计算错题数据（仅本地计算，不同步云端——由 syncFromCloud 统一管理）
+  // 重新计算错题数据
   const recalculateWrongData = useCallback(() => {
     const records = recordStore.getAll();
     const wrongQuestionIds = new Set<string>();
@@ -101,20 +86,13 @@ export default function WrongBookPage() {
     refreshData();
   }, [refreshData]);
 
-  // 从云端同步：先 push 本地数据到云端，再 pull 云端数据下来，以云端为准
+  // 云端同步：先 push 再 pull
   const syncFromCloud = useCallback(async () => {
     const user = getStoredUser();
     if (!user) return;
     setIsSyncing(true);
     try {
-      // 第一步：push 本地数据到云端（确保答题记录不丢失）
-      await cloudSyncService.saveRecordsAndStreaks(
-        user.id,
-        recordStore.getAll(),
-        wrongStreakStore.getAll()
-      );
-
-      // 第二步：pull 云端数据（以云端为准，替换本地缓存）
+      await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
         recordStore.save(cloudData.records);
@@ -135,7 +113,7 @@ export default function WrongBookPage() {
     if (user) syncFromCloud();
   }, [checkAuth, syncFromCloud]);
 
-  // 获取错题列表
+  // 获取全部错题
   const wrongQuestions = useMemo(() => {
     const _rk = refreshKey;
     void _rk;
@@ -144,88 +122,21 @@ export default function WrongBookPage() {
     return wrongIds.map(id => allQuestions.find(q => q.id === id)).filter((q): q is Question => q !== undefined);
   }, [refreshKey]);
 
-  // 按题库/分类分组错题
-  const categorizedWrongQuestions = useMemo(() => {
-    const banks = bankStore.getAll();
-    const categories = categoryStore.getAll();
-    
-    const bankMap = new Map(banks.map(b => [b.id, b]));
-    const categoryMap = new Map(categories.map(c => [c.id, c]));
+  // 按题型筛选后的错题
+  const filteredQuestions = useMemo(() => {
+    if (typeFilter === 'all') return wrongQuestions;
+    return wrongQuestions.filter(q => q.type === typeFilter);
+  }, [wrongQuestions, typeFilter]);
 
-    const bankGroups = new Map<string, { bankId: string; bankName: string; categoryName: string; categoryId: string; questions: Question[] }>();
-    const ungrouped: Question[] = [];
-
+  // 各题型数量
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: wrongQuestions.length };
     wrongQuestions.forEach(q => {
-      if (q.bankId && bankMap.has(q.bankId)) {
-        const bank = bankMap.get(q.bankId)!;
-        const category = bank.categoryId ? categoryMap.get(bank.categoryId) : null;
-        const key = bank.id;
-        if (!bankGroups.has(key)) {
-          bankGroups.set(key, {
-            bankId: bank.id,
-            bankName: bank.name,
-            categoryName: category?.name || '未分类',
-            categoryId: bank.categoryId || '',
-            questions: [],
-          });
-        }
-        bankGroups.get(key)!.questions.push(q);
-      } else {
-        ungrouped.push(q);
-      }
+      counts[q.type] = (counts[q.type] || 0) + 1;
     });
-
-    const categoryGroups = new Map<string, { categoryName: string; categoryId: string; banks: { bankId: string; bankName: string; questions: Question[] }[] }>();
-    
-    bankGroups.forEach(group => {
-      const catKey = group.categoryId || '__uncategorized__';
-      if (!categoryGroups.has(catKey)) {
-        categoryGroups.set(catKey, {
-          categoryName: catKey === '__uncategorized__' ? '未分类' : group.categoryName,
-          categoryId: group.categoryId,
-          banks: [],
-        });
-      }
-      categoryGroups.get(catKey)!.banks.push({
-        bankId: group.bankId,
-        bankName: group.bankName,
-        questions: group.questions,
-      });
-    });
-
-    const result = Array.from(categoryGroups.values());
-    
-    if (ungrouped.length > 0) {
-      const uncategorizedKey = '__uncategorized__';
-      const existing = categoryGroups.get(uncategorizedKey);
-      if (existing) {
-        existing.banks.push({ bankId: '__other__', bankName: '未关联题库', questions: ungrouped });
-      } else {
-        result.push({
-          categoryName: '未分类',
-          categoryId: uncategorizedKey,
-          banks: [{ bankId: '__other__', bankName: '未关联题库', questions: ungrouped }],
-        });
-      }
-    }
-
-    return result;
+    return counts;
   }, [wrongQuestions]);
 
-  // 计算总体题型分布
-  const typeStats = useMemo(() => {
-    const stats: Record<QuestionType, number> = {
-      'single': 0, 'multiple': 0, 'true-false': 0, 'fill-blank': 0, 'comprehensive': 0,
-    };
-    wrongQuestions.forEach(q => { if (stats[q.type] !== undefined) stats[q.type]++; });
-    return Object.entries(stats).filter(([_, v]) => v > 0).map(([type, count]) => ({
-      type: type as QuestionType,
-      ...TYPE_STYLES[type as QuestionType],
-      count,
-    }));
-  }, [wrongQuestions]);
-
-  // 获取题目的错题信息
   const getWrongInfo = useCallback((questionId: string) => {
     const records = recordStore.getAll().filter(r => r.questionId === questionId);
     const wrongRecords = records.filter(r => !r.isCorrect);
@@ -236,7 +147,6 @@ export default function WrongBookPage() {
   const progressPercent = reviewQuestions.length > 0 ? Math.round(((reviewIndex + 1) / reviewQuestions.length) * 100) : 0;
   const currentReviewQuestion = reviewQuestions[reviewIndex];
 
-  // 开始错题复习
   const startReview = useCallback((questions: Question[]) => {
     if (questions.length === 0) return;
     setReviewQuestions(questions);
@@ -247,7 +157,6 @@ export default function WrongBookPage() {
     setIsReviewing(true);
   }, []);
 
-  // 提交答案
   const handleSubmitAnswer = useCallback(() => {
     if (currentReviewQuestion && localAnswer !== undefined) {
       const correct = checkAnswerInline(currentReviewQuestion, localAnswer);
@@ -266,7 +175,6 @@ export default function WrongBookPage() {
       } else {
         wrongStreakStore.reset(currentReviewQuestion.id);
       }
-      // 同步到云端
       const user = getStoredUser();
       if (user) {
         cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
@@ -306,7 +214,6 @@ export default function WrongBookPage() {
     refreshData();
   }, [refreshData]);
 
-  // 内联答案检查
   function checkAnswerInline(question: Question, answer: string | string[] | undefined): boolean {
     if (!answer) return false;
     if (Array.isArray(question.answer)) {
@@ -317,23 +224,6 @@ export default function WrongBookPage() {
   }
 
   const getOptionLabel = (index: number) => String.fromCharCode(65 + index);
-
-  // 切换分类展开
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(categoryId)) next.delete(categoryId);
-      else next.add(categoryId);
-      return next;
-    });
-  };
-
-  // 初始展开所有分类
-  useEffect(() => {
-    if (categorizedWrongQuestions.length > 0 && expandedCategories.size === 0) {
-      setExpandedCategories(new Set(categorizedWrongQuestions.map(c => c.categoryId || '__other__')));
-    }
-  }, [categorizedWrongQuestions, expandedCategories.size]);
 
   // =================== 复习模式 ===================
   if (isReviewing && currentReviewQuestion) {
@@ -496,7 +386,6 @@ export default function WrongBookPage() {
   // =================== 错题本列表页面 ===================
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
       <header className="bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[970px] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
@@ -560,163 +449,84 @@ export default function WrongBookPage() {
           </div>
         )}
 
-        {/* 有错题 - 卡片式分类显示 */}
+        {/* 有错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
-          <div className="space-y-4">
-            {/* 统计概览卡片 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                  <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-                  </div>
-                  错题概览
-                </h3>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={recalculateWrongData} className="text-slate-400 hover:text-slate-600 h-7 px-2 text-xs">
-                    <RotateCcw className="w-3 h-3 mr-1" />重新计算
-                  </Button>
-                  <Button onClick={() => startReview(wrongQuestions)} className="rounded-xl h-8 px-4 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white">
-                    全部复习
-                  </Button>
-                </div>
+          <div className="space-y-3">
+            {/* 顶部操作栏 */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={recalculateWrongData} className="text-slate-400 hover:text-slate-600 h-7 px-2 text-xs">
+                  <RotateCcw className="w-3 h-3 mr-1" />重新计算
+                </Button>
+                <span className="text-xs text-slate-400">连续答对3次自动移除</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-xl p-3 text-white text-center">
-                  <p className="text-xl font-bold">{wrongQuestions.length}</p>
-                  <p className="text-xs opacity-80">错题总数</p>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-                  <p className="text-xl font-bold">{wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 2).length}</p>
-                  <p className="text-xs opacity-80">即将掌握</p>
-                </div>
-              </div>
-              {/* 题型分布标签 */}
-              {typeStats.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-3">
-                  {typeStats.map(ts => (
-                    <span key={ts.type} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${ts.light} ${ts.text}`}>
-                      {ts.label} {ts.count}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-slate-400 mt-2">连续答对3次后将从错题本中移除</p>
+              <Button onClick={() => startReview(filteredQuestions)} disabled={filteredQuestions.length === 0} className="rounded-xl h-8 px-4 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white">
+                复习{typeFilter === 'all' ? '全部' : TYPE_STYLES[typeFilter].label}（{filteredQuestions.length}）
+              </Button>
             </div>
 
-            {/* 按分类卡片展示错题 */}
-            {categorizedWrongQuestions.map((catGroup, catIdx) => {
-              const gradient = CATEGORY_GRADIENTS[catIdx % CATEGORY_GRADIENTS.length];
-              const totalInCat = catGroup.banks.reduce((s, b) => s + b.questions.length, 0);
-              const catId = catGroup.categoryId || '__other__';
-              const isExpanded = expandedCategories.has(catId);
-
-              return (
-                <div key={catId} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                  {/* 分类头部 - 渐变卡片 */}
-                  <div 
-                    className={`bg-gradient-to-r ${gradient} p-4 cursor-pointer hover:opacity-95 transition-opacity`}
-                    onClick={() => toggleCategory(catId)}
+            {/* 题型筛选 */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              {ALL_TYPES.map(t => {
+                const count = typeCounts[t] || 0;
+                if (t !== 'all' && count === 0) return null;
+                const isActive = typeFilter === t;
+                const label = t === 'all' ? '全部' : TYPE_STYLES[t].label;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setTypeFilter(t)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isActive ? (t === 'all' ? 'bg-slate-700 text-white' : TYPE_STYLES[t].active) : (t === 'all' ? 'bg-slate-100 text-slate-500' : TYPE_STYLES[t].inactive)}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                          <FolderOpen className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="text-white">
-                          <p className="text-base font-bold">{catGroup.categoryName}</p>
-                          <p className="text-xs opacity-80">{totalInCat} 道错题 · {catGroup.banks.length} 个题库</p>
+                    {label} {count}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 错题列表 */}
+            <div className="space-y-2">
+              {filteredQuestions.map(question => {
+                const ts = TYPE_STYLES[question.type] || TYPE_STYLES['single'];
+                const info = getWrongInfo(question.id);
+                return (
+                  <div key={question.id} className="bg-white rounded-xl p-3.5 shadow-sm hover:shadow transition-shadow">
+                    <div className="flex items-start gap-3">
+                      {/* 题型标签 */}
+                      <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${ts.bg} mt-0.5`}>
+                        {ts.label}
+                      </span>
+                      {/* 题目内容 */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-800 leading-relaxed line-clamp-2">{question.content}</p>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <span className="text-xs text-slate-400">错{info.wrongCount}次</span>
+                          {info.streak > 0 && (
+                            <span className="text-xs text-emerald-500">连续答对{info.streak}次</span>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={(e) => { e.stopPropagation(); startReview(catGroup.banks.flatMap(b => b.questions)); }}
-                          className="bg-white/20 hover:bg-white/30 text-white border-0 rounded-lg h-8 px-3 text-xs backdrop-blur-sm"
-                        >
-                          复习此分类
-                        </Button>
-                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                          {isExpanded ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
-                        </div>
-                      </div>
+                      {/* 复习按钮 */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startReview([question])}
+                        className="shrink-0 h-7 px-2.5 text-xs rounded-lg mt-0.5"
+                      >
+                        复习
+                      </Button>
                     </div>
                   </div>
+                );
+              })}
 
-                  {/* 展开的题库列表 */}
-                  {isExpanded && (
-                    <div className="p-4 space-y-3">
-                      {catGroup.banks.map(bank => {
-                        const questionsByType = new Map<QuestionType, Question[]>();
-                        bank.questions.forEach(q => {
-                          if (!questionsByType.has(q.type)) questionsByType.set(q.type, []);
-                          questionsByType.get(q.type)!.push(q);
-                        });
-
-                        return (
-                          <div key={bank.bankId} className="bg-slate-50 rounded-xl p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Library className="w-4 h-4 text-slate-400" />
-                                <span className="text-sm font-semibold text-slate-700">{bank.bankName}</span>
-                                <span className="text-xs text-slate-400">{bank.questions.length} 题</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => startReview(bank.questions)}
-                                className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 h-7 px-2 text-xs"
-                              >
-                                复习
-                              </Button>
-                            </div>
-                            
-                            {Array.from(questionsByType.entries()).map(([qType, questions]) => {
-                              const ts = TYPE_STYLES[qType] || TYPE_STYLES['single'];
-                              return (
-                                <div key={qType} className="mb-2 last:mb-0">
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${ts.bg}`} />
-                                    <span className="text-xs font-medium text-slate-500">{ts.label}</span>
-                                    <span className="text-xs text-slate-400">({questions.length})</span>
-                                  </div>
-                                  <div className="space-y-1.5">
-                                    {questions.map(question => {
-                                      const info = getWrongInfo(question.id);
-                                      return (
-                                        <div key={question.id} className="flex items-center gap-2 p-2 bg-white rounded-lg hover:shadow-sm transition-shadow">
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-slate-700 truncate">{question.content.slice(0, 60)}{question.content.length > 60 ? '...' : ''}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                              <span className="text-xs text-slate-400">错{info.wrongCount}次</span>
-                                              {info.streak > 0 && (
-                                                <span className="text-xs text-emerald-500">连续答对{info.streak}次</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => startReview([question])}
-                                            className="shrink-0 h-7 px-2 text-xs rounded-lg"
-                                          >
-                                            复习
-                                          </Button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+              {filteredQuestions.length === 0 && (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  该题型暂无错题
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
         )}
       </main>
