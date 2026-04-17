@@ -347,7 +347,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* 分类激活管理 - 紧凑列表 */}
+        {/* 分类激活管理 - 紧凑表格 */}
         <Card className="mb-4">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -356,77 +356,90 @@ export default function ProfilePage() {
               <Badge variant="secondary" className="ml-auto text-xs">{userActivations.length}</Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1.5">
             {userActivations.length === 0 ? (
-              <div className="text-center py-6 text-gray-400">
-                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">暂无已激活的分类</p>
-                <p className="text-xs mt-1">请使用激活码激活分类</p>
+              <div className="text-center py-4 text-gray-400">
+                <BookOpen className="w-6 h-6 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">暂无已激活的分类</p>
               </div>
             ) : (
-              userActivations.map((activation) => {
-                const questionCount = getCategoryQuestionCount(activation.category_id);
-                const category = categories.find(c => c.id === activation.category_id);
-                
-                return (
-                  <div key={activation.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        category?.color === 'blue' ? 'bg-blue-100' :
-                        category?.color === 'green' ? 'bg-green-100' :
-                        category?.color === 'purple' ? 'bg-purple-100' :
-                        category?.color === 'orange' ? 'bg-orange-100' :
-                        'bg-gray-100'
+              <div className="divide-y divide-gray-100">
+                {userActivations.map((activation) => {
+                  const category = categories.find(c => c.id === activation.category_id);
+                  const isExpired = activation.expires_at && new Date(activation.expires_at) < new Date();
+                  
+                  return (
+                    <div key={activation.id} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+                      {/* 分类名称 */}
+                      <div className="flex items-center gap-2 min-w-0 flex-[2]">
+                        <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${
+                          category?.color === 'blue' ? 'bg-blue-100' :
+                          category?.color === 'green' ? 'bg-green-100' :
+                          category?.color === 'purple' ? 'bg-purple-100' :
+                          category?.color === 'orange' ? 'bg-orange-100' :
+                          category?.color === 'red' ? 'bg-red-100' :
+                          category?.color === 'pink' ? 'bg-pink-100' :
+                          category?.color === 'cyan' ? 'bg-cyan-100' :
+                          'bg-gray-100'
+                        }`}>
+                          <BookOpen className={`w-3 h-3 ${
+                            category?.color === 'blue' ? 'text-blue-600' :
+                            category?.color === 'green' ? 'text-green-600' :
+                            category?.color === 'purple' ? 'text-purple-600' :
+                            category?.color === 'orange' ? 'text-orange-600' :
+                            category?.color === 'red' ? 'text-red-600' :
+                            category?.color === 'pink' ? 'text-pink-600' :
+                            category?.color === 'cyan' ? 'text-cyan-600' :
+                            'text-gray-600'
+                          }`} />
+                        </div>
+                        <span className="text-sm text-gray-700 truncate">{activation.category_name}</span>
+                      </div>
+                      
+                      {/* 激活码 */}
+                      <div className="flex items-center gap-1.5 flex-[1.5]">
+                        {activation.activation_code ? (
+                          <>
+                            <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-600">
+                              {activation.activation_code}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(activation.activation_code!)}
+                              className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </div>
+                      
+                      {/* 到期日期 */}
+                      <div className={`text-xs flex-shrink-0 ${
+                        isExpired ? 'text-red-500' :
+                        activation.expires_at ? 'text-gray-500' : 'text-green-600'
                       }`}>
-                        <BookOpen className={`w-4 h-4 ${
-                          category?.color === 'blue' ? 'text-blue-600' :
-                          category?.color === 'green' ? 'text-green-600' :
-                          category?.color === 'purple' ? 'text-purple-600' :
-                          category?.color === 'orange' ? 'text-orange-600' :
-                          'text-gray-600'
-                        }`} />
+                        {isExpired ? '已过期' : formatExpireTime(activation.expires_at)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-gray-900 text-sm truncate">{activation.category_name}</div>
-                        <div className="text-xs text-gray-400">{questionCount} 道题目</div>
-                      </div>
+                      
+                      {/* 管理员删除按钮 */}
                       {user?.role === 'admin' && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleToggleCategory(activation.category_id, true)}
-                          className="text-red-400 hover:text-red-500 hover:bg-red-50 h-7 w-7 p-0"
+                          className="text-red-400 hover:text-red-500 hover:bg-red-50 h-6 w-6 p-0"
                         >
                           <LogOut className="w-3 h-3" />
                         </Button>
                       )}
                     </div>
-                    
-                    {/* 激活码信息 - 紧凑显示 */}
-                    {activation.activation_code && (
-                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <div className="flex items-center gap-2 text-xs">
-                          <Key className="w-3 h-3 text-gray-400" />
-                          <span className="font-mono font-medium text-gray-600 bg-white px-2 py-0.5 rounded border">
-                            {activation.activation_code}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(activation.activation_code!)}
-                            className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </Button>
-                          <span className="text-gray-400 ml-auto">
-                            {formatExpireTime(activation.expires_at)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
