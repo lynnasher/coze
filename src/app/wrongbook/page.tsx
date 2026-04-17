@@ -27,12 +27,12 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   'comprehensive': '综合',
 };
 
-const TYPE_COLORS: Record<QuestionType, string> = {
-  'single': 'bg-blue-500',
-  'multiple': 'bg-purple-500',
-  'true-false': 'bg-cyan-500',
-  'fill-blank': 'bg-teal-500',
-  'comprehensive': 'bg-rose-500',
+const TYPE_COLORS: Record<QuestionType, { bg: string; text: string; light: string }> = {
+  'single': { bg: 'bg-blue-500', text: 'text-blue-600', light: 'bg-blue-50' },
+  'multiple': { bg: 'bg-violet-500', text: 'text-violet-600', light: 'bg-violet-50' },
+  'true-false': { bg: 'bg-cyan-500', text: 'text-cyan-600', light: 'bg-cyan-50' },
+  'fill-blank': { bg: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-50' },
+  'comprehensive': { bg: 'bg-rose-500', text: 'text-rose-600', light: 'bg-rose-50' },
 };
 
 export default function WrongBookPage() {
@@ -229,23 +229,23 @@ export default function WrongBookPage() {
   // ============ 复习模式 ============
   if (isReviewing && currentReviewQuestion) {
     const wrongInfo = getWrongInfo(currentReviewQuestion.id);
-    const typeStyle = TYPE_COLORS[currentReviewQuestion.type] || 'bg-blue-500';
+    const typeColors = TYPE_COLORS[currentReviewQuestion.type];
 
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[#F5F5F7]">
         {/* Header */}
-        <header className="bg-white border-b sticky top-0 z-50">
-          <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
+        <header className="bg-white/80 backdrop-blur-xl border-b sticky top-0 z-50">
+          <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
                 <BookOpen className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-gray-800">智能刷题</span>
+              <span className="font-semibold text-gray-900">智能刷题</span>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {currentUser?.role === 'admin' && (
                 <Link href="/admin">
-                  <Button variant="ghost" size="sm" className="h-8 text-orange-600">
+                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-gray-500">
                     <Settings className="w-4 h-4" />
                   </Button>
                 </Link>
@@ -255,55 +255,59 @@ export default function WrongBookPage() {
           </div>
         </header>
 
-        {/* Progress Bar */}
+        {/* Progress */}
         <div className="bg-white border-b px-4 py-3">
-          <div className="max-w-3xl mx-auto">
-            <div className="flex items-center justify-between mb-2">
-              <Button variant="ghost" size="sm" onClick={() => { setIsReviewing(false); refreshData(); }} className="h-8 -ml-2">
+          <div className="max-w-2xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <Button variant="ghost" size="sm" onClick={() => { setIsReviewing(false); refreshData(); }} className="h-9 -ml-2 text-gray-600">
                 <ArrowLeft className="w-4 h-4 mr-1" />返回
               </Button>
-              <span className="text-sm text-slate-500">{reviewIndex + 1} / {reviewQuestions.length}</span>
-              <Button variant="outline" size="sm" onClick={() => markAsMastered(currentReviewQuestion.id)} className="h-8 text-emerald-600 border-emerald-200">
+              <span className="text-sm font-medium text-gray-500">{reviewIndex + 1} / {reviewQuestions.length}</span>
+              <Button variant="outline" size="sm" onClick={() => markAsMastered(currentReviewQuestion.id)} className="h-9 text-emerald-600 border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50">
                 <Check className="w-4 h-4 mr-1" />已掌握
               </Button>
             </div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="bg-amber-50 border-b px-4 py-2">
-          <div className="max-w-3xl mx-auto flex gap-6 text-sm text-amber-700">
-            <span>错题 {wrongInfo.wrongCount} 次</span>
-            <span>掌握度 {wrongInfo.streak}/3</span>
+        {/* Stats Bar */}
+        <div className="bg-amber-50/80 border-b px-4 py-2.5">
+          <div className="max-w-2xl mx-auto flex gap-6 text-sm">
+            <span className="text-amber-700">错题 <span className="font-semibold">{wrongInfo.wrongCount}</span> 次</span>
+            <span className="text-amber-700">掌握度 <span className="font-semibold">{wrongInfo.streak}</span>/3</span>
           </div>
         </div>
 
-        {/* Question */}
-        <div className="max-w-3xl mx-auto px-4 py-4 pb-24">
-          <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-            <div className="px-4 py-3 border-b bg-slate-50/50 flex items-center justify-between">
-              <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${typeStyle}`}>
+        {/* Question Card */}
+        <div className="max-w-2xl mx-auto px-4 py-5 pb-28">
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Type Badge */}
+            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${typeColors?.bg || 'bg-gray-500'}`}>
                 {TYPE_LABELS[currentReviewQuestion.type]}
               </span>
-              <span className="text-xs text-slate-400">第 {reviewIndex + 1} 题</span>
+              <span className="text-xs text-gray-400">第 {reviewIndex + 1} 题</span>
             </div>
 
+            {/* Case Background */}
             {currentReviewQuestion.caseBackground && (
-              <div className="mx-4 mt-4 p-3 bg-indigo-50 rounded-xl text-sm text-indigo-800 leading-relaxed">
-                {currentReviewQuestion.caseBackground}
+              <div className="mx-5 mt-4 p-4 bg-indigo-50/70 rounded-2xl border border-indigo-100">
+                <div className="text-sm text-indigo-900 leading-relaxed">{currentReviewQuestion.caseBackground}</div>
               </div>
             )}
 
-            <div className="p-4">
-              <div className="text-base text-slate-800 leading-relaxed mb-4">
+            {/* Question Content */}
+            <div className="p-5">
+              <div className="text-base text-gray-800 leading-relaxed mb-5">
                 <RichTextWithBreaks content={currentReviewQuestion.content || ''} />
               </div>
 
+              {/* Options */}
               {currentReviewQuestion.options && currentReviewQuestion.options.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {currentReviewQuestion.options.map((option, index) => {
                     const isMulti = currentReviewQuestion.type === 'multiple';
                     const isSelected = isMulti 
@@ -313,19 +317,24 @@ export default function WrongBookPage() {
                       ? currentReviewQuestion.answer.includes(option.id) 
                       : currentReviewQuestion.answer === option.id;
                     
-                    let optClass = 'border-slate-200 hover:border-slate-300 hover:bg-slate-50';
+                    let optClass = 'border-gray-200 hover:border-gray-300 hover:bg-gray-50';
+                    let labelClass = 'bg-gray-100 text-gray-500';
+                    
                     if (isSelected && showExplanation) {
-                      optClass = isCorrectOption ? 'border-emerald-400 bg-emerald-50' : 'border-red-400 bg-red-50';
+                      optClass = isCorrectOption ? 'border-emerald-400 bg-emerald-50/70' : 'border-red-400 bg-red-50/70';
+                      labelClass = isCorrectOption ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white';
                     } else if (isSelected) {
-                      optClass = 'border-slate-800 bg-slate-100';
+                      optClass = 'border-gray-800 bg-gray-50';
+                      labelClass = 'bg-gray-800 text-white';
                     } else if (showExplanation && isCorrectOption) {
-                      optClass = 'border-emerald-400 bg-emerald-50';
+                      optClass = 'border-emerald-400 bg-emerald-50/70';
+                      labelClass = 'bg-emerald-500 text-white';
                     }
 
                     return (
                       <div 
                         key={option.id} 
-                        className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${optClass}`}
+                        className={`flex items-center p-3.5 rounded-xl border-2 cursor-pointer transition-all ${optClass}`}
                         onClick={() => {
                           if (showExplanation) return;
                           if (isMulti) {
@@ -336,14 +345,14 @@ export default function WrongBookPage() {
                           }
                         }}
                       >
-                        <div className={`w-6 h-6 rounded-md flex items-center justify-center mr-3 text-xs font-bold ${isSelected ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 text-xs font-bold transition-colors ${labelClass}`}>
                           {getOptionLabel(index)}
                         </div>
-                        <div className="flex-1 text-sm text-slate-700">
+                        <div className="flex-1 text-sm text-gray-700">
                           <RichTextWithBreaks content={option.text} />
                         </div>
-                        {showExplanation && isCorrectOption && <Check className="w-4 h-4 text-emerald-500 ml-2" />}
-                        {showExplanation && isSelected && !isCorrectOption && <X className="w-4 h-4 text-red-500 ml-2" />}
+                        {showExplanation && isCorrectOption && <Check className="w-5 h-5 text-emerald-500 ml-2" />}
+                        {showExplanation && isSelected && !isCorrectOption && <X className="w-5 h-5 text-red-500 ml-2" />}
                       </div>
                     );
                   })}
@@ -351,33 +360,36 @@ export default function WrongBookPage() {
               ) : (
                 <input 
                   type="text" 
-                  placeholder="输入你的答案" 
+                  placeholder="请输入你的答案" 
                   value={(localAnswer as string) || ''} 
                   onChange={(e) => !showExplanation && setLocalAnswer(e.target.value)} 
                   disabled={showExplanation}
-                  className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-slate-400 focus:outline-none disabled:bg-slate-50"
+                  className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-gray-400 focus:outline-none transition-colors disabled:bg-gray-50 text-sm"
                 />
               )}
             </div>
 
+            {/* Explanation */}
             {showExplanation && (
-              <div className="px-4 pb-4 space-y-3">
-                <div className={`rounded-xl p-3 ${isAnswerCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+              <div className="px-5 pb-5 space-y-3">
+                <div className={`rounded-2xl p-4 ${isAnswerCorrect ? 'bg-emerald-50 border border-emerald-100' : 'bg-red-50 border border-red-100'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {isAnswerCorrect ? <Check className="w-5 h-5 text-emerald-500" /> : <X className="w-5 h-5 text-red-500" />}
-                      <span className={`font-medium ${isAnswerCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isAnswerCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                        {isAnswerCorrect ? <Check className="w-3.5 h-3.5 text-white" /> : <X className="w-3.5 h-3.5 text-white" />}
+                      </div>
+                      <span className={`font-medium ${isAnswerCorrect ? 'text-emerald-800' : 'text-red-800'}`}>
                         {isAnswerCorrect ? '回答正确' : '回答错误'}
                       </span>
                     </div>
-                    <span className="text-sm text-slate-500">
-                      答案: <span className="font-medium text-slate-800">{Array.isArray(currentReviewQuestion.answer) ? currentReviewQuestion.answer.map(a => a.toUpperCase()).join(', ') : currentReviewQuestion.answer?.toUpperCase()}</span>
+                    <span className="text-sm text-gray-500">
+                      正确答案: <span className="font-semibold text-gray-800">{Array.isArray(currentReviewQuestion.answer) ? currentReviewQuestion.answer.map(a => a.toUpperCase()).join(', ') : currentReviewQuestion.answer?.toUpperCase()}</span>
                     </span>
                   </div>
                 </div>
                 {currentReviewQuestion.explanation && (
-                  <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                    <div className="text-sm font-medium text-amber-800 mb-1">解析</div>
+                  <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                    <div className="text-sm font-semibold text-amber-800 mb-2">答案解析</div>
                     <div className="text-sm text-amber-900 leading-relaxed">
                       <RichTextWithBreaks content={currentReviewQuestion.explanation} />
                     </div>
@@ -389,21 +401,29 @@ export default function WrongBookPage() {
         </div>
 
         {/* Bottom Actions */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3 z-20">
-          <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <Button variant="outline" onClick={handlePrev} disabled={reviewIndex === 0} className="h-11 px-5">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t px-4 py-4 z-20">
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <Button 
+              variant="outline" 
+              onClick={handlePrev} 
+              disabled={reviewIndex === 0} 
+              className="h-12 px-6 rounded-xl border-gray-200"
+            >
               <ChevronLeft className="w-4 h-4 mr-1" />上一题
             </Button>
             {!showExplanation ? (
               <Button 
                 onClick={handleSubmitAnswer} 
                 disabled={localAnswer === undefined || (Array.isArray(localAnswer) && localAnswer.length === 0)}
-                className="h-11 px-8 bg-slate-900 hover:bg-slate-800"
+                className="h-12 px-8 rounded-xl bg-gray-900 hover:bg-gray-800 text-white"
               >
                 提交答案
               </Button>
             ) : (
-              <Button onClick={handleNext} className="h-11 px-8 bg-slate-900 hover:bg-slate-800">
+              <Button 
+                onClick={handleNext} 
+                className="h-12 px-8 rounded-xl bg-gray-900 hover:bg-gray-800 text-white"
+              >
                 {reviewIndex < reviewQuestions.length - 1 ? '下一题' : '完成'}<ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
@@ -415,23 +435,20 @@ export default function WrongBookPage() {
 
   // ============ 列表页面 ============
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#F5F5F7]">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-lg flex items-center justify-center">
+      <header className="bg-white/80 backdrop-blur-xl border-b sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
               <BookOpen className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <span className="font-bold text-gray-800">智能刷题</span>
-              <span className="text-xs text-gray-400 ml-2">错题本</span>
-            </div>
+            <span className="font-semibold text-gray-900">智能刷题</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             {currentUser?.role === 'admin' && (
               <Link href="/admin">
-                <Button variant="ghost" size="sm" className="h-8 text-orange-600">
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-gray-500">
                   <Settings className="w-4 h-4" />
                 </Button>
               </Link>
@@ -441,16 +458,19 @@ export default function WrongBookPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      <main className="max-w-2xl mx-auto px-4 py-5">
         {/* 未登录 */}
         {!currentUser && mounted && (
           <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center">
-              <User className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <User className="w-7 h-7 text-white" />
             </div>
-            <h2 className="text-lg font-medium text-slate-800 mb-1">请先登录</h2>
-            <p className="text-slate-400 text-sm mb-6">登录后查看错题本</p>
-            <Button onClick={() => setAuthModalOpen(true)} className="bg-slate-900 hover:bg-slate-800 h-10 px-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">请先登录</h2>
+            <p className="text-gray-400 text-sm mb-6">登录后查看错题本</p>
+            <Button 
+              onClick={() => setAuthModalOpen(true)} 
+              className="bg-gray-900 hover:bg-gray-800 h-11 px-8 rounded-xl"
+            >
               去登录
             </Button>
           </div>
@@ -459,21 +479,21 @@ export default function WrongBookPage() {
         {/* 同步中 */}
         {currentUser && mounted && isSyncing && (
           <div className="flex items-center justify-center py-16">
-            <RefreshCw className="w-5 h-5 animate-spin text-slate-400 mr-2" />
-            <span className="text-slate-500 text-sm">同步中...</span>
+            <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
+            <span className="text-gray-500 text-sm">同步中...</span>
           </div>
         )}
 
         {/* 无错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center">
-              <Check className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <Check className="w-7 h-7 text-white" />
             </div>
-            <h2 className="text-lg font-medium text-slate-800 mb-1">太棒了！暂无错题</h2>
-            <p className="text-slate-400 text-sm">继续保持，做题全对不是梦</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">太棒了！暂无错题</h2>
+            <p className="text-gray-400 text-sm mb-6">继续保持，做题全对不是梦</p>
             <Link href="/">
-              <Button className="mt-6 bg-slate-900 hover:bg-slate-800 h-10 px-6">去刷题</Button>
+              <Button className="bg-gray-900 hover:bg-gray-800 h-11 px-8 rounded-xl">去刷题</Button>
             </Link>
           </div>
         )}
@@ -481,24 +501,24 @@ export default function WrongBookPage() {
         {/* 有错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
           <>
-            {/* 统计概览 */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border mb-4">
-              <div className="flex items-center justify-between">
+            {/* 统计卡片 - 参考图风格 */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">错题总数</p>
-                  <p className="text-3xl font-bold text-slate-800">{wrongQuestions.length}</p>
+                  <p className="text-sm text-gray-500 mb-1">错题总数</p>
+                  <p className="text-4xl font-bold text-gray-900">{wrongQuestions.length}</p>
                 </div>
                 <Button 
                   onClick={() => startReview(filteredQuestions)} 
                   disabled={filteredQuestions.length === 0}
-                  className="bg-slate-900 hover:bg-slate-800 h-10 px-5"
+                  className="h-12 px-6 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-medium"
                 >
                   开始复习
                 </Button>
               </div>
               
               {/* 题型筛选 */}
-              <div className="flex gap-2 mt-5 overflow-x-auto pb-1">
+              <div className="flex gap-2.5 flex-wrap">
                 {(['all', 'single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
                   const count = typeCounts[t] || 0;
                   if (t !== 'all' && count === 0) return null;
@@ -508,10 +528,10 @@ export default function WrongBookPage() {
                     <button
                       key={t}
                       onClick={() => setTypeFilter(t)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                         isActive 
-                          ? 'bg-slate-900 text-white' 
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          ? 'bg-gray-900 text-white' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       {label} {count}
@@ -522,24 +542,25 @@ export default function WrongBookPage() {
             </div>
 
             {/* 错题列表 */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {paginatedQuestions.map(question => {
                 const info = getWrongInfo(question.id);
+                const typeColors = TYPE_COLORS[question.type];
                 return (
                   <div 
                     key={question.id} 
-                    className="bg-white rounded-xl p-4 shadow-sm border hover:shadow-md transition-shadow"
+                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start gap-3">
-                      <span className={`shrink-0 w-10 h-6 rounded text-xs font-medium text-white flex items-center justify-center ${TYPE_COLORS[question.type]}`}>
+                      <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
                         {TYPE_LABELS[question.type]}
                       </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-800 leading-relaxed line-clamp-2">{question.content}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">{question.content}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                           <span>错 {info.wrongCount} 次</span>
                           {info.streak > 0 && (
-                            <span className="text-emerald-600">连续答对 {info.streak} 次</span>
+                            <span className="text-emerald-600 font-medium">连续答对 {info.streak} 次</span>
                           )}
                         </div>
                       </div>
@@ -547,7 +568,7 @@ export default function WrongBookPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => startReview([question])}
-                        className="shrink-0 h-8 px-3 text-xs"
+                        className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                       >
                         复习
                       </Button>
@@ -557,7 +578,7 @@ export default function WrongBookPage() {
               })}
 
               {paginatedQuestions.length === 0 && (
-                <div className="text-center py-12 text-slate-400 text-sm">
+                <div className="text-center py-12 text-gray-400 text-sm">
                   该题型暂无错题
                 </div>
               )}
@@ -571,9 +592,9 @@ export default function WrongBookPage() {
                   size="sm"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => p - 1)}
-                  className="h-8 w-8 p-0"
+                  className="h-10 w-10 p-0 rounded-xl"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-5 h-5" />
                 </Button>
                 
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -581,14 +602,14 @@ export default function WrongBookPage() {
                   .map((p, idx, arr) => (
                     <div key={p} className="flex items-center">
                       {idx > 0 && p - arr[idx - 1] > 1 && (
-                        <span className="w-8 text-center text-slate-400">...</span>
+                        <span className="w-10 text-center text-gray-400 text-sm">...</span>
                       )}
                       <button
                         onClick={() => setCurrentPage(p)}
-                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                        className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${
                           currentPage === p 
-                            ? 'bg-slate-900 text-white' 
-                            : 'text-slate-600 hover:bg-slate-100'
+                            ? 'bg-gray-900 text-white' 
+                            : 'text-gray-600 hover:bg-gray-100'
                         }`}
                       >
                         {p}
@@ -601,9 +622,9 @@ export default function WrongBookPage() {
                   size="sm"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage(p => p + 1)}
-                  className="h-8 w-8 p-0"
+                  className="h-10 w-10 p-0 rounded-xl"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
               </div>
             )}
