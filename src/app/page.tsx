@@ -186,7 +186,7 @@ export default function QuizApp() {
       setCategories(categoriesData.categories);
     }
     
-    // 使用缓存加载题库（需要认证）
+    // 使用缓存加载题库
     const { data: banksData } = await cachedFetch<{ banks: Array<{
       id: string;
       name: string;
@@ -194,11 +194,12 @@ export default function QuizApp() {
       question_count?: number;
       category_id?: string;
       created_at?: string;
+      isActivated?: boolean;
     }> }>(
       '/api/banks',
       getCacheKey('banks'),
       CACHE_TTL.BANKS,
-      true // 需要用户认证
+      false // 题库列表公开，不需要认证
     );
     if (banksData?.banks) {
       setDbBanks(banksData.banks);
@@ -655,22 +656,6 @@ export default function QuizApp() {
               </div>
             </div>
 
-            {/* 未登录或无激活分类时的提示 - 清新卡片风格 */}
-            {(!currentUser || getActivatedCategoryIds().length === 0) && (
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-center mb-5">
-                <div className="w-14 h-14 mx-auto mb-3 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center shadow-md">
-                  <BookOpen className="w-7 h-7 text-amber-500" />
-                </div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-1.5">暂无激活分类</h3>
-                <p className="text-xs text-gray-400 mb-4">使用激活码解锁分类题库</p>
-                <Link href="/profile">
-                  <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl px-5 text-sm h-9 shadow-lg shadow-amber-100">
-                    去激活
-                  </Button>
-                </Link>
-              </div>
-            )}
-
             {/* 题库列表 - 按分类分组 - 清新卡片风格 */}
             <div className="space-y-3">
               {banks.length === 0 ? (
@@ -684,7 +669,7 @@ export default function QuizApp() {
               ) : (
                 <>
                   {/* 未分类题库 */}
-                  {currentUser && banks.filter(b => !b.categoryId).length > 0 && (
+                  {banks.filter(b => !b.categoryId).length > 0 && (
                     <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
@@ -698,6 +683,11 @@ export default function QuizApp() {
                             key={bank.id} 
                             bank={bank} 
                             onStartPractice={(bankId) => {
+                              // 检查是否需要登录
+                              if (!currentUser) {
+                                setAuthModalOpen(true);
+                                return;
+                              }
                               setPracticeBankId(bankId);
                               setActiveTab('practice');
                               startQuiz('sequential', bankId);
@@ -710,23 +700,35 @@ export default function QuizApp() {
                   
                   {/* 按分类显示题库 - 支持二级分类，点击展开 */}
                   {(() => {
-                    const activatedIds = getActivatedCategoryIds();
-                    // 只显示已激活的分类（包括一级和二级分类）
+                    // 获取所有有一级分类的题库
+                    const categorizedBanks = banks.filter(b => b.categoryId);
+                    if (categorizedBanks.length === 0) return null;
+                    
+                    // 获取所有涉及的顶级分类
+                    const topCategoryIds = new Set<string>();
+                    categorizedBanks.forEach(bank => {
+                      const cat = categories.find(c => c.id === bank.categoryId);
+                      if (cat) {
+                        if (cat.parentId) {
+                          topCategoryIds.add(cat.parentId);
+                        } else {
+                          topCategoryIds.add(cat.id);
+                        }
+                      }
+                    });
+                    
                     const visibleCategories = categories.filter(c => 
-                      activatedIds.includes(c.id) || 
-                      (c.parentId && activatedIds.includes(c.parentId))
+                      topCategoryIds.has(c.id) || (c.parentId && topCategoryIds.has(c.parentId))
                     );
                     
-                    if (visibleCategories.length === 0) {
-                      return null;
-                    }
+                    if (visibleCategories.length === 0) return null;
                     
                     return (
                       <>
                         {visibleCategories.map(category => {
-                          // 获取该分类下的所有直接子分类（只显示已激活的）
+                          // 获取该分类下的所有直接子分类
                           const childCategories = categories.filter(c => 
-                            c.parentId === category.id && activatedIds.includes(c.id)
+                            c.parentId === category.id
                           );
                           
                           // 获取该分类的直接题库
@@ -790,6 +792,10 @@ export default function QuizApp() {
                                             key={bank.id} 
                                             bank={bank} 
                                             onStartPractice={(bankId) => {
+                                              if (!currentUser) {
+                                                setAuthModalOpen(true);
+                                                return;
+                                              }
                                               setPracticeBankId(bankId);
                                               setActiveTab('practice');
                                               startQuiz('sequential', bankId);
@@ -829,6 +835,10 @@ export default function QuizApp() {
                                               key={bank.id} 
                                               bank={bank} 
                                               onStartPractice={(bankId) => {
+                                                if (!currentUser) {
+                                                  setAuthModalOpen(true);
+                                                  return;
+                                                }
                                                 setPracticeBankId(bankId);
                                                 setActiveTab('practice');
                                                 startQuiz('sequential', bankId);
