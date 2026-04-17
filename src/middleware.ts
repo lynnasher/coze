@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// 禁止直接访问 /admin 路径
+// 注意：/admin 路径的访问控制已移至客户端
+// 每个后台页面组件会检查 admin_token 并进行相应重定向
+
+// 这里保留作为未来扩展用，例如：
+// - 添加审计日志
+// - 验证请求频率
+// - 其他服务端安全检查
+
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-  
-  // 拦截 /admin 路径，重定向到首页
-  if (pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-  
   return NextResponse.next();
 }
 
-// 配置匹配的路径
+// 配置匹配的路径（可以扩展需要拦截的路径）
 export const config = {
   matcher: [
-    '/admin/:path*',
+    // 目前不拦截任何路径
+    // 未来可以添加：'/api/admin/:path*'
   ],
 };
