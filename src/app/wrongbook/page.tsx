@@ -295,12 +295,12 @@ export default function WrongBookPage() {
         </div>
 
         {/* 题目内容区域 */}
-        <div className="pb-28">
-          <div className="max-w-[970px] mx-auto sm:px-4 py-3">
+        <div className="pb-28 px-4 sm:px-6">
+          <div className="max-w-[800px] mx-auto py-3">
             {/* 题目卡片 */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
               {/* 题干头部 */}
-              <div className="sm:px-4 px-3 py-2.5 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
+              <div className="px-5 py-3 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
                 <div className="flex items-center justify-between gap-2">
                   <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${
                     currentReviewQuestion.type === 'single' ? 'bg-indigo-500' :
@@ -316,7 +316,7 @@ export default function WrongBookPage() {
 
               {/* 案例背景（综合题显示） */}
               {currentReviewQuestion.caseBackground && (
-                <div className="sm:mx-4 mx-3 mt-3 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+                <div className="mx-5 mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
                   <div className="text-xs text-indigo-700 leading-relaxed">
                     <RichTextWithBreaks content={currentReviewQuestion.caseBackground} textClassName="whitespace-pre-wrap" />
                   </div>
@@ -324,17 +324,17 @@ export default function WrongBookPage() {
               )}
 
               {/* 题目内容 */}
-              <div className="sm:px-4 px-3 py-3">
+              <div className="px-5 py-4">
                 <div className="text-base font-medium text-slate-800 leading-relaxed">
                   <RichTextWithBreaks content={currentReviewQuestion.content || ''} textClassName="whitespace-pre-wrap" />
                 </div>
               </div>
 
               {/* 分隔线 */}
-              <div className="sm:mx-4 mx-3 h-px bg-slate-100" />
+              <div className="mx-5 h-px bg-slate-100" />
 
               {/* 选项区域 */}
-              <div className="sm:px-4 px-3 pb-4">
+              <div className="px-5 pb-5">
                 <div className="space-y-2">
                   {currentReviewQuestion.options?.map((option, index) => {
                     const isMulti = currentReviewQuestion.type === 'multiple';
@@ -396,8 +396,8 @@ export default function WrongBookPage() {
 
               {/* 答案与解析 */}
               {showExplanation && (
-                <div className="sm:px-4 px-3 pb-4 space-y-3">
-                  <div className={`rounded-xl p-3.5 ${isAnswerCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
+                <div className="px-5 pb-5 space-y-3">
+                  <div className={`rounded-xl p-4 ${isAnswerCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isAnswerCorrect ? 'bg-emerald-500' : 'bg-red-500'}`}>
@@ -418,7 +418,7 @@ export default function WrongBookPage() {
                     </div>
                   </div>
                   {currentReviewQuestion.explanation && (
-                    <div className="bg-amber-50 rounded-xl p-3.5 border border-amber-200">
+                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
                       <div className="flex items-center gap-2 text-amber-700 mb-2">
                         <BookOpen className="w-4 h-4" />
                         <span className="font-semibold text-sm">解析</span>
