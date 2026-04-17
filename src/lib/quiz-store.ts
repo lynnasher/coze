@@ -25,10 +25,10 @@ export function getCurrentUserId(): string | null {
   }
 }
 
-// 获取用户认证 token
+// 获取用户认证 token（与 AuthModal 保持一致，使用 quiz_user_token）
 export function getUserToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('user_token');
+  return localStorage.getItem('quiz_user_token');
 }
 
 // 带用户认证的 fetch 封装
