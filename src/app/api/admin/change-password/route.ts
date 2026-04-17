@@ -1,38 +1,5 @@
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const CONFIG_PATH = path.join(process.cwd(), 'data', 'admin-config.json');
-
-// 读取管理员配置
-function getAdminConfig() {
-  try {
-    const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return {
-      username: process.env.ADMIN_USERNAME || 'admin',
-      password: process.env.ADMIN_PASSWORD || 'admin123',
-      isDefaultPassword: true,
-      lastChanged: null,
-    };
-  }
-}
-
-// 保存管理员配置
-function saveAdminConfig(config: any): boolean {
-  try {
-    const dir = path.dirname(CONFIG_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
-    return true;
-  } catch (error) {
-    console.error('保存管理员配置失败:', error);
-    return false;
-  }
-}
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -64,10 +31,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = getAdminConfig();
+    const supabase = await getSupabaseClient();
 
-    // 验证用户名
-    if (admin.username !== username) {
+    // 查询管理员
+    const { data: admin, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('username', username)
+      .single();
+
+    if (error || !admin) {
       return NextResponse.json(
         { error: '管理员不存在' },
         { status: 404 }
@@ -91,14 +64,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 更新密码
-    admin.password = newPassword;
-    admin.isDefaultPassword = false;
-    admin.lastChanged = Date.now();
+    // 更新密码到数据库
+    const { error: updateError } = await supabase
+      .from('admin_users')
+      .update({
+        password: newPassword,
+        is_default_password: false,
+        last_changed: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('username', username);
 
-    // 持久化保存
-    const saved = saveAdminConfig(admin);
-    if (!saved) {
+    if (updateError) {
+      console.error('更新密码失败:', updateError);
       return NextResponse.json(
         { error: '密码保存失败，请重试' },
         { status: 500 }

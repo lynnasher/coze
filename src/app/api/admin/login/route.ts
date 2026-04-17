@@ -1,48 +1,5 @@
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const CONFIG_PATH = path.join(process.cwd(), 'data', 'admin-config.json');
-
-// 读取管理员配置
-function getAdminConfig() {
-  try {
-    const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    // 配置文件不存在或读取失败，使用环境变量中的默认值
-    return {
-      username: process.env.ADMIN_USERNAME || 'admin',
-      password: process.env.ADMIN_PASSWORD || 'admin123',
-      isDefaultPassword: true,
-      lastChanged: null,
-    };
-  }
-}
-
-// 保存管理员配置
-function saveAdminConfig(config: any): boolean {
-  try {
-    const dir = path.dirname(CONFIG_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
-    return true;
-  } catch (error) {
-    console.error('保存管理员配置失败:', error);
-    return false;
-  }
-}
-
-// 生成 token
-function generateToken(user: { username: string }): string {
-  const payload = {
-    username: user.username,
-    exp: Date.now() + 24 * 60 * 60 * 1000, // 24小时后过期
-  };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
-}
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -61,6 +18,16 @@ function validatePasswordStrength(password: string): { valid: boolean; message?:
   return { valid: true };
 }
 
+// 生成 token
+function generateToken(user: { id: string; username: string }): string {
+  const payload = {
+    userId: user.id,
+    username: user.username,
+    exp: Date.now() + 24 * 60 * 60 * 1000, // 24小时后过期
+  };
+  return Buffer.from(JSON.stringify(payload)).toString('base64');
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -73,33 +40,49 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = getAdminConfig();
+    // 从数据库验证
+    const supabase = getSupabaseClient();
+    const { data: admin, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('username', username)
+      .single();
 
-    // 验证用户名
-    if (admin.username !== username) {
+    console.log('[AdminLogin] Query result:', { admin, error });
+
+    if (error || !admin) {
+      console.log('[AdminLogin] User not found or error:', error);
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }
       );
     }
+
+    console.log('[AdminLogin] Found admin:', admin.username, 'password:', admin.password);
 
     // 验证密码
     if (admin.password !== password) {
+      console.log('[AdminLogin] Password mismatch:', { input: password, stored: admin.password });
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }
       );
     }
 
-    const token = generateToken({ username });
+    const token = generateToken({ id: admin.id, username: admin.username });
 
     // 检查是否需要强制修改密码
-    const needChangePassword = admin.isDefaultPassword;
+    const needChangePassword = admin.is_default_password;
 
     return NextResponse.json({
       success: true,
       token,
-      user: { username, role: 'admin' },
+      user: { 
+        id: admin.id,
+        username: admin.username, 
+        role: 'admin',
+        isDefaultPassword: admin.is_default_password
+      },
       needChangePassword,
     });
   } catch (error) {
@@ -112,4 +95,4 @@ export async function POST(request: Request) {
 }
 
 // 导出方法供其他路由使用
-export { getAdminConfig, saveAdminConfig, validatePasswordStrength };
+export { validatePasswordStrength };
