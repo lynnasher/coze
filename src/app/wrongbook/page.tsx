@@ -235,48 +235,36 @@ export default function WrongBookPage() {
 
   const getOptionLabel = (index: number) => String.fromCharCode(65 + index);
 
-  // ============ 复习模式 - 与首页做题页面保持一致风格 ============
+  // ============ 复习模式 - 沉浸式做题体验 ============
   if (isReviewing && currentReviewQuestion) {
     const wrongInfo = getWrongInfo(currentReviewQuestion.id);
 
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* 顶部导航栏 - 与首页一致 */}
-        <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
-          <div className="max-w-[970px] mx-auto">
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setIsReviewing(false); refreshData(); }}
-                className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -ml-2"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                <span className="text-sm font-medium">返回</span>
-              </Button>
-              
-              <span className="text-sm text-slate-600">
-                {reviewIndex + 1} / {reviewQuestions.length}
-              </span>
-              
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => markAsMastered(currentReviewQuestion.id)}
-                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg px-2 h-9"
-                  title="已掌握"
-                >
-                  <Check className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+        {/* 简洁顶部栏 - 无LOGO */}
+        <div className="bg-white border-b border-slate-200 px-4 py-2.5 sticky top-0 z-20">
+          <div className="max-w-[800px] mx-auto flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setIsReviewing(false); refreshData(); }}
+              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-8 px-2 -ml-2"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              <span className="text-sm">退出</span>
+            </Button>
+            
+            <span className="text-sm font-medium text-slate-600">
+              {reviewIndex + 1} / {reviewQuestions.length}
+            </span>
+            
+            <div className="w-12" />
           </div>
         </div>
 
-        {/* 进度条 - 与首页一致 */}
+        {/* 进度条 */}
         <div className="bg-white border-b border-slate-100 px-4 py-2">
-          <div className="max-w-[970px] mx-auto">
+          <div className="max-w-[800px] mx-auto">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
@@ -288,7 +276,7 @@ export default function WrongBookPage() {
 
         {/* 错题统计提示 */}
         <div className="bg-amber-50 border-b border-amber-100 px-4 py-2">
-          <div className="max-w-[970px] mx-auto flex gap-4 text-sm text-amber-700">
+          <div className="max-w-[800px] mx-auto flex gap-4 text-sm text-amber-700">
             <span>错题 <span className="font-semibold">{wrongInfo.wrongCount}</span> 次</span>
             <span>掌握度 <span className="font-semibold">{wrongInfo.streak}</span>/3</span>
           </div>
@@ -436,7 +424,7 @@ export default function WrongBookPage() {
 
         {/* 底部固定操作栏 */}
         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
-          <div className="max-w-[970px] mx-auto">
+          <div className="max-w-[800px] mx-auto">
             <div className="flex items-center justify-between gap-3">
               <Button
                 variant="outline"
