@@ -664,8 +664,12 @@ export default function WrongBookPage() {
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
-                  <p className="text-xs text-gray-400">错题本</p>
+                  <h1 className="text-lg font-bold text-gray-800">错题本</h1>
+                  {mounted && currentUser && wrongQuestions.length > 0 ? (
+                    <p className="text-xs text-orange-500 font-medium">{wrongQuestions.length} 道错题待复习</p>
+                  ) : (
+                    <p className="text-xs text-gray-400">巩固薄弱知识点</p>
+                  )}
                 </div>
               </Link>
             </div>

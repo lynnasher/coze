@@ -139,6 +139,13 @@ export function useQuiz() {
       const dbQuestions = await loadQuestionsFromDb(bankId);
       if (dbQuestions && dbQuestions.length > 0) {
         questions = dbQuestions;
+        // 保存题目到本地存储，以便错题本等模块能正确匹配题目ID
+        const existingQuestions = questionStore.getAll();
+        const existingIds = new Set(existingQuestions.map(q => q.id));
+        const newQuestions = questions.filter(q => !existingIds.has(q.id));
+        if (newQuestions.length > 0) {
+          questionStore.addMultiple(newQuestions);
+        }
       }
       
       // 如果数据库没有，再从 localStorage 获取
