@@ -571,49 +571,44 @@ export default function QuizApp() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部区域 - 简洁清爽风格 */}
-      <header className="bg-white sticky top-0 z-50 shadow-sm">
-        <div className="max-w-[970px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* 产品标识 - 可点击返回首页 */}
-            <button 
-              onClick={() => {
-                // 如果正在练习，先结束练习
-                if (hasStarted) {
-                  finishQuiz();
-                  resetQuiz();
-                  setHasStarted(false);
-                  setPracticeBankId(null);
-                }
-                // 切换到首页标签
-                setActiveTab('practice');
-              }}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
-            >
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
-                <BookOpen className="w-5 h-5 text-white" />
+      {/* 顶部区域 - 仅在非做题模式时显示 */}
+      {!hasStarted && (
+        <header className="bg-white sticky top-0 z-50 shadow-sm">
+          <div className="max-w-[970px] mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              {/* 产品标识 - 可点击返回首页 */}
+              <button 
+                onClick={() => {
+                  // 切换到首页标签
+                  setActiveTab('practice');
+                }}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                  <BookOpen className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
+                  <p className="text-xs text-gray-400">{questions.length} 道题目</p>
+                </div>
+              </button>
+              
+              {/* 用户信息 */}
+              <div className="flex items-center gap-2">
+                {currentUser?.role === 'admin' && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                      <Settings className="w-4 h-4" />
+                      <span className="hidden sm:inline">管理</span>
+                    </Button>
+                  </Link>
+                )}
+                <UserStatus />
               </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
-                <p className="text-xs text-gray-400">{questions.length} 道题目</p>
-              </div>
-            </button>
-            
-            {/* 用户信息 */}
-            <div className="flex items-center gap-2">
-              {currentUser?.role === 'admin' && (
-                <Link href="/admin">
-                  <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
-                    <Settings className="w-4 h-4" />
-                    <span className="hidden sm:inline">管理</span>
-                  </Button>
-                </Link>
-              )}
-              <UserStatus />
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* 主内容 */}
       <main className="max-w-[970px] mx-auto px-4 py-4">
