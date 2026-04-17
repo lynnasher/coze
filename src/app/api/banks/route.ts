@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
 import { userService } from '@/lib/services/user-service';
-import { activationCodeService } from '@/lib/services/activation-service';
 
 // 获取题库列表（需要用户认证，且只能获取已激活分类的题库）
 export async function GET(request: Request) {
@@ -20,7 +19,7 @@ export async function GET(request: Request) {
       const token = authHeader.substring(7);
       const payload = JSON.parse(Buffer.from(token, 'base64').toString());
       
-      if (payload.exp && payload.exp < Date.now()) {
+      if (payload.exp < Date.now()) {
         return NextResponse.json({ 
           error: '登录已过期，请重新登录',
           banks: [],
@@ -47,8 +46,27 @@ export async function GET(request: Request) {
         }, { status: 403 });
       }
 
-      // 获取用户已激活的分类ID列表（从 user_activations 表中查询，会自动过滤过期记录）
-      const validCategories = await activationCodeService.getUserActivatedCategoryIds(userId);
+      // 获取用户已激活的分类
+      const activatedCategories = user.activated_categories || [];
+      
+      // 检查激活码是否过期
+      const now = new Date();
+      const validCategories: string[] = [];
+      
+      for (const catId of activatedCategories) {
+        // 获取该分类的激活码信息
+        const codes = await userService.getUserActivationCodes(userId);
+        const activation = codes.find((c: { category_id: string }) => c.category_id === catId);
+        
+        if (activation) {
+          if (!activation.expires_at || new Date(activation.expires_at) > now) {
+            validCategories.push(catId);
+          }
+        } else {
+          // 如果没有找到激活码记录，检查是否有过期的激活记录
+          validCategories.push(catId);
+        }
+      }
 
       // 获取所有题库
       const allBanks = await bankService.getAllBanks();
@@ -62,16 +80,15 @@ export async function GET(request: Request) {
         banks,
         total: banks.length 
       });
-    } catch (error) {
-      console.error('获取题库失败:', error);
+    } catch {
       return NextResponse.json({ 
-        error: '获取失败',
+        error: '登录已过期，请重新登录',
         banks: [],
         total: 0 
-      }, { status: 500 });
+      }, { status: 401 });
     }
   } catch (error) {
-    console.error('获取题库失败:', error);
+    console.error('Failed to get banks:', error);
     return NextResponse.json({ 
       error: '获取失败',
       banks: [],
