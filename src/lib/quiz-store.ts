@@ -69,25 +69,32 @@ export const getCacheKey = (prefix: string, id?: string): string => {
   return id ? `${prefix}_${id}` : prefix;
 };
 
-// 带缓存的 fetch 封装
+// 带缓存的 fetch 封装（支持用户认证）
 export async function cachedFetch<T>(
   url: string,
   cacheKey: string,
-  ttlMs: number = CACHE_TTL.QUESTIONS
+  ttlMs: number = CACHE_TTL.QUESTIONS,
+  requireAuth: boolean = false
 ): Promise<{ data: T | null; fromCache: boolean }> {
-  // 检查缓存
-  const cached = cacheStore.get<T>(cacheKey);
-  if (cached) {
-    return { data: cached, fromCache: true };
+  // 检查缓存（对于需要认证的请求，不使用缓存以确保数据最新）
+  if (!requireAuth) {
+    const cached = cacheStore.get<T>(cacheKey);
+    if (cached) {
+      return { data: cached, fromCache: true };
+    }
   }
   
-  // 发起请求
+  // 发起请求（根据是否需要认证选择不同的 fetch）
+  const fetchFn = requireAuth ? authenticatedFetch : fetch;
+  
   try {
-    const response = await fetch(url);
+    const response = await fetchFn(url);
     if (response.ok) {
       const data = await response.json();
       // 存入缓存
-      cacheStore.set(cacheKey, data, ttlMs);
+      if (!requireAuth) {
+        cacheStore.set(cacheKey, data, ttlMs);
+      }
       return { data, fromCache: false };
     }
   } catch (error) {

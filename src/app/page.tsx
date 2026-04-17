@@ -186,7 +186,7 @@ export default function QuizApp() {
       setCategories(categoriesData.categories);
     }
     
-    // 使用缓存加载题库
+    // 使用缓存加载题库（需要认证）
     const { data: banksData } = await cachedFetch<{ banks: Array<{
       id: string;
       name: string;
@@ -197,7 +197,8 @@ export default function QuizApp() {
     }> }>(
       '/api/banks',
       getCacheKey('banks'),
-      CACHE_TTL.BANKS
+      CACHE_TTL.BANKS,
+      true // 需要用户认证
     );
     if (banksData?.banks) {
       setDbBanks(banksData.banks);
