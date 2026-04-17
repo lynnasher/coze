@@ -8,12 +8,14 @@ import {
   Check, 
   X, 
   BookOpen,
-  RotateCcw,
   ArrowLeft,
   Settings,
   User,
   RefreshCw,
   Filter,
+  Target,
+  TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -45,6 +47,8 @@ export default function WrongBookPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
   const questionContentRef = useRef<HTMLDivElement>(null);
 
   const checkAuth = useCallback(() => {
@@ -136,6 +140,27 @@ export default function WrongBookPage() {
     });
     return counts;
   }, [wrongQuestions]);
+
+  // 分页数据
+  const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
+  const paginatedQuestions = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredQuestions.slice(start, start + PAGE_SIZE);
+  }, [filteredQuestions, currentPage]);
+
+  // 切换筛选时重置页码
+  useEffect(() => { setCurrentPage(1); }, [typeFilter]);
+
+  // 概览统计
+  const overviewStats = useMemo(() => {
+    const mastered = 0;
+    let practicing = 0;
+    wrongQuestions.forEach(q => {
+      const streak = wrongStreakStore.get(q.id);
+      if (streak >= 2) practicing++;
+    });
+    return { total: wrongQuestions.length, mastered, practicing };
+  }, [wrongQuestions, refreshKey]);
 
   const getWrongInfo = useCallback((questionId: string) => {
     const records = recordStore.getAll().filter(r => r.questionId === questionId);
@@ -452,52 +477,73 @@ export default function WrongBookPage() {
         {/* 有错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
           <div className="space-y-3">
-            {/* 顶部操作栏 */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={recalculateWrongData} className="text-slate-400 hover:text-slate-600 h-7 px-2 text-xs">
-                  <RotateCcw className="w-3 h-3 mr-1" />重新计算
-                </Button>
-                <span className="text-xs text-slate-400">连续答对3次自动移除</span>
+            {/* 概览卡片 */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="bg-white rounded-xl p-3 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
+                    <Target className="w-3.5 h-3.5 text-red-500" />
+                  </div>
+                  <span className="text-xs text-slate-400">错题总数</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-800">{overviewStats.total}</p>
               </div>
-              <Button onClick={() => startReview(filteredQuestions)} disabled={filteredQuestions.length === 0} className="rounded-xl h-8 px-4 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white">
-                复习{typeFilter === 'all' ? '全部' : TYPE_STYLES[typeFilter].label}（{filteredQuestions.length}）
-              </Button>
+              <div className="bg-white rounded-xl p-3 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  </div>
+                  <span className="text-xs text-slate-400">练习中</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-800">{overviewStats.practicing}</p>
+              </div>
+              <div className="bg-white rounded-xl p-3 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  <span className="text-xs text-slate-400">题型数</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-800">{Object.keys(typeCounts).filter(k => k !== 'all' && typeCounts[k] > 0).length}</p>
+              </div>
             </div>
 
-            {/* 题型筛选 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              {ALL_TYPES.map(t => {
-                const count = typeCounts[t] || 0;
-                if (t !== 'all' && count === 0) return null;
-                const isActive = typeFilter === t;
-                const label = t === 'all' ? '全部' : TYPE_STYLES[t].label;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => setTypeFilter(t)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isActive ? (t === 'all' ? 'bg-slate-700 text-white' : TYPE_STYLES[t].active) : (t === 'all' ? 'bg-slate-100 text-slate-500' : TYPE_STYLES[t].inactive)}`}
-                  >
-                    {label} {count}
-                  </button>
-                );
-              })}
+            {/* 题型筛选 + 复习按钮 */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                {ALL_TYPES.map(t => {
+                  const count = typeCounts[t] || 0;
+                  if (t !== 'all' && count === 0) return null;
+                  const isActive = typeFilter === t;
+                  const label = t === 'all' ? '全部' : TYPE_STYLES[t].label;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTypeFilter(t)}
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isActive ? (t === 'all' ? 'bg-slate-700 text-white' : TYPE_STYLES[t].active) : (t === 'all' ? 'bg-slate-100 text-slate-500' : TYPE_STYLES[t].inactive)}`}
+                    >
+                      {label} {count}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button onClick={() => startReview(filteredQuestions)} disabled={filteredQuestions.length === 0} className="rounded-xl h-8 px-4 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shrink-0">
+                复习（{filteredQuestions.length}）
+              </Button>
             </div>
 
             {/* 错题列表 */}
             <div className="space-y-2">
-              {filteredQuestions.map(question => {
+              {paginatedQuestions.map(question => {
                 const ts = TYPE_STYLES[question.type] || TYPE_STYLES['single'];
                 const info = getWrongInfo(question.id);
                 return (
                   <div key={question.id} className="bg-white rounded-xl p-3.5 shadow-sm hover:shadow transition-shadow">
                     <div className="flex items-start gap-3">
-                      {/* 题型标签 */}
                       <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${ts.bg} mt-0.5`}>
                         {ts.label}
                       </span>
-                      {/* 题目内容 */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-800 leading-relaxed line-clamp-2">{question.content}</p>
                         <div className="flex items-center gap-3 mt-1.5">
@@ -507,7 +553,6 @@ export default function WrongBookPage() {
                           )}
                         </div>
                       </div>
-                      {/* 复习按钮 */}
                       <Button
                         variant="outline"
                         size="sm"
@@ -527,6 +572,52 @@ export default function WrongBookPage() {
                 </div>
               )}
             </div>
+
+            {/* 分页 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-2 pb-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="h-8 px-3 text-xs rounded-lg"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 mr-0.5" />上一页
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                    .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      typeof p === 'string' ? (
+                        <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-xs text-slate-400">...</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${currentPage === p ? 'bg-indigo-500 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="h-8 px-3 text-xs rounded-lg"
+                >
+                  下一页<ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </main>
