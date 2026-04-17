@@ -697,14 +697,15 @@ export default function QuizApp() {
             )}
 
             {/* 题库列表 - 按分类分组 - 清新卡片风格 */}
-            <div className="space-y-3">
+            {/* 题库列表 - 卡片式布局 */}
+            <div className="space-y-4">
               {banks.length === 0 ? (
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
-                  <div className="w-14 h-14 mx-auto mb-3 bg-gray-50 rounded-2xl flex items-center justify-center">
-                    <Library className="w-7 h-7 text-gray-300" />
+                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm text-center">
+                  <div className="w-14 h-14 mx-auto mb-3 bg-gray-100 rounded-2xl flex items-center justify-center">
+                    <Library className="w-7 h-7 text-gray-400" />
                   </div>
-                  <p className="text-sm text-gray-500 font-medium">暂无题库</p>
-                  <p className="text-xs text-gray-400 mt-1">请联系管理员导入</p>
+                  <p className="text-sm text-gray-600 font-medium">暂无题库</p>
+                  <p className="text-xs text-gray-500 mt-1">请联系管理员导入</p>
                 </div>
               ) : (
                 <>
@@ -712,8 +713,8 @@ export default function QuizApp() {
                   {banks.filter(b => !b.categoryId).length > 0 && (
                     <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
-                        <FolderOpen className="w-4 h-4 text-gray-400" />
-                        <h3 className="text-sm font-semibold text-gray-600 tracking-wide">未分类</h3>
+                        <FolderOpen className="w-4 h-4 text-gray-500" />
+                        <h3 className="text-sm font-semibold text-gray-700 tracking-wide">未分类</h3>
                         <span className="text-xs text-gray-500 font-medium">({banks.filter(b => !b.categoryId).length} 题库)</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -737,7 +738,7 @@ export default function QuizApp() {
                     </div>
                   )}
                   
-                  {/* 按分类显示题库 - 直接显示激活的分类 */}
+                  {/* 按分类显示题库 - 卡片式布局 */}
                   {(() => {
                     // 非登录用户不显示任何题库
                     if (!currentUser) return null;
@@ -768,84 +769,117 @@ export default function QuizApp() {
                     
                     return (
                       <>
-                        {/* 先显示激活的子分类（带父分类标题） */}
+                        {/* 先显示激活的子分类（带父分类标题）- 卡片式 */}
                         {Array.from(childCategoriesByParent.entries()).map(([parentId, children]) => {
                           const parentCategory = categories.find(c => c.id === parentId);
                           return (
-                            <div key={`parent-${parentId}`} className="mb-4">
-                              {/* 父分类标题 */}
+                            <div key={`parent-${parentId}`} className="space-y-3">
+                              {/* 父分类大标题 */}
                               {parentCategory && (
-                                <div className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide inline-flex items-center gap-1.5 mb-2 ${
-                                  parentCategory.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                                  parentCategory.color === 'green' ? 'bg-green-100 text-green-700' :
-                                  parentCategory.color === 'red' ? 'bg-red-100 text-red-700' :
-                                  parentCategory.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                                  parentCategory.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                                  parentCategory.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                                  parentCategory.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                                  'bg-cyan-100 text-cyan-700'
-                                }`}>
-                                  <Folder className="w-3 h-3" />
-                                  {parentCategory.name}
+                                <div className="flex items-center gap-2">
+                                  <Folder className={`w-5 h-5 ${
+                                    parentCategory.color === 'blue' ? 'text-blue-600' :
+                                    parentCategory.color === 'green' ? 'text-green-600' :
+                                    parentCategory.color === 'red' ? 'text-red-600' :
+                                    parentCategory.color === 'yellow' ? 'text-yellow-600' :
+                                    parentCategory.color === 'purple' ? 'text-purple-600' :
+                                    parentCategory.color === 'pink' ? 'text-pink-600' :
+                                    parentCategory.color === 'indigo' ? 'text-indigo-600' :
+                                    'text-cyan-600'
+                                  }`} />
+                                  <h3 className={`text-base font-bold ${
+                                    parentCategory.color === 'blue' ? 'text-blue-700' :
+                                    parentCategory.color === 'green' ? 'text-green-700' :
+                                    parentCategory.color === 'red' ? 'text-red-700' :
+                                    parentCategory.color === 'yellow' ? 'text-yellow-700' :
+                                    parentCategory.color === 'purple' ? 'text-purple-700' :
+                                    parentCategory.color === 'pink' ? 'text-pink-700' :
+                                    parentCategory.color === 'indigo' ? 'text-indigo-700' :
+                                    'text-cyan-700'
+                                  }`}>
+                                    {parentCategory.name}
+                                  </h3>
                                 </div>
                               )}
-                              {/* 子分类卡片列表 */}
-                              <div className="space-y-2">
+                              
+                              {/* 子分类卡片网格 */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {children.map(category => {
                                   // 获取该分类的题库
                                   const categoryBanks = banks.filter(b => b.categoryId === category.id);
                                   if (categoryBanks.length === 0) return null;
                                   
                                   return (
-                                    <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm">
-                                      {/* 子分类 - 可点击展开 */}
-                                      <div 
-                                        className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
-                                        onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
-                                      >
-                                        {selectedCategoryId === category.id ? (
-                                          <FolderOpen className="w-4 h-4 text-slate-500" />
-                                        ) : (
-                                          <Folder className="w-4 h-4 text-slate-400" />
-                                        )}
-                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${
-                                          category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                                          category.color === 'green' ? 'bg-green-100 text-green-700' :
-                                          category.color === 'red' ? 'bg-red-100 text-red-700' :
-                                          category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                                          category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                                          category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                                          category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                                          'bg-cyan-100 text-cyan-700'
-                                        }`}>
-                                          {category.name}
-                                        </span>
-                                        <span className="text-xs text-gray-400 ml-auto pr-1">
-                                          {categoryBanks.length} 个题库
-                                        </span>
-                                        <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
-                                      </div>
-                                    
-                                      {/* 展开时显示题库 */}
-                                      {selectedCategoryId === category.id && (
-                                        <div className="mt-3 space-y-3 pl-2">
-                                          {categoryBanks.map(bank => (
-                                            <BankCard
-                                              key={bank.id}
-                                              bank={bank}
-                                              onStartPractice={(bankId) => {
-                                                if (!currentUser) {
-                                                  setAuthModalOpen(true);
-                                                  return;
-                                                }
-                                                setPracticeBankId(bankId);
-                                                setActiveTab('practice');
-                                                startQuiz('sequential', bankId);
-                                              }}
-                                            />
-                                          ))}
+                                    <div 
+                                      key={category.id} 
+                                      className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
+                                      onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                                    >
+                                      <div className="p-4">
+                                        <div className="flex items-start justify-between mb-3">
+                                          <div className="flex items-center gap-2">
+                                            <FolderOpen className={`w-4 h-4 ${
+                                              category.color === 'blue' ? 'text-blue-500' :
+                                              category.color === 'green' ? 'text-green-500' :
+                                              category.color === 'red' ? 'text-red-500' :
+                                              category.color === 'yellow' ? 'text-yellow-500' :
+                                              category.color === 'purple' ? 'text-purple-500' :
+                                              category.color === 'pink' ? 'text-pink-500' :
+                                              category.color === 'indigo' ? 'text-indigo-500' :
+                                              'text-cyan-500'
+                                            }`} />
+                                            <span className={`text-sm ${
+                                              category.color === 'blue' ? 'text-blue-700' :
+                                              category.color === 'green' ? 'text-green-700' :
+                                              category.color === 'red' ? 'text-red-700' :
+                                              category.color === 'yellow' ? 'text-yellow-700' :
+                                              category.color === 'purple' ? 'text-purple-700' :
+                                              category.color === 'pink' ? 'text-pink-700' :
+                                              category.color === 'indigo' ? 'text-indigo-700' :
+                                              'text-cyan-700'
+                                            }`}>
+                                              {category.name}
+                                            </span>
+                                          </div>
+                                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                            category.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                                            category.color === 'green' ? 'bg-green-100 text-green-600' :
+                                            category.color === 'red' ? 'bg-red-100 text-red-600' :
+                                            category.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                                            category.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+                                            category.color === 'pink' ? 'bg-pink-100 text-pink-600' :
+                                            category.color === 'indigo' ? 'bg-indigo-100 text-indigo-600' :
+                                            'bg-cyan-100 text-cyan-600'
+                                          }`}>
+                                            {categoryBanks.length} 题库
+                                          </span>
                                         </div>
-                                      )}
+                                        
+                                        {/* 展开时显示题库列表 */}
+                                        {selectedCategoryId === category.id && (
+                                          <div className="space-y-2 pt-2 border-t border-gray-100">
+                                            {categoryBanks.map(bank => (
+                                              <div 
+                                                key={bank.id}
+                                                className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (!currentUser) {
+                                                    setAuthModalOpen(true);
+                                                    return;
+                                                  }
+                                                  setPracticeBankId(bank.id);
+                                                  setActiveTab('practice');
+                                                  startQuiz('sequential', bank.id);
+                                                }}
+                                              >
+                                                <span className="text-sm text-gray-700 truncate flex-1">{bank.name}</span>
+                                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -854,7 +888,7 @@ export default function QuizApp() {
                           );
                         })}
                         
-                        {/* 显示激活的顶级分类 */}
+                        {/* 显示激活的顶级分类 - 卡片式 */}
                         {topCategories.map(category => {
                           // 获取该分类的直接题库
                           const categoryBanks = banks.filter(b => b.categoryId === category.id);
@@ -868,110 +902,133 @@ export default function QuizApp() {
                           if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
                           
                           return (
-                            <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm mb-4">
-                              {/* 顶级分类 - 可点击展开 */}
-                              <div 
-                                className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
-                                onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
-                              >
-                                {selectedCategoryId === category.id ? (
-                                  <FolderOpen className="w-4 h-4 text-slate-500" />
-                                ) : (
-                                  <Folder className="w-4 h-4 text-slate-400" />
-                                )}
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${
-                                  category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                                  category.color === 'green' ? 'bg-green-100 text-green-700' :
-                                  category.color === 'red' ? 'bg-red-100 text-red-700' :
-                                  category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                                  category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                                  category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                                  category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                                  'bg-cyan-100 text-cyan-700'
+                            <div key={category.id} className="space-y-3">
+                              {/* 顶级分类大标题 */}
+                              <div className="flex items-center gap-2">
+                                <Folder className={`w-5 h-5 ${
+                                  category.color === 'blue' ? 'text-blue-600' :
+                                  category.color === 'green' ? 'text-green-600' :
+                                  category.color === 'red' ? 'text-red-600' :
+                                  category.color === 'yellow' ? 'text-yellow-600' :
+                                  category.color === 'purple' ? 'text-purple-600' :
+                                  category.color === 'pink' ? 'text-pink-600' :
+                                  category.color === 'indigo' ? 'text-indigo-600' :
+                                  'text-cyan-600'
+                                }`} />
+                                <h3 className={`text-base font-bold ${
+                                  category.color === 'blue' ? 'text-blue-700' :
+                                  category.color === 'green' ? 'text-green-700' :
+                                  category.color === 'red' ? 'text-red-700' :
+                                  category.color === 'yellow' ? 'text-yellow-700' :
+                                  category.color === 'purple' ? 'text-purple-700' :
+                                  category.color === 'pink' ? 'text-pink-700' :
+                                  category.color === 'indigo' ? 'text-indigo-700' :
+                                  'text-cyan-700'
                                 }`}>
                                   {category.name}
-                                </span>
-                                <span className="text-xs text-gray-500 ml-auto pr-1 font-medium">
-                                  {categoryBanks.length + childCategoryBanks.length} 个题库
-                                </span>
-                                <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
+                                </h3>
+                                <span className="text-xs text-gray-500">({categoryBanks.length + childCategoryBanks.length} 题库)</span>
                               </div>
-                            
-                              {/* 展开时显示题库 */}
-                              {selectedCategoryId === category.id && (
-                                <div className="mt-3 space-y-3">
-                                  {/* 该分类的直接题库 */}
-                                  {categoryBanks.length > 0 && (
-                                    <div>
-                                      <div className="flex items-center gap-1.5 mb-2">
-                                        <div className="w-1 h-1 bg-slate-300 rounded-full" />
-                                        <span className="text-xs text-gray-400 font-medium">直接题库</span>
-                                      </div>
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {categoryBanks.map((bank) => (
-                                          <BankCard 
-                                            key={bank.id} 
-                                            bank={bank} 
-                                            onStartPractice={(bankId) => {
-                                              if (!currentUser) {
-                                                setAuthModalOpen(true);
-                                                return;
-                                              }
-                                              setPracticeBankId(bankId);
-                                              setActiveTab('practice');
-                                              startQuiz('sequential', bankId);
-                                            }}
-                                          />
-                                        ))}
-                                      </div>
+                              
+                              {/* 分类内容区域 */}
+                              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                                {/* 直接题库 */}
+                                {categoryBanks.length > 0 && (
+                                  <div className="mb-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {categoryBanks.map((bank) => (
+                                        <BankCard 
+                                          key={bank.id} 
+                                          bank={bank} 
+                                          onStartPractice={(bankId) => {
+                                            if (!currentUser) {
+                                              setAuthModalOpen(true);
+                                              return;
+                                            }
+                                            setPracticeBankId(bankId);
+                                            setActiveTab('practice');
+                                            startQuiz('sequential', bankId);
+                                          }}
+                                        />
+                                      ))}
                                     </div>
-                                  )}
-                                  
-                                  {/* 该顶级分类下的激活子分类 */}
-                                  {activatedChildCategories.map(child => {
-                                    const childBanks = banks.filter(b => b.categoryId === child.id);
-                                    if (childBanks.length === 0) return null;
-                                    
-                                    return (
-                                      <div key={child.id}>
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FolderOpen className="w-3 h-3 text-gray-500" />
-                                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${
-                                            child.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                                            child.color === 'green' ? 'bg-green-100 text-green-700' :
-                                            child.color === 'red' ? 'bg-red-100 text-red-700' :
-                                            child.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
-                                            child.color === 'purple' ? 'bg-purple-100 text-purple-700' :
-                                            child.color === 'pink' ? 'bg-pink-100 text-pink-700' :
-                                            child.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
-                                            'bg-cyan-100 text-cyan-700'
-                                          }`}>
-                                            {child.name}
-                                          </span>
-                                          <span className="text-xs text-gray-500 font-medium">({childBanks.length} 题库)</span>
+                                  </div>
+                                )}
+                                
+                                {/* 子分类网格 */}
+                                {activatedChildCategories.length > 0 && (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {activatedChildCategories.map(child => {
+                                      const childBanks = banks.filter(b => b.categoryId === child.id);
+                                      if (childBanks.length === 0) return null;
+                                      
+                                      return (
+                                        <div 
+                                          key={child.id}
+                                          className="rounded-lg border border-gray-100 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                        >
+                                          <div 
+                                            className="p-3 cursor-pointer"
+                                            onClick={() => setSelectedCategoryId(selectedCategoryId === child.id ? null : child.id)}
+                                          >
+                                            <div className="flex items-center justify-between mb-2">
+                                              <div className="flex items-center gap-2">
+                                                <FolderOpen className={`w-4 h-4 ${
+                                                  child.color === 'blue' ? 'text-blue-500' :
+                                                  child.color === 'green' ? 'text-green-500' :
+                                                  child.color === 'red' ? 'text-red-500' :
+                                                  child.color === 'yellow' ? 'text-yellow-500' :
+                                                  child.color === 'purple' ? 'text-purple-500' :
+                                                  child.color === 'pink' ? 'text-pink-500' :
+                                                  child.color === 'indigo' ? 'text-indigo-500' :
+                                                  'text-cyan-500'
+                                                }`} />
+                                                <span className={`text-sm ${
+                                                  child.color === 'blue' ? 'text-blue-700' :
+                                                  child.color === 'green' ? 'text-green-700' :
+                                                  child.color === 'red' ? 'text-red-700' :
+                                                  child.color === 'yellow' ? 'text-yellow-700' :
+                                                  child.color === 'purple' ? 'text-purple-700' :
+                                                  child.color === 'pink' ? 'text-pink-700' :
+                                                  child.color === 'indigo' ? 'text-indigo-700' :
+                                                  'text-cyan-700'
+                                                }`}>
+                                                  {child.name}
+                                                </span>
+                                              </div>
+                                              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${selectedCategoryId === child.id ? 'rotate-90' : ''}`} />
+                                            </div>
+                                          </div>
+                                          
+                                          {/* 展开时显示题库 */}
+                                          {selectedCategoryId === child.id && (
+                                            <div className="px-3 pb-3 space-y-2">
+                                              {childBanks.map(bank => (
+                                                <div 
+                                                  key={bank.id}
+                                                  className="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                                                  onClick={() => {
+                                                    if (!currentUser) {
+                                                      setAuthModalOpen(true);
+                                                      return;
+                                                    }
+                                                    setPracticeBankId(bank.id);
+                                                    setActiveTab('practice');
+                                                    startQuiz('sequential', bank.id);
+                                                  }}
+                                                >
+                                                  <span className="text-sm text-gray-700 truncate flex-1">{bank.name}</span>
+                                                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                          {childBanks.map((bank) => (
-                                            <BankCard 
-                                              key={bank.id} 
-                                              bank={bank} 
-                                              onStartPractice={(bankId) => {
-                                                if (!currentUser) {
-                                                  setAuthModalOpen(true);
-                                                  return;
-                                                }
-                                                setPracticeBankId(bankId);
-                                                setActiveTab('practice');
-                                                startQuiz('sequential', bankId);
-                                              }}
-                                            />
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
