@@ -38,7 +38,7 @@ import {
   Flame,
   Calendar
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -122,11 +122,100 @@ export default function QuizApp() {
     created_at?: string;
   }>>([]);
   
-  // 本地错题数量（直接从本地存储计算，与错题本页面一致）
-  const localWrongCount = useMemo(() => {
+  // 错题数量状态（优先使用云端同步后的本地数据）
+  const [wrongCount, setWrongCount] = useState<number>(0);
+  
+  // 重新计算错题数据（修复因之前 wrongStreakStore 未更新导致的数据不一致）
+  const recalculateWrongData = useCallback(() => {
+    const records = recordStore.getAll();
+    
+    // 找出所有答错过的题目
+    const wrongQuestionIds = new Set<string>();
+    records.forEach(r => {
+      if (!r.selectedAnswer) return;
+      const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+      if (answer.length === 0) return;
+      if (!r.isCorrect) {
+        wrongQuestionIds.add(r.questionId);
+      }
+    });
+    
+    // 重新计算每道错题的连续正确次数
+    const newStreaks: Record<string, number> = {};
+    const masteredIds: string[] = [];
+    
+    wrongQuestionIds.forEach(qId => {
+      const questionRecords = records
+        .filter(r => r.questionId === qId && r.selectedAnswer)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      
+      // 从最后一次答题开始，向前计算连续正确的次数
+      let streak = 0;
+      for (let i = questionRecords.length - 1; i >= 0; i--) {
+        if (questionRecords[i].isCorrect) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      
+      if (streak >= 3) {
+        masteredIds.push(qId);
+      } else {
+        newStreaks[qId] = streak;
+      }
+    });
+    
+    // 移除已掌握的错题的错误记录
+    if (masteredIds.length > 0) {
+      const filteredRecords = records.filter(r => !(masteredIds.includes(r.questionId) && !r.isCorrect));
+      recordStore.save(filteredRecords);
+    }
+    
+    // 更新连续正确次数
+    wrongStreakStore.save(newStreaks);
+    
+    // 同步到云端
+    const user = getStoredUser();
+    if (user) {
+      cloudSyncService.saveRecordsAndStreaks(
+        user.id,
+        recordStore.getAll(),
+        newStreaks
+      );
+    }
+    
     return getWrongQuestionIds().length;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted]);
+  }, []);
+
+  // 从云端同步数据并更新本地错题数量
+  const syncWrongCountFromCloud = useCallback(async () => {
+    const user = getStoredUser();
+    if (!user) {
+      setWrongCount(0);
+      return;
+    }
+    
+    try {
+      // 先从云端拉取最新数据
+      const cloudData = await cloudSyncService.pullData(user.id);
+      if (cloudData) {
+        // 用云端数据更新本地存储
+        if (cloudData.records.length > 0) {
+          recordStore.save(cloudData.records);
+        }
+        if (Object.keys(cloudData.streaks).length > 0) {
+          wrongStreakStore.save(cloudData.streaks);
+        }
+      }
+    } catch (error) {
+      console.error('从云端同步数据失败:', error);
+    }
+    
+    // 重新计算错题数据并更新显示
+    const count = recalculateWrongData();
+    setWrongCount(count);
+  }, [recalculateWrongData]);
   
   // 只使用数据库的题库
   const banks = useMemo(() => {
@@ -246,6 +335,15 @@ export default function QuizApp() {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [refreshActivatedCategories]);
+
+  // 当用户登录时从云端同步数据并获取错题数量
+  useEffect(() => {
+    if (currentUser && mounted) {
+      syncWrongCountFromCloud();
+    } else {
+      setWrongCount(0);
+    }
+  }, [currentUser, mounted, syncWrongCountFromCloud]);
 
   // 获取用户激活的分类ID列表
   // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
@@ -614,7 +712,7 @@ export default function QuizApp() {
                 {/* 数据统计网格 */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-xl font-bold">{mounted ? localWrongCount : '-'}</p>
+                    <p className="text-xl font-bold">{mounted ? wrongCount : '-'}</p>
                     <p className="text-xs opacity-80">错题</p>
                   </div>
                   <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
@@ -635,7 +733,7 @@ export default function QuizApp() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-800">错题本</p>
-                      <p className="text-xs text-gray-500">{mounted ? localWrongCount : '-'} 道待复习</p>
+                      <p className="text-xs text-gray-500">{mounted ? wrongCount : '-'} 道待复习</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
@@ -1129,7 +1227,7 @@ export default function QuizApp() {
                           </div>
                           <div className="flex-1 text-white">
                             <p className="text-lg font-bold">错题本</p>
-                            <p className="text-sm opacity-80">{mounted ? localWrongCount : '-'} 道待复习</p>
+                            <p className="text-sm opacity-80">{mounted ? wrongCount : '-'} 道待复习</p>
                           </div>
                           <ChevronRight className="w-6 h-6 text-white/60" />
                         </div>

@@ -28,7 +28,7 @@ import {
   User,
   RefreshCw
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -57,6 +57,7 @@ export default function WrongBookPage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   // 触发重新渲染的计数器
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isSyncing, setIsSyncing] = useState(false);
   const questionContentRef = useRef<HTMLDivElement>(null);
 
   // 检查认证状态
@@ -65,16 +66,109 @@ export default function WrongBookPage() {
     setCurrentUser(user);
   }, []);
 
-  useEffect(() => {
-    setMounted(true);
-    const user = getStoredUser();
-    setCurrentUser(user);
-  }, [checkAuth]);
-
   // 刷新数据
   const refreshData = useCallback(() => {
     setRefreshKey(k => k + 1);
   }, []);
+
+  // 重新计算错题数据（修复因之前 wrongStreakStore 未更新导致的数据不一致）
+  const recalculateWrongData = useCallback(() => {
+    const records = recordStore.getAll();
+    
+    // 找出所有答错过的题目
+    const wrongQuestionIds = new Set<string>();
+    records.forEach(r => {
+      if (!r.selectedAnswer) return;
+      const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+      if (answer.length === 0) return;
+      if (!r.isCorrect) {
+        wrongQuestionIds.add(r.questionId);
+      }
+    });
+    
+    // 重新计算每道错题的连续正确次数
+    const newStreaks: Record<string, number> = {};
+    const masteredIds: string[] = [];
+    
+    wrongQuestionIds.forEach(qId => {
+      const questionRecords = records
+        .filter(r => r.questionId === qId && r.selectedAnswer)
+        .sort((a, b) => a.timestamp - b.timestamp);
+      
+      // 从最后一次答题开始，向前计算连续正确的次数
+      let streak = 0;
+      for (let i = questionRecords.length - 1; i >= 0; i--) {
+        if (questionRecords[i].isCorrect) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      
+      if (streak >= 3) {
+        masteredIds.push(qId);
+      } else {
+        newStreaks[qId] = streak;
+      }
+    });
+    
+    // 移除已掌握的错题的错误记录
+    if (masteredIds.length > 0) {
+      const filteredRecords = records.filter(r => !(masteredIds.includes(r.questionId) && !r.isCorrect));
+      recordStore.save(filteredRecords);
+    }
+    
+    // 更新连续正确次数
+    wrongStreakStore.save(newStreaks);
+    
+    // 同步到云端
+    const user = getStoredUser();
+    if (user) {
+      cloudSyncService.saveRecordsAndStreaks(
+        user.id,
+        recordStore.getAll(),
+        newStreaks
+      );
+    }
+    
+    refreshData();
+  }, [refreshData]);
+
+  // 从云端同步数据到本地
+  const syncFromCloud = useCallback(async () => {
+    const user = getStoredUser();
+    if (!user) return;
+    
+    setIsSyncing(true);
+    try {
+      const cloudData = await cloudSyncService.pullData(user.id);
+      if (cloudData) {
+        // 用云端数据更新本地存储
+        if (cloudData.records.length > 0) {
+          recordStore.save(cloudData.records);
+        }
+        if (Object.keys(cloudData.streaks).length > 0) {
+          wrongStreakStore.save(cloudData.streaks);
+        }
+      }
+    } catch (error) {
+      console.error('从云端同步数据失败:', error);
+    } finally {
+      setIsSyncing(false);
+      // 同步完成后自动重新计算错题数据
+      recalculateWrongData();
+    }
+  }, [recalculateWrongData]);
+
+  useEffect(() => {
+    setMounted(true);
+    const user = getStoredUser();
+    setCurrentUser(user);
+    // 登录用户首次加载时从云端同步
+    if (user) {
+      syncFromCloud();
+    }
+  }, [checkAuth, syncFromCloud]);
 
   // 获取错题列表（直接从本地存储获取，与首页 getWrongQuestionIds 一致）
   const wrongQuestions = useMemo(() => {
@@ -661,8 +755,16 @@ export default function WrongBookPage() {
           </div>
         )}
         
+        {/* 同步中 */}
+        {currentUser && mounted && isSyncing && (
+          <div className="flex items-center justify-center py-16">
+            <RefreshCw className="w-6 h-6 animate-spin text-indigo-500 mr-2" />
+            <span className="text-slate-500">同步数据中...</span>
+          </div>
+        )}
+        
         {/* 登录但无错题 */}
-        {currentUser && mounted && wrongQuestions.length === 0 && (
+        {currentUser && mounted && !isSyncing && wrongQuestions.length === 0 && (
           <div className="text-center py-16">
             <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
               <Check className="w-10 h-10 text-white" />
@@ -678,7 +780,7 @@ export default function WrongBookPage() {
         )}
         
         {/* 有错题 */}
-        {currentUser && mounted && wrongQuestions.length > 0 && (
+        {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
           <div className="space-y-4">
             {/* 统计概览 */}
             <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -703,8 +805,17 @@ export default function WrongBookPage() {
             </div>
             
             {/* 提示信息 */}
-            <div className="bg-amber-50 rounded-xl p-3 text-sm text-amber-700">
+            <div className="bg-amber-50 rounded-xl p-3 text-sm text-amber-700 flex items-center justify-between">
               <p>错题来自您的练习记录，连续答对3次后将从错题本中移除</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={recalculateWrongData}
+                className="text-amber-600 hover:text-amber-700 hover:bg-amber-100 shrink-0 ml-2 h-7 px-2 text-xs"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                重新计算
+              </Button>
             </div>
 
             {/* 题型筛选 */}

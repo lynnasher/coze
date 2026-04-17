@@ -342,11 +342,49 @@ export function useQuiz() {
       };
     });
     
+    // 更新错题连续正确次数
+    const currentQ = quizState.questions[quizState.currentIndex];
+    if (currentQ) {
+      const selectedAns = quizState.answers[currentQ.id];
+      // 内联答案检查逻辑（checkAnswer 此时还未声明）
+      let wasCorrect = false;
+      if (selectedAns !== undefined) {
+        if (Array.isArray(currentQ.answer)) {
+          wasCorrect = Array.isArray(selectedAns) && 
+            currentQ.answer.length === selectedAns.length && 
+            currentQ.answer.every((a: string) => selectedAns.includes(a));
+        } else {
+          wasCorrect = !Array.isArray(selectedAns) && selectedAns === currentQ.answer;
+        }
+      }
+      
+      if (wasCorrect) {
+        // 答对：检查是否是错题本中的题目
+        const wrongIds = getWrongQuestionIds();
+        if (wrongIds.includes(currentQ.id)) {
+          wrongStreakStore.increment(currentQ.id);
+          const newStreak = wrongStreakStore.get(currentQ.id);
+          if (newStreak >= 3) {
+            // 连续答对3次，从错题本中移除：删除该题目的错误记录
+            const records = recordStore.getAll().filter(r => !(r.questionId === currentQ.id && !r.isCorrect));
+            recordStore.save(records);
+            wrongStreakStore.remove(currentQ.id);
+          }
+        }
+      } else {
+        // 答错：重置该题的连续正确次数
+        wrongStreakStore.reset(currentQ.id);
+      }
+    }
+    
     // 实时同步到云端（每次答题后立即同步，合并请求避免竞态覆盖）
     if (syncToCloud && syncUserId) {
+      // 更新同步数据（因为上面可能修改了 recordStore 和 wrongStreakStore）
+      syncRecords = recordStore.getAll();
+      syncStreaks = wrongStreakStore.getAll();
       cloudSyncService.saveRecordsAndStreaks(syncUserId, syncRecords, syncStreaks);
     }
-  }, []);
+  }, [quizState]);
 
   // 检查答案是否正确 - 使用 useCallback 避免重复创建
   const checkAnswer = useCallback((question: Question, selectedAnswer: string | string[] | undefined): boolean => {
