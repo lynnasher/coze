@@ -122,6 +122,36 @@ export default function QuizApp() {
     created_at?: string;
   }>>([]);
   
+  // 云端错题数量状态
+  const [cloudWrongCount, setCloudWrongCount] = useState<number | null>(null);
+  
+  // 从云端获取错题数量
+  const fetchCloudWrongCount = useCallback(async () => {
+    const user = getStoredUser();
+    if (!user) {
+      setCloudWrongCount(null);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('quiz_user_token');
+      const response = await fetch('/api/wrong-questions', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCloudWrongCount(data.wrongQuestions?.length || 0);
+        }
+      }
+    } catch (error) {
+      console.error('获取云端错题数量失败:', error);
+    }
+  }, []);
+  
   // 只使用数据库的题库
   const banks = useMemo(() => {
     return dbBanks.map(b => ({
@@ -239,7 +269,16 @@ export default function QuizApp() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [refreshActivatedCategories]);
+  }, [refreshActivatedCategories, fetchCloudWrongCount]);
+  
+  // 当用户登录时获取云端错题数量
+  useEffect(() => {
+    if (currentUser) {
+      fetchCloudWrongCount();
+    } else {
+      setCloudWrongCount(null);
+    }
+  }, [currentUser, fetchCloudWrongCount]);
 
   // 获取用户激活的分类ID列表
   // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
@@ -608,7 +647,7 @@ export default function QuizApp() {
                 {/* 数据统计网格 */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-xl font-bold">{mounted ? (stats.wrongQuestionIds.length || '-') : '-'}</p>
+                    <p className="text-xl font-bold">{mounted ? (cloudWrongCount !== null ? cloudWrongCount : stats.wrongQuestionIds.length) : '-'}</p>
                     <p className="text-xs opacity-80">错题</p>
                   </div>
                   <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
@@ -629,7 +668,7 @@ export default function QuizApp() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-800">错题本</p>
-                      <p className="text-xs text-gray-500">{mounted ? stats.wrongQuestionIds.length : '-'} 道待复习</p>
+                      <p className="text-xs text-gray-500">{mounted ? (cloudWrongCount !== null ? cloudWrongCount : stats.wrongQuestionIds.length) : '-'} 道待复习</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
@@ -1123,7 +1162,7 @@ export default function QuizApp() {
                           </div>
                           <div className="flex-1 text-white">
                             <p className="text-lg font-bold">错题本</p>
-                            <p className="text-sm opacity-80">{mounted ? getWrongQuestionIds().length : '-'} 道待复习</p>
+                            <p className="text-sm opacity-80">{mounted ? (cloudWrongCount !== null ? cloudWrongCount : getWrongQuestionIds().length) : '-'} 道待复习</p>
                           </div>
                           <ChevronRight className="w-6 h-6 text-white/60" />
                         </div>

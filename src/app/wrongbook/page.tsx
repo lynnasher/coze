@@ -28,7 +28,7 @@ import {
   User,
   RefreshCw
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, generateId, wrongStreakStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -81,7 +81,7 @@ export default function WrongBookPage() {
     setCurrentUser(user);
   }, [checkAuth]);
 
-  // 从数据库获取用户错题记录
+  // 从云端获取用户错题记录
   const loadUserWrongQuestions = useCallback(async () => {
     if (!currentUser) return;
     
@@ -116,25 +116,19 @@ export default function WrongBookPage() {
     }
   }, [currentUser, mounted, loadUserWrongQuestions]);
 
-  // 获取错题列表（只获取实际答过且答错的题目，从本地存储获取用于做题）
+  // 从云端数据获取错题列表
   const wrongQuestions = useMemo(() => {
-    const records = recordStore.getAll();
-    const wrongQuestionIds = records
-      .filter(r => {
-        if (!r.isCorrect) {
-          const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer || '');
-          return answer.length > 0;
-        }
-        return false;
-      })
-      .map(r => r.questionId);
-    
-    const uniqueIds = [...new Set(wrongQuestionIds)];
+    // 从云端获取的错题中查找对应的题目详情
     const allQuestions = questionStore.getAll();
-    return uniqueIds
-      .map(id => allQuestions.find(q => q.id === id))
+    return userWrongQuestions
+      .map(wq => allQuestions.find(q => q.id === wq.questionId))
       .filter((q): q is Question => q !== undefined);
-  }, []);
+  }, [userWrongQuestions]);
+
+  // 获取错题数量（从云端）
+  const wrongQuestionIds = useMemo(() => {
+    return userWrongQuestions.map(wq => wq.questionId);
+  }, [userWrongQuestions]);
 
   // 按题型分组统计
   const typeStats = useMemo((): QuestionTypeStat[] => {
@@ -741,7 +735,7 @@ export default function WrongBookPage() {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={loadUserWrongQuestions}
+                onClick={() => loadUserWrongQuestions()}
                 className="text-slate-500"
               >
                 <RefreshCw className="w-4 h-4 mr-1" />
