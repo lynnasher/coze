@@ -468,8 +468,11 @@ export default function AdminPage() {
   // 加载题库数据（从数据库）
   const loadBanks = useCallback(async () => {
     try {
+      const token = localStorage.getItem('admin_token');
       // 从数据库加载题库
-      const response = await fetch('/api/admin/banks');
+      const response = await fetch('/api/admin/banks', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (response.ok) {
         const data = await response.json();
         // 转换数据库题库格式为前端格式
@@ -545,9 +548,13 @@ export default function AdminPage() {
       const bankName = (data.subjectName as string) || (data.bankName as string) || (data.title as string) || file.name.replace('.json', '') || '导入题库';
 
       // 调用 API 保存到数据库
+      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/import-json', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           questions,
           bankName,
@@ -597,9 +604,13 @@ export default function AdminPage() {
     try {
       if (editingCategory) {
         // 更新分类
+        const token = localStorage.getItem('admin_token');
         const response = await fetch(`/api/admin/categories/${editingCategory.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             name: categoryName.trim(),
             color: categoryColor,
@@ -616,9 +627,13 @@ export default function AdminPage() {
       } else {
         // 添加分类
         const siblings = categories.filter((c: Category) => c.parentId === categoryParentId);
+        const token = localStorage.getItem('admin_token');
         const response = await fetch('/api/admin/categories', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             name: categoryName.trim(),
             color: categoryColor,
@@ -662,9 +677,13 @@ export default function AdminPage() {
     
     try {
       // 逐个删除分类
+      const token = localStorage.getItem('admin_token');
       for (const id of idsToDelete) {
         const response = await fetch(`/api/admin/categories/${id}`, {
           method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
         
         if (!response.ok) {

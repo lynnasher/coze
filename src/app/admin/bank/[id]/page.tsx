@@ -144,8 +144,11 @@ export default function BankEditPage() {
   // 从数据库加载数据
   const loadData = useCallback(async () => {
     try {
+      const token = localStorage.getItem('admin_token');
       // 从数据库加载题库
-      const bankResponse = await fetch('/api/admin/banks');
+      const bankResponse = await fetch('/api/admin/banks', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (!bankResponse.ok) {
         throw new Error('获取题库失败');
       }
@@ -168,7 +171,9 @@ export default function BankEditPage() {
       }
       
       // 从数据库加载题目
-      const questionsResponse = await fetch(`/api/admin/banks/${bankId}/questions`);
+      const questionsResponse = await fetch(`/api/admin/banks/${bankId}/questions`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       if (!questionsResponse.ok) {
         throw new Error('获取题目失败');
       }
@@ -211,9 +216,13 @@ export default function BankEditPage() {
   // 保存题目（更新到数据库）
   const saveQuestion = async (question: Question) => {
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`/api/admin/questions/${question.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           type: question.type,
           content: question.content,
@@ -240,10 +249,14 @@ export default function BankEditPage() {
   const addQuestion = async (question: Question) => {
     try {
       const newQuestion = { ...question, id: generateId(), bankId, createdAt: Date.now() };
+      const token = localStorage.getItem('admin_token');
       
       const response = await fetch(`/api/admin/banks/${bankId}/questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ question: newQuestion }),
       });
 
@@ -273,8 +286,12 @@ export default function BankEditPage() {
     if (!questionToDelete) return;
     
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch(`/api/admin/questions/${questionToDelete.id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {
