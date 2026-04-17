@@ -13,12 +13,9 @@ import {
   Settings,
   User,
   RefreshCw,
-  FolderOpen,
   Library,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, bankStore, categoryStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, bankStore } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -33,17 +30,6 @@ const TYPE_STYLES: Record<QuestionType, { bg: string; label: string; light: stri
   'comprehensive': { bg: 'bg-rose-500', label: '综合题', light: 'bg-rose-50 border-rose-200', text: 'text-rose-600' },
 };
 
-// 分类渐变色配置
-const CATEGORY_GRADIENTS = [
-  'from-indigo-500 to-blue-600',
-  'from-purple-500 to-violet-600',
-  'from-rose-500 to-pink-600',
-  'from-amber-500 to-orange-600',
-  'from-emerald-500 to-teal-600',
-  'from-cyan-500 to-sky-600',
-  'from-red-500 to-rose-600',
-  'from-fuchsia-500 to-purple-600',
-];
 
 export default function WrongBookPage() {
   const [showExplanation, setShowExplanation] = useState(false);
@@ -57,7 +43,6 @@ export default function WrongBookPage() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const questionContentRef = useRef<HTMLDivElement>(null);
 
   // 检查认证状态
@@ -140,78 +125,35 @@ export default function WrongBookPage() {
     return wrongIds.map(id => allQuestions.find(q => q.id === id)).filter((q): q is Question => q !== undefined);
   }, [refreshKey]);
 
-  // 按题库/分类分组错题
-  const categorizedWrongQuestions = useMemo(() => {
+  // 按题库分组错题
+  const bankedWrongQuestions = useMemo(() => {
     const banks = bankStore.getAll();
-    const categories = categoryStore.getAll();
-    
-    // 构建题库ID到题库的映射
     const bankMap = new Map(banks.map(b => [b.id, b]));
-    // 构建分类ID到分类的映射
-    const categoryMap = new Map(categories.map(c => [c.id, c]));
 
     // 按题库分组
-    const bankGroups = new Map<string, { bankId: string; bankName: string; categoryName: string; categoryId: string; questions: Question[] }>();
+    const bankGroups: { bankId: string; bankName: string; questions: Question[] }[] = [];
     const ungrouped: Question[] = [];
 
     wrongQuestions.forEach(q => {
       if (q.bankId && bankMap.has(q.bankId)) {
         const bank = bankMap.get(q.bankId)!;
-        const category = bank.categoryId ? categoryMap.get(bank.categoryId) : null;
-        const key = bank.id;
-        if (!bankGroups.has(key)) {
-          bankGroups.set(key, {
-            bankId: bank.id,
-            bankName: bank.name,
-            categoryName: category?.name || '未分类',
-            categoryId: bank.categoryId || '',
-            questions: [],
-          });
+        let group = bankGroups.find(g => g.bankId === bank.id);
+        if (!group) {
+          group = { bankId: bank.id, bankName: bank.name, questions: [] };
+          bankGroups.push(group);
         }
-        bankGroups.get(key)!.questions.push(q);
+        group.questions.push(q);
       } else {
         ungrouped.push(q);
       }
     });
 
-    // 按分类合并题库组
-    const categoryGroups = new Map<string, { categoryName: string; categoryId: string; banks: { bankId: string; bankName: string; questions: Question[] }[] }>();
-    
-    bankGroups.forEach(group => {
-      const catKey = group.categoryId || '__uncategorized__';
-      if (!categoryGroups.has(catKey)) {
-        categoryGroups.set(catKey, {
-          categoryName: catKey === '__uncategorized__' ? '未分类' : group.categoryName,
-          categoryId: group.categoryId,
-          banks: [],
-        });
-      }
-      categoryGroups.get(catKey)!.banks.push({
-        bankId: group.bankId,
-        bankName: group.bankName,
-        questions: group.questions,
-      });
-    });
-
-    // 转为数组输出
-    const result = Array.from(categoryGroups.values());
-    
-    // 添加未关联题库的错题，归入"未分类"
+    // 未关联题库的错题
     if (ungrouped.length > 0) {
-      const uncategorizedKey = '__uncategorized__';
-      const existing = categoryGroups.get(uncategorizedKey);
-      if (existing) {
-        existing.banks.push({ bankId: '__other__', bankName: '未关联题库', questions: ungrouped });
-      } else {
-        result.push({
-          categoryName: '未分类',
-          categoryId: uncategorizedKey,
-          banks: [{ bankId: '__other__', bankName: '未关联题库', questions: ungrouped }],
-        });
-      }
+      bankGroups.push({ bankId: '__other__', bankName: '未关联题库', questions: ungrouped });
     }
 
-    return result;
+    return bankGroups;
   }, [wrongQuestions]);
 
   // 计算总体题型分布
@@ -310,23 +252,6 @@ export default function WrongBookPage() {
   }
 
   const getOptionLabel = (index: number) => String.fromCharCode(65 + index);
-
-  // 切换分类展开
-  const toggleCategory = (categoryId: string) => {
-    setExpandedCategories(prev => {
-      const next = new Set(prev);
-      if (next.has(categoryId)) next.delete(categoryId);
-      else next.add(categoryId);
-      return next;
-    });
-  };
-
-  // 初始展开所有分类
-  useEffect(() => {
-    if (categorizedWrongQuestions.length > 0 && expandedCategories.size === 0) {
-      setExpandedCategories(new Set(categorizedWrongQuestions.map(c => c.categoryId || '__other__')));
-    }
-  }, [categorizedWrongQuestions, expandedCategories.size]);
 
   // =================== 复习模式 ===================
   if (isReviewing && currentReviewQuestion) {
@@ -597,118 +522,74 @@ export default function WrongBookPage() {
               <p className="text-xs text-slate-400 mt-2">连续答对3次后将从错题本中移除</p>
             </div>
 
-            {/* 按分类卡片展示错题 */}
-            {categorizedWrongQuestions.map((catGroup, catIdx) => {
-              const gradient = CATEGORY_GRADIENTS[catIdx % CATEGORY_GRADIENTS.length];
-              const totalInCat = catGroup.banks.reduce((s, b) => s + b.questions.length, 0);
-              const catId = catGroup.categoryId || '__other__';
-              const isExpanded = expandedCategories.has(catId);
+            {/* 按题库列出错题 */}
+            {bankedWrongQuestions.map((bankGroup, bankIdx) => {
+              // 按题型分组
+              const questionsByType = new Map<QuestionType, Question[]>();
+              bankGroup.questions.forEach(q => {
+                if (!questionsByType.has(q.type)) questionsByType.set(q.type, []);
+                questionsByType.get(q.type)!.push(q);
+              });
 
               return (
-                <div key={catId} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                  {/* 分类头部 - 渐变卡片 */}
-                  <div 
-                    className={`bg-gradient-to-r ${gradient} p-4 cursor-pointer hover:opacity-95 transition-opacity`}
-                    onClick={() => toggleCategory(catId)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                          <FolderOpen className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="text-white">
-                          <p className="text-base font-bold">{catGroup.categoryName}</p>
-                          <p className="text-xs opacity-80">{totalInCat} 道错题 · {catGroup.banks.length} 个题库</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={(e) => { e.stopPropagation(); startReview(catGroup.banks.flatMap(b => b.questions)); }}
-                          className="bg-white/20 hover:bg-white/30 text-white border-0 rounded-lg h-8 px-3 text-xs backdrop-blur-sm"
-                        >
-                          复习此分类
-                        </Button>
-                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                          {isExpanded ? <ChevronUp className="w-4 h-4 text-white" /> : <ChevronDown className="w-4 h-4 text-white" />}
-                        </div>
-                      </div>
+                <div key={bankGroup.bankId} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                  {/* 题库标题栏 */}
+                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Library className="w-4 h-4 text-indigo-500" />
+                      <span className="text-sm font-bold text-slate-800">{bankGroup.bankName}</span>
+                      <span className="text-xs text-slate-400">{bankGroup.questions.length} 道错题</span>
                     </div>
+                    <Button
+                      size="sm"
+                      onClick={() => startReview(bankGroup.questions)}
+                      className="rounded-lg h-7 px-3 text-xs bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+                    >
+                      复习
+                    </Button>
                   </div>
 
-                  {/* 展开的题库列表 */}
-                  {isExpanded && (
-                    <div className="p-4 space-y-3">
-                      {catGroup.banks.map(bank => {
-                        // 按题型分组
-                        const questionsByType = new Map<QuestionType, Question[]>();
-                        bank.questions.forEach(q => {
-                          if (!questionsByType.has(q.type)) questionsByType.set(q.type, []);
-                          questionsByType.get(q.type)!.push(q);
-                        });
-
-                        return (
-                          <div key={bank.bankId} className="bg-slate-50 rounded-xl p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <Library className="w-4 h-4 text-slate-400" />
-                                <span className="text-sm font-semibold text-slate-700">{bank.bankName}</span>
-                                <span className="text-xs text-slate-400">{bank.questions.length} 题</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => startReview(bank.questions)}
-                                className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 h-7 px-2 text-xs"
-                              >
-                                复习
-                              </Button>
-                            </div>
-                            
-                            {/* 题型分组 */}
-                            {Array.from(questionsByType.entries()).map(([qType, questions]) => {
-                              const ts = TYPE_STYLES[qType] || TYPE_STYLES['single'];
+                  {/* 按题型展示题目列表 */}
+                  <div className="p-4 space-y-4">
+                    {Array.from(questionsByType.entries()).map(([qType, questions]) => {
+                      const ts = TYPE_STYLES[qType] || TYPE_STYLES['single'];
+                      return (
+                        <div key={qType}>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold border ${ts.light} ${ts.text}`}>
+                              {ts.label} {questions.length}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {questions.map(question => {
+                              const info = getWrongInfo(question.id);
                               return (
-                                <div key={qType} className="mb-2 last:mb-0">
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${ts.bg}`} />
-                                    <span className="text-xs font-medium text-slate-500">{ts.label}</span>
-                                    <span className="text-xs text-slate-400">({questions.length})</span>
+                                <div key={question.id} className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm text-slate-700 truncate">{question.content.slice(0, 60)}{question.content.length > 60 ? '...' : ''}</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span className="text-xs text-slate-400">错{info.wrongCount}次</span>
+                                      {info.streak > 0 && (
+                                        <span className="text-xs text-emerald-500">连续答对{info.streak}次</span>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="space-y-1.5">
-                                    {questions.map(question => {
-                                      const info = getWrongInfo(question.id);
-                                      return (
-                                        <div key={question.id} className="flex items-center gap-2 p-2 bg-white rounded-lg hover:shadow-sm transition-shadow">
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-slate-700 truncate">{question.content.slice(0, 60)}{question.content.length > 60 ? '...' : ''}</p>
-                                            <div className="flex items-center gap-2 mt-0.5">
-                                              <span className="text-xs text-slate-400">错{info.wrongCount}次</span>
-                                              {info.streak > 0 && (
-                                                <span className="text-xs text-emerald-500">连续答对{info.streak}次</span>
-                                              )}
-                                            </div>
-                                          </div>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => startReview([question])}
-                                            className="shrink-0 h-7 px-2 text-xs rounded-lg"
-                                          >
-                                            复习
-                                          </Button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => startReview([question])}
+                                    className="shrink-0 h-7 px-2 text-xs rounded-lg"
+                                  >
+                                    复习
+                                  </Button>
                                 </div>
                               );
                             })}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
