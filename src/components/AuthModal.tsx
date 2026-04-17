@@ -224,9 +224,6 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
               <Button type="submit" className="w-full rounded-xl" disabled={loading}>
                 {loading ? '登录中...' : '登录'}
               </Button>
-              <p className="text-xs text-gray-400 text-center">
-                测试账号：admin / admin123
-              </p>
             </form>
           </TabsContent>
 
