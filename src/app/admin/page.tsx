@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -409,7 +410,12 @@ export default function AdminPage() {
   // 题库名称编辑状态
   const [editingBankId, setEditingBankId] = useState<string | null>(null);
   const [editingBankName, setEditingBankName] = useState('');
+  const [editingBankDesc, setEditingBankDesc] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10; // 每页显示的题库数量
   
   // 分类管理状态
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -752,6 +758,54 @@ export default function AdminPage() {
   const cancelEditBankName = () => {
     setEditingBankId(null);
     setEditingBankName('');
+    setEditingBankDesc('');
+  };
+
+  // 打开编辑题库对话框
+  const openEditBankDialog = (bank: QuestionBank) => {
+    setEditingBankId(bank.id);
+    setEditingBankName(bank.name);
+    setEditingBankDesc(bank.description || '');
+  };
+
+  // 保存题库信息
+  const saveBankInfo = async () => {
+    if (!editingBankId || !editingBankName.trim()) {
+      setEditingBankId(null);
+      return;
+    }
+
+    try {
+      // 调用 API 更新数据库
+      const response = await fetch(`/api/admin/banks/${editingBankId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        },
+        body: JSON.stringify({
+          name: editingBankName.trim(),
+          description: editingBankDesc.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '更新失败');
+      }
+
+      // 更新本地状态
+      setBanks(prevBanks => prevBanks.map(b => 
+        b.id === editingBankId 
+          ? { ...b, name: editingBankName.trim(), description: editingBankDesc.trim(), updatedAt: Date.now() }
+          : b
+      ));
+      setSuccess('题库信息已更新');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '更新失败');
+    } finally {
+      setEditingBankId(null);
+    }
   };
 
   // 删除题库
@@ -968,8 +1022,12 @@ export default function AdminPage() {
     return matchSearch && matchCategory;
   });
 
-  // 按分类分组
-  const groupedBanks = filteredBanks.reduce((acc, bank) => {
+  // 计算分页
+  const totalPages = Math.ceil(filteredBanks.length / pageSize);
+  const paginatedBanks = filteredBanks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // 按分类分组（使用分页后的数据）
+  const groupedBanks = paginatedBanks.reduce((acc, bank) => {
     const categoryId = bank.categoryId || 'uncategorized';
     if (!acc[categoryId]) {
       acc[categoryId] = [];
@@ -977,6 +1035,17 @@ export default function AdminPage() {
     acc[categoryId].push(bank);
     return acc;
   }, {} as Record<string, QuestionBank[]>);
+
+  // 切换分页时滚动到顶部
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 搜索或筛选变化时重置页码
+  const handleFilterChange = () => {
+    setCurrentPage(1);
+  };
 
   if (!isAuthenticated) {
     return null;
@@ -1148,7 +1217,7 @@ export default function AdminPage() {
                   <BarChart3 className="h-5 w-5" />
                   题库列表
                 </CardTitle>
-                <CardDescription>共 {banks.length} 个题库</CardDescription>
+                <CardDescription>共 {filteredBanks.length} 个题库（第 {currentPage}/{totalPages} 页）</CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative w-full md:w-64">
@@ -1156,11 +1225,11 @@ export default function AdminPage() {
                   <Input
                     placeholder="搜索题库..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => { setSearchTerm(e.target.value); handleFilterChange(); }}
                     className="pl-9"
                   />
                 </div>
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <Select value={filterCategory} onValueChange={(val) => { setFilterCategory(val); handleFilterChange(); }}>
                   <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="筛选分类" />
                   </SelectTrigger>
@@ -1241,39 +1310,21 @@ export default function AdminPage() {
                         </TableHeader>
                         <TableBody>
                           {categoryBanks.map((bank) => (
-                            <TableRow key={bank.id} className="cursor-pointer hover:bg-slate-50">
-                              <TableCell onClick={() => goToBankEdit(bank)}>
-                                {editingBankId === bank.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <Input
-                                      ref={inputRef}
-                                      value={editingBankName}
-                                      onChange={(e) => setEditingBankName(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') saveBankName();
-                                        if (e.key === 'Escape') cancelEditBankName();
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="h-8 max-w-[200px]"
-                                      autoFocus
-                                    />
-                                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); saveBankName(); }}>
-                                      <Check className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); cancelEditBankName(); }}>
-                                      <X className="h-4 w-4 text-red-600" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <span className="font-medium">{bank.name}</span>
-                                )}
+                            <TableRow key={bank.id} className="hover:bg-slate-50">
+                              <TableCell>
+                                <button 
+                                  onClick={() => openEditBankDialog(bank)}
+                                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                >
+                                  {bank.name}
+                                </button>
                               </TableCell>
-                              <TableCell onClick={() => goToBankEdit(bank)}>
+                              <TableCell onClick={() => goToBankEdit(bank)} className="cursor-pointer">
                                 <Badge variant="secondary">
                                   {bank.questionCount || 0} 题
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-slate-500" onClick={() => goToBankEdit(bank)}>
+                              <TableCell className="text-slate-500">
                                 {formatDate(bank.createdAt)}
                               </TableCell>
                               <TableCell className="text-right">
@@ -1521,6 +1572,111 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 编辑题库对话框 */}
+      <Dialog open={!!editingBankId} onOpenChange={(open) => !open && cancelEditBankName()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>编辑题库</DialogTitle>
+            <DialogDescription>
+              修改题库的名称和描述
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bank-name">题库名称</Label>
+              <Input
+                id="bank-name"
+                value={editingBankName}
+                onChange={(e) => setEditingBankName(e.target.value)}
+                placeholder="请输入题库名称"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bank-desc">描述（可选）</Label>
+              <Textarea
+                id="bank-desc"
+                value={editingBankDesc}
+                onChange={(e) => setEditingBankDesc(e.target.value)}
+                placeholder="请输入题库描述"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelEditBankName}>
+              取消
+            </Button>
+            <Button onClick={saveBankInfo} disabled={!editingBankName.trim()}>
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 分页组件 */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+          >
+            首页
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            上一页
+          </Button>
+          <div className="flex items-center gap-1">
+            {/* 页码按钮 */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(pageNum)}
+                  className="w-10"
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            下一页
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+          >
+            末页
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
