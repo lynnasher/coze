@@ -829,7 +829,15 @@ export default function QuizApp() {
                                               key={bank.id}
                                               bank={bank}
                                               questions={[]}
-                                              onStartPractice={handleStartPractice}
+                                              onStartPractice={(bankId) => {
+                                                if (!currentUser) {
+                                                  setAuthModalOpen(true);
+                                                  return;
+                                                }
+                                                setPracticeBankId(bankId);
+                                                setActiveTab('practice');
+                                                startQuiz('sequential', bankId);
+                                              }}
                                             />
                                           ))}
                                         </div>
