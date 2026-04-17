@@ -1438,9 +1438,9 @@ function PracticeView({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 简洁顶部栏 - 无LOGO，横向铺满 */}
+      {/* 简洁顶部栏 - 无LOGO */}
       <div className="bg-white border-b border-slate-200 px-4 py-2.5 sticky top-0 z-20">
-        <div className="flex items-center justify-between">
+        <div className="max-w-[970px] mx-auto flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
@@ -1484,22 +1484,24 @@ function PracticeView({
 
       {/* 进度条 */}
       <div className="bg-white border-b border-slate-100 px-4 py-2">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
+              {progressPercent}%
+            </span>
           </div>
-          <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
-            {progressPercent}%
-          </span>
         </div>
       </div>
 
       {/* 题目内容区域 */}
-      <div className="pb-28 px-4 sm:px-6" ref={questionContentRef}>
-        <div className="max-w-[800px] mx-auto py-3">
+      <div className="pb-28" ref={questionContentRef}>
+        <div className="max-w-[970px] mx-auto sm:px-4 py-3">
           {/* 题目卡片 */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             {/* 题干头部 */}
@@ -1683,7 +1685,8 @@ function PracticeView({
 
       {/* 底部固定操作栏 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
-        <div className="flex items-center justify-between gap-3">
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex items-center justify-between gap-3">
             {/* 上一题 */}
             <Button
               variant="outline"
