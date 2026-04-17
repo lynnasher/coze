@@ -732,7 +732,7 @@ export default function QuizApp() {
                     </div>
                   )}
                   
-                  {/* 按分类显示题库 - 支持二级分类，点击展开 */}
+                  {/* 按分类显示题库 - 直接显示激活的分类 */}
                   {(() => {
                     // 非登录用户不显示任何题库
                     if (!currentUser) return null;
@@ -740,69 +740,133 @@ export default function QuizApp() {
                     // 获取用户激活的分类ID列表
                     const activatedCategoryIds = currentUser.activatedCategories || [];
                     
-                    // 获取所有激活的分类
-                    const allActivatedCategories = categories.filter(c => 
+                    // 获取用户激活的所有分类
+                    const activatedCategories = categories.filter(c => 
                       activatedCategoryIds.includes(c.id)
                     );
                     
-                    if (allActivatedCategories.length === 0) return null;
+                    if (activatedCategories.length === 0) return null;
                     
-                    // 构建需要显示的顶级分类列表
-                    // 规则：如果激活的是子分类，也需要显示其父分类
-                    const topCategoryIds = new Set<string>();
-                    allActivatedCategories.forEach(cat => {
-                      if (!cat.parentId) {
-                        // 激活的是顶级分类
-                        topCategoryIds.add(cat.id);
-                      } else {
-                        // 激活的是子分类，需要添加父分类
-                        topCategoryIds.add(cat.parentId);
+                    // 分离顶级分类和子分类
+                    const topCategories = activatedCategories.filter(c => !c.parentId);
+                    const childCategories = activatedCategories.filter(c => c.parentId);
+                    
+                    // 将子分类按父分类分组
+                    const childCategoriesByParent = new Map<string, typeof childCategories>();
+                    childCategories.forEach(cat => {
+                      const parentId = cat.parentId!;
+                      if (!childCategoriesByParent.has(parentId)) {
+                        childCategoriesByParent.set(parentId, []);
                       }
+                      childCategoriesByParent.get(parentId)!.push(cat);
                     });
-                    
-                    // 获取需要显示的顶级分类
-                    const topCategories = categories.filter(c => 
-                      topCategoryIds.has(c.id)
-                    );
-                    
-                    if (topCategories.length === 0) return null;
                     
                     return (
                       <>
+                        {/* 先显示激活的子分类（带父分类标题） */}
+                        {Array.from(childCategoriesByParent.entries()).map(([parentId, children]) => {
+                          const parentCategory = categories.find(c => c.id === parentId);
+                          return (
+                            <div key={`parent-${parentId}`} className="mb-4">
+                              {/* 父分类标题 */}
+                              {parentCategory && (
+                                <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg tracking-wide inline-flex items-center gap-1.5 mb-2 ${
+                                  parentCategory.color === 'blue' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                                  parentCategory.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' :
+                                  parentCategory.color === 'red' ? 'bg-red-50 text-red-600 border border-red-100' :
+                                  parentCategory.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
+                                  parentCategory.color === 'purple' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
+                                  parentCategory.color === 'pink' ? 'bg-pink-50 text-pink-600 border border-pink-100' :
+                                  parentCategory.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
+                                  'bg-cyan-50 text-cyan-600 border border-cyan-100'
+                                }`}>
+                                  <Folder className="w-3 h-3" />
+                                  {parentCategory.name}
+                                </div>
+                              )}
+                              {/* 子分类卡片列表 */}
+                              <div className="space-y-2">
+                                {children.map(category => {
+                                  // 获取该分类的题库
+                                  const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                                  if (categoryBanks.length === 0) return null;
+                                  
+                                  return (
+                                    <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm">
+                                      {/* 子分类 - 可点击展开 */}
+                                      <div 
+                                        className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
+                                        onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                                      >
+                                        {selectedCategoryId === category.id ? (
+                                          <FolderOpen className="w-4 h-4 text-slate-500" />
+                                        ) : (
+                                          <Folder className="w-4 h-4 text-slate-400" />
+                                        )}
+                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg tracking-wide ${
+                                          category.color === 'blue' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                                          category.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' :
+                                          category.color === 'red' ? 'bg-red-50 text-red-600 border border-red-100' :
+                                          category.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
+                                          category.color === 'purple' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
+                                          category.color === 'pink' ? 'bg-pink-50 text-pink-600 border border-pink-100' :
+                                          category.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
+                                          'bg-cyan-50 text-cyan-600 border border-cyan-100'
+                                        }`}>
+                                          {category.name}
+                                        </span>
+                                        <span className="text-xs text-gray-400 ml-auto pr-1">
+                                          {categoryBanks.length} 个题库
+                                        </span>
+                                        <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
+                                      </div>
+                                    
+                                      {/* 展开时显示题库 */}
+                                      {selectedCategoryId === category.id && (
+                                        <div className="mt-3 space-y-3 pl-2">
+                                          {categoryBanks.map(bank => (
+                                            <BankCard
+                                              key={bank.id}
+                                              bank={bank}
+                                              questions={[]}
+                                              onStartPractice={handleStartPractice}
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {/* 显示激活的顶级分类 */}
                         {topCategories.map(category => {
-                          // 获取该分类下的所有直接子分类
-                          const childCategories = categories.filter(c => 
-                            c.parentId === category.id && activatedCategoryIds.includes(c.id)
-                          );
+                          // 获取该分类的直接题库
+                          const categoryBanks = banks.filter(b => b.categoryId === category.id);
                           
-                          // 获取该分类的直接题库（只有用户激活的分类才显示）
-                          const categoryBanks = banks.filter(b => 
-                            b.categoryId === category.id
-                          );
-                          
-                          // 获取所有子分类的题库
-                          const childCategoryIds = childCategories.map(c => c.id);
-                          const childCategoryBanks = banks.filter(b => 
-                            childCategoryIds.includes(b.categoryId || '')
-                          );
+                          // 获取激活的子分类
+                          const activatedChildCategories = childCategoriesByParent.get(category.id) || [];
+                          const childCategoryIds = activatedChildCategories.map(c => c.id);
+                          const childCategoryBanks = banks.filter(b => childCategoryIds.includes(b.categoryId || ''));
                           
                           // 如果该分类和子分类都没有题库，则不显示
                           if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
                           
                           return (
-                            <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm">
-                              {/* 顶级分类 - 可点击展开 - 清新简洁风格 */}
+                            <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm mb-4">
+                              {/* 顶级分类 - 可点击展开 */}
                               <div 
                                 className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
                                 onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                               >
-                                {/* 文件夹图标 */}
                                 {selectedCategoryId === category.id ? (
                                   <FolderOpen className="w-4 h-4 text-slate-500" />
                                 ) : (
                                   <Folder className="w-4 h-4 text-slate-400" />
                                 )}
-                                {/* 分类名称标签 */}
                                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg tracking-wide ${
                                   category.color === 'blue' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
                                   category.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' :
@@ -815,15 +879,13 @@ export default function QuizApp() {
                                 }`}>
                                   {category.name}
                                 </span>
-                                {/* 数量 */}
                                 <span className="text-xs text-gray-400 ml-auto pr-1">
                                   {categoryBanks.length + childCategoryBanks.length} 个题库
                                 </span>
-                                {/* 展开箭头 */}
                                 <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
                               </div>
                             
-                              {/* 展开时显示题库 - 简洁间距 */}
+                              {/* 展开时显示题库 */}
                               {selectedCategoryId === category.id && (
                                 <div className="mt-3 space-y-3">
                                   {/* 该分类的直接题库 */}
@@ -853,8 +915,8 @@ export default function QuizApp() {
                                     </div>
                                   )}
                                   
-                                  {/* 子分类 */}
-                                  {childCategories.map(child => {
+                                  {/* 该顶级分类下的激活子分类 */}
+                                  {activatedChildCategories.map(child => {
                                     const childBanks = banks.filter(b => b.categoryId === child.id);
                                     if (childBanks.length === 0) return null;
                                     
