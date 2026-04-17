@@ -188,7 +188,7 @@ export default function QuizApp() {
     return getWrongQuestionIds().length;
   }, []);
 
-  // 从云端同步数据并更新本地错题数量
+  // 从云端同步数据并更新本地错题数量（合并策略：本地数据为主，补充云端中本地没有的记录）
   const syncWrongCountFromCloud = useCallback(async () => {
     const user = getStoredUser();
     if (!user) {
@@ -197,16 +197,27 @@ export default function QuizApp() {
     }
     
     try {
-      // 先从云端拉取最新数据
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
-        // 用云端数据更新本地存储
-        if (cloudData.records.length > 0) {
-          recordStore.save(cloudData.records);
+        // 合并记录：以本地为基准，补充云端中本地没有的记录
+        const localRecords = recordStore.getAll();
+        const localRecordIds = new Set(localRecords.map(r => r.id));
+        const newFromCloud = cloudData.records.filter(r => !localRecordIds.has(r.id));
+        if (newFromCloud.length > 0) {
+          recordStore.save([...localRecords, ...newFromCloud]);
         }
-        if (Object.keys(cloudData.streaks).length > 0) {
-          wrongStreakStore.save(cloudData.streaks);
+
+        // 合并连续正确次数：取较小值（保守策略）
+        const localStreaks = wrongStreakStore.getAll();
+        const mergedStreaks = { ...localStreaks };
+        for (const [qId, cloudStreak] of Object.entries(cloudData.streaks)) {
+          if (!(qId in mergedStreaks)) {
+            mergedStreaks[qId] = cloudStreak;
+          } else {
+            mergedStreaks[qId] = Math.min(mergedStreaks[qId], cloudStreak);
+          }
         }
+        wrongStreakStore.save(mergedStreaks);
       }
     } catch (error) {
       console.error('从云端同步数据失败:', error);

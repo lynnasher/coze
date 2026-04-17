@@ -90,7 +90,7 @@ export default function WrongBookPage() {
     refreshData();
   }, [refreshData]);
 
-  // 从云端同步数据到本地
+  // 从云端同步数据到本地（合并策略：本地数据为主，补充云端中本地没有的记录）
   const syncFromCloud = useCallback(async () => {
     const user = getStoredUser();
     if (!user) return;
@@ -98,8 +98,27 @@ export default function WrongBookPage() {
     try {
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
-        if (cloudData.records.length > 0) recordStore.save(cloudData.records);
-        if (Object.keys(cloudData.streaks).length > 0) wrongStreakStore.save(cloudData.streaks);
+        // 合并记录：以本地为基准，补充云端中本地没有的记录
+        const localRecords = recordStore.getAll();
+        const localRecordIds = new Set(localRecords.map(r => r.id));
+        const newFromCloud = cloudData.records.filter(r => !localRecordIds.has(r.id));
+        if (newFromCloud.length > 0) {
+          recordStore.save([...localRecords, ...newFromCloud]);
+        }
+
+        // 合并连续正确次数：取较小值（更保守，避免误删错题）
+        const localStreaks = wrongStreakStore.getAll();
+        const mergedStreaks = { ...localStreaks };
+        for (const [qId, cloudStreak] of Object.entries(cloudData.streaks)) {
+          if (!(qId in mergedStreaks)) {
+            // 本地没有该题的streak，使用云端的
+            mergedStreaks[qId] = cloudStreak;
+          } else {
+            // 两边都有，取较小值（保守策略：保持错题状态更久）
+            mergedStreaks[qId] = Math.min(mergedStreaks[qId], cloudStreak);
+          }
+        }
+        wrongStreakStore.save(mergedStreaks);
       }
     } catch (error) {
       console.error('从云端同步数据失败:', error);
