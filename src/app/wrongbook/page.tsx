@@ -31,7 +31,7 @@ import {
 import { questionStore, recordStore, getWrongQuestionIds, generateId, wrongStreakStore } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
-import { UserStatus } from '@/components/AuthModal';
+import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
 // 题型统计
@@ -65,21 +65,21 @@ export default function WrongBookPage() {
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
   const [userWrongQuestions, setUserWrongQuestions] = useState<UserWrongQuestion[]>([]);
   const [isLoadingWrongQuestions, setIsLoadingWrongQuestions] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const questionContentRef = useRef<HTMLDivElement>(null);
+
+  // 检查认证状态
+  const checkAuth = useCallback(() => {
+    const user = getStoredUser();
+    setCurrentUser(user);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
     // 获取当前登录用户
-    const storedUser = localStorage.getItem('quiz_user_data');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        setCurrentUser(user);
-      } catch (e) {
-        // 忽略解析错误
-      }
-    }
-  }, []);
+    const user = getStoredUser();
+    setCurrentUser(user);
+  }, [checkAuth]);
 
   // 从数据库获取用户错题记录
   const loadUserWrongQuestions = useCallback(async () => {
@@ -697,10 +697,7 @@ export default function WrongBookPage() {
             <h2 className="text-xl font-bold text-slate-800 mb-2">请先登录</h2>
             <p className="text-slate-400 mb-6">登录后才能使用错题本功能</p>
             <Button 
-              onClick={() => {
-                // 跳转到首页触发登录弹窗
-                window.location.href = '/?login=true';
-              }}
+              onClick={() => setAuthModalOpen(true)}
               className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 rounded-xl h-11 px-6"
             >
               去登录
@@ -839,6 +836,13 @@ export default function WrongBookPage() {
           </div>
         )}
       </main>
+
+      {/* 登录弹窗 */}
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        onAuthChange={checkAuth}
+      />
     </div>
   );
 }
