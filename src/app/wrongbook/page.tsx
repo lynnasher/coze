@@ -25,7 +25,8 @@ import {
   History,
   Flame,
   Puzzle,
-  User
+  User,
+  RefreshCw
 } from 'lucide-react';
 import { questionStore, recordStore, getWrongQuestionIds, generateId, wrongStreakStore } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -42,6 +43,15 @@ interface QuestionTypeStat {
   bgColor: string;
 }
 
+// 用户错题信息
+interface UserWrongQuestion {
+  questionId: string;
+  wrongCount: number;
+  correctCount: number;
+  streak: number;
+  lastWrongAt: string | null;
+}
+
 export default function WrongBookPage() {
   const [selectedType, setSelectedType] = useState<QuestionType | 'all'>('all');
   const [reviewMode, setReviewMode] = useState<'forgot' | 'byType' | 'all'>('forgot');
@@ -52,7 +62,9 @@ export default function WrongBookPage() {
   const [localAnswer, setLocalAnswer] = useState<string | string[] | undefined>(undefined);
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ role: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+  const [userWrongQuestions, setUserWrongQuestions] = useState<UserWrongQuestion[]>([]);
+  const [isLoadingWrongQuestions, setIsLoadingWrongQuestions] = useState(false);
   const questionContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,7 +81,42 @@ export default function WrongBookPage() {
     }
   }, []);
 
-  // 获取错题列表（只获取实际答过且答错的题目）
+  // 从数据库获取用户错题记录
+  const loadUserWrongQuestions = useCallback(async () => {
+    if (!currentUser) return;
+    
+    setIsLoadingWrongQuestions(true);
+    try {
+      const token = localStorage.getItem('quiz_user_token');
+      const response = await fetch('/api/wrong-questions', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setUserWrongQuestions(data.wrongQuestions || []);
+        }
+      }
+    } catch (error) {
+      console.error('加载错题失败:', error);
+    } finally {
+      setIsLoadingWrongQuestions(false);
+    }
+  }, [currentUser]);
+
+  // 用户登录后加载错题
+  useEffect(() => {
+    if (currentUser && mounted) {
+      loadUserWrongQuestions();
+    } else {
+      setUserWrongQuestions([]);
+    }
+  }, [currentUser, mounted, loadUserWrongQuestions]);
+
+  // 获取错题列表（只获取实际答过且答错的题目，从本地存储获取用于做题）
   const wrongQuestions = useMemo(() => {
     const records = recordStore.getAll();
     const wrongQuestionIds = records
@@ -661,8 +708,16 @@ export default function WrongBookPage() {
           </div>
         )}
         
+        {/* 加载中 */}
+        {currentUser && isLoadingWrongQuestions && (
+          <div className="flex items-center justify-center py-16">
+            <RefreshCw className="w-6 h-6 animate-spin text-indigo-500 mr-2" />
+            <span className="text-slate-500">加载错题中...</span>
+          </div>
+        )}
+        
         {/* 错题列表 - 仅登录用户可见 */}
-        {currentUser && wrongQuestions.length === 0 && (
+        {currentUser && !isLoadingWrongQuestions && userWrongQuestions.length === 0 && (
           /* 空状态 */
           <div className="text-center py-16">
             <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -678,160 +733,107 @@ export default function WrongBookPage() {
           </div>
         )}
         
-        {currentUser && wrongQuestions.length > 0 && (
+        {currentUser && !isLoadingWrongQuestions && userWrongQuestions.length > 0 && (
           <div className="space-y-4">
+            {/* 刷新按钮 */}
+            <div className="flex justify-end">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={loadUserWrongQuestions}
+                className="text-slate-500"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" />
+                刷新
+              </Button>
+            </div>
+            
             {/* 统计概览 */}
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Puzzle className="w-3.5 h-3.5 text-purple-500" />
                 </div>
-                题型分布
+                错题统计
               </h3>
-              <div className="flex gap-2 flex-wrap">
-                <button
-                  onClick={() => setSelectedType('all')}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    selectedType === 'all'
-                      ? 'bg-slate-800 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  全部 {wrongQuestions.length}
-                </button>
-                {typeStats.map(stat => (
-                  <button
-                    key={stat.type}
-                    onClick={() => setSelectedType(stat.type)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium text-white transition-all ${stat.color} ${
-                      selectedType === stat.type ? 'ring-2 ring-offset-2 ring-slate-800' : 'opacity-80 hover:opacity-100'
-                    }`}
-                  >
-                    {stat.label} {stat.count}
-                  </button>
-                ))}
+              <div className="flex gap-4 text-center">
+                <div className="flex-1 bg-red-50 rounded-xl p-3">
+                  <p className="text-2xl font-bold text-red-600">{userWrongQuestions.length}</p>
+                  <p className="text-xs text-red-400">错题数量</p>
+                </div>
+                <div className="flex-1 bg-emerald-50 rounded-xl p-3">
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {userWrongQuestions.filter(q => q.streak >= 2).length}
+                  </p>
+                  <p className="text-xs text-emerald-400">即将掌握</p>
+                </div>
               </div>
             </div>
-
-            {/* 复习模式选择 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <Target className="w-3.5 h-3.5 text-amber-500" />
-                </div>
-                复习模式
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setReviewMode('forgot')}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    reviewMode === 'forgot'
-                      ? 'border-indigo-500 bg-indigo-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-indigo-500" />
-                    <span className="text-sm font-medium text-gray-700">优先复习</span>
-                  </div>
-                  <p className="text-xs text-gray-400">遗忘久的优先</p>
-                </button>
-                <button
-                  onClick={() => setReviewMode('byType')}
-                  className={`p-3 rounded-xl border-2 transition-all ${
-                    reviewMode === 'byType'
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Filter className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm font-medium text-gray-700">按题型</span>
-                  </div>
-                  <p className="text-xs text-gray-400">单选→多选→判断</p>
-                </button>
-              </div>
+            
+            {/* 提示信息 */}
+            <div className="bg-amber-50 rounded-xl p-3 text-sm text-amber-700">
+              <p>错题来自您的练习记录，连续答对3次后将从错题本中移除</p>
             </div>
-
-            {/* 开始复习按钮 */}
-            <Button
-              onClick={() => startReview(selectedType)}
-              className="w-full h-12 text-base bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 rounded-xl shadow-md"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              开始复习 ({filteredQuestions.length}题)
-            </Button>
-
-            {/* 错题列表 */}
+            
+            {/* 题型分布 */}
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <History className="w-3.5 h-3.5 text-orange-500" />
+                <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Puzzle className="w-3.5 h-3.5 text-purple-500" />
                 </div>
-                错题详情
+                错题列表（{userWrongQuestions.length} 道）
               </h3>
-              <div className="space-y-3">
-                {filteredQuestions.slice(0, 10).map((question, index) => {
-                  const info = getWrongInfo(question.id);
+              <div className="space-y-2">
+                {userWrongQuestions.map((wq, index) => {
+                  const question = questionStore.getAll().find(q => q.id === wq.questionId);
+                  if (!question) return null;
+                  
                   const typeStyle = getTypeStyle(question.type);
+                  
                   return (
-                    <div
-                      key={question.id}
-                      className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+                    <div 
+                      key={wq.questionId}
+                      className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
                     >
-                      <div className="flex items-start gap-3">
-                        <span className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs text-gray-500 flex-shrink-0">
-                          {index + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium text-white ${typeStyle.bg}`}>
-                              {typeStyle.label}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold ${typeStyle.bg}`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">
+                          {question.content.slice(0, 50)}...
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs px-2 py-0.5 rounded ${typeStyle.bg} text-white`}>
+                            {typeStyle.label}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            错 {wq.wrongCount} 次
+                          </span>
+                          {wq.streak > 0 && (
+                            <span className="text-xs text-emerald-500">
+                              已连续答对 {wq.streak} 次
                             </span>
-                            <span className="text-xs text-gray-400">
-                              错 {info.wrongCount} 次
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              掌握 {info.streak}/3
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-700 line-clamp-2 mb-2">
-                            <RichTextWithBreaks content={question.content} textClassName="whitespace-pre-wrap" />
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setReviewQuestions([question]);
-                              setReviewIndex(0);
-                              setShowExplanation(false);
-                              setLocalAnswer(undefined);
-                              setIsAnswerCorrect(false);
-                              setIsReviewing(true);
-                            }}
-                            className="text-xs h-7 rounded-lg"
-                          >
-                            复习此题
-                          </Button>
+                          )}
                         </div>
                       </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setReviewQuestions([question]);
+                          setReviewIndex(0);
+                          setShowExplanation(false);
+                          setLocalAnswer(undefined);
+                          setIsAnswerCorrect(false);
+                          setIsReviewing(true);
+                        }}
+                        className="shrink-0"
+                      >
+                        复习
+                      </Button>
                     </div>
                   );
                 })}
-              </div>
-              
-              {filteredQuestions.length > 10 && (
-                <p className="text-center text-sm text-gray-400 mt-3">
-                  还有 {filteredQuestions.length - 10} 道错题，点击上方「开始复习」查看全部
-                </p>
-              )}
-            </div>
-
-            {/* 提示 */}
-            <div className="p-3 bg-amber-50 rounded-xl text-sm text-amber-700 border border-amber-100">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <p>做对同一道题 <strong>3次</strong> 将自动移出错题本，你也可以点击「已掌握」立即移出。</p>
               </div>
             </div>
           </div>
