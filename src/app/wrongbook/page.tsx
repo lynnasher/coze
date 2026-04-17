@@ -196,13 +196,19 @@ export default function WrongBookPage() {
     // 转为数组输出
     const result = Array.from(categoryGroups.values());
     
-    // 添加未关联题库的错题
+    // 添加未关联题库的错题，归入"未分类"
     if (ungrouped.length > 0) {
-      result.push({
-        categoryName: '其他错题',
-        categoryId: '__other__',
-        banks: [{ bankId: '__other__', bankName: '其他错题', questions: ungrouped }],
-      });
+      const uncategorizedKey = '__uncategorized__';
+      const existing = categoryGroups.get(uncategorizedKey);
+      if (existing) {
+        existing.banks.push({ bankId: '__other__', bankName: '未关联题库', questions: ungrouped });
+      } else {
+        result.push({
+          categoryName: '未分类',
+          categoryId: uncategorizedKey,
+          banks: [{ bankId: '__other__', bankName: '未关联题库', questions: ungrouped }],
+        });
+      }
     }
 
     return result;
@@ -568,7 +574,7 @@ export default function WrongBookPage() {
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-xl p-3 text-white text-center">
                   <p className="text-xl font-bold">{wrongQuestions.length}</p>
                   <p className="text-xs opacity-80">错题总数</p>
@@ -576,10 +582,6 @@ export default function WrongBookPage() {
                 <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
                   <p className="text-xl font-bold">{wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 2).length}</p>
                   <p className="text-xs opacity-80">即将掌握</p>
-                </div>
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl p-3 text-white text-center">
-                  <p className="text-xl font-bold">{categorizedWrongQuestions.length}</p>
-                  <p className="text-xs opacity-80">分类数</p>
                 </div>
               </div>
               {/* 题型分布标签 */}
