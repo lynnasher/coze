@@ -149,7 +149,6 @@ export default function QuizApp() {
         .filter(r => r.questionId === qId && r.selectedAnswer)
         .sort((a, b) => a.timestamp - b.timestamp);
       
-      // 从最后一次答题开始，向前计算连续正确的次数
       let streak = 0;
       for (let i = questionRecords.length - 1; i >= 0; i--) {
         if (questionRecords[i].isCorrect) {
@@ -175,20 +174,10 @@ export default function QuizApp() {
     // 更新连续正确次数
     wrongStreakStore.save(newStreaks);
     
-    // 同步到云端
-    const user = getStoredUser();
-    if (user) {
-      cloudSyncService.saveRecordsAndStreaks(
-        user.id,
-        recordStore.getAll(),
-        newStreaks
-      );
-    }
-    
     return getWrongQuestionIds().length;
   }, []);
 
-  // 从云端同步数据并更新本地错题数量（合并策略：本地数据为主，补充云端中本地没有的记录）
+  // 从云端同步：先 push 本地数据到云端，再 pull 云端数据下来，以云端为准
   const syncWrongCountFromCloud = useCallback(async () => {
     const user = getStoredUser();
     if (!user) {
@@ -197,30 +186,21 @@ export default function QuizApp() {
     }
     
     try {
+      // 第一步：push 本地数据到云端（确保答题记录不丢失）
+      await cloudSyncService.saveRecordsAndStreaks(
+        user.id,
+        recordStore.getAll(),
+        wrongStreakStore.getAll()
+      );
+
+      // 第二步：pull 云端数据（以云端为准，替换本地缓存）
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
-        // 合并记录：以本地为基准，补充云端中本地没有的记录
-        const localRecords = recordStore.getAll();
-        const localRecordIds = new Set(localRecords.map(r => r.id));
-        const newFromCloud = cloudData.records.filter(r => !localRecordIds.has(r.id));
-        if (newFromCloud.length > 0) {
-          recordStore.save([...localRecords, ...newFromCloud]);
-        }
-
-        // 合并连续正确次数：取较小值（保守策略）
-        const localStreaks = wrongStreakStore.getAll();
-        const mergedStreaks = { ...localStreaks };
-        for (const [qId, cloudStreak] of Object.entries(cloudData.streaks)) {
-          if (!(qId in mergedStreaks)) {
-            mergedStreaks[qId] = cloudStreak;
-          } else {
-            mergedStreaks[qId] = Math.min(mergedStreaks[qId], cloudStreak);
-          }
-        }
-        wrongStreakStore.save(mergedStreaks);
+        recordStore.save(cloudData.records);
+        wrongStreakStore.save(cloudData.streaks);
       }
     } catch (error) {
-      console.error('从云端同步数据失败:', error);
+      console.error('云端同步失败，使用本地数据:', error);
     }
     
     // 重新计算错题数据并更新显示
