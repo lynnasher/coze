@@ -212,8 +212,17 @@ export default function WrongBookPage() {
     if (user) {
       cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
     }
-    refreshData();
-  }, [refreshData]);
+    // 自动跳到下一题，如果没有下一题则返回错题本
+    if (reviewIndex < reviewQuestions.length - 1) {
+      setReviewIndex(reviewIndex + 1);
+      setShowExplanation(false);
+      setLocalAnswer(undefined);
+      setIsAnswerCorrect(false);
+    } else {
+      setIsReviewing(false);
+      refreshData();
+    }
+  }, [reviewIndex, reviewQuestions.length, refreshData]);
 
   function checkAnswerInline(question: Question, answer: string | string[] | undefined): boolean {
     if (!answer) return false;
@@ -407,7 +416,7 @@ export default function WrongBookPage() {
               variant="outline" 
               onClick={handlePrev} 
               disabled={reviewIndex === 0} 
-              className="h-12 px-6 rounded-xl border-gray-200"
+              className="h-12 px-6 rounded-xl border-gray-200 text-gray-700 hover:bg-gray-50"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />上一题
             </Button>
@@ -415,14 +424,14 @@ export default function WrongBookPage() {
               <Button 
                 onClick={handleSubmitAnswer} 
                 disabled={localAnswer === undefined || (Array.isArray(localAnswer) && localAnswer.length === 0)}
-                className="h-12 px-8 rounded-xl bg-gray-900 hover:bg-gray-800 text-white"
+                className="h-12 px-8 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium shadow-lg shadow-orange-500/25"
               >
                 提交答案
               </Button>
             ) : (
               <Button 
                 onClick={handleNext} 
-                className="h-12 px-8 rounded-xl bg-gray-900 hover:bg-gray-800 text-white"
+                className="h-12 px-8 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-medium shadow-lg shadow-orange-500/25"
               >
                 {reviewIndex < reviewQuestions.length - 1 ? '下一题' : '完成'}<ChevronRight className="w-4 h-4 ml-1" />
               </Button>
