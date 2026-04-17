@@ -241,14 +241,14 @@ export default function WrongBookPage() {
 
     return (
       <div className="min-h-screen bg-slate-50">
-        {/* 简洁顶部栏 - 无LOGO */}
-        <div className="bg-white border-b border-slate-200 px-4 py-2.5 sticky top-0 z-20">
+        {/* 固定顶部栏 - 横向铺满 */}
+        <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 py-3 z-30">
           <div className="max-w-[800px] mx-auto flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => { setIsReviewing(false); refreshData(); }}
-              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-8 px-2 -ml-2"
+              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-9 px-3"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               <span className="text-sm">退出</span>
@@ -258,9 +258,12 @@ export default function WrongBookPage() {
               {reviewIndex + 1} / {reviewQuestions.length}
             </span>
             
-            <div className="w-12" />
+            <div className="w-16" />
           </div>
         </div>
+
+        {/* 占位高度，防止内容被固定导航遮挡 */}
+        <div className="h-14" />
 
         {/* 进度条 */}
         <div className="bg-white border-b border-slate-100 px-4 py-2">
