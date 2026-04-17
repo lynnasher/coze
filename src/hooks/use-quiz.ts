@@ -275,6 +275,11 @@ export function useQuiz() {
 
   // 提交答案
   const submitAnswer = useCallback(() => {
+    let syncToCloud = false;
+    let syncUserId: string | null = null;
+    let syncRecords: any[] = [];
+    let syncStreaks: Record<string, number> = {};
+    
     setQuizState(prev => {
       const currentQuestion = prev.questions[prev.currentIndex];
       if (currentQuestion) {
@@ -290,6 +295,15 @@ export function useQuiz() {
         };
         
         recordStore.add(record);
+        
+        // 标记需要同步到云端
+        const userId = getCurrentUserId();
+        if (userId) {
+          syncToCloud = true;
+          syncUserId = userId;
+          syncRecords = recordStore.getAll();
+          syncStreaks = wrongStreakStore.getAll();
+        }
         
         // 更新最近练习记录
         if (prev.bankId) {
@@ -327,6 +341,12 @@ export function useQuiz() {
         showResult: true,
       };
     });
+    
+    // 实时同步到云端（每次答题后立即同步）
+    if (syncToCloud && syncUserId) {
+      cloudSyncService.saveRecords(syncUserId, syncRecords);
+      cloudSyncService.saveStreaks(syncUserId, syncStreaks);
+    }
   }, []);
 
   // 检查答案是否正确 - 使用 useCallback 避免重复创建
