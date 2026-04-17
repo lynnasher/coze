@@ -740,16 +740,36 @@ export default function QuizApp() {
                     // 获取用户激活的分类ID列表
                     const activatedCategoryIds = currentUser.activatedCategories || [];
                     
-                    // 获取所有用户激活的顶级分类
-                    const activatedCategories = categories.filter(c => 
-                      !c.parentId && activatedCategoryIds.includes(c.id)
+                    // 获取所有激活的分类
+                    const allActivatedCategories = categories.filter(c => 
+                      activatedCategoryIds.includes(c.id)
                     );
                     
-                    if (activatedCategories.length === 0) return null;
+                    if (allActivatedCategories.length === 0) return null;
+                    
+                    // 构建需要显示的顶级分类列表
+                    // 规则：如果激活的是子分类，也需要显示其父分类
+                    const topCategoryIds = new Set<string>();
+                    allActivatedCategories.forEach(cat => {
+                      if (!cat.parentId) {
+                        // 激活的是顶级分类
+                        topCategoryIds.add(cat.id);
+                      } else {
+                        // 激活的是子分类，需要添加父分类
+                        topCategoryIds.add(cat.parentId);
+                      }
+                    });
+                    
+                    // 获取需要显示的顶级分类
+                    const topCategories = categories.filter(c => 
+                      topCategoryIds.has(c.id)
+                    );
+                    
+                    if (topCategories.length === 0) return null;
                     
                     return (
                       <>
-                        {activatedCategories.map(category => {
+                        {topCategories.map(category => {
                           // 获取该分类下的所有直接子分类
                           const childCategories = categories.filter(c => 
                             c.parentId === category.id && activatedCategoryIds.includes(c.id)
