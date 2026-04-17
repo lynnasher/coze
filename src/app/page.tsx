@@ -653,20 +653,26 @@ export default function QuizApp() {
 
           {/* 题库浏览页面 */}
           <TabsContent value="library">
+            {/* 页面标题 */}
+            <div className="mb-5">
+              <h1 className="text-xl font-bold text-gray-900">题库浏览</h1>
+              <p className="text-sm text-gray-500 mt-0.5">选择分类开始练习</p>
+            </div>
+            
             {/* 未登录提示 */}
             {!currentUser && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100 mb-5">
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-200 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/80 rounded-xl flex items-center justify-center shadow-sm">
-                    <User className="w-5 h-5 text-amber-500" />
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <User className="w-5 h-5 text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-gray-800">登录后查看已激活的题库</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">请先登录以查看和练习题库</p>
+                    <h4 className="text-sm font-semibold text-gray-900">登录后查看已激活的题库</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">请先登录以查看和练习题库</p>
                   </div>
                   <Button 
                     size="sm" 
-                    className="rounded-xl bg-amber-500 hover:bg-amber-600"
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700"
                     onClick={() => setAuthModalOpen(true)}
                   >
                     登录
@@ -677,14 +683,14 @@ export default function QuizApp() {
             
             {/* 已登录但无激活分类提示 */}
             {currentUser && (currentUser.activatedCategories?.length === 0) && (
-              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-red-100 mb-5">
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-200 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/80 rounded-xl flex items-center justify-center shadow-sm">
-                    <BookOpen className="w-5 h-5 text-red-500" />
+                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-orange-600" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-semibold text-gray-800">暂无激活的题库分类</h4>
-                    <p className="text-xs text-gray-500 mt-0.5">请联系管理员获取激活码来解锁题库</p>
+                    <h4 className="text-sm font-semibold text-gray-900">暂无激活的题库分类</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">请联系管理员获取激活码来解锁题库</p>
                   </div>
                 </div>
               </div>
@@ -704,12 +710,11 @@ export default function QuizApp() {
                 <>
                   {/* 未分类题库 */}
                   {banks.filter(b => !b.categoryId).length > 0 && (
-                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
                       <div className="flex items-center gap-2 mb-3">
-                        <div className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
-                        <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
-                        <h3 className="text-xs font-semibold text-slate-500 tracking-wide">未分类</h3>
-                        <span className="text-xs text-gray-400">({banks.filter(b => !b.categoryId).length})</span>
+                        <FolderOpen className="w-4 h-4 text-gray-400" />
+                        <h3 className="text-sm font-semibold text-gray-600 tracking-wide">未分类</h3>
+                        <span className="text-xs text-gray-500 font-medium">({banks.filter(b => !b.categoryId).length} 题库)</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {banks.filter(b => !b.categoryId).map((bank) => (
@@ -770,15 +775,15 @@ export default function QuizApp() {
                             <div key={`parent-${parentId}`} className="mb-4">
                               {/* 父分类标题 */}
                               {parentCategory && (
-                                <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg tracking-wide inline-flex items-center gap-1.5 mb-2 ${
-                                  parentCategory.color === 'blue' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                                  parentCategory.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' :
-                                  parentCategory.color === 'red' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                  parentCategory.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
-                                  parentCategory.color === 'purple' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
-                                  parentCategory.color === 'pink' ? 'bg-pink-50 text-pink-600 border border-pink-100' :
-                                  parentCategory.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                                  'bg-cyan-50 text-cyan-600 border border-cyan-100'
+                                <div className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide inline-flex items-center gap-1.5 mb-2 ${
+                                  parentCategory.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                  parentCategory.color === 'green' ? 'bg-green-100 text-green-700' :
+                                  parentCategory.color === 'red' ? 'bg-red-100 text-red-700' :
+                                  parentCategory.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                  parentCategory.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                  parentCategory.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                  parentCategory.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                  'bg-cyan-100 text-cyan-700'
                                 }`}>
                                   <Folder className="w-3 h-3" />
                                   {parentCategory.name}
@@ -803,15 +808,15 @@ export default function QuizApp() {
                                         ) : (
                                           <Folder className="w-4 h-4 text-slate-400" />
                                         )}
-                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg tracking-wide ${
-                                          category.color === 'blue' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                                          category.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' :
-                                          category.color === 'red' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                          category.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
-                                          category.color === 'purple' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
-                                          category.color === 'pink' ? 'bg-pink-50 text-pink-600 border border-pink-100' :
-                                          category.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                                          'bg-cyan-50 text-cyan-600 border border-cyan-100'
+                                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${
+                                          category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                          category.color === 'green' ? 'bg-green-100 text-green-700' :
+                                          category.color === 'red' ? 'bg-red-100 text-red-700' :
+                                          category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                          category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                          category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                          category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                          'bg-cyan-100 text-cyan-700'
                                         }`}>
                                           {category.name}
                                         </span>
@@ -874,19 +879,19 @@ export default function QuizApp() {
                                 ) : (
                                   <Folder className="w-4 h-4 text-slate-400" />
                                 )}
-                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg tracking-wide ${
-                                  category.color === 'blue' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                                  category.color === 'green' ? 'bg-green-50 text-green-600 border border-green-100' :
-                                  category.color === 'red' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                  category.color === 'yellow' ? 'bg-yellow-50 text-yellow-600 border border-yellow-100' :
-                                  category.color === 'purple' ? 'bg-purple-50 text-purple-600 border border-purple-100' :
-                                  category.color === 'pink' ? 'bg-pink-50 text-pink-600 border border-pink-100' :
-                                  category.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' :
-                                  'bg-cyan-50 text-cyan-600 border border-cyan-100'
+                                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${
+                                  category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                  category.color === 'green' ? 'bg-green-100 text-green-700' :
+                                  category.color === 'red' ? 'bg-red-100 text-red-700' :
+                                  category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                  category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                  category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                  category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                  'bg-cyan-100 text-cyan-700'
                                 }`}>
                                   {category.name}
                                 </span>
-                                <span className="text-xs text-gray-400 ml-auto pr-1">
+                                <span className="text-xs text-gray-500 ml-auto pr-1 font-medium">
                                   {categoryBanks.length + childCategoryBanks.length} 个题库
                                 </span>
                                 <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
@@ -930,20 +935,20 @@ export default function QuizApp() {
                                     return (
                                       <div key={child.id}>
                                         <div className="flex items-center gap-2 mb-2">
-                                          <FolderOpen className="w-3 h-3 text-gray-400" />
-                                          <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${
-                                            child.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                                            child.color === 'green' ? 'bg-green-50 text-green-600' :
-                                            child.color === 'red' ? 'bg-red-50 text-red-600' :
-                                            child.color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
-                                            child.color === 'purple' ? 'bg-purple-50 text-purple-600' :
-                                            child.color === 'pink' ? 'bg-pink-50 text-pink-600' :
-                                            child.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-                                            'bg-cyan-50 text-cyan-600'
+                                          <FolderOpen className="w-3 h-3 text-gray-500" />
+                                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${
+                                            child.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                            child.color === 'green' ? 'bg-green-100 text-green-700' :
+                                            child.color === 'red' ? 'bg-red-100 text-red-700' :
+                                            child.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                            child.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                            child.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                            child.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                            'bg-cyan-100 text-cyan-700'
                                           }`}>
                                             {child.name}
                                           </span>
-                                          <span className="text-xs text-gray-400">({childBanks.length})</span>
+                                          <span className="text-xs text-gray-500 font-medium">({childBanks.length} 题库)</span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                           {childBanks.map((bank) => (
