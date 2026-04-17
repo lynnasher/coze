@@ -136,7 +136,7 @@ export default function QuizApp() {
   }, [dbBanks]);
 
   // 刷新用户激活的分类（检查过期时间）
-  const refreshActivatedCategories = useCallback(async (userId: string) => {
+  const refreshActivatedCategories = useCallback(async (userId: string): Promise<string[]> => {
     try {
       const token = localStorage.getItem('quiz_user_token');
       const response = await fetch('/api/auth/user/activations', {
@@ -146,23 +146,24 @@ export default function QuizApp() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.activatedCategories) {
-          setCurrentUser(prev => prev ? { ...prev, activatedCategories: data.activatedCategories } : null);
-          const storedUser = localStorage.getItem('quiz_user_data');
-          if (storedUser) {
-            try {
-              const userData = JSON.parse(storedUser);
-              userData.activatedCategories = data.activatedCategories;
-              localStorage.setItem('quiz_user_data', JSON.stringify(userData));
-            } catch {
-              // 忽略解析错误
-            }
+        const activatedCategories = data.activatedCategories || [];
+        setCurrentUser(prev => prev ? { ...prev, activatedCategories } : null);
+        const storedUser = localStorage.getItem('quiz_user_data');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            userData.activatedCategories = activatedCategories;
+            localStorage.setItem('quiz_user_data', JSON.stringify(userData));
+          } catch {
+            // 忽略解析错误
           }
         }
+        return activatedCategories;
       }
     } catch {
       // 忽略错误
     }
+    return [];
   }, []);
 
   // 统一的初始数据加载函数（使用缓存减少重复请求）
@@ -202,9 +203,9 @@ export default function QuizApp() {
       setDbBanks(banksData.banks);
     }
     
-    // 如果用户已登录，刷新激活的分类（检查过期）
+    // 如果用户已登录，刷新激活的分类（等待完成后再继续，确保题库浏览能正确显示）
     if (user) {
-      refreshActivatedCategories(user.id);
+      await refreshActivatedCategories(user.id);
     }
   }, [refreshActivatedCategories]);
 
@@ -236,7 +237,7 @@ export default function QuizApp() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [refreshActivatedCategories]);
 
   // 获取用户激活的分类ID列表
   // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
