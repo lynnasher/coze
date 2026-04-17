@@ -61,6 +61,14 @@ export async function POST(request: Request) {
 
       const { user, token } = await userService.login(phone, password);
       
+      // 检查是否为管理员账号（管理员只能通过后台登录）
+      if (user.role === 'admin') {
+        return NextResponse.json({ 
+          success: false, 
+          error: '管理员账号请从后台登录' 
+        }, { status: 403 });
+      }
+      
       // 解析激活的分类
       let activatedCategories: string[] = [];
       try {
