@@ -28,7 +28,7 @@ import {
   User,
   RefreshCw
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, getCurrentUserId } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -43,15 +43,6 @@ interface QuestionTypeStat {
   bgColor: string;
 }
 
-// 用户错题信息
-interface UserWrongQuestion {
-  questionId: string;
-  wrongCount: number;
-  correctCount: number;
-  streak: number;
-  lastWrongAt: number | null;
-}
-
 export default function WrongBookPage() {
   const [selectedType, setSelectedType] = useState<QuestionType | 'all'>('all');
   const [reviewMode, setReviewMode] = useState<'forgot' | 'byType' | 'all'>('forgot');
@@ -63,9 +54,9 @@ export default function WrongBookPage() {
   const [isAnswerCorrect, setIsAnswerCorrect] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
-  const [userWrongQuestions, setUserWrongQuestions] = useState<UserWrongQuestion[]>([]);
-  const [isLoadingWrongQuestions, setIsLoadingWrongQuestions] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  // 触发重新渲染的计数器
+  const [refreshKey, setRefreshKey] = useState(0);
   const questionContentRef = useRef<HTMLDivElement>(null);
 
   // 检查认证状态
@@ -76,146 +67,33 @@ export default function WrongBookPage() {
 
   useEffect(() => {
     setMounted(true);
-    // 获取当前登录用户
     const user = getStoredUser();
     setCurrentUser(user);
   }, [checkAuth]);
 
-  // 从云端获取用户错题记录（带本地数据回退）
-  const loadUserWrongQuestions = useCallback(async () => {
-    if (!currentUser) return;
-    
-    setIsLoadingWrongQuestions(true);
-    try {
-      // 先将本地数据同步到云端，确保云端数据最新
-      const userId = getCurrentUserId();
-      if (userId) {
-        const localRecords = recordStore.getAll();
-        const localStreaks = wrongStreakStore.getAll();
-        if (localRecords.length > 0) {
-          await cloudSyncService.saveRecordsAndStreaks(userId, localRecords, localStreaks);
-        }
-      }
+  // 刷新数据
+  const refreshData = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
 
-      const token = localStorage.getItem('quiz_user_token');
-      const response = await fetch('/api/wrong-questions', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          const cloudWrongQuestions = data.wrongQuestions || [];
-          
-          // 如果云端有数据，使用云端数据
-          if (cloudWrongQuestions.length > 0) {
-            setUserWrongQuestions(cloudWrongQuestions);
-          } else {
-            // 云端无数据时，回退到本地数据
-            const localWrongIds = getWrongQuestionIds();
-            if (localWrongIds.length > 0) {
-              const localWrongQuestions = localWrongIds.map(qId => {
-                const records = recordStore.getAll().filter(r => r.questionId === qId);
-                const wrongRecords = records.filter(r => !r.isCorrect);
-                const correctRecords = records.filter(r => r.isCorrect);
-                const streak = wrongStreakStore.get(qId);
-                const lastWrong = wrongRecords.length > 0 ? wrongRecords[wrongRecords.length - 1].timestamp : null;
-                return {
-                  questionId: qId,
-                  wrongCount: wrongRecords.length,
-                  correctCount: correctRecords.length,
-                  streak,
-                  lastWrongAt: lastWrong,
-                };
-              });
-              setUserWrongQuestions(localWrongQuestions);
-            } else {
-              setUserWrongQuestions([]);
-            }
-          }
-        }
-      } else {
-        // API 请求失败时，回退到本地数据
-        const localWrongIds = getWrongQuestionIds();
-        if (localWrongIds.length > 0) {
-          const localWrongQuestions = localWrongIds.map(qId => {
-            const records = recordStore.getAll().filter(r => r.questionId === qId);
-            const wrongRecords = records.filter(r => !r.isCorrect);
-            const correctRecords = records.filter(r => r.isCorrect);
-            const streak = wrongStreakStore.get(qId);
-            const lastWrong = wrongRecords.length > 0 ? wrongRecords[wrongRecords.length - 1].timestamp : null;
-            return {
-              questionId: qId,
-              wrongCount: wrongRecords.length,
-              correctCount: correctRecords.length,
-              streak,
-              lastWrongAt: lastWrong,
-            };
-          });
-          setUserWrongQuestions(localWrongQuestions);
-        } else {
-          setUserWrongQuestions([]);
-        }
-      }
-    } catch (error) {
-      console.error('加载错题失败:', error);
-      // 异常时回退到本地数据
-      const localWrongIds = getWrongQuestionIds();
-      if (localWrongIds.length > 0) {
-        const localWrongQuestions = localWrongIds.map(qId => {
-          const records = recordStore.getAll().filter(r => r.questionId === qId);
-          const wrongRecords = records.filter(r => !r.isCorrect);
-          const correctRecords = records.filter(r => r.isCorrect);
-          const streak = wrongStreakStore.get(qId);
-          const lastWrong = wrongRecords.length > 0 ? wrongRecords[wrongRecords.length - 1].timestamp : null;
-          return {
-            questionId: qId,
-            wrongCount: wrongRecords.length,
-            correctCount: correctRecords.length,
-            streak,
-            lastWrongAt: lastWrong,
-          };
-        });
-        setUserWrongQuestions(localWrongQuestions);
-      } else {
-        setUserWrongQuestions([]);
-      }
-    } finally {
-      setIsLoadingWrongQuestions(false);
-    }
-  }, [currentUser]);
-
-  // 用户登录后加载错题
-  useEffect(() => {
-    if (currentUser && mounted) {
-      loadUserWrongQuestions();
-    } else {
-      setUserWrongQuestions([]);
-    }
-  }, [currentUser, mounted, loadUserWrongQuestions]);
-
-  // 从云端数据获取错题列表
+  // 获取错题列表（直接从本地存储获取，与首页 getWrongQuestionIds 一致）
   const wrongQuestions = useMemo(() => {
-    // 从云端获取的错题中查找对应的题目详情
+    // 依赖 refreshKey 触发重新计算
+    const _rk = refreshKey;
+    void _rk;
+    const wrongIds = getWrongQuestionIds();
     const allQuestions = questionStore.getAll();
-    return userWrongQuestions
-      .map(wq => allQuestions.find(q => q.id === wq.questionId))
+    return wrongIds
+      .map(id => allQuestions.find(q => q.id === id))
       .filter((q): q is Question => q !== undefined);
-  }, [userWrongQuestions]);
-
-  // 获取错题数量（从云端）
-  const wrongQuestionIds = useMemo(() => {
-    return userWrongQuestions.map(wq => wq.questionId);
-  }, [userWrongQuestions]);
+  }, [refreshKey]);
 
   // 按题型分组统计
   const typeStats = useMemo((): QuestionTypeStat[] => {
     const stats: Record<string, QuestionTypeStat> = {
       'single': { type: 'single', label: '单选题', count: 0, color: 'bg-indigo-500', bgColor: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
       'multiple': { type: 'multiple', label: '多选题', count: 0, color: 'bg-purple-500', bgColor: 'bg-purple-50 border-purple-200 text-purple-700' },
-      'true-false': { type: 'true-false', label: '判断题', count: 0, color: 'bg-cyan-500', bgColor: 'bg-cyan-50 border-cyan-200 text-cyan-700' },
+      'true-false': { type: 'true-false', label: '判断题', count: 0, color: 'bg-cyan-500', bgColor: 'bg-cyan-50 border-cyan-200 text-purple-700' },
       'fill-blank': { type: 'fill-blank', label: '填空题', count: 0, color: 'bg-teal-500', bgColor: 'bg-teal-50 border-teal-200 text-teal-700' },
       'comprehensive': { type: 'comprehensive', label: '综合题', count: 0, color: 'bg-rose-500', bgColor: 'bg-rose-50 border-rose-200 text-rose-700' },
     };
@@ -364,8 +242,9 @@ export default function WrongBookPage() {
       setIsAnswerCorrect(false);
     } else {
       setIsReviewing(false);
+      refreshData();
     }
-  }, [reviewIndex, reviewQuestions.length]);
+  }, [reviewIndex, reviewQuestions.length, refreshData]);
 
   // 上一题
   const handlePrev = useCallback(() => {
@@ -382,8 +261,8 @@ export default function WrongBookPage() {
     const records = recordStore.getAll().filter(r => !(r.questionId === questionId && !r.isCorrect));
     recordStore.save(records);
     wrongStreakStore.remove(questionId);
-    window.location.reload();
-  }, []);
+    refreshData();
+  }, [refreshData]);
 
   // 获取选项字母
   const getOptionLabel = (index: number) => String.fromCharCode(65 + index);
@@ -452,7 +331,7 @@ export default function WrongBookPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsReviewing(false)}
+                onClick={() => { setIsReviewing(false); refreshData(); }}
                 className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -ml-2"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
@@ -574,7 +453,6 @@ export default function WrongBookPage() {
                         optionStyle = 'bg-emerald-50 border-emerald-400';
                       }
                       
-                      // 多选题处理逻辑
                       const handleOptionClick = () => {
                         if (showExplanation) return;
                         if (isMulti) {
@@ -739,7 +617,7 @@ export default function WrongBookPage() {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-gray-800">错题本</h1>
-                  {mounted && currentUser && wrongQuestions.length > 0 ? (
+                  {mounted && wrongQuestions.length > 0 ? (
                     <p className="text-xs text-orange-500 font-medium">{wrongQuestions.length} 道错题待复习</p>
                   ) : (
                     <p className="text-xs text-gray-400">巩固薄弱知识点</p>
@@ -783,17 +661,8 @@ export default function WrongBookPage() {
           </div>
         )}
         
-        {/* 加载中 */}
-        {currentUser && isLoadingWrongQuestions && (
-          <div className="flex items-center justify-center py-16">
-            <RefreshCw className="w-6 h-6 animate-spin text-indigo-500 mr-2" />
-            <span className="text-slate-500">加载错题中...</span>
-          </div>
-        )}
-        
-        {/* 错题列表 - 仅登录用户可见 */}
-        {currentUser && !isLoadingWrongQuestions && userWrongQuestions.length === 0 && (
-          /* 空状态 */
+        {/* 登录但无错题 */}
+        {currentUser && mounted && wrongQuestions.length === 0 && (
           <div className="text-center py-16">
             <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
               <Check className="w-10 h-10 text-white" />
@@ -808,21 +677,9 @@ export default function WrongBookPage() {
           </div>
         )}
         
-        {currentUser && !isLoadingWrongQuestions && userWrongQuestions.length > 0 && (
+        {/* 有错题 */}
+        {currentUser && mounted && wrongQuestions.length > 0 && (
           <div className="space-y-4">
-            {/* 刷新按钮 */}
-            <div className="flex justify-end">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => loadUserWrongQuestions()}
-                className="text-slate-500"
-              >
-                <RefreshCw className="w-4 h-4 mr-1" />
-                刷新
-              </Button>
-            </div>
-            
             {/* 统计概览 */}
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -833,12 +690,12 @@ export default function WrongBookPage() {
               </h3>
               <div className="flex gap-4 text-center">
                 <div className="flex-1 bg-red-50 rounded-xl p-3">
-                  <p className="text-2xl font-bold text-red-600">{userWrongQuestions.length}</p>
+                  <p className="text-2xl font-bold text-red-600">{wrongQuestions.length}</p>
                   <p className="text-xs text-red-400">错题数量</p>
                 </div>
                 <div className="flex-1 bg-emerald-50 rounded-xl p-3">
                   <p className="text-2xl font-bold text-emerald-600">
-                    {userWrongQuestions.filter(q => q.streak >= 2).length}
+                    {wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 2).length}
                   </p>
                   <p className="text-xs text-emerald-400">即将掌握</p>
                 </div>
@@ -849,25 +706,72 @@ export default function WrongBookPage() {
             <div className="bg-amber-50 rounded-xl p-3 text-sm text-amber-700">
               <p>错题来自您的练习记录，连续答对3次后将从错题本中移除</p>
             </div>
-            
-            {/* 题型分布 */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Puzzle className="w-3.5 h-3.5 text-purple-500" />
+
+            {/* 题型筛选 */}
+            {typeStats.length > 1 && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
+                    <Filter className="w-3.5 h-3.5 text-indigo-500" />
+                  </div>
+                  题型筛选
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedType('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      selectedType === 'all' 
+                        ? 'bg-indigo-500 text-white' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    全部 ({wrongQuestions.length})
+                  </button>
+                  {typeStats.map(stat => (
+                    <button
+                      key={stat.type}
+                      onClick={() => setSelectedType(stat.type)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        selectedType === stat.type 
+                          ? `${stat.color} text-white` 
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {stat.label} ({stat.count})
+                    </button>
+                  ))}
                 </div>
-                错题列表（{userWrongQuestions.length} 道）
-              </h3>
+              </div>
+            )}
+            
+            {/* 错题列表 */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-rose-100 rounded-lg flex items-center justify-center">
+                    <BookOpen className="w-3.5 h-3.5 text-rose-500" />
+                  </div>
+                  错题列表（{filteredQuestions.length} 道）
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startReview(selectedType)}
+                  disabled={filteredQuestions.length === 0}
+                  className="rounded-xl gap-1"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  开始复习
+                </Button>
+              </div>
               <div className="space-y-2">
-                {userWrongQuestions.map((wq, index) => {
-                  const question = questionStore.getAll().find(q => q.id === wq.questionId);
-                  if (!question) return null;
-                  
+                {filteredQuestions.map((question, index) => {
                   const typeStyle = getTypeStyle(question.type);
+                  const wrongInfo = getWrongInfo(question.id);
                   
                   return (
                     <div 
-                      key={wq.questionId}
+                      key={question.id}
                       className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
                     >
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold ${typeStyle.bg}`}>
@@ -882,11 +786,11 @@ export default function WrongBookPage() {
                             {typeStyle.label}
                           </span>
                           <span className="text-xs text-slate-400">
-                            错 {wq.wrongCount} 次
+                            错 {wrongInfo.wrongCount} 次
                           </span>
-                          {wq.streak > 0 && (
+                          {wrongInfo.streak > 0 && (
                             <span className="text-xs text-emerald-500">
-                              已连续答对 {wq.streak} 次
+                              已连续答对 {wrongInfo.streak} 次
                             </span>
                           )}
                         </div>

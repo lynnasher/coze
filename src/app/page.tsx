@@ -38,7 +38,7 @@ import {
   Flame,
   Calendar
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -122,56 +122,11 @@ export default function QuizApp() {
     created_at?: string;
   }>>([]);
   
-  // 云端错题数量状态
-  const [cloudWrongCount, setCloudWrongCount] = useState<number | null>(null);
-  
-  // 从云端获取错题数量（带本地回退）
-  const fetchCloudWrongCount = useCallback(async () => {
-    const user = getStoredUser();
-    if (!user) {
-      setCloudWrongCount(null);
-      return;
-    }
-    
-    try {
-      // 先同步本地数据到云端
-      const userId = user.id;
-      if (userId) {
-        const localRecords = recordStore.getAll();
-        const localStreaks = wrongStreakStore.getAll();
-        if (localRecords.length > 0) {
-          await cloudSyncService.saveRecordsAndStreaks(userId, localRecords, localStreaks);
-        }
-      }
-
-      const token = localStorage.getItem('quiz_user_token');
-      const response = await fetch('/api/wrong-questions', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          const cloudCount = data.wrongQuestions?.length || 0;
-          if (cloudCount > 0) {
-            setCloudWrongCount(cloudCount);
-          } else {
-            // 云端无数据时回退到本地
-            setCloudWrongCount(getWrongQuestionIds().length);
-          }
-        }
-      } else {
-        // 请求失败回退到本地
-        setCloudWrongCount(getWrongQuestionIds().length);
-      }
-    } catch (error) {
-      console.error('获取云端错题数量失败:', error);
-      // 异常回退到本地
-      setCloudWrongCount(getWrongQuestionIds().length);
-    }
-  }, []);
+  // 本地错题数量（直接从本地存储计算，与错题本页面一致）
+  const localWrongCount = useMemo(() => {
+    return getWrongQuestionIds().length;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
   
   // 只使用数据库的题库
   const banks = useMemo(() => {
@@ -290,16 +245,7 @@ export default function QuizApp() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [refreshActivatedCategories, fetchCloudWrongCount]);
-  
-  // 当用户登录时获取云端错题数量
-  useEffect(() => {
-    if (currentUser) {
-      fetchCloudWrongCount();
-    } else {
-      setCloudWrongCount(null);
-    }
-  }, [currentUser, fetchCloudWrongCount]);
+  }, [refreshActivatedCategories]);
 
   // 获取用户激活的分类ID列表
   // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
@@ -668,7 +614,7 @@ export default function QuizApp() {
                 {/* 数据统计网格 */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-3 text-white text-center">
-                    <p className="text-xl font-bold">{mounted ? (cloudWrongCount !== null ? cloudWrongCount : stats.wrongQuestionIds.length) : '-'}</p>
+                    <p className="text-xl font-bold">{mounted ? localWrongCount : '-'}</p>
                     <p className="text-xs opacity-80">错题</p>
                   </div>
                   <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
@@ -689,7 +635,7 @@ export default function QuizApp() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-800">错题本</p>
-                      <p className="text-xs text-gray-500">{mounted ? (cloudWrongCount !== null ? cloudWrongCount : stats.wrongQuestionIds.length) : '-'} 道待复习</p>
+                      <p className="text-xs text-gray-500">{mounted ? localWrongCount : '-'} 道待复习</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </div>
@@ -1183,7 +1129,7 @@ export default function QuizApp() {
                           </div>
                           <div className="flex-1 text-white">
                             <p className="text-lg font-bold">错题本</p>
-                            <p className="text-sm opacity-80">{mounted ? (cloudWrongCount !== null ? cloudWrongCount : getWrongQuestionIds().length) : '-'} 道待复习</p>
+                            <p className="text-sm opacity-80">{mounted ? localWrongCount : '-'} 道待复习</p>
                           </div>
                           <ChevronRight className="w-6 h-6 text-white/60" />
                         </div>

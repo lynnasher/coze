@@ -277,7 +277,7 @@ export function useQuiz() {
   const submitAnswer = useCallback(() => {
     let syncToCloud = false;
     let syncUserId: string | null = null;
-    let syncRecords: any[] = [];
+    let syncRecords: PracticeRecord[] = [];
     let syncStreaks: Record<string, number> = {};
     
     setQuizState(prev => {
