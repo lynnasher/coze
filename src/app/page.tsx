@@ -653,21 +653,42 @@ export default function QuizApp() {
 
           {/* 题库浏览页面 */}
           <TabsContent value="library">
-            {/* 标题区域 - 极简卡片风格 */}
-            <div className="mb-5">
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+            {/* 未登录提示 */}
+            {!currentUser && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-amber-100 mb-5">
                 <div className="flex items-center gap-3">
-                  {/* 渐变图标背景 */}
-                  <div className="w-11 h-11 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-100">
-                    <Library className="w-5 h-5 text-white" />
+                  <div className="w-10 h-10 bg-white/80 rounded-xl flex items-center justify-center shadow-sm">
+                    <User className="w-5 h-5 text-amber-500" />
                   </div>
-                  <div>
-                    <h2 className="text-base font-bold text-gray-800">题库浏览</h2>
-                    <p className="text-xs text-gray-400">选择分类开始练习</p>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-800">登录后查看已激活的题库</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">请先登录以查看和练习题库</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="rounded-xl bg-amber-500 hover:bg-amber-600"
+                    onClick={() => setAuthModalOpen(true)}
+                  >
+                    登录
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* 已登录但无激活分类提示 */}
+            {currentUser && (currentUser.activatedCategories?.length === 0) && (
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-4 shadow-sm border border-red-100 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/80 rounded-xl flex items-center justify-center shadow-sm">
+                    <BookOpen className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-800">暂无激活的题库分类</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">请联系管理员获取激活码来解锁题库</p>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* 题库列表 - 按分类分组 - 清新卡片风格 */}
             <div className="space-y-3">
@@ -713,43 +734,36 @@ export default function QuizApp() {
                   
                   {/* 按分类显示题库 - 支持二级分类，点击展开 */}
                   {(() => {
-                    // 获取所有有一级分类的题库
-                    const categorizedBanks = banks.filter(b => b.categoryId);
-                    if (categorizedBanks.length === 0) return null;
+                    // 非登录用户不显示任何题库
+                    if (!currentUser) return null;
                     
-                    // 获取所有涉及的顶级分类
-                    const topCategoryIds = new Set<string>();
-                    categorizedBanks.forEach(bank => {
-                      const cat = categories.find(c => c.id === bank.categoryId);
-                      if (cat) {
-                        if (cat.parentId) {
-                          topCategoryIds.add(cat.parentId);
-                        } else {
-                          topCategoryIds.add(cat.id);
-                        }
-                      }
-                    });
+                    // 获取用户激活的分类ID列表
+                    const activatedCategoryIds = currentUser.activatedCategories || [];
                     
-                    const visibleCategories = categories.filter(c => 
-                      topCategoryIds.has(c.id) || (c.parentId && topCategoryIds.has(c.parentId))
+                    // 获取所有用户激活的顶级分类
+                    const activatedCategories = categories.filter(c => 
+                      !c.parentId && activatedCategoryIds.includes(c.id)
                     );
                     
-                    if (visibleCategories.length === 0) return null;
+                    if (activatedCategories.length === 0) return null;
                     
                     return (
                       <>
-                        {visibleCategories.map(category => {
+                        {activatedCategories.map(category => {
                           // 获取该分类下的所有直接子分类
                           const childCategories = categories.filter(c => 
-                            c.parentId === category.id
+                            c.parentId === category.id && activatedCategoryIds.includes(c.id)
                           );
                           
-                          // 获取该分类的直接题库
-                          const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                          // 获取该分类的直接题库（只有用户激活的分类才显示）
+                          const categoryBanks = banks.filter(b => 
+                            b.categoryId === category.id
+                          );
                           
                           // 获取所有子分类的题库
-                          const childCategoryBanks = childCategories.flatMap(child => 
-                            banks.filter(b => b.categoryId === child.id)
+                          const childCategoryIds = childCategories.map(c => c.id);
+                          const childCategoryBanks = banks.filter(b => 
+                            childCategoryIds.includes(b.categoryId || '')
                           );
                           
                           // 如果该分类和子分类都没有题库，则不显示
