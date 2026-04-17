@@ -93,6 +93,9 @@ export default function QuizApp() {
   // 客户端挂载状态（防止 hydration mismatch）
   const [mounted, setMounted] = useState(false);
   
+  // 跟踪组件是否已挂载
+  const isMountedRef = useRef(true);
+  
   // 最近练习记录状态
   const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   
@@ -170,9 +173,14 @@ export default function QuizApp() {
 
   // 初始化加载（只在首次渲染时执行）
   useEffect(() => {
+    isMountedRef.current = true;
     loadAllData();
     // 确保组件在客户端挂载
     setMounted(true);
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [loadAllData]);
 
   // 刷新用户激活的分类（检查过期时间）
@@ -208,6 +216,8 @@ export default function QuizApp() {
   // 监听 localStorage 变化，以便在用户登录/登出后刷新状态
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      // 检查组件是否已挂载
+      if (!isMountedRef.current) return;
       if (e.key === 'quiz_user_data' || e.key === 'quiz_user_token') {
         const user = getCurrentUser();
         setCurrentUser(user);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,6 +30,17 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // 跟踪组件是否已挂载
+  const isMountedRef = useRef(true);
+
+  // 组件挂载/卸载跟踪
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 倒计时效果
   useEffect(() => {
@@ -97,9 +108,9 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           // 通知其他组件用户状态变化
           window.dispatchEvent(new Event('user-auth-change'));
           
-          // 登录成功后同步云端数据
+          // 登录成功后同步云端数据（检查组件是否已挂载）
           cloudSyncService.syncOnLogin().then(success => {
-            if (success) {
+            if (success && isMountedRef.current) {
               // 数据同步成功
               // 通知页面刷新数据
               window.dispatchEvent(new Event('storage'));

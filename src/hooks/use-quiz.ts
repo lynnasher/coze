@@ -18,6 +18,15 @@ export function useQuiz() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
   const preloadIndexRef = useRef(-1); // 记录已预加载到的位置
+  const isMountedRef = useRef(true); // 跟踪组件是否已挂载
+
+  // 组件挂载/卸载跟踪
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // 预加载题目（当 currentIndex 变化时，提前加载后续题目）
   useEffect(() => {
@@ -439,17 +448,19 @@ export function useQuiz() {
       showResult: true,
     }));
     
-    // 交卷后同步数据到云端
-    const userId = getCurrentUserId();
-    if (userId) {
-      const records = recordStore.getAll();
-      const streaks = wrongStreakStore.getAll();
-      cloudSyncService.saveRecords(userId, records);
-      cloudSyncService.saveStreaks(userId, streaks);
-      if (quizState.bankId) {
-        const recent = recentPracticeStore.getByBankId(quizState.bankId);
-        if (recent) {
-          cloudSyncService.saveRecentPractice(userId, recent);
+    // 交卷后同步数据到云端（检查组件是否已挂载）
+    if (isMountedRef.current) {
+      const userId = getCurrentUserId();
+      if (userId) {
+        const records = recordStore.getAll();
+        const streaks = wrongStreakStore.getAll();
+        cloudSyncService.saveRecords(userId, records);
+        cloudSyncService.saveStreaks(userId, streaks);
+        if (quizState.bankId) {
+          const recent = recentPracticeStore.getByBankId(quizState.bankId);
+          if (recent) {
+            cloudSyncService.saveRecentPractice(userId, recent);
+          }
         }
       }
     }
