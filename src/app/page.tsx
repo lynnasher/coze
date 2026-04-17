@@ -1443,56 +1443,46 @@ function PracticeView({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 顶部导航栏 - 紧凑设计 */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20">
-        <div className="max-w-[970px] mx-auto">
-          <div className="flex items-center justify-between">
-            {/* 左侧：返回按钮 */}
+      {/* 简洁顶部栏 - 无LOGO */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2.5 sticky top-0 z-20">
+        <div className="max-w-[970px] mx-auto flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (confirm('确定要退出练习吗？')) {
+                onExit();
+              }
+            }}
+            className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-8 px-2 -ml-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            <span className="text-sm">退出</span>
+          </Button>
+          
+          <span className="text-sm font-medium text-slate-600">
+            {quizState.currentIndex + 1} / {quizState.questions.length}
+          </span>
+          
+          <div className="flex items-center gap-0.5">
             <Button
-              variant="ghost"
               size="sm"
-              onClick={() => {
-                if (confirm('确定要退出练习吗？')) {
-                  onExit();
-                }
-              }}
-              className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9 -ml-2"
+              variant="ghost"
+              onClick={() => handleFinishAndExit()}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg h-8 w-8 p-0"
+              title="交卷"
             >
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              <span className="text-sm font-medium">返回</span>
+              <FileCheck className="w-4 h-4" />
             </Button>
-            
-            {/* 中间：题号 */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">
-                {quizState.currentIndex + 1} / {quizState.questions.length}
-              </span>
-            </div>
-            
-            {/* 右侧：交卷 + 答题卡 */}
-            <div className="flex items-center gap-1">
-              {/* 交卷按钮 */}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleFinishAndExit()}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg px-2 h-9"
-                title="交卷"
-              >
-                <FileCheck className="w-4 h-4" />
-              </Button>
-              
-              {/* 答题卡 */}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowAnswerSheet(true)}
-                className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg px-2 h-9"
-                title="答题卡"
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowAnswerSheet(true)}
+              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-8 w-8 p-0"
+              title="答题卡"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </div>
