@@ -434,7 +434,7 @@ export default function WrongBookPage() {
           </div>
         </div>
 
-        {/* 底部固定操作栏 - 与首页一致 */}
+        {/* 底部固定操作栏 */}
         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
           <div className="max-w-[970px] mx-auto">
             <div className="flex items-center justify-between gap-3">
@@ -449,25 +449,30 @@ export default function WrongBookPage() {
                 <span className="ml-1 text-sm font-medium">上一题</span>
               </Button>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  handleSubmitAnswer();
-                  setTimeout(() => {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                  }, 100);
-                }}
-                disabled={localAnswer === undefined || (Array.isArray(localAnswer) && localAnswer.length === 0)}
-                className="h-11 px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span className="ml-1.5 text-sm">查看答案</span>
-              </Button>
+              {!showExplanation ? (
+                <Button
+                  onClick={handleSubmitAnswer}
+                  disabled={localAnswer === undefined || (Array.isArray(localAnswer) && localAnswer.length === 0)}
+                  className="h-11 px-6 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold shadow-sm"
+                >
+                  <span className="text-sm">提交</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => markAsMastered(currentReviewQuestion.id)}
+                  className="h-11 px-6 rounded-xl border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold shadow-sm"
+                >
+                  <Check className="w-4 h-4" />
+                  <span className="ml-1.5 text-sm">已掌握</span>
+                </Button>
+              )}
 
               <Button
                 size="sm"
                 onClick={handleNext}
-                className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
+                disabled={!showExplanation}
+                className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl disabled:opacity-50"
               >
                 <span className="text-sm">{reviewIndex < reviewQuestions.length - 1 ? '下一题' : '完成'}</span>
                 <ChevronRight className="w-4 h-4 ml-1" />
