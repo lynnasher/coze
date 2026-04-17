@@ -480,8 +480,21 @@ export default function QuizApp() {
       <header className="bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[970px] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* 产品标识 */}
-            <div className="flex items-center gap-2">
+            {/* 产品标识 - 可点击返回首页 */}
+            <button 
+              onClick={() => {
+                // 如果正在练习，先结束练习
+                if (hasStarted) {
+                  finishQuiz();
+                  resetQuiz();
+                  setHasStarted(false);
+                  setPracticeBankId(null);
+                }
+                // 切换到首页标签
+                setActiveTab('practice');
+              }}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+            >
               <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
@@ -489,7 +502,7 @@ export default function QuizApp() {
                 <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
                 <p className="text-xs text-gray-400">{questions.length} 道题目</p>
               </div>
-            </div>
+            </button>
             
             {/* 用户信息 */}
             <div className="flex items-center gap-2">
