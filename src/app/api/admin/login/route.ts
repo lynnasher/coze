@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { checkLoginRateLimit, getClientIP } from '@/lib/admin-auth';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -30,6 +31,17 @@ function generateToken(user: { id: string; username: string }): string {
 
 export async function POST(request: Request) {
   try {
+    // 检查登录频率限制
+    const clientIP = getClientIP(request);
+    const rateLimit = checkLoginRateLimit(clientIP);
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: '登录尝试次数过多，请15分钟后再试' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { username, password } = body;
 
@@ -48,21 +60,15 @@ export async function POST(request: Request) {
       .eq('username', username)
       .single();
 
-    console.log('[AdminLogin] Query result:', { admin, error });
-
     if (error || !admin) {
-      console.log('[AdminLogin] User not found or error:', error);
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }
       );
     }
 
-    console.log('[AdminLogin] Found admin:', admin.username, 'password:', admin.password);
-
     // 验证密码
     if (admin.password !== password) {
-      console.log('[AdminLogin] Password mismatch:', { input: password, stored: admin.password });
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }

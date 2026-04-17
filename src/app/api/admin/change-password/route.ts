@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -19,6 +20,12 @@ function validatePasswordStrength(password: string): { valid: boolean; message?:
 }
 
 export async function POST(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const body = await request.json();
     const { username, oldPassword, newPassword } = body;

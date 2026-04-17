@@ -1,30 +1,19 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
+import { requireAdminAuth } from '@/lib/api-auth';
 
-// 验证管理员 token
-function verifyToken(request: Request): boolean {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return false;
+// GET - 获取题库详情（需要认证）
+export async function GET(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
   }
 
   try {
-    const token = authHeader.substring(7);
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-    return payload.exp > Date.now();
-  } catch {
-    return false;
-  }
-}
-
-// GET - 获取题库详情
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const bank = await bankService.getBankById(id);
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    const bank = await bankService.getBankById(id!);
     
     if (!bank) {
       return NextResponse.json({ error: '题库不存在' }, { status: 404 });
@@ -38,25 +27,25 @@ export async function GET(
 }
 
 // PUT - 更新题库
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    if (!verifyToken(request)) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
+export async function PUT(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
 
-    const { id } = await params;
+  try {
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
     const body = await request.json();
     const { name, categoryId, description } = body;
 
-    const bank = await bankService.getBankById(id);
+    const bank = await bankService.getBankById(id!);
     if (!bank) {
       return NextResponse.json({ error: '题库不存在' }, { status: 404 });
     }
 
-    const updatedBank = await bankService.updateBank(id, {
+    const updatedBank = await bankService.updateBank(id!, {
       name,
       categoryId,
       description,
@@ -70,23 +59,23 @@ export async function PUT(
 }
 
 // DELETE - 删除题库
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    if (!verifyToken(request)) {
-      return NextResponse.json({ error: '未授权' }, { status: 401 });
-    }
+export async function DELETE(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
 
-    const { id } = await params;
-    const bank = await bankService.getBankById(id);
+  try {
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    const bank = await bankService.getBankById(id!);
     
     if (!bank) {
       return NextResponse.json({ error: '题库不存在' }, { status: 404 });
     }
 
-    await bankService.deleteBank(id);
+    await bankService.deleteBank(id!);
 
     return NextResponse.json({ success: true });
   } catch (error) {

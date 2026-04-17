@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { userService } from '@/lib/services/user-service';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // 更新用户状态
 export async function PUT(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const body = await request.json();
     const { userId, action, value } = body;
@@ -42,6 +49,12 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const { id: userId } = await params;
 

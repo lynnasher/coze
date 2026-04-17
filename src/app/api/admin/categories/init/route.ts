@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // 默认分类数据
 const defaultCategories = [
@@ -10,8 +11,14 @@ const defaultCategories = [
   { name: '保险从业', color: 'purple', order: 4 },
 ];
 
-// 初始化分类（管理员接口）
+// 初始化分类（管理员接口，需要认证）
 export async function POST(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const supabase = getSupabaseClient();
     

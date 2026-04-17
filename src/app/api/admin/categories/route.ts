@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 interface CategoryRequest {
   id?: string;
@@ -9,7 +10,8 @@ interface CategoryRequest {
   parentId?: string;
 }
 
-export async function GET(request: NextRequest) {
+// 获取分类列表（公开接口，供前台和后台使用）
+export async function GET() {
   try {
     const supabase = getSupabaseClient();
     
@@ -51,8 +53,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 创建分类
+// 创建分类（需要管理员认证）
 export async function POST(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const body: CategoryRequest = await request.json();
     const { name, color = 'blue', order = 0, parentId } = body;
@@ -98,8 +106,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 批量创建分类（用于初始化）
+// 批量创建分类（用于初始化）（需要管理员认证）
 export async function PUT(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const body: { categories: CategoryRequest[] } = await request.json();
     const { categories: newCategories } = body;

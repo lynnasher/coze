@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
 import { S3Storage } from 'coze-coding-dev-sdk';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // 初始化存储客户端
 const getStorage = () => {
@@ -313,8 +314,14 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// POST - 导入题库
+// POST - 导入题库（需要管理员认证）
 export async function POST(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

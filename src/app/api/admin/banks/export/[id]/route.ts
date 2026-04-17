@@ -1,13 +1,20 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, convertInchesToTwip } from 'docx';
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // Word导出API - 按银行题库标准格式导出
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
-    const { id: bankId } = await params;
+    const url = new URL(request.url);
+    const segments = url.pathname.split('/').filter(Boolean);
+    // segments: ['api', 'admin', 'banks', 'export', '{id}']
+    const bankId = segments[segments.length - 1];
     console.log('[Word Export] Starting export for bank:', bankId);
     
     const adminClient = getSupabaseAdminClient();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bankService, Question as BankQuestion } from '@/lib/services/bank-service';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { convertQuestionImageKeys } from '@/lib/image-utils';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
 
@@ -19,12 +20,16 @@ interface Question {
 }
 
 // GET - 获取题库的所有题目
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
-    const { id } = await params;
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').filter(Boolean)[url.pathname.split('/').filter(Boolean).length - 2];
     const questions = await bankService.getQuestionsByBankId(id);
     
     // 将图片 key 转换为签名 URL
@@ -48,12 +53,17 @@ export async function GET(
 }
 
 // POST - 添加题目到题库
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
-    const { id: bankId } = await params;
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').filter(Boolean)[url.pathname.split('/').filter(Boolean).length - 2];
+    const bankId = id;
     const body = await request.json();
     const question: Question = body.question;
 

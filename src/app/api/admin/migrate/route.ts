@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
+import { requireAdminAuth } from '@/lib/api-auth';
 
-// 迁移已有的题库数据到数据库
+// 迁移已有的题库数据到数据库（需要管理员认证）
 export async function POST(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const body = await request.json();
     const { banks, questions } = body;

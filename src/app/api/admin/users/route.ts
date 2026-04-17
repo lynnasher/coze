@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server';
 import { userService } from '@/lib/services/user-service';
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 // 获取所有用户（包含激活码信息）
-export async function GET() {
+export async function GET(request: Request) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
     const users = await userService.getAllUsers();
     const client = getSupabaseAdminClient();

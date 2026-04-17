@@ -198,6 +198,29 @@ export const userService = {
     const { error } = await client.from('users').delete().eq('id', userId);
     if (error) throw new Error(`删除用户失败: ${error.message}`);
   },
+
+  // 获取用户的激活记录
+  async getUserActivationCodes(userId: string): Promise<Array<{
+    id: string;
+    category_id: string;
+    category_name: string;
+    activated_at: string;
+    expires_at: string | null;
+  }>> {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('user_activations')
+      .select('*')
+      .eq('user_id', userId);
+    if (error) throw new Error(`查询激活记录失败: ${error.message}`);
+    return (data || []) as Array<{
+      id: string;
+      category_id: string;
+      category_name: string;
+      activated_at: string;
+      expires_at: string | null;
+    }>;
+  },
 };
 
 // 初始化默认管理员

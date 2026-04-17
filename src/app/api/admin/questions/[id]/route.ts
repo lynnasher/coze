@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 interface QuestionUpdate {
   type?: string;
@@ -13,13 +14,17 @@ interface QuestionUpdate {
   case_context?: string;
 }
 
-// 更新题目
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// 更新题目（需要管理员认证）
+export async function PUT(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
-    const { id } = await params;
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').filter(Boolean).pop()!;
     const body: QuestionUpdate = await request.json();
     
     const supabase = getSupabaseClient();
@@ -53,13 +58,17 @@ export async function PUT(
   }
 }
 
-// 删除题目（软删除）
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// 删除题目（软删除，需要管理员认证）
+export async function DELETE(request: NextRequest) {
+  // 验证管理员认证
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) {
+    return auth.response;
+  }
+
   try {
-    const { id } = await params;
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').filter(Boolean).pop()!;
     
     const supabase = getSupabaseClient();
     
