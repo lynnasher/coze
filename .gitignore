@@ -17,6 +17,9 @@ coverage/
 *.lcov
 .nyc_output
 
+# Sensitive data
+data/
+
 # Environment variables
 .env
 .env.local

@@ -1,18 +1,39 @@
 import { NextResponse } from 'next/server';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// 管理员凭据存储（实际生产环境应使用数据库和加密存储）
-interface AdminCredential {
-  password: string;
-  isDefaultPassword: boolean;
-  lastChanged?: number;
+const CONFIG_PATH = path.join(process.cwd(), 'data', 'admin-config.json');
+
+// 读取管理员配置
+function getAdminConfig() {
+  try {
+    const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    // 配置文件不存在或读取失败，使用环境变量中的默认值
+    return {
+      username: process.env.ADMIN_USERNAME || 'admin',
+      password: process.env.ADMIN_PASSWORD || 'admin123',
+      isDefaultPassword: true,
+      lastChanged: null,
+    };
+  }
 }
 
-const adminCredentials: Record<string, AdminCredential> = {
-  admin: {
-    password: 'admin123',
-    isDefaultPassword: true, // 标记为默认密码，首次登录需强制修改
-  },
-};
+// 保存管理员配置
+function saveAdminConfig(config: any): boolean {
+  try {
+    const dir = path.dirname(CONFIG_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+    return true;
+  } catch (error) {
+    console.error('保存管理员配置失败:', error);
+    return false;
+  }
+}
 
 // 生成 token
 function generateToken(user: { username: string }): string {
@@ -52,10 +73,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = adminCredentials[username];
+    const admin = getAdminConfig();
 
-    // 验证凭据
-    if (!admin || admin.password !== password) {
+    // 验证用户名
+    if (admin.username !== username) {
+      return NextResponse.json(
+        { error: '用户名或密码错误' },
+        { status: 401 }
+      );
+    }
+
+    // 验证密码
+    if (admin.password !== password) {
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }
@@ -74,6 +103,7 @@ export async function POST(request: Request) {
       needChangePassword,
     });
   } catch (error) {
+    console.error('登录错误:', error);
     return NextResponse.json(
       { error: '服务器错误' },
       { status: 500 }
@@ -81,5 +111,5 @@ export async function POST(request: Request) {
   }
 }
 
-// 导出修改密码的方法供其他路由使用
-export { adminCredentials, validatePasswordStrength };
+// 导出方法供其他路由使用
+export { getAdminConfig, saveAdminConfig, validatePasswordStrength };

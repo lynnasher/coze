@@ -8,6 +8,9 @@ cd "${COZE_WORKSPACE_PATH}"
 echo "Installing dependencies..."
 pnpm install --prefer-frozen-lockfile --prefer-offline --loglevel debug --reporter=append-only
 
+echo "Creating data directory..."
+mkdir -p data
+
 echo "Building the Next.js project..."
 pnpm next build
 
