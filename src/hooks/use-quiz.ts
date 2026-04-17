@@ -342,10 +342,9 @@ export function useQuiz() {
       };
     });
     
-    // 实时同步到云端（每次答题后立即同步）
+    // 实时同步到云端（每次答题后立即同步，合并请求避免竞态覆盖）
     if (syncToCloud && syncUserId) {
-      cloudSyncService.saveRecords(syncUserId, syncRecords);
-      cloudSyncService.saveStreaks(syncUserId, syncStreaks);
+      cloudSyncService.saveRecordsAndStreaks(syncUserId, syncRecords, syncStreaks);
     }
   }, []);
 

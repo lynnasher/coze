@@ -28,7 +28,7 @@ import {
   User,
   RefreshCw
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, getCurrentUserId } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -49,7 +49,7 @@ interface UserWrongQuestion {
   wrongCount: number;
   correctCount: number;
   streak: number;
-  lastWrongAt: string | null;
+  lastWrongAt: number | null;
 }
 
 export default function WrongBookPage() {
@@ -81,12 +81,22 @@ export default function WrongBookPage() {
     setCurrentUser(user);
   }, [checkAuth]);
 
-  // 从云端获取用户错题记录
+  // 从云端获取用户错题记录（带本地数据回退）
   const loadUserWrongQuestions = useCallback(async () => {
     if (!currentUser) return;
     
     setIsLoadingWrongQuestions(true);
     try {
+      // 先将本地数据同步到云端，确保云端数据最新
+      const userId = getCurrentUserId();
+      if (userId) {
+        const localRecords = recordStore.getAll();
+        const localStreaks = wrongStreakStore.getAll();
+        if (localRecords.length > 0) {
+          await cloudSyncService.saveRecordsAndStreaks(userId, localRecords, localStreaks);
+        }
+      }
+
       const token = localStorage.getItem('quiz_user_token');
       const response = await fetch('/api/wrong-questions', {
         headers: {
@@ -97,11 +107,81 @@ export default function WrongBookPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setUserWrongQuestions(data.wrongQuestions || []);
+          const cloudWrongQuestions = data.wrongQuestions || [];
+          
+          // 如果云端有数据，使用云端数据
+          if (cloudWrongQuestions.length > 0) {
+            setUserWrongQuestions(cloudWrongQuestions);
+          } else {
+            // 云端无数据时，回退到本地数据
+            const localWrongIds = getWrongQuestionIds();
+            if (localWrongIds.length > 0) {
+              const localWrongQuestions = localWrongIds.map(qId => {
+                const records = recordStore.getAll().filter(r => r.questionId === qId);
+                const wrongRecords = records.filter(r => !r.isCorrect);
+                const correctRecords = records.filter(r => r.isCorrect);
+                const streak = wrongStreakStore.get(qId);
+                const lastWrong = wrongRecords.length > 0 ? wrongRecords[wrongRecords.length - 1].timestamp : null;
+                return {
+                  questionId: qId,
+                  wrongCount: wrongRecords.length,
+                  correctCount: correctRecords.length,
+                  streak,
+                  lastWrongAt: lastWrong,
+                };
+              });
+              setUserWrongQuestions(localWrongQuestions);
+            } else {
+              setUserWrongQuestions([]);
+            }
+          }
+        }
+      } else {
+        // API 请求失败时，回退到本地数据
+        const localWrongIds = getWrongQuestionIds();
+        if (localWrongIds.length > 0) {
+          const localWrongQuestions = localWrongIds.map(qId => {
+            const records = recordStore.getAll().filter(r => r.questionId === qId);
+            const wrongRecords = records.filter(r => !r.isCorrect);
+            const correctRecords = records.filter(r => r.isCorrect);
+            const streak = wrongStreakStore.get(qId);
+            const lastWrong = wrongRecords.length > 0 ? wrongRecords[wrongRecords.length - 1].timestamp : null;
+            return {
+              questionId: qId,
+              wrongCount: wrongRecords.length,
+              correctCount: correctRecords.length,
+              streak,
+              lastWrongAt: lastWrong,
+            };
+          });
+          setUserWrongQuestions(localWrongQuestions);
+        } else {
+          setUserWrongQuestions([]);
         }
       }
     } catch (error) {
       console.error('加载错题失败:', error);
+      // 异常时回退到本地数据
+      const localWrongIds = getWrongQuestionIds();
+      if (localWrongIds.length > 0) {
+        const localWrongQuestions = localWrongIds.map(qId => {
+          const records = recordStore.getAll().filter(r => r.questionId === qId);
+          const wrongRecords = records.filter(r => !r.isCorrect);
+          const correctRecords = records.filter(r => r.isCorrect);
+          const streak = wrongStreakStore.get(qId);
+          const lastWrong = wrongRecords.length > 0 ? wrongRecords[wrongRecords.length - 1].timestamp : null;
+          return {
+            questionId: qId,
+            wrongCount: wrongRecords.length,
+            correctCount: correctRecords.length,
+            streak,
+            lastWrongAt: lastWrong,
+          };
+        });
+        setUserWrongQuestions(localWrongQuestions);
+      } else {
+        setUserWrongQuestions([]);
+      }
     } finally {
       setIsLoadingWrongQuestions(false);
     }

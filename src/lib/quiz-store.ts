@@ -715,6 +715,20 @@ export const cloudSyncService = {
   // 获取同步状态
   getStatus: (): CloudSyncStatus => ({ ...syncStatus }),
 
+  // 一次性保存练习记录和连续正确次数到云端（合并请求，避免竞态覆盖）
+  async saveRecordsAndStreaks(userId: string, records: PracticeRecord[], streaks: Record<string, number>): Promise<boolean> {
+    try {
+      const response = await authenticatedFetch('/api/user-data', {
+        method: 'POST',
+        body: JSON.stringify({ practiceHistory: records, streakData: streaks }),
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('保存记录到云端失败:', error);
+      return false;
+    }
+  },
+
   // 保存练习记录到云端
   async saveRecords(userId: string, records: PracticeRecord[]): Promise<boolean> {
     try {
@@ -732,18 +746,9 @@ export const cloudSyncService = {
   // 保存错题连续正确次数到云端
   async saveStreaks(userId: string, streaks: Record<string, number>): Promise<boolean> {
     try {
-      // 先获取现有数据
-      const getResponse = await authenticatedFetch('/api/user-data');
-      let existingStreaks: Record<string, number> = {};
-      if (getResponse.ok) {
-        const data = await getResponse.json();
-        existingStreaks = data.data?.streak_data || {};
-      }
-      // 合并数据
-      const mergedStreaks = { ...existingStreaks, ...streaks };
       const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
-        body: JSON.stringify({ streakData: mergedStreaks }),
+        body: JSON.stringify({ streakData: streaks }),
       });
       return response.ok;
     } catch (error) {

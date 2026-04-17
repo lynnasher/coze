@@ -38,7 +38,7 @@ import {
   Flame,
   Calendar
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -125,7 +125,7 @@ export default function QuizApp() {
   // 云端错题数量状态
   const [cloudWrongCount, setCloudWrongCount] = useState<number | null>(null);
   
-  // 从云端获取错题数量
+  // 从云端获取错题数量（带本地回退）
   const fetchCloudWrongCount = useCallback(async () => {
     const user = getStoredUser();
     if (!user) {
@@ -134,6 +134,16 @@ export default function QuizApp() {
     }
     
     try {
+      // 先同步本地数据到云端
+      const userId = user.id;
+      if (userId) {
+        const localRecords = recordStore.getAll();
+        const localStreaks = wrongStreakStore.getAll();
+        if (localRecords.length > 0) {
+          await cloudSyncService.saveRecordsAndStreaks(userId, localRecords, localStreaks);
+        }
+      }
+
       const token = localStorage.getItem('quiz_user_token');
       const response = await fetch('/api/wrong-questions', {
         headers: {
@@ -144,11 +154,22 @@ export default function QuizApp() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setCloudWrongCount(data.wrongQuestions?.length || 0);
+          const cloudCount = data.wrongQuestions?.length || 0;
+          if (cloudCount > 0) {
+            setCloudWrongCount(cloudCount);
+          } else {
+            // 云端无数据时回退到本地
+            setCloudWrongCount(getWrongQuestionIds().length);
+          }
         }
+      } else {
+        // 请求失败回退到本地
+        setCloudWrongCount(getWrongQuestionIds().length);
       }
     } catch (error) {
       console.error('获取云端错题数量失败:', error);
+      // 异常回退到本地
+      setCloudWrongCount(getWrongQuestionIds().length);
     }
   }, []);
   

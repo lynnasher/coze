@@ -78,6 +78,15 @@ export async function POST(request: Request) {
 
     const client = getSupabaseAdminClient();
 
+    // 只构建需要更新的字段（部分更新，避免覆盖未提供的字段）
+    const updateFields: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (practiceHistory !== undefined) updateFields.practice_history = practiceHistory;
+    if (wrongQuestions !== undefined) updateFields.wrong_questions = wrongQuestions;
+    if (recentlyPracticed !== undefined) updateFields.recently_practiced = recentlyPracticed;
+    if (streakData !== undefined) updateFields.streak_data = streakData;
+
     // 检查是否已存在数据
     const { data: existingData } = await client
       .from('user_data')
@@ -86,23 +95,17 @@ export async function POST(request: Request) {
       .single();
 
     if (existingData) {
-      // 更新现有数据
+      // 更新现有数据（只更新提供的字段）
       const { error } = await client
         .from('user_data')
-        .update({
-          practice_history: practiceHistory || [],
-          wrong_questions: wrongQuestions || [],
-          recently_practiced: recentlyPracticed || [],
-          streak_data: streakData || {},
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateFields)
         .eq('user_id', userId);
 
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
     } else {
-      // 创建新数据
+      // 创建新数据（使用完整字段，未提供的用默认值）
       const { error } = await client
         .from('user_data')
         .insert({
