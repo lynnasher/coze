@@ -129,10 +129,14 @@ export const userService = {
     const deviceId = generateDeviceId();
 
     // 更新最后登录时间和设备ID
-    await client.from('users').update({ 
+    const { error: updateError } = await client.from('users').update({ 
       last_login_at: new Date().toISOString(),
       device_id: deviceId 
     }).eq('id', user.id);
+
+    if (updateError) {
+      throw new Error(`更新设备ID失败: ${updateError.message}`);
+    }
 
     // 更新内存中的用户信息
     user.device_id = deviceId;
