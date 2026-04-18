@@ -129,18 +129,10 @@ export const userService = {
     const deviceId = generateDeviceId();
 
     // 更新最后登录时间和设备ID
-    const { error: updateError } = await client.from('users').update({ 
+    await client.from('users').update({ 
       last_login_at: new Date().toISOString(),
       device_id: deviceId 
     }).eq('id', user.id);
-
-    if (updateError) {
-      // 检查是否是 device_id 列不存在的错误
-      if (updateError.message && updateError.message.includes("Could not find the 'device_id' column")) {
-        throw new Error('数据库缺少 device_id 字段，请联系管理员执行数据库迁移');
-      }
-      throw new Error(`更新设备ID失败: ${updateError.message}`);
-    }
 
     // 更新内存中的用户信息
     user.device_id = deviceId;

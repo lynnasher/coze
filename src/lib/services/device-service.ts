@@ -31,7 +31,7 @@ export const deviceService = {
   },
 
   // 验证当前设备是否有效
-  async validateDevice(retryCount = 0): Promise<DeviceValidationResult> {
+  async validateDevice(): Promise<DeviceValidationResult> {
     const user = this.getCurrentUser();
     const deviceId = this.getDeviceId();
 
@@ -49,28 +49,17 @@ export const deviceService = {
       const data = await response.json();
 
       if (response.status === 403 && data.error === 'DEVICE_KICKED') {
-        // 设备被挤下线，但先不重试，直接返回错误让 UI 处理
-        // 清除本地登录状态
+        // 设备被挤下线，清除本地登录状态
         this.clearAuthData();
         return { valid: false, kicked: true, error: data.message || '您的账号已在其他设备登录' };
       }
 
       if (!data.success) {
-        // 如果是服务器错误且未超过重试次数，进行重试
-        if (response.status >= 500 && retryCount < 2) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-          return this.validateDevice(retryCount + 1);
-        }
         return { valid: false, error: data.error || '设备验证失败' };
       }
 
       return { valid: true };
     } catch (error) {
-      // 网络错误，进行重试
-      if (retryCount < 2) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return this.validateDevice(retryCount + 1);
-      }
       return { valid: false, error: '网络错误，无法验证设备' };
     }
   },
