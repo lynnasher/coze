@@ -1123,7 +1123,7 @@ export default function QuizApp() {
               return (
                 <div className="space-y-4">
                   {/* 日期筛选按钮 */}
-                  <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+                  <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
                     {[
                       { key: 'day', label: '今日' },
                       { key: 'week', label: '本周' },
@@ -1135,8 +1135,8 @@ export default function QuizApp() {
                         onClick={() => setStatsFilter(filter.key as 'day' | 'week' | 'month' | 'all')}
                         className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                           statsFilter === filter.key
-                            ? 'bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-lg'
-                            : 'text-gray-600 hover:bg-white/50'
+                            ? 'bg-slate-600 text-white shadow-md'
+                            : 'text-slate-600 hover:bg-white/60'
                         }`}
                       >
                         {filter.label}
@@ -1146,60 +1146,60 @@ export default function QuizApp() {
                   
                   {/* 统计卡片网格 */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
                       <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-blue-200">
-                          <BarChart3 className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                          <BarChart3 className="w-6 h-6 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).totalCount}</p>
-                        <p className="text-sm text-gray-400">总练习</p>
+                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).totalCount}</p>
+                        <p className="text-sm text-slate-400">总练习</p>
                       </CardContent>
                     </Card>
-                    
-                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
                       <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-emerald-200">
-                          <Check className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                          <Check className="w-6 h-6 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).correctCount}</p>
-                        <p className="text-sm text-gray-400">正确</p>
+                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).correctCount}</p>
+                        <p className="text-sm text-slate-400">正确</p>
                       </CardContent>
                     </Card>
-                    
-                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
                       <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-red-200">
-                          <X className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                          <X className="w-6 h-6 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).wrongCount}</p>
-                        <p className="text-sm text-gray-400">错误</p>
+                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).wrongCount}</p>
+                        <p className="text-sm text-slate-400">错误</p>
                       </CardContent>
                     </Card>
-                    
-                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
                       <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center mb-3 shadow-lg shadow-purple-200">
-                          <Target className="w-6 h-6 text-white" />
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                          <Target className="w-6 h-6 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800">{getFilteredStats(statsFilter).accuracy}%</p>
-                        <p className="text-sm text-gray-400">正确率</p>
+                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).accuracy}%</p>
+                        <p className="text-sm text-slate-400">正确率</p>
                       </CardContent>
                     </Card>
                   </div>
                   
                   {/* 错题本导航卡片 */}
                   <Link href="/wrongbook">
-                    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all cursor-pointer">
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <BookOpen className="w-6 h-6 text-white" />
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+                            <BookOpen className="w-6 h-6 text-slate-600" />
                           </div>
-                          <div className="flex-1 text-white">
-                            <p className="text-lg font-bold">错题本</p>
-                            <p className="text-sm opacity-80">{mounted ? wrongCount : '-'} 道待复习</p>
+                          <div className="flex-1">
+                            <p className="text-lg font-bold text-slate-700">错题本</p>
+                            <p className="text-sm text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
                           </div>
-                          <ChevronRight className="w-6 h-6 text-white/60" />
+                          <ChevronRight className="w-6 h-6 text-slate-400" />
                         </div>
                       </CardContent>
                     </Card>
