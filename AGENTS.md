@@ -19,6 +19,7 @@
 - 手机号注册/登录
 - 登录状态显示
 - 管理员与普通用户角色区分
+- **单设备登录控制（后登录设备挤掉先登录设备）**
 
 ### 2.3 题目练习
 - 多种题型支持：选择题（单选/多选）、判断题、填空题、综合案例题
@@ -136,12 +137,20 @@ src/
 │           │   └── [id]/route.ts
 │           ├── import/        # 文件导入
 │           │   └── route.ts
-│           └── import-json/   # JSON 导入
+│           ├── import-json/   # JSON 导入
+│           │   └── route.ts
+│           └── migrate/       # 数据库迁移
+│               └── route.ts
+│       └── auth/               # 用户认证 API
+│           ├── user/          # 登录/注册
+│           │   └── route.ts
+│           └── validate-device/ # 设备验证（单设备登录）
 │               └── route.ts
 ├── components/
 │   ├── ui/                      # shadcn/ui 组件
 │   ├── BankCard.tsx            # 题库卡片组件
 │   ├── AuthModal.tsx           # 用户认证组件（登录/注册）
+│   ├── DeviceKickedDialog.tsx  # 设备被挤下线提示
 │   ├── quiz/                    # 刷题相关组件
 │   │   ├── QuizCard.tsx         # 题目卡片
 │   │   ├── QuizOption.tsx       # 选项组件
@@ -161,7 +170,8 @@ src/
 │   ├── types.ts                 # 类型定义
 │   └── services/                 # 服务层
 │       ├── user-service.ts      # 用户服务（Supabase）
-│       └── activation-service.ts # 激活码服务（Supabase）
+│       ├── activation-service.ts # 激活码服务（Supabase）
+│       └── device-service.ts    # 设备验证服务（单设备登录）
 ├── storage/
 │   └── database/                # 数据库配置
 │       ├── supabase-client.ts    # Supabase 客户端
@@ -169,7 +179,8 @@ src/
 │           ├── schema.ts         # 数据库表结构
 │           └── relations.ts      # 表关系定义
 └── hooks/
-    └── use-quiz.ts              # 刷题 Hook
+    ├── use-quiz.ts              # 刷题 Hook
+    └── use-device-validation.ts # 设备验证 Hook（单设备登录）
 ```
 
 ## 5. 数据模型
@@ -241,6 +252,7 @@ interface Category {
 | role | varchar | 角色（admin/user） |
 | status | varchar | 状态（active/banned） |
 | activated_categories | jsonb | 已激活的分类ID数组 |
+| device_id | varchar(100) | 当前登录设备ID（单设备登录控制） |
 | created_at | timestamp | 创建时间 |
 | last_login_at | timestamp | 最后登录时间 |
 
@@ -267,9 +279,32 @@ interface Category {
 | category_name | varchar | 分类名称 |
 | activated_at | timestamp | 激活时间 |
 
-## 6. 页面布局
+## 6. 单设备登录机制
 
-### 6.1 顶部导航栏
+### 6.1 实现原理
+- 每次登录生成唯一的设备ID（`deviceId`），存储于数据库 users 表的 `device_id` 字段
+- 登录成功后将 deviceId 返回给前端，存储在 localStorage
+- 前端定期（默认30秒）调用验证接口检查当前设备ID是否仍然有效
+- 当用户在新设备登录时，数据库中的 device_id 会被更新，旧设备的验证将失败
+
+### 6.2 验证流程
+1. 用户登录/注册时生成新的 deviceId
+2. 前端每30秒调用 `/api/auth/validate-device` 验证设备有效性
+3. 窗口重新获得焦点时也触发验证
+4. 验证失败（deviceId 不匹配）时显示弹窗提示用户已被挤下线
+5. 用户确认后自动登出并刷新页面
+
+### 6.3 接口说明
+```
+POST /api/auth/validate-device
+Request: { userId: string, deviceId: string }
+Response: { success: boolean, error?: string }
+特殊错误码: DEVICE_KICKED - 设备被挤下线
+```
+
+## 7. 页面布局
+
+### 7.1 顶部导航栏
 - **Logo**: 橙色渐变圆形图标 + "智能刷题" 标题
 - **副标题**: 动态显示题目数量或功能说明
 - **用户区域**: 昵称/手机号 + 退出按钮
@@ -492,3 +527,6 @@ Response: { success: boolean, activatedCategories: string[] }
 - [x] 后台登录路径随机化
 - [x] 图形验证码防暴力破解
 - [x] 首次登录强制修改密码
+- [x] 单设备登录控制（新设备挤掉旧设备）
+- [x] 设备被挤下线提示弹窗
+- [x] 定期设备验证（30秒间隔）

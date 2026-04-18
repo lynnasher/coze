@@ -18,12 +18,14 @@ export const users = pgTable(
     role: varchar("role", { length: 20 }).notNull().default("user"),
     status: varchar("status", { length: 20 }).notNull().default("active"),
     activated_categories: varchar("activated_categories", { length: 1000 }), // JSON array of category IDs
+    device_id: varchar("device_id", { length: 100 }), // 当前登录设备ID，用于单设备登录控制
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     last_login_at: timestamp("last_login_at", { withTimezone: true }),
   },
   (table) => [
     index("users_phone_idx").on(table.phone),
     index("users_status_idx").on(table.status),
+    index("users_device_idx").on(table.device_id),
   ]
 );
 

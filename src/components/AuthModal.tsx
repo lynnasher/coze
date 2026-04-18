@@ -12,6 +12,7 @@ import { cloudSyncService } from '@/lib/quiz-store';
 // Token 存储
 const TOKEN_KEY = 'quiz_user_token';
 const USER_KEY = 'quiz_user_data';
+const DEVICE_KEY = 'quiz_device_id'; // 设备ID存储key
 
 interface StoredUser {
   id: string;
@@ -103,6 +104,10 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
         if (data.success) {
           localStorage.setItem(TOKEN_KEY, data.token);
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          // 保存设备ID（用于单设备登录验证）
+          if (data.deviceId) {
+            localStorage.setItem(DEVICE_KEY, data.deviceId);
+          }
           onOpenChange(false);
           onAuthChange?.();
           // 通知其他组件用户状态变化
@@ -154,6 +159,10 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
         if (data.success) {
           localStorage.setItem(TOKEN_KEY, data.token);
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          // 保存设备ID（用于单设备登录验证）
+          if (data.deviceId) {
+            localStorage.setItem(DEVICE_KEY, data.deviceId);
+          }
           onOpenChange(false);
           onAuthChange?.();
           // 通知其他组件用户状态变化

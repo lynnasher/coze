@@ -9,6 +9,8 @@ import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check,
 import Link from 'next/link';
 import { getCurrentUser } from '@/components/AuthModal';
 import { format } from 'date-fns';
+import { useDeviceValidation } from '@/hooks/use-device-validation';
+import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 
 interface StoredUser {
   id: string;
@@ -74,6 +76,19 @@ export default function ProfilePage() {
       return;
     }
     setUser(currentUser);
+  };
+
+  // 设备验证（单设备登录）
+  const { kicked, kickMessage, clearKickState } = useDeviceValidation({
+    interval: 30000,
+    validateOnFocus: true,
+  });
+
+  // 处理被踢下线
+  const handleKicked = () => {
+    setUser(null);
+    clearKickState();
+    window.location.href = '/';
   };
 
   const loadData = async (retryCount = 0) => {
@@ -263,6 +278,13 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* 设备被挤下线提示 */}
+      <DeviceKickedDialog 
+        open={kicked} 
+        message={kickMessage}
+        onConfirm={handleKicked}
+      />
+      
       {/* 顶部导航 */}
       <header className="bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[970px] mx-auto px-4 py-3">

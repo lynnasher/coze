@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: '该手机号已注册' }, { status: 400 });
       }
 
-      const { user, token } = await userService.register(phone, password, nickname);
+      const { user, token, deviceId } = await userService.register(phone, password, nickname);
 
       return NextResponse.json({
         success: true,
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
           activated_categories: [],
         },
         token,
+        deviceId,
       });
     }
 
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: '请提供手机号和密码' }, { status: 400 });
       }
 
-      const { user, token } = await userService.login(phone, password);
+      const { user, token, deviceId } = await userService.login(phone, password);
       
       // 检查是否为管理员账号（管理员只能通过后台登录）
       if (user.role === 'admin') {
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
           activated_categories: activatedCategories,
         },
         token,
+        deviceId,
       });
     }
 
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: '请提供用户名和密码' }, { status: 400 });
       }
 
-      const { user, token } = await userService.adminLogin(username, password);
+      const { user, token, deviceId } = await userService.adminLogin(username, password);
       
       // 解析激活的分类
       let activatedCategories: string[] = [];
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
           activated_categories: activatedCategories,
         },
         token,
+        deviceId,
       });
     }
 

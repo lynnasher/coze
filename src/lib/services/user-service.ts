@@ -9,8 +9,14 @@ export interface DbUser {
   role: string;
   status: string;
   activated_categories: string | null;
+  device_id: string | null;
   created_at: string;
   last_login_at: string | null;
+}
+
+// 生成设备ID
+export function generateDeviceId(): string {
+  return `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // 简单密码加密
@@ -65,7 +71,7 @@ export const userService = {
   },
 
   // 注册用户
-  async register(phone: string, password: string, nickname?: string): Promise<{ user: DbUser; token: string }> {
+  async register(phone: string, password: string, nickname?: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
     const client = getSupabaseClient();
 
     // 检查手机号是否已存在
@@ -73,6 +79,9 @@ export const userService = {
     if (existing && existing.data) {
       throw new Error('该手机号已注册');
     }
+
+    // 创建设备ID
+    const deviceId = generateDeviceId();
 
     // 创建用户
     const hashedPassword = hashPassword(password);
@@ -83,17 +92,18 @@ export const userService = {
       role: 'user',
       status: 'active',
       activated_categories: null,
+      device_id: deviceId,
     }).select().single();
 
     if (error) throw new Error(`注册失败: ${error.message}`);
     const user = data as DbUser;
     const token = generateToken(user.id);
 
-    return { user, token };
+    return { user, token, deviceId };
   },
 
   // 登录
-  async login(phone: string, password: string): Promise<{ user: DbUser; token: string }> {
+  async login(phone: string, password: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
     const client = getSupabaseClient();
 
     // 查找用户
@@ -115,17 +125,39 @@ export const userService = {
       throw new Error('账号已被禁用');
     }
 
-    // 更新最后登录时间
-    await client.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id);
+    // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
+    const deviceId = generateDeviceId();
+
+    // 更新最后登录时间和设备ID
+    await client.from('users').update({ 
+      last_login_at: new Date().toISOString(),
+      device_id: deviceId 
+    }).eq('id', user.id);
+
+    // 更新内存中的用户信息
+    user.device_id = deviceId;
 
     // 生成 token
     const token = generateToken(user.id);
 
-    return { user, token };
+    return { user, token, deviceId };
+  },
+
+  // 验证设备ID（检查当前设备是否有效）
+  async validateDevice(userId: string, deviceId: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('users')
+      .select('device_id')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (error || !data) return false;
+    return data.device_id === deviceId;
   },
 
   // 管理员登录
-  async adminLogin(username: string, password: string): Promise<{ user: DbUser; token: string }> {
+  async adminLogin(username: string, password: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
     const client = getSupabaseClient();
 
     // 查找管理员用户（通过昵称或特定字段）
@@ -152,13 +184,22 @@ export const userService = {
       throw new Error('账号已被禁用');
     }
 
-    // 更新最后登录时间
-    await client.from('users').update({ last_login_at: new Date().toISOString() }).eq('id', user.id);
+    // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
+    const deviceId = generateDeviceId();
+
+    // 更新最后登录时间和设备ID
+    await client.from('users').update({ 
+      last_login_at: new Date().toISOString(),
+      device_id: deviceId 
+    }).eq('id', user.id);
+
+    // 更新内存中的用户信息
+    user.device_id = deviceId;
 
     // 生成 token
     const token = generateToken(user.id);
 
-    return { user, token };
+    return { user, token, deviceId };
   },
 
   // 更新用户激活的分类
