@@ -139,45 +139,11 @@ export const userService = {
 
     if (updateError) {
       console.error('[Login] 更新设备ID失败:', updateError);
-      // 如果设备ID更新失败，抛出错误，不让用户登录
-      throw new Error('登录失败，请重试');
+      // 继续登录流程，不因设备ID更新失败而阻止登录
+    } else {
+      console.log('[Login] 设备ID更新成功');
     }
 
-    // 验证数据库更新是否成功（最多重试5次，每次200ms）
-    let retryCount = 0;
-    const maxRetries = 5;
-    let dbDeviceId = null;
-    
-    while (retryCount < maxRetries) {
-      const { data: verifyData, error: verifyError } = await adminClient
-        .from('users')
-        .select('device_id')
-        .eq('id', user.id)
-        .maybeSingle();
-      
-      if (verifyError) {
-        console.error('[Login] 验证设备ID时出错:', verifyError);
-      }
-      
-      dbDeviceId = verifyData?.device_id;
-      console.log(`[Login] 验证设备ID尝试 ${retryCount + 1}: DB=${dbDeviceId}, Expected=${deviceId}`);
-      
-      if (dbDeviceId === deviceId) {
-        console.log('[Login] 设备ID验证成功');
-        break;
-      }
-      
-      retryCount++;
-      if (retryCount < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
-    
-    if (dbDeviceId !== deviceId) {
-      console.error('[Login] 设备ID更新后验证失败');
-      throw new Error('登录失败，请重试');
-    }
-    
     // 更新内存中的用户信息
     user.device_id = deviceId;
 
