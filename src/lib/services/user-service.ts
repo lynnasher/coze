@@ -138,11 +138,33 @@ export const userService = {
 
     if (updateError) {
       console.error('更新设备ID失败:', updateError);
-      // 继续登录流程，不因设备ID更新失败而阻止登录
+      // 如果设备ID更新失败，不阻止登录，但可能会影响单设备登录功能
     }
 
     // 更新内存中的用户信息
     user.device_id = deviceId;
+    
+    // 验证数据库更新是否成功（最多重试3次）
+    let retryCount = 0;
+    const maxRetries = 3;
+    while (retryCount < maxRetries) {
+      const { data: verifyData } = await adminClient
+        .from('users')
+        .select('device_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      
+      if (verifyData?.device_id === deviceId) {
+        // 数据库更新成功
+        break;
+      }
+      
+      retryCount++;
+      if (retryCount < maxRetries) {
+        // 等待 100ms 后重试
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
 
     // 生成 token
     const token = generateToken(user.id);
@@ -160,10 +182,31 @@ export const userService = {
       .maybeSingle();
     
     if (error || !data) return false;
+    
     // 如果数据库中没有 device_id（旧用户），允许当前设备通过验证
     // 这样新登录的设备会自动设置 device_id
-    if (!data.device_id) return true;
-    return data.device_id === deviceId;
+    if (!data.device_id) {
+      return true;
+    }
+    
+    // 如果 device_id 匹配，验证通过
+    if (data.device_id === deviceId) {
+      return true;
+    }
+    
+    // 如果 device_id 不匹配，说明设备被挤下线
+    // 但为了处理可能的读取延迟，再确认一次
+    const { data: retryData } = await client
+      .from('users')
+      .select('device_id')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (retryData?.device_id === deviceId) {
+      return true;
+    }
+    
+    return false;
   },
 
   // 管理员登录

@@ -68,8 +68,10 @@ export function useDeviceValidation(options?: {
 
   // 定期验证
   useEffect(() => {
-    // 首次验证
-    validateDevice();
+    // 延迟首次验证，确保 localStorage 已更新（特别是登录后）
+    const initialTimer = setTimeout(() => {
+      validateDevice();
+    }, 1000);
 
     // 设置定时器
     const timer = setInterval(() => {
@@ -78,7 +80,10 @@ export function useDeviceValidation(options?: {
       }
     }, interval);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(timer);
+    };
   }, [interval, validateDevice]);
 
   // 窗口重新获得焦点时验证
