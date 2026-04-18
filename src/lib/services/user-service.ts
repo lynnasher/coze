@@ -135,6 +135,10 @@ export const userService = {
     }).eq('id', user.id);
 
     if (updateError) {
+      // 检查是否是 device_id 列不存在的错误
+      if (updateError.message && updateError.message.includes("Could not find the 'device_id' column")) {
+        throw new Error('数据库缺少 device_id 字段，请联系管理员执行数据库迁移');
+      }
       throw new Error(`更新设备ID失败: ${updateError.message}`);
     }
 
