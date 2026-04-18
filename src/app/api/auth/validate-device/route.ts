@@ -12,6 +12,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { userId, deviceId } = body;
 
+    console.log(`[ValidateDevice] 收到验证请求: userId=${userId}, deviceId=${deviceId}`);
+
     if (!userId || !deviceId) {
       return NextResponse.json({ 
         success: false, 
@@ -21,6 +23,7 @@ export async function POST(request: Request) {
 
     // 验证设备ID是否匹配
     const isValid = await userService.validateDevice(userId, deviceId);
+    console.log(`[ValidateDevice] 验证结果: isValid=${isValid}`);
 
     if (!isValid) {
       return NextResponse.json({ 
@@ -37,6 +40,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     const message = error instanceof Error ? error.message : '服务器错误';
+    console.error('[ValidateDevice] 验证出错:', error);
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

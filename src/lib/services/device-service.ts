@@ -35,17 +35,22 @@ export const deviceService = {
     const user = this.getCurrentUser();
     const deviceId = this.getDeviceId();
 
+    console.log(`[DeviceService] 开始验证: userId=${user?.id}, deviceId=${deviceId}`);
+
     if (!user) {
+      console.log('[DeviceService] 用户未登录');
       return { valid: false, error: '未登录' };
     }
 
     // 如果本地没有 deviceId（旧用户或首次使用），跳过验证
     // 下次登录时会自动设置 deviceId
     if (!deviceId) {
+      console.log('[DeviceService] 本地无deviceId，跳过验证');
       return { valid: true };
     }
 
     try {
+      console.log(`[DeviceService] 发送验证请求: userId=${user.id}, deviceId=${deviceId}`);
       const response = await fetch('/api/auth/validate-device', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,19 +58,24 @@ export const deviceService = {
       });
 
       const data = await response.json();
+      console.log(`[DeviceService] 验证响应: status=${response.status}, success=${data.success}`);
 
       if (response.status === 403 && data.error === 'DEVICE_KICKED') {
         // 设备被挤下线，清除本地登录状态
+        console.log('[DeviceService] 设备被挤下线，清除登录状态');
         this.clearAuthData();
         return { valid: false, kicked: true, error: data.message || '您的账号已在其他设备登录' };
       }
 
       if (!data.success) {
+        console.log(`[DeviceService] 验证失败: ${data.error}`);
         return { valid: false, error: data.error || '设备验证失败' };
       }
 
+      console.log('[DeviceService] 验证通过');
       return { valid: true };
     } catch (error) {
+      console.error('[DeviceService] 验证出错:', error);
       return { valid: false, error: '网络错误，无法验证设备' };
     }
   },

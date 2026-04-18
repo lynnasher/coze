@@ -129,6 +129,7 @@ export const userService = {
 
     // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
     const deviceId = generateDeviceId();
+    console.log(`[Login] 生成新设备ID: ${deviceId}, 用户: ${user.id}`);
 
     // 更新最后登录时间和设备ID（使用 admin client 确保可以更新）
     const { error: updateError } = await adminClient.from('users').update({ 
@@ -137,34 +138,48 @@ export const userService = {
     }).eq('id', user.id);
 
     if (updateError) {
-      console.error('更新设备ID失败:', updateError);
-      // 如果设备ID更新失败，不阻止登录，但可能会影响单设备登录功能
+      console.error('[Login] 更新设备ID失败:', updateError);
+      // 如果设备ID更新失败，抛出错误，不让用户登录
+      throw new Error('登录失败，请重试');
     }
 
-    // 更新内存中的用户信息
-    user.device_id = deviceId;
-    
-    // 验证数据库更新是否成功（最多重试3次）
+    // 验证数据库更新是否成功（最多重试5次，每次200ms）
     let retryCount = 0;
-    const maxRetries = 3;
+    const maxRetries = 5;
+    let dbDeviceId = null;
+    
     while (retryCount < maxRetries) {
-      const { data: verifyData } = await adminClient
+      const { data: verifyData, error: verifyError } = await adminClient
         .from('users')
         .select('device_id')
         .eq('id', user.id)
         .maybeSingle();
       
-      if (verifyData?.device_id === deviceId) {
-        // 数据库更新成功
+      if (verifyError) {
+        console.error('[Login] 验证设备ID时出错:', verifyError);
+      }
+      
+      dbDeviceId = verifyData?.device_id;
+      console.log(`[Login] 验证设备ID尝试 ${retryCount + 1}: DB=${dbDeviceId}, Expected=${deviceId}`);
+      
+      if (dbDeviceId === deviceId) {
+        console.log('[Login] 设备ID验证成功');
         break;
       }
       
       retryCount++;
       if (retryCount < maxRetries) {
-        // 等待 100ms 后重试
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
+    
+    if (dbDeviceId !== deviceId) {
+      console.error('[Login] 设备ID更新后验证失败');
+      throw new Error('登录失败，请重试');
+    }
+    
+    // 更新内存中的用户信息
+    user.device_id = deviceId;
 
     // 生成 token
     const token = generateToken(user.id);
@@ -181,31 +196,28 @@ export const userService = {
       .eq('id', userId)
       .maybeSingle();
     
-    if (error || !data) return false;
+    console.log(`[ValidateDevice] DB查询结果: userId=${userId}, DB device_id=${data?.device_id}, Request deviceId=${deviceId}`);
+    
+    if (error || !data) {
+      console.error(`[ValidateDevice] 查询失败: error=${error?.message}`);
+      return false;
+    }
     
     // 如果数据库中没有 device_id（旧用户），允许当前设备通过验证
     // 这样新登录的设备会自动设置 device_id
     if (!data.device_id) {
+      console.log('[ValidateDevice] 数据库中无device_id，允许通过');
       return true;
     }
     
     // 如果 device_id 匹配，验证通过
     if (data.device_id === deviceId) {
+      console.log('[ValidateDevice] device_id匹配，验证通过');
       return true;
     }
     
     // 如果 device_id 不匹配，说明设备被挤下线
-    // 但为了处理可能的读取延迟，再确认一次
-    const { data: retryData } = await client
-      .from('users')
-      .select('device_id')
-      .eq('id', userId)
-      .maybeSingle();
-    
-    if (retryData?.device_id === deviceId) {
-      return true;
-    }
-    
+    console.log(`[ValidateDevice] device_id不匹配: DB=${data.device_id}, Request=${deviceId}`);
     return false;
   },
 
