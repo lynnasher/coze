@@ -35,8 +35,14 @@ export const deviceService = {
     const user = this.getCurrentUser();
     const deviceId = this.getDeviceId();
 
-    if (!user || !deviceId) {
-      return { valid: false, error: '未登录或缺少设备信息' };
+    if (!user) {
+      return { valid: false, error: '未登录' };
+    }
+
+    // 如果本地没有 deviceId（旧用户或首次使用），跳过验证
+    // 下次登录时会自动设置 deviceId
+    if (!deviceId) {
+      return { valid: true };
     }
 
     try {

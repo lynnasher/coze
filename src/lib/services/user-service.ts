@@ -73,6 +73,7 @@ export const userService = {
   // 注册用户
   async register(phone: string, password: string, nickname?: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
     const client = getSupabaseClient();
+    const adminClient = getSupabaseAdminClient();
 
     // 检查手机号是否已存在
     const existing = await client.from('users').select('id').eq('phone', phone).maybeSingle();
@@ -83,9 +84,9 @@ export const userService = {
     // 创建设备ID
     const deviceId = generateDeviceId();
 
-    // 创建用户
+    // 创建用户（使用 admin client 确保可以写入 device_id）
     const hashedPassword = hashPassword(password);
-    const { data, error } = await client.from('users').insert({
+    const { data, error } = await adminClient.from('users').insert({
       phone,
       password: hashedPassword,
       nickname: nickname || null,
@@ -105,6 +106,7 @@ export const userService = {
   // 登录
   async login(phone: string, password: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
     const client = getSupabaseClient();
+    const adminClient = getSupabaseAdminClient();
 
     // 查找用户
     const { data, error } = await client.from('users').select('*').eq('phone', phone).maybeSingle();
@@ -128,11 +130,16 @@ export const userService = {
     // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
     const deviceId = generateDeviceId();
 
-    // 更新最后登录时间和设备ID
-    await client.from('users').update({ 
+    // 更新最后登录时间和设备ID（使用 admin client 确保可以更新）
+    const { error: updateError } = await adminClient.from('users').update({ 
       last_login_at: new Date().toISOString(),
       device_id: deviceId 
     }).eq('id', user.id);
+
+    if (updateError) {
+      console.error('更新设备ID失败:', updateError);
+      // 继续登录流程，不因设备ID更新失败而阻止登录
+    }
 
     // 更新内存中的用户信息
     user.device_id = deviceId;
@@ -153,12 +160,16 @@ export const userService = {
       .maybeSingle();
     
     if (error || !data) return false;
+    // 如果数据库中没有 device_id（旧用户），允许当前设备通过验证
+    // 这样新登录的设备会自动设置 device_id
+    if (!data.device_id) return true;
     return data.device_id === deviceId;
   },
 
   // 管理员登录
   async adminLogin(username: string, password: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
     const client = getSupabaseClient();
+    const adminClient = getSupabaseAdminClient();
 
     // 查找管理员用户（通过昵称或特定字段）
     const { data, error } = await client.from('users').select('*').eq('nickname', username).maybeSingle();
@@ -187,11 +198,16 @@ export const userService = {
     // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
     const deviceId = generateDeviceId();
 
-    // 更新最后登录时间和设备ID
-    await client.from('users').update({ 
+    // 更新最后登录时间和设备ID（使用 admin client 确保可以更新）
+    const { error: updateError } = await adminClient.from('users').update({ 
       last_login_at: new Date().toISOString(),
       device_id: deviceId 
     }).eq('id', user.id);
+
+    if (updateError) {
+      console.error('更新设备ID失败:', updateError);
+      // 继续登录流程，不因设备ID更新失败而阻止登录
+    }
 
     // 更新内存中的用户信息
     user.device_id = deviceId;
