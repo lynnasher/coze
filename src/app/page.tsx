@@ -203,6 +203,15 @@ export default function QuizApp() {
       return;
     }
     
+    // 检查 token 是否存在（可能被设备验证清除）
+    const token = localStorage.getItem('quiz_user_token');
+    if (!token) {
+      // Token 已被清除，说明设备被踢下线或已登出
+      setCurrentUser(null);
+      setWrongCount(0);
+      return;
+    }
+    
     try {
       // 第一步：push 本地数据到云端（确保答题记录不丢失）
       await cloudSyncService.saveRecordsAndStreaks(

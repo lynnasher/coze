@@ -718,6 +718,13 @@ export const cloudSyncService = {
   // 一次性保存练习记录和连续正确次数到云端（合并请求，避免竞态覆盖）
   async saveRecordsAndStreaks(userId: string, records: PracticeRecord[], streaks: Record<string, number>): Promise<boolean> {
     try {
+      // 检查用户是否已登录（token 是否存在）
+      const token = getUserToken();
+      if (!token) {
+        // 用户未登录或已被登出，跳过云端同步
+        return false;
+      }
+      
       const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
         body: JSON.stringify({ practiceHistory: records, streakData: streaks }),
@@ -787,9 +794,20 @@ export const cloudSyncService = {
     recentPractices: RecentPractice[];
   } | null> {
     try {
+      // 检查用户是否已登录（token 是否存在）
+      const token = getUserToken();
+      if (!token) {
+        // 用户未登录或已被登出，跳过云端同步
+        return null;
+      }
+      
       const response = await authenticatedFetch('/api/user-data');
       
       if (!response.ok) {
+        // 401 错误表示未登录，静默处理
+        if (response.status === 401) {
+          return null;
+        }
         console.error('从云端拉取数据失败:', response.status);
         return null;
       }
