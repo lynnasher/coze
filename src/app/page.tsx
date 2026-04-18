@@ -338,6 +338,7 @@ export default function QuizApp() {
 
   // 监听 localStorage 变化，以便在用户登录/登出后刷新状态
   useEffect(() => {
+    // 处理 storage 事件（跨标签页通信）
     const handleStorageChange = (e: StorageEvent) => {
       // 检查组件是否已挂载
       if (!isMountedRef.current) return;
@@ -350,9 +351,24 @@ export default function QuizApp() {
       }
     };
 
+    // 处理用户登录事件（同一标签页内）
+    const handleUserAuthChange = () => {
+      if (!isMountedRef.current) return;
+      const user = getCurrentUser();
+      setCurrentUser(user);
+      if (user) {
+        // 重新加载所有数据以更新题库显示
+        loadAllData();
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [refreshActivatedCategories]);
+    window.addEventListener('user-auth-change', handleUserAuthChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-auth-change', handleUserAuthChange);
+    };
+  }, [refreshActivatedCategories, loadAllData]);
 
   // 当用户登录时从云端同步数据并获取错题数量
   useEffect(() => {
