@@ -39,7 +39,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -159,6 +159,14 @@ export default function QuizApp() {
   // 错题数量状态（优先使用云端同步后的本地数据）
   const [wrongCount, setWrongCount] = useState<number>(0);
   
+  // 统计数据状态（直接从 recordStore 计算，避免 useQuiz hook 的缓存问题）
+  const [homeStats, setHomeStats] = useState({
+    correctCount: 0,
+    wrongCount: 0,
+    accuracy: 0,
+    totalCount: 0,
+  });
+  
   // 重新计算错题数据（修复因之前 wrongStreakStore 未更新导致的数据不一致）
   const recalculateWrongData = useCallback(() => {
     const records = recordStore.getAll();
@@ -210,6 +218,22 @@ export default function QuizApp() {
     
     return getWrongQuestionIds().length;
   }, []);
+  
+  // 刷新首页统计数据（直接从 recordStore 计算，避免 useQuiz hook 的缓存问题）
+  const refreshHomeStats = useCallback(() => {
+    const stats = calculateStats();
+    setHomeStats({
+      correctCount: stats.correctCount,
+      wrongCount: stats.wrongCount,
+      accuracy: stats.accuracy,
+      totalCount: stats.correctCount + stats.wrongCount,
+    });
+  }, []);
+  
+  // 页面加载时刷新统计数据
+  useEffect(() => {
+    refreshHomeStats();
+  }, [refreshHomeStats]);
 
   // 从云端同步：先 push 本地数据到云端，再 pull 云端数据下来，以云端为准
   const syncWrongCountFromCloud = useCallback(async (skipPush: boolean = false) => {
@@ -252,7 +276,10 @@ export default function QuizApp() {
     // 重新计算错题数据并更新显示
     const count = recalculateWrongData();
     setWrongCount(count);
-  }, [recalculateWrongData]);
+    
+    // 刷新首页统计数据
+    refreshHomeStats();
+  }, [recalculateWrongData, refreshHomeStats]);
   
   // 只使用数据库的题库
   const banks = useMemo(() => {
@@ -710,6 +737,8 @@ export default function QuizApp() {
               // 返回首页
               setHasStarted(false);
               setPracticeBankId(null);
+              // 刷新首页统计数据
+              refreshHomeStats();
             }} 
             quizState={quizState}
             currentQuestion={currentQuestion}
@@ -826,11 +855,11 @@ export default function QuizApp() {
                     <p className="text-xs text-slate-500">错题</p>
                   </div>
                   <div className="bg-slate-100 rounded-xl p-3 text-center">
-                    <p className="text-xl font-bold text-slate-700">{mounted ? stats.masteredCount : '-'}</p>
+                    <p className="text-xl font-bold text-slate-700">{mounted ? homeStats.correctCount : '-'}</p>
                     <p className="text-xs text-slate-500">已掌握</p>
                   </div>
                   <div className="bg-slate-100 rounded-xl p-3 text-center">
-                    <p className="text-xl font-bold text-slate-700">{mounted ? stats.accuracy : 0}%</p>
+                    <p className="text-xl font-bold text-slate-700">{mounted ? homeStats.accuracy : 0}%</p>
                     <p className="text-xs text-slate-500">正确率</p>
                   </div>
                 </div>
