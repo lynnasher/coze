@@ -98,6 +98,9 @@ export default function QuizApp() {
   // 跟踪组件是否已挂载
   const isMountedRef = useRef(true);
   
+  // 跟踪是否是登录后的首次同步（避免首次同步时推送旧数据）
+  const hasSyncedRef = useRef(false);
+  
   // 最近练习记录状态
   const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   
@@ -196,7 +199,7 @@ export default function QuizApp() {
   }, []);
 
   // 从云端同步：先 push 本地数据到云端，再 pull 云端数据下来，以云端为准
-  const syncWrongCountFromCloud = useCallback(async () => {
+  const syncWrongCountFromCloud = useCallback(async (skipPush: boolean = false) => {
     const user = getStoredUser();
     if (!user) {
       setWrongCount(0);
@@ -214,11 +217,14 @@ export default function QuizApp() {
     
     try {
       // 第一步：push 本地数据到云端（确保答题记录不丢失）
-      await cloudSyncService.saveRecordsAndStreaks(
-        user.id,
-        recordStore.getAll(),
-        wrongStreakStore.getAll()
-      );
+      // 但登录后的首次同步应该跳过推送，避免旧数据污染新账号
+      if (!skipPush) {
+        await cloudSyncService.saveRecordsAndStreaks(
+          user.id,
+          recordStore.getAll(),
+          wrongStreakStore.getAll()
+        );
+      }
 
       // 第二步：pull 云端数据（以云端为准，替换本地缓存）
       const cloudData = await cloudSyncService.pullData(user.id);
@@ -373,9 +379,19 @@ export default function QuizApp() {
   // 当用户登录时从云端同步数据并获取错题数量
   useEffect(() => {
     if (currentUser && mounted) {
-      syncWrongCountFromCloud();
+      // 首次同步跳过推送（避免旧数据污染新账号），直接拉取云端数据
+      if (!hasSyncedRef.current) {
+        hasSyncedRef.current = true;
+        // 强制清空本地数据，避免看到之前用户的数据
+        recordStore.clear();
+        wrongStreakStore.clear();
+        syncWrongCountFromCloud(true);
+      } else {
+        syncWrongCountFromCloud(false);
+      }
     } else {
       setWrongCount(0);
+      hasSyncedRef.current = false;
     }
   }, [currentUser, mounted, syncWrongCountFromCloud]);
 

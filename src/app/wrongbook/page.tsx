@@ -102,12 +102,16 @@ export default function WrongBookPage() {
     refreshData();
   }, [refreshData]);
 
-  const syncFromCloud = useCallback(async () => {
+  const syncFromCloud = useCallback(async (skipPush: boolean = false) => {
     const user = getStoredUser();
     if (!user) return;
     setIsSyncing(true);
     try {
-      await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
+      // 默认情况下先推送本地数据到云端（手动刷新时）
+      // 但登录后的首次同步应该跳过推送，避免旧数据污染新账号
+      if (!skipPush) {
+        await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
+      }
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
         recordStore.save(cloudData.records);
@@ -123,7 +127,13 @@ export default function WrongBookPage() {
     setMounted(true);
     const user = getStoredUser();
     setCurrentUser(user);
-    if (user) syncFromCloud();
+    if (user) {
+      // 首次加载时强制清空本地数据，避免看到之前用户的数据
+      recordStore.clear();
+      wrongStreakStore.clear();
+      // 然后从云端拉取当前用户的数据
+      syncFromCloud(true);
+    }
   }, [checkAuth, syncFromCloud]);
 
   const wrongQuestions = useMemo(() => {

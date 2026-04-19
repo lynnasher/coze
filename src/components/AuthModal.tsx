@@ -167,6 +167,14 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           onAuthChange?.();
           // 通知其他组件用户状态变化
           window.dispatchEvent(new Event('user-auth-change'));
+          
+          // 注册成功后同步云端数据（清空本地旧数据，拉取新用户数据）
+          cloudSyncService.syncOnLogin().then(success => {
+            if (success && isMountedRef.current) {
+              // 数据同步成功，通知页面刷新
+              window.dispatchEvent(new Event('storage'));
+            }
+          });
         } else {
           setError(data.error || '注册失败');
         }
