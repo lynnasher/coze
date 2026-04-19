@@ -46,6 +46,7 @@ import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/compon
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
+import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
 
 // 从 AuthModal 获取当前用户
 const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
@@ -786,35 +787,8 @@ export default function QuizApp() {
                   const records = recordStore.getAll();
                   if (records.length === 0) return null;
                   
-                  const studyDates = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0]));
-                  const sortedDates = Array.from(studyDates).sort();
-                  const today = new Date().toISOString().split('T')[0];
-                  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                  
-                  let current = 0;
-                  const lastDate = sortedDates[sortedDates.length - 1];
-                  if (lastDate === today || lastDate === yesterday) {
-                    current = 1;
-                    for (let i = sortedDates.length - 2; i >= 0; i--) {
-                      const curr = new Date(sortedDates[i + 1]);
-                      const prev = new Date(sortedDates[i]);
-                      if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
-                        current++;
-                      } else break;
-                    }
-                  }
-                  
-                  let longest = 1, temp = 1;
-                  for (let i = 1; i < sortedDates.length; i++) {
-                    const curr = new Date(sortedDates[i]);
-                    const prev = new Date(sortedDates[i - 1]);
-                    if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
-                      temp++;
-                      longest = Math.max(longest, temp);
-                    } else temp = 1;
-                  }
-                  
-                  const isActive = current > 0;
+                  const streak = calculateStreakStats(records);
+                  const isActive = streak.current > 0;
                   
                   return (
                     <div className={`rounded-xl p-3 mb-3 ${isActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
@@ -825,7 +799,7 @@ export default function QuizApp() {
                           </div>
                           <div>
                             <div className={`text-2xl font-bold leading-none ${isActive ? 'text-white' : 'text-slate-700'}`}>
-                              {current}
+                              {streak.current}
                             </div>
                             <div className={`text-[10px] mt-0.5 ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
                               连续天数
@@ -834,7 +808,7 @@ export default function QuizApp() {
                         </div>
                         <div className="text-right">
                           <div className={`text-[10px] ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                            最长 {longest}天
+                            最长 {streak.longest}天
                           </div>
                           {isActive && (
                             <span className="text-[10px] text-white font-medium">🔥 继续保持</span>
@@ -1239,100 +1213,11 @@ export default function QuizApp() {
 
           {/* 统计页面 - 增强版 */}
           <TabsContent value="stats">
-            {(() => {
-              // 获取日期范围内的记录
-              const getFilteredStats = (filter: 'day' | 'week' | 'month' | 'all') => {
-                const records = recordStore.getAll();
-                const now = Date.now();
-                const dayMs = 24 * 60 * 60 * 1000;
-                let filteredRecords = records;
-                
-                if (filter === 'day') {
-                  filteredRecords = records.filter(r => now - r.timestamp < dayMs);
-                } else if (filter === 'week') {
-                  filteredRecords = records.filter(r => now - r.timestamp < 7 * dayMs);
-                } else if (filter === 'month') {
-                  filteredRecords = records.filter(r => now - r.timestamp < 30 * dayMs);
-                }
-                
-                const answeredRecords = filteredRecords.filter(r => {
-                  if (!r.selectedAnswer) return false;
-                  const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
-                  return answer.length > 0;
-                });
-                
-                const totalCount = answeredRecords.length;
-                const correctCount = answeredRecords.filter(r => r.isCorrect).length;
-                const wrongCount = totalCount - correctCount;
-                const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-                
-                return { totalCount, correctCount, wrongCount, accuracy };
-              };
-              
-              // 计算连续学习天数
-              const calculateStreak = () => {
-                const records = recordStore.getAll();
-                if (records.length === 0) return { current: 0, longest: 0, weekly: 0, goal: 5 };
-                
-                const studyDates = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0]));
-                const sortedDates = Array.from(studyDates).sort();
-                const today = new Date().toISOString().split('T')[0];
-                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                
-                // 当前连续天数
-                let current = 0;
-                const lastDate = sortedDates[sortedDates.length - 1];
-                if (lastDate === today || lastDate === yesterday) {
-                  current = 1;
-                  for (let i = sortedDates.length - 2; i >= 0; i--) {
-                    const curr = new Date(sortedDates[i + 1]);
-                    const prev = new Date(sortedDates[i]);
-                    if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
-                      current++;
-                    } else break;
-                  }
-                }
-                
-                // 最长连续天数
-                let longest = 1, temp = 1;
-                for (let i = 1; i < sortedDates.length; i++) {
-                  const curr = new Date(sortedDates[i]);
-                  const prev = new Date(sortedDates[i - 1]);
-                  if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
-                    temp++;
-                    longest = Math.max(longest, temp);
-                  } else temp = 1;
-                }
-                
-                // 本周进度
-                const now = new Date();
-                const weekStart = new Date(now);
-                weekStart.setDate(now.getDate() - now.getDay());
-                let weekly = 0;
-                for (let d = 0; d < 7; d++) {
-                  const d2 = new Date(weekStart);
-                  d2.setDate(weekStart.getDate() + d);
-                  if (studyDates.has(d2.toISOString().split('T')[0])) weekly++;
-                }
-                
-                return { current, longest, weekly, goal: 5 };
-              };
-              
-              // 计算近7天趋势
-              const calculateTrend = () => {
-                const records = recordStore.getAll();
-                const trend = [];
-                for (let i = 6; i >= 0; i--) {
-                  const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-                  const dateStr = date.toISOString().split('T')[0];
-                  const count = records.filter(r => new Date(r.timestamp).toISOString().split('T')[0] === dateStr).length;
-                  trend.push({ day: date.getDate(), count });
-                }
-                return trend;
-              };
-              
-              const streak = calculateStreak();
-              const trend = calculateTrend();
+            {mounted && (() => {
+              // 使用公共函数获取日期范围内的记录统计
+              const filteredStats = calculateFilteredStats(recordStore.getAll(), statsFilter);
+              const streak = calculateStreakStats(recordStore.getAll());
+              const trend = calculateTrendData(recordStore.getAll());
               const maxTrend = Math.max(...trend.map(t => t.count), 1);
               const isStreakActive = streak.current > 0;
               
@@ -1457,7 +1342,7 @@ export default function QuizApp() {
                         <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center mb-1.5">
                           <BarChart3 className="w-3.5 h-3.5 text-slate-600" />
                         </div>
-                        <p className="text-lg font-bold text-slate-700">{getFilteredStats(statsFilter).totalCount}</p>
+                        <p className="text-lg font-bold text-slate-700">{filteredStats.totalCount}</p>
                         <p className="text-[10px] text-slate-400">总练习</p>
                       </CardContent>
                     </Card>
@@ -1467,7 +1352,7 @@ export default function QuizApp() {
                         <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center mb-1.5">
                           <Target className="w-3.5 h-3.5 text-slate-600" />
                         </div>
-                        <p className="text-lg font-bold text-slate-700">{getFilteredStats(statsFilter).accuracy}%</p>
+                        <p className="text-lg font-bold text-slate-700">{filteredStats.accuracy}%</p>
                         <p className="text-[10px] text-slate-400">正确率</p>
                       </CardContent>
                     </Card>
@@ -1477,7 +1362,7 @@ export default function QuizApp() {
                         <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mb-1.5">
                           <Check className="w-3.5 h-3.5 text-emerald-500" />
                         </div>
-                        <p className="text-lg font-bold text-emerald-600">{getFilteredStats(statsFilter).correctCount}</p>
+                        <p className="text-lg font-bold text-emerald-600">{filteredStats.correctCount}</p>
                         <p className="text-[10px] text-slate-400">正确</p>
                       </CardContent>
                     </Card>
@@ -1487,7 +1372,7 @@ export default function QuizApp() {
                         <div className="w-7 h-7 bg-rose-50 rounded-lg flex items-center justify-center mb-1.5">
                           <X className="w-3.5 h-3.5 text-rose-500" />
                         </div>
-                        <p className="text-lg font-bold text-rose-600">{getFilteredStats(statsFilter).wrongCount}</p>
+                        <p className="text-lg font-bold text-rose-600">{filteredStats.wrongCount}</p>
                         <p className="text-[10px] text-slate-400">错误</p>
                       </CardContent>
                     </Card>
