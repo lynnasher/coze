@@ -15,7 +15,8 @@ const STORAGE_KEYS = {
 // 获取当前用户 ID（从 localStorage 的 token 中解析）
 export function getCurrentUserId(): string | null {
   if (typeof window === 'undefined') return null;
-  const token = localStorage.getItem('user_token');
+  // 使用与 AuthModal 一致的 key: quiz_user_token
+  const token = localStorage.getItem('quiz_user_token');
   if (!token) return null;
   try {
     const payload = JSON.parse(atob(token));
