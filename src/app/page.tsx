@@ -1493,45 +1493,6 @@ export default function QuizApp() {
                     </Card>
                   </div>
                   
-                  {/* 学习时长统计 - 紧凑版 */}
-                  {(() => {
-                    const records = recordStore.getAll();
-                    const totalMinutes = Math.round(records.length * 1.5);
-                    const hours = Math.floor(totalMinutes / 60);
-                    const mins = totalMinutes % 60;
-                    const studyDays = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size;
-                    
-                    return (
-                      <div className="grid grid-cols-2 gap-2">
-                        <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                          <CardContent className="p-2.5 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Clock className="w-4 h-4 text-blue-500" />
-                            </div>
-                            <div>
-                              <p className="text-base font-bold text-slate-700">
-                                {hours > 0 ? `${hours}h${mins}m` : `${mins}m`}
-                              </p>
-                              <p className="text-[10px] text-slate-400">总时长</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                          <CardContent className="p-2.5 flex items-center gap-2">
-                            <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Calendar className="w-4 h-4 text-purple-500" />
-                            </div>
-                            <div>
-                              <p className="text-base font-bold text-slate-700">{studyDays}</p>
-                              <p className="text-[10px] text-slate-400">学习天数</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    );
-                  })()}
-                  
                   {/* 错题本导航卡片 - 紧凑版 */}
                   <Link href="/wrongbook">
                     <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer">
