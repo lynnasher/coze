@@ -83,6 +83,29 @@ export interface QuizState {
   categoryName?: string; // 当前练习的分类名称
 }
 
+export interface CategoryStat {
+  categoryId: string;
+  categoryName: string;
+  totalCount: number;
+  correctCount: number;
+  accuracy: number;
+  color?: string;
+}
+
+export interface DailyStat {
+  date: string; // YYYY-MM-DD
+  count: number;
+  correctCount: number;
+}
+
+export interface LearningStreak {
+  currentStreak: number; // 当前连续学习天数
+  longestStreak: number; // 最长连续学习天数
+  lastStudyDate: string | null; // 最后学习日期 YYYY-MM-DD
+  weeklyGoal: number; // 周目标（天）
+  weeklyProgress: number; // 本周进度（天）
+}
+
 export interface Stats {
   totalQuestions: number;
   correctCount: number;
@@ -90,7 +113,13 @@ export interface Stats {
   accuracy: number;
   practiceHistory: PracticeRecord[];
   wrongQuestions: string[];
-  streak: number;
+  streak: number; // 连续正确次数
+  // 新增统计维度
+  learningStreak: LearningStreak; // 学习连续天数
+  categoryStats: CategoryStat[]; // 分类统计
+  dailyStats: DailyStat[]; // 每日统计（近30天）
+  totalTimeSpent: number; // 总学习时长（分钟）
+  avgQuestionsPerDay: number; // 日均做题数
 }
 
 export interface ParsedQuestion {

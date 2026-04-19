@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync, calculateStats } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -557,32 +557,13 @@ export function useQuiz() {
 
   // 计算统计信息 - 使用 useMemo 避免重复计算
   const stats = useMemo(() => {
-    const records = recordStore.getAll();
-    
-    // 只统计用户实际作答过的题目（排除空答题记录）
-    const answeredRecords = records.filter(r => {
-      if (!r.selectedAnswer) return false;
-      const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
-      return answer.length > 0;
-    });
-    
-    const correctCount = answeredRecords.filter(r => r.isCorrect).length;
-    const totalCount = answeredRecords.length;
-    const accuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
-    
-    // 已掌握题数：做对过的题目去重数量
-    const correctQuestionIds = new Set(
-      answeredRecords.filter(r => r.isCorrect).map(r => r.questionId)
-    );
-    const masteredCount = correctQuestionIds.size;
+    const fullStats = calculateStats();
     
     return {
-      correctCount,
-      totalCount,
-      accuracy,
-      wrongCount: totalCount - correctCount,
-      wrongQuestionIds: getWrongQuestionIds(),
-      masteredCount,
+      ...fullStats,
+      totalCount: fullStats.correctCount + fullStats.wrongCount,
+      wrongQuestionIds: fullStats.wrongQuestions,
+      masteredCount: fullStats.correctCount,
     };
   }, [quizState.currentIndex, quizState.answers]); // 依赖当前状态，确保及时更新
 

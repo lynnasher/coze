@@ -36,9 +36,10 @@ import {
   User,
   History,
   Flame,
-  Calendar
+  Calendar,
+  Clock
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -1164,7 +1165,7 @@ export default function QuizApp() {
             <div className="h-8"></div>
           </TabsContent>
 
-          {/* 统计页面 - Duolingo 风格 */}
+          {/* 统计页面 - 增强版 */}
           <TabsContent value="stats">
             {(() => {
               // 获取日期范围内的记录
@@ -1182,7 +1183,6 @@ export default function QuizApp() {
                   filteredRecords = records.filter(r => now - r.timestamp < 30 * dayMs);
                 }
                 
-                // 只统计用户实际作答过的题目（排除空答题记录）
                 const answeredRecords = filteredRecords.filter(r => {
                   if (!r.selectedAnswer) return false;
                   const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
@@ -1197,8 +1197,169 @@ export default function QuizApp() {
                 return { totalCount, correctCount, wrongCount, accuracy };
               };
               
+              // 计算连续学习天数
+              const calculateStreak = () => {
+                const records = recordStore.getAll();
+                if (records.length === 0) return { current: 0, longest: 0, weekly: 0, goal: 5 };
+                
+                const studyDates = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0]));
+                const sortedDates = Array.from(studyDates).sort();
+                const today = new Date().toISOString().split('T')[0];
+                const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                
+                // 当前连续天数
+                let current = 0;
+                const lastDate = sortedDates[sortedDates.length - 1];
+                if (lastDate === today || lastDate === yesterday) {
+                  current = 1;
+                  for (let i = sortedDates.length - 2; i >= 0; i--) {
+                    const curr = new Date(sortedDates[i + 1]);
+                    const prev = new Date(sortedDates[i]);
+                    if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
+                      current++;
+                    } else break;
+                  }
+                }
+                
+                // 最长连续天数
+                let longest = 1, temp = 1;
+                for (let i = 1; i < sortedDates.length; i++) {
+                  const curr = new Date(sortedDates[i]);
+                  const prev = new Date(sortedDates[i - 1]);
+                  if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
+                    temp++;
+                    longest = Math.max(longest, temp);
+                  } else temp = 1;
+                }
+                
+                // 本周进度
+                const now = new Date();
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay());
+                let weekly = 0;
+                for (let d = 0; d < 7; d++) {
+                  const d2 = new Date(weekStart);
+                  d2.setDate(weekStart.getDate() + d);
+                  if (studyDates.has(d2.toISOString().split('T')[0])) weekly++;
+                }
+                
+                return { current, longest, weekly, goal: 5 };
+              };
+              
+              // 计算近7天趋势
+              const calculateTrend = () => {
+                const records = recordStore.getAll();
+                const trend = [];
+                for (let i = 6; i >= 0; i--) {
+                  const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+                  const dateStr = date.toISOString().split('T')[0];
+                  const count = records.filter(r => new Date(r.timestamp).toISOString().split('T')[0] === dateStr).length;
+                  trend.push({ day: date.getDate(), count });
+                }
+                return trend;
+              };
+              
+              const streak = calculateStreak();
+              const trend = calculateTrend();
+              const maxTrend = Math.max(...trend.map(t => t.count), 1);
+              const isStreakActive = streak.current > 0;
+              
               return (
                 <div className="space-y-4">
+                  {/* 同步刷新按钮 */}
+                  <div className="flex justify-end">
+                    <button
+                      onClick={async () => {
+                        const userId = getCurrentUserId();
+                        if (userId) {
+                          // 强制同步到云端
+                          await forceSync();
+                          // 从云端拉取最新数据
+                          const result = await cloudSyncService.pullData(userId);
+                          if (result) {
+                            recordStore.save(result.records);
+                            wrongStreakStore.save(result.streaks);
+                            window.location.reload();
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      同步数据
+                    </button>
+                  </div>
+                  
+                  {/* 连续学习天数 - 激励卡片 */}
+                  <Card className={`border-0 shadow-md rounded-2xl overflow-hidden ${isStreakActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                            <Flame className={`w-7 h-7 ${isStreakActive ? 'text-white' : 'text-slate-400'}`} />
+                          </div>
+                          <div>
+                            <div className={`text-3xl font-bold ${isStreakActive ? 'text-white' : 'text-slate-700'}`}>
+                              {streak.current}
+                            </div>
+                            <div className={`text-sm ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                              连续学习天数
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-xs mb-1 ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                            最长记录: {streak.longest}天
+                          </div>
+                          {isStreakActive && (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full">
+                              <span className="text-xs text-white font-medium">🔥 继续保持!</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* 周目标进度 */}
+                      <div className="mt-4 pt-4 border-t border-white/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={`text-xs ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                            本周目标 ({streak.weekly}/{streak.goal} 天)
+                          </span>
+                          <span className={`text-xs font-medium ${isStreakActive ? 'text-white' : 'text-slate-500'}`}>
+                            {Math.round((streak.weekly / streak.goal) * 100)}%
+                          </span>
+                        </div>
+                        <div className={`h-2 rounded-full ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${isStreakActive ? 'bg-white' : 'bg-slate-400'}`}
+                            style={{ width: `${Math.min((streak.weekly / streak.goal) * 100, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* 近7天学习趋势 */}
+                  <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-slate-700">近7天学习趋势</h3>
+                        <TrendingUp className="w-4 h-4 text-slate-400" />
+                      </div>
+                      <div className="flex items-end justify-between gap-2 h-20">
+                        {trend.map((t, i) => (
+                          <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                            <div 
+                              className={`w-full rounded-t-md transition-all duration-300 ${t.count > 0 ? 'bg-indigo-500' : 'bg-slate-100'}`}
+                              style={{ height: `${(t.count / maxTrend) * 60}px`, minHeight: t.count > 0 ? '4px' : '0' }}
+                            />
+                            <span className="text-[10px] text-slate-400">{t.day}日</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
                   {/* 日期筛选按钮 */}
                   <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
                     {[
@@ -1236,9 +1397,19 @@ export default function QuizApp() {
                     <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
                       <CardContent className="p-4">
                         <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <Check className="w-6 h-6 text-slate-600" />
+                          <Target className="w-6 h-6 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).correctCount}</p>
+                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).accuracy}%</p>
+                        <p className="text-sm text-slate-400">正确率</p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
+                      <CardContent className="p-4">
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+                          <Check className="w-6 h-6 text-emerald-500" />
+                        </div>
+                        <p className="text-3xl font-bold text-emerald-600">{getFilteredStats(statsFilter).correctCount}</p>
                         <p className="text-sm text-slate-400">正确</p>
                       </CardContent>
                     </Card>
@@ -1246,23 +1417,49 @@ export default function QuizApp() {
                     <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
                       <CardContent className="p-4">
                         <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <X className="w-6 h-6 text-slate-600" />
+                          <X className="w-6 h-6 text-rose-500" />
                         </div>
-                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).wrongCount}</p>
+                        <p className="text-3xl font-bold text-rose-600">{getFilteredStats(statsFilter).wrongCount}</p>
                         <p className="text-sm text-slate-400">错误</p>
                       </CardContent>
                     </Card>
-
-                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                      <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <Target className="w-6 h-6 text-slate-600" />
-                        </div>
-                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).accuracy}%</p>
-                        <p className="text-sm text-slate-400">正确率</p>
-                      </CardContent>
-                    </Card>
                   </div>
+                  
+                  {/* 学习时长统计 */}
+                  {(() => {
+                    const records = recordStore.getAll();
+                    const totalMinutes = Math.round(records.length * 1.5);
+                    const hours = Math.floor(totalMinutes / 60);
+                    const mins = totalMinutes % 60;
+                    
+                    return (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
+                          <CardContent className="p-4">
+                            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
+                              <Clock className="w-5 h-5 text-blue-500" />
+                            </div>
+                            <p className="text-2xl font-bold text-slate-700">
+                              {hours > 0 ? `${hours}h${mins}m` : `${mins}m`}
+                            </p>
+                            <p className="text-xs text-slate-400">总学习时长</p>
+                          </CardContent>
+                        </Card>
+                        
+                        <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
+                          <CardContent className="p-4">
+                            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-2">
+                              <Calendar className="w-5 h-5 text-purple-500" />
+                            </div>
+                            <p className="text-2xl font-bold text-slate-700">
+                              {new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size}
+                            </p>
+                            <p className="text-xs text-slate-400">学习天数</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    );
+                  })()}
                   
                   {/* 错题本导航卡片 */}
                   <Link href="/wrongbook">

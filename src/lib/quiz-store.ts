@@ -1,4 +1,4 @@
-import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel, Category } from './types';
+import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel, Category, LearningStreak, CategoryStat, DailyStat } from './types';
 
 // 统一存储 Keys - 前后台共用
 const STORAGE_KEYS = {
@@ -642,6 +642,179 @@ export const bankStore = {
   },
 };
 
+// 计算学习连续天数
+function calculateLearningStreak(records: PracticeRecord[]): LearningStreak {
+  const weeklyGoal = 5; // 默认周目标：每周学习5天
+  
+  if (records.length === 0) {
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      lastStudyDate: null,
+      weeklyGoal,
+      weeklyProgress: 0,
+    };
+  }
+  
+  // 获取所有有记录的日期（去重）
+  const studyDates = new Set<string>();
+  records.forEach(r => {
+    const date = new Date(r.timestamp).toISOString().split('T')[0];
+    studyDates.add(date);
+  });
+  
+  const sortedDates = Array.from(studyDates).sort();
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  // 计算当前连续天数
+  let currentStreak = 0;
+  const lastStudyDate = sortedDates[sortedDates.length - 1];
+  
+  if (lastStudyDate === today || lastStudyDate === yesterday) {
+    // 今天或昨天学过，连续有效
+    currentStreak = 1;
+    for (let i = sortedDates.length - 2; i >= 0; i--) {
+      const current = new Date(sortedDates[i + 1]);
+      const prev = new Date(sortedDates[i]);
+      const diffDays = (current.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000);
+      if (diffDays === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // 计算最长连续天数
+  let longestStreak = 1;
+  let tempStreak = 1;
+  for (let i = 1; i < sortedDates.length; i++) {
+    const current = new Date(sortedDates[i]);
+    const prev = new Date(sortedDates[i - 1]);
+    const diffDays = (current.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000);
+    if (diffDays === 1) {
+      tempStreak++;
+      longestStreak = Math.max(longestStreak, tempStreak);
+    } else {
+      tempStreak = 1;
+    }
+  }
+  
+  // 计算本周进度
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  
+  let weeklyProgress = 0;
+  const weekDates = new Set<string>();
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + d);
+    const dateStr = date.toISOString().split('T')[0];
+    if (studyDates.has(dateStr)) {
+      weekDates.add(dateStr);
+    }
+  }
+  weeklyProgress = weekDates.size;
+  
+  return {
+    currentStreak,
+    longestStreak,
+    lastStudyDate,
+    weeklyGoal,
+    weeklyProgress,
+  };
+}
+
+// 计算分类统计
+function calculateCategoryStats(records: PracticeRecord[]): CategoryStat[] {
+  const questions = questionStore.getAll();
+  const banks = bankStore.getAll();
+  const categories = categoryStore.getAll();
+  
+  // 建立题目到分类的映射
+  const questionToCategory = new Map<string, { id: string; name: string; color?: string }>();
+  questions.forEach(q => {
+    if (q.bankId) {
+      const bank = banks.find(b => b.id === q.bankId);
+      if (bank?.categoryId) {
+        const category = categories.find(c => c.id === bank.categoryId);
+        if (category) {
+          questionToCategory.set(q.id, { 
+            id: category.id, 
+            name: category.name,
+            color: category.color,
+          });
+        }
+      }
+    }
+  });
+  
+  // 按分类统计
+  const categoryMap = new Map<string, CategoryStat>();
+  
+  records.forEach(r => {
+    const category = questionToCategory.get(r.questionId);
+    if (category) {
+      const existing = categoryMap.get(category.id);
+      if (existing) {
+        existing.totalCount++;
+        if (r.isCorrect) existing.correctCount++;
+      } else {
+        categoryMap.set(category.id, {
+          categoryId: category.id,
+          categoryName: category.name,
+          totalCount: 1,
+          correctCount: r.isCorrect ? 1 : 0,
+          accuracy: 0,
+          color: category.color,
+        });
+      }
+    }
+  });
+  
+  // 计算正确率并排序
+  const stats = Array.from(categoryMap.values()).map(stat => ({
+    ...stat,
+    accuracy: stat.totalCount > 0 ? Math.round((stat.correctCount / stat.totalCount) * 100) : 0,
+  }));
+  
+  return stats.sort((a, b) => b.totalCount - a.totalCount);
+}
+
+// 计算每日统计（近30天）
+function calculateDailyStats(records: PracticeRecord[]): DailyStat[] {
+  const days = 30;
+  const dailyMap = new Map<string, { count: number; correctCount: number }>();
+  
+  // 初始化近30天
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const dateStr = date.toISOString().split('T')[0];
+    dailyMap.set(dateStr, { count: 0, correctCount: 0 });
+  }
+  
+  // 统计记录
+  records.forEach(r => {
+    const dateStr = new Date(r.timestamp).toISOString().split('T')[0];
+    if (dailyMap.has(dateStr)) {
+      const existing = dailyMap.get(dateStr)!;
+      existing.count++;
+      if (r.isCorrect) existing.correctCount++;
+    }
+  });
+  
+  return Array.from(dailyMap.entries())
+    .map(([date, data]) => ({
+      date,
+      count: data.count,
+      correctCount: data.correctCount,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // 统计计算
 export const calculateStats = (): Stats => {
   const records = recordStore.getAll();
@@ -668,6 +841,22 @@ export const calculateStats = (): Stats => {
     }
   }
   
+  // 计算学习连续天数
+  const learningStreak = calculateLearningStreak(records);
+  
+  // 计算分类统计
+  const categoryStats = calculateCategoryStats(records);
+  
+  // 计算每日统计
+  const dailyStats = calculateDailyStats(records);
+  
+  // 估算总学习时长（假设平均每题1.5分钟）
+  const totalTimeSpent = Math.round(totalAttempts * 1.5);
+  
+  // 计算日均做题数（有记录的天数）
+  const studyDays = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size;
+  const avgQuestionsPerDay = studyDays > 0 ? Math.round(totalAttempts / studyDays) : 0;
+  
   return {
     totalQuestions: questions.length,
     correctCount,
@@ -676,6 +865,11 @@ export const calculateStats = (): Stats => {
     practiceHistory: records,
     wrongQuestions,
     streak,
+    learningStreak,
+    categoryStats,
+    dailyStats,
+    totalTimeSpent,
+    avgQuestionsPerDay,
   };
 };
 
