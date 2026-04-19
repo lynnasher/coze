@@ -782,7 +782,7 @@ export default function QuizApp() {
                 </h3>
                 
                 {/* 连续学习天数卡片 */}
-                {(() => {
+                {mounted && (() => {
                   const records = recordStore.getAll();
                   if (records.length === 0) return null;
                   
