@@ -569,7 +569,7 @@ export default function WrongBookPage() {
             </div>
             <h2 className="text-lg font-semibold text-gray-900 mb-1">太棒了！暂无错题</h2>
             <p className="text-gray-400 text-sm mb-6">继续保持，做题全对不是梦</p>
-            <Link href="/">
+            <Link href="/?tab=library">
               <Button className="bg-gray-900 hover:bg-gray-800 h-11 px-8 rounded-xl">去刷题</Button>
             </Link>
           </div>

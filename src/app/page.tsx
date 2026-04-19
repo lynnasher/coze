@@ -84,6 +84,17 @@ export default function QuizApp() {
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
   
+  // 从 URL query 参数读取 tab 设置
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['practice', 'library', 'stats'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, []);
+  
   // 题库管理状态
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(7200);
