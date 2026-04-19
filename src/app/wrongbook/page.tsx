@@ -15,7 +15,7 @@ import {
   Target,
   Flame,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -135,6 +135,22 @@ export default function WrongBookPage() {
     }
     // 数据清空后再显示内容
     setMounted(true);
+    
+    // 页面卸载前强制同步（防止数据丢失）
+    const handleBeforeUnload = () => {
+      if (cloudSyncService.hasPendingSync()) {
+        forceSync();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 组件卸载时强制同步
+      if (cloudSyncService.hasPendingSync()) {
+        forceSync();
+      }
+    };
   }, [checkAuth, syncFromCloud]);
 
   const wrongQuestions = useMemo(() => {
@@ -196,18 +212,35 @@ export default function WrongBookPage() {
         timestamp: Date.now() 
       };
       recordStore.add(record);
+      
+      const user = getStoredUser();
+      
       if (correct) {
         wrongStreakStore.increment(currentReviewQuestion.id);
-        if (wrongStreakStore.get(currentReviewQuestion.id) >= 3) {
+        const newStreak = wrongStreakStore.get(currentReviewQuestion.id);
+        // 使用增量同步队列
+        if (user) {
+          queueStreakForSync(currentReviewQuestion.id, newStreak);
+        }
+        if (newStreak >= 3) {
           recordStore.save(recordStore.getAll().filter(r => !(r.questionId === currentReviewQuestion.id && !r.isCorrect)));
           wrongStreakStore.remove(currentReviewQuestion.id);
+          // 同步 streak 移除
+          if (user) {
+            queueStreakForSync(currentReviewQuestion.id, 0);
+          }
         }
       } else {
         wrongStreakStore.reset(currentReviewQuestion.id);
+        // 同步 streak 重置
+        if (user) {
+          queueStreakForSync(currentReviewQuestion.id, 0);
+        }
       }
-      const user = getStoredUser();
+      
+      // 使用增量同步队列（防抖同步，3秒后自动同步）
       if (user) {
-        cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
+        queueRecordForSync(record);
       }
     }
   }, [currentReviewQuestion, localAnswer]);
@@ -238,7 +271,8 @@ export default function WrongBookPage() {
     wrongStreakStore.remove(questionId);
     const user = getStoredUser();
     if (user) {
-      cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
+      // 使用增量同步队列（标记 streak 为 0 表示移除）
+      queueStreakForSync(questionId, 0);
     }
     // 自动跳到下一题，如果没有下一题则返回错题本
     if (reviewIndex < reviewQuestions.length - 1) {

@@ -711,10 +711,139 @@ const getUserId = (): string | null => {
   return null;
 };
 
+// 同步队列 - 用于增量同步
+interface SyncQueue {
+  records: PracticeRecord[];  // 新增的记录
+  streaks: Record<string, number>;  // 更新的 streak
+  hasChanges: boolean;
+}
+
+// 创建同步队列
+const createSyncQueue = (): SyncQueue => ({
+  records: [],
+  streaks: {},
+  hasChanges: false,
+});
+
+// 全局同步队列
+let syncQueue = createSyncQueue();
+let syncTimeout: NodeJS.Timeout | null = null;
+const SYNC_DELAY = 3000; // 3秒防抖延迟
+
+// 页面卸载前强制同步标记
+let hasPendingSync = false;
+
+// 添加记录到同步队列
+export function queueRecordForSync(record: PracticeRecord): void {
+  syncQueue.records.push(record);
+  syncQueue.hasChanges = true;
+  hasPendingSync = true;
+  debouncedSync();
+}
+
+// 添加 streak 到同步队列
+export function queueStreakForSync(questionId: string, streak: number): void {
+  syncQueue.streaks[questionId] = streak;
+  syncQueue.hasChanges = true;
+  hasPendingSync = true;
+  debouncedSync();
+}
+
+// 防抖同步函数
+function debouncedSync(): void {
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+  }
+  
+  syncTimeout = setTimeout(() => {
+    flushSyncQueue();
+  }, SYNC_DELAY);
+}
+
+// 强制立即同步（用于页面卸载前）
+export async function forceSync(): Promise<boolean> {
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+    syncTimeout = null;
+  }
+  return flushSyncQueue();
+}
+
+// 执行同步队列
+async function flushSyncQueue(): Promise<boolean> {
+  if (!syncQueue.hasChanges) return true;
+  
+  const userId = getUserId();
+  if (!userId) return false;
+  
+  // 检查 token
+  const token = getUserToken();
+  if (!token) return false;
+  
+  try {
+    // 先拉取云端最新数据（合并而不是覆盖）
+    const cloudData = await cloudSyncService.pullData(userId);
+    
+    // 合并记录（去重，以本地新增的记录为准）
+    const existingRecordIds = new Set(cloudData?.records.map(r => r.id) || []);
+    const newRecords = syncQueue.records.filter(r => !existingRecordIds.has(r.id));
+    const mergedRecords = [...(cloudData?.records || []), ...newRecords];
+    
+    // 合并 streaks（本地覆盖云端）
+    const mergedStreaks = {
+      ...(cloudData?.streaks || {}),
+      ...syncQueue.streaks,
+    };
+    
+    // 上传到云端
+    const response = await authenticatedFetch('/api/user-data', {
+      method: 'POST',
+      body: JSON.stringify({
+        practiceHistory: mergedRecords,
+        streakData: mergedStreaks,
+      }),
+    });
+    
+    if (response.ok) {
+      // 同步成功，清空队列
+      syncQueue = createSyncQueue();
+      hasPendingSync = false;
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('同步队列失败:', error);
+    return false;
+  }
+}
+
+// 注册页面卸载前强制同步
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', (e) => {
+    if (hasPendingSync) {
+      // 尝试同步（使用 sendBeacon 或同步 XHR）
+      forceSync();
+    }
+  });
+  
+  // 页面可见性变化时同步（切换回页面时）
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && hasPendingSync) {
+      forceSync();
+    }
+  });
+}
+
 // 云端同步服务
 export const cloudSyncService = {
   // 获取同步状态
   getStatus: (): CloudSyncStatus => ({ ...syncStatus }),
+  
+  // 检查是否有待同步的数据
+  hasPendingSync: (): boolean => hasPendingSync,
+  
+  // 强制立即同步
+  forceSync,
 
   // 一次性保存练习记录和连续正确次数到云端（合并请求，避免竞态覆盖）
   async saveRecordsAndStreaks(userId: string, records: PracticeRecord[], streaks: Record<string, number>): Promise<boolean> {

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync } from '@/lib/quiz-store';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -23,8 +23,23 @@ export function useQuiz() {
   // 组件挂载/卸载跟踪
   useEffect(() => {
     isMountedRef.current = true;
+    
+    // 页面卸载前强制同步（防止数据丢失）
+    const handleBeforeUnload = () => {
+      if (cloudSyncService.hasPendingSync()) {
+        forceSync();
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
       isMountedRef.current = false;
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // 组件卸载时强制同步
+      if (cloudSyncService.hasPendingSync()) {
+        forceSync();
+      }
     };
   }, []);
 
@@ -277,8 +292,6 @@ export function useQuiz() {
   const submitAnswer = useCallback(() => {
     let syncToCloud = false;
     let syncUserId: string | null = null;
-    let syncRecords: PracticeRecord[] = [];
-    let syncStreaks: Record<string, number> = {};
     
     setQuizState(prev => {
       const currentQuestion = prev.questions[prev.currentIndex];
@@ -296,13 +309,13 @@ export function useQuiz() {
         
         recordStore.add(record);
         
-        // 标记需要同步到云端
+        // 标记需要同步到云端（使用增量同步队列）
         const userId = getCurrentUserId();
         if (userId) {
           syncToCloud = true;
           syncUserId = userId;
-          syncRecords = recordStore.getAll();
-          syncStreaks = wrongStreakStore.getAll();
+          // 使用增量同步队列而不是全量同步
+          queueRecordForSync(record);
         }
         
         // 更新最近练习记录
@@ -364,26 +377,33 @@ export function useQuiz() {
         if (wrongIds.includes(currentQ.id)) {
           wrongStreakStore.increment(currentQ.id);
           const newStreak = wrongStreakStore.get(currentQ.id);
+          // 同步 streak 到队列
+          if (syncUserId) {
+            queueStreakForSync(currentQ.id, newStreak);
+          }
           if (newStreak >= 3) {
             // 连续答对3次，从错题本中移除：删除该题目的错误记录
             const records = recordStore.getAll().filter(r => !(r.questionId === currentQ.id && !r.isCorrect));
             recordStore.save(records);
             wrongStreakStore.remove(currentQ.id);
+            // 同步 streak 移除（设置为0）
+            if (syncUserId) {
+              queueStreakForSync(currentQ.id, 0);
+            }
           }
         }
       } else {
         // 答错：重置该题的连续正确次数
         wrongStreakStore.reset(currentQ.id);
+        // 同步 streak 重置
+        if (syncUserId) {
+          queueStreakForSync(currentQ.id, 0);
+        }
       }
     }
     
-    // 实时同步到云端（每次答题后立即同步，合并请求避免竞态覆盖）
-    if (syncToCloud && syncUserId) {
-      // 更新同步数据（因为上面可能修改了 recordStore 和 wrongStreakStore）
-      syncRecords = recordStore.getAll();
-      syncStreaks = wrongStreakStore.getAll();
-      cloudSyncService.saveRecordsAndStreaks(syncUserId, syncRecords, syncStreaks);
-    }
+    // 防抖同步到云端（使用增量同步队列，3秒后自动同步）
+    // 不再需要立即同步，queueRecordForSync 和 queueStreakForSync 已经触发了防抖同步
   }, [quizState]);
 
   // 检查答案是否正确 - 使用 useCallback 避免重复创建
