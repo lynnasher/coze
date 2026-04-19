@@ -95,7 +95,9 @@ export const userService = {
     const token = localStorage.getItem('user_token');
     if (!token) return null;
     try {
-      const payload = JSON.parse(atob(token));
+      // Token 格式: base64payload.signature (HMAC-SHA256)
+      const payloadStr = token.split('.')[0];
+      const payload = JSON.parse(atob(payloadStr));
       return payload.userId || null;
     } catch {
       return null;

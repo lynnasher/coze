@@ -440,7 +440,9 @@ export default function AdminPage() {
     }
 
     try {
-      const payload = JSON.parse(atob(token));
+      // Token 格式: base64payload.signature (HMAC-SHA256)
+      const payloadStr = token.split('.')[0];
+      const payload = JSON.parse(atob(payloadStr));
       if (payload.exp < Date.now()) {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
