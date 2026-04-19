@@ -1,28 +1,7 @@
 import { NextResponse } from 'next/server';
 import { activationCodeService } from '@/lib/services/activation-service';
 import { userService } from '@/lib/services/user-service';
-
-// 验证用户 token
-function verifyUserToken(request: Request): { userId: string | null; isAdmin: boolean } {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { userId: null, isAdmin: false };
-  }
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-    // 支持 userId 或 id
-    const userId = payload.userId || payload.id || null;
-    
-    // 检查是否是管理员
-    const isAdmin = payload.role === 'admin' || payload.isAdmin === true;
-    
-    return { userId, isAdmin };
-  } catch {
-    return { userId: null, isAdmin: false };
-  }
-}
+import { verifyApiToken } from '@/lib/api-auth';
 
 // 使用激活码（用户接口）
 export async function POST(request: Request) {
@@ -73,7 +52,7 @@ export async function POST(request: Request) {
 // 获取用户的激活记录（需要用户认证，普通用户只能查看自己的，管理员可以查看所有）
 export async function GET(request: Request) {
   try {
-    const { userId, isAdmin } = verifyUserToken(request);
+    const { userId, isAdmin } = verifyApiToken(request);
     
     if (!userId) {
       return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });

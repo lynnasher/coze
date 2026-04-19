@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { requireAdminAuth } from '@/lib/api-auth';
+import { verifyPassword, hashPassword } from '@/lib/services/user-service';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -54,8 +55,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 验证旧密码
-    if (admin.password !== oldPassword) {
+    // 验证旧密码（支持旧格式 base64 和新格式 scrypt）
+    if (!verifyPassword(oldPassword, admin.password)) {
       return NextResponse.json(
         { error: '当前密码错误' },
         { status: 401 }
@@ -71,11 +72,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // 更新密码到数据库
+    // 更新密码到数据库（使用 scrypt 哈希）
+    const hashedNewPassword = hashPassword(newPassword);
     const { error: updateError } = await supabase
       .from('admin_users')
       .update({
-        password: newPassword,
+        password: hashedNewPassword,
         is_default_password: false,
         last_changed: new Date().toISOString(),
         updated_at: new Date().toISOString(),

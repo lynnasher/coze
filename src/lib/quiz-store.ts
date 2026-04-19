@@ -12,14 +12,17 @@ const STORAGE_KEYS = {
   RECENT_PRACTICE: 'quiz_recent_practice', // 最近练习记录
 };
 
-// 获取当前用户 ID（从 localStorage 的 token 中解析）
+// 获取当前用户 ID（从 localStorage 的 token 中解析，兼容签名 token 格式）
 export function getCurrentUserId(): string | null {
   if (typeof window === 'undefined') return null;
   // 使用与 AuthModal 一致的 key: quiz_user_token
   const token = localStorage.getItem('quiz_user_token');
   if (!token) return null;
   try {
-    const payload = JSON.parse(atob(token));
+    // 新格式：payload.signature（HMAC 签名 token）
+    const parts = token.split('.');
+    const payloadStr = parts.length === 2 ? parts[0] : token;
+    const payload = JSON.parse(atob(payloadStr));
     return payload.userId || null;
   } catch {
     return null;
@@ -899,18 +902,8 @@ const syncStatus: CloudSyncStatus = {
   error: null,
 };
 
-// 获取用户ID（从 localStorage）
-const getUserId = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const userData = localStorage.getItem('quiz_user_data');
-    if (userData) {
-      const user = JSON.parse(userData);
-      return user.id || null;
-    }
-  } catch {}
-  return null;
-};
+// 获取用户ID（统一使用 getCurrentUserId）
+const getUserId = getCurrentUserId;
 
 // 同步队列 - 用于增量同步
 interface SyncQueue {
@@ -970,6 +963,47 @@ export async function forceSync(): Promise<boolean> {
   return flushSyncQueue();
 }
 
+/**
+ * 使用 sendBeacon 进行页面卸载前的数据同步
+ * sendBeacon 能保证在 beforeunload 期间请求被发送出去，
+ * 而普通 fetch/async 请求会被浏览器取消。
+ */
+export function forceSyncBeacon(): boolean {
+  if (!syncQueue.hasChanges) return true;
+
+  const userId = getUserId();
+  if (!userId) return false;
+
+  const token = getUserToken();
+  if (!token) return false;
+
+  try {
+    // 构建 payload（与 flushSyncQueue 保持一致的合并逻辑）
+    // 注意：sendBeacon 场景下无法先 pull 再 merge，因此直接推送队列数据
+    const payload = JSON.stringify({
+      practiceHistory: syncQueue.records,
+      streakData: syncQueue.streaks,
+    });
+
+    const url = `/api/user-data`;
+    const blob = new Blob([payload], {
+      type: 'application/json',
+    });
+
+    // sendBeacon 不支持自定义 header，需要将 token 放入 URL 参数
+    const beaconUrl = `${url}?token=${encodeURIComponent(token)}`;
+    const sent = navigator.sendBeacon(beaconUrl, blob);
+
+    if (sent) {
+      syncQueue = createSyncQueue();
+      hasPendingSync = false;
+    }
+    return sent;
+  } catch {
+    return false;
+  }
+}
+
 // 执行同步队列
 async function flushSyncQueue(): Promise<boolean> {
   if (!syncQueue.hasChanges) return true;
@@ -1020,10 +1054,10 @@ async function flushSyncQueue(): Promise<boolean> {
 
 // 注册页面卸载前强制同步
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', (e) => {
+  window.addEventListener('beforeunload', () => {
     if (hasPendingSync) {
-      // 尝试同步（使用 sendBeacon 或同步 XHR）
-      forceSync();
+      // 使用 sendBeacon 确保 beforeunload 期间请求能发出
+      forceSyncBeacon();
     }
   });
   

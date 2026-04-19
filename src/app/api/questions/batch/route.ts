@@ -1,29 +1,13 @@
 import { NextResponse } from 'next/server';
 import { bankService, Question } from '@/lib/services/bank-service';
 import { convertQuestionImageKeys } from '@/lib/image-utils';
-
-// 验证用户 token
-function verifyUserToken(request: Request): { userId: string | null } {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { userId: null };
-  }
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-    const userId = payload.userId || payload.id || null;
-    return { userId };
-  } catch {
-    return { userId: null };
-  }
-}
+import { verifyApiToken } from '@/lib/api-auth';
 
 // 批量获取题目（用于预加载，需要用户认证）
 export async function POST(request: Request) {
   try {
     // 验证用户认证
-    const { userId } = verifyUserToken(request);
+    const { userId } = verifyApiToken(request);
     
     if (!userId) {
       return NextResponse.json({ 

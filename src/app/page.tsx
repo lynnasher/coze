@@ -46,7 +46,14 @@ import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/compon
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
-import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
+import { calculateStreakStats, calculateTrendData, calculateFilteredStats, recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
+import dynamic from 'next/dynamic';
+
+// 统计页面懒加载（首屏不需要，切换到统计 Tab 时才加载）
+const StatsView = dynamic(() => import('@/components/StatsView'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center py-20 text-sm text-slate-400">加载中...</div>,
+});
 
 // 从 AuthModal 获取当前用户
 const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
@@ -118,7 +125,7 @@ export default function QuizApp() {
   const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
   
   // 统计页面日期筛选状态
-  const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('day');
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentUser, setCurrentUser] = useState<{
     id: string;
@@ -167,56 +174,14 @@ export default function QuizApp() {
     totalCount: 0,
   });
   
-  // 重新计算错题数据（修复因之前 wrongStreakStore 未更新导致的数据不一致）
+  // 重新计算错题数据（委托给公共模块）
   const recalculateWrongData = useCallback(() => {
-    const records = recordStore.getAll();
-    
-    // 找出所有答错过的题目
-    const wrongQuestionIds = new Set<string>();
-    records.forEach(r => {
-      if (!r.selectedAnswer) return;
-      const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
-      if (answer.length === 0) return;
-      if (!r.isCorrect) {
-        wrongQuestionIds.add(r.questionId);
-      }
-    });
-    
-    // 重新计算每道错题的连续正确次数
-    const newStreaks: Record<string, number> = {};
-    const masteredIds: string[] = [];
-    
-    wrongQuestionIds.forEach(qId => {
-      const questionRecords = records
-        .filter(r => r.questionId === qId && r.selectedAnswer)
-        .sort((a, b) => a.timestamp - b.timestamp);
-      
-      let streak = 0;
-      for (let i = questionRecords.length - 1; i >= 0; i--) {
-        if (questionRecords[i].isCorrect) {
-          streak++;
-        } else {
-          break;
-        }
-      }
-      
-      if (streak >= 3) {
-        masteredIds.push(qId);
-      } else {
-        newStreaks[qId] = streak;
-      }
-    });
-    
-    // 移除已掌握的错题的错误记录
-    if (masteredIds.length > 0) {
-      const filteredRecords = records.filter(r => !(masteredIds.includes(r.questionId) && !r.isCorrect));
-      recordStore.save(filteredRecords);
-    }
-    
-    // 更新连续正确次数
-    wrongStreakStore.save(newStreaks);
-    
-    return getWrongQuestionIds().length;
+    return recalculateWrongDataUtil(
+      recordStore.getAll(),
+      (records) => recordStore.save(records),
+      (streaks) => wrongStreakStore.save(streaks),
+      () => getWrongQuestionIds().length
+    );
   }, []);
   
   // 刷新首页统计数据（直接从 recordStore 计算，避免 useQuiz hook 的缓存问题）
@@ -253,21 +218,21 @@ export default function QuizApp() {
     }
     
     try {
-      // 第一步：push 本地数据到云端（确保答题记录不丢失）
-      // 但登录后的首次同步应该跳过推送，避免旧数据污染新账号
+      // 安全同步策略：先拉取云端数据，再按需推送
+      // 第一步：pull 云端数据（以云端为准，替换本地缓存）
+      const cloudData = await cloudSyncService.pullData(user.id);
+      if (cloudData) {
+        recordStore.save(cloudData.records);
+        wrongStreakStore.save(cloudData.streaks);
+      }
+
+      // 第二步：如果不跳过推送，将当前（已与云端合并的）数据推送回云端
       if (!skipPush) {
         await cloudSyncService.saveRecordsAndStreaks(
           user.id,
           recordStore.getAll(),
           wrongStreakStore.getAll()
         );
-      }
-
-      // 第二步：pull 云端数据（以云端为准，替换本地缓存）
-      const cloudData = await cloudSyncService.pullData(user.id);
-      if (cloudData) {
-        recordStore.save(cloudData.records);
-        wrongStreakStore.save(cloudData.streaks);
       }
     } catch (error) {
       console.error('云端同步失败，使用本地数据:', error);
@@ -1259,193 +1224,9 @@ export default function QuizApp() {
             <div className="h-8"></div>
           </TabsContent>
 
-          {/* 统计页面 - 增强版 */}
+          {/* 统计页面 - 懒加载 */}
           <TabsContent value="stats">
-            {mounted && (() => {
-              // 使用公共函数获取日期范围内的记录统计
-              const filteredStats = calculateFilteredStats(recordStore.getAll(), statsFilter);
-              const streak = calculateStreakStats(recordStore.getAll());
-              const trend = calculateTrendData(recordStore.getAll());
-              const maxTrend = Math.max(...trend.map(t => t.count), 1);
-              const isStreakActive = streak.current > 0;
-              
-              return (
-                <div className="space-y-4">
-                  {/* 同步刷新按钮 */}
-                  <div className="flex justify-end">
-                    <button
-                      onClick={async () => {
-                        const userId = getCurrentUserId();
-                        if (userId) {
-                          await forceSync();
-                          const result = await cloudSyncService.pullData(userId);
-                          if (result) {
-                            recordStore.save(result.records);
-                            wrongStreakStore.save(result.streaks);
-                            window.location.reload();
-                          }
-                        }
-                      }}
-                      className="flex items-center gap-1 px-2 py-1 text-[10px] text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      同步
-                    </button>
-                  </div>
-                  
-                  {/* 连续学习天数 - 紧凑激励卡片 */}
-                  <Card className={`border-0 shadow-sm rounded-xl overflow-hidden ${isStreakActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
-                            <Flame className={`w-5 h-5 ${isStreakActive ? 'text-white' : 'text-slate-400'}`} />
-                          </div>
-                          <div>
-                            <div className={`text-2xl font-bold leading-none ${isStreakActive ? 'text-white' : 'text-slate-700'}`}>
-                              {streak.current}
-                            </div>
-                            <div className={`text-[10px] mt-0.5 ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                              连续天数
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className={`text-[10px] ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                            最长 {streak.longest}天
-                          </div>
-                          {isStreakActive && (
-                            <span className="text-[10px] text-white font-medium">🔥 继续保持</span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* 周目标进度 */}
-                      <div className="mt-2 pt-2 border-t border-white/10">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-[10px] ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                            本周 {streak.weekly}/{streak.goal}天
-                          </span>
-                          <span className={`text-[10px] font-medium ${isStreakActive ? 'text-white' : 'text-slate-500'}`}>
-                            {Math.round((streak.weekly / streak.goal) * 100)}%
-                          </span>
-                        </div>
-                        <div className={`h-1.5 rounded-full ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${isStreakActive ? 'bg-white' : 'bg-slate-400'}`}
-                            style={{ width: `${Math.min((streak.weekly / streak.goal) * 100, 100)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* 近7天学习趋势 - 紧凑版 */}
-                  <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-xs font-medium text-slate-600">近7天趋势</h3>
-                        <TrendingUp className="w-3 h-3 text-slate-400" />
-                      </div>
-                      <div className="flex items-end justify-between gap-1 h-14">
-                        {trend.map((t, i) => (
-                          <div key={i} className="flex flex-col items-center gap-0.5 flex-1">
-                            <div 
-                              className={`w-full rounded-sm transition-all duration-300 ${t.count > 0 ? 'bg-indigo-500' : 'bg-slate-100'}`}
-                              style={{ height: `${(t.count / maxTrend) * 40}px`, minHeight: t.count > 0 ? '2px' : '0' }}
-                            />
-                            <span className="text-[9px] text-slate-400">{t.day}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  {/* 日期筛选 - 紧凑版 */}
-                  <div className="flex gap-1 p-0.5 bg-slate-100 rounded-lg">
-                    {[
-                      { key: 'day', label: '今日' },
-                      { key: 'week', label: '本周' },
-                      { key: 'month', label: '本月' },
-                      { key: 'all', label: '全部' },
-                    ].map(filter => (
-                      <button
-                        key={filter.key}
-                        onClick={() => setStatsFilter(filter.key as 'day' | 'week' | 'month' | 'all')}
-                        className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
-                          statsFilter === filter.key
-                            ? 'bg-slate-600 text-white shadow-sm'
-                            : 'text-slate-600 hover:bg-white/60'
-                        }`}
-                      >
-                        {filter.label}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* 统计卡片网格 - 紧凑版 */}
-                  <div className="grid grid-cols-4 gap-2">
-                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                      <CardContent className="p-2.5">
-                        <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center mb-1.5">
-                          <BarChart3 className="w-3.5 h-3.5 text-slate-600" />
-                        </div>
-                        <p className="text-lg font-bold text-slate-700">{filteredStats.totalCount}</p>
-                        <p className="text-[10px] text-slate-400">总练习</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                      <CardContent className="p-2.5">
-                        <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center mb-1.5">
-                          <Target className="w-3.5 h-3.5 text-slate-600" />
-                        </div>
-                        <p className="text-lg font-bold text-slate-700">{filteredStats.accuracy}%</p>
-                        <p className="text-[10px] text-slate-400">正确率</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                      <CardContent className="p-2.5">
-                        <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mb-1.5">
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        </div>
-                        <p className="text-lg font-bold text-emerald-600">{filteredStats.correctCount}</p>
-                        <p className="text-[10px] text-slate-400">正确</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
-                      <CardContent className="p-2.5">
-                        <div className="w-7 h-7 bg-rose-50 rounded-lg flex items-center justify-center mb-1.5">
-                          <X className="w-3.5 h-3.5 text-rose-500" />
-                        </div>
-                        <p className="text-lg font-bold text-rose-600">{filteredStats.wrongCount}</p>
-                        <p className="text-[10px] text-slate-400">错误</p>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  {/* 错题本导航卡片 - 紧凑版 */}
-                  <Link href="/wrongbook">
-                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer">
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                            <BookOpen className="w-4 h-4 text-slate-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-slate-700">错题本</p>
-                            <p className="text-xs text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-slate-400" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </div>
-              );
-            })()}
+            <StatsView mounted={mounted} wrongCount={wrongCount} />
           </TabsContent>
         </Tabs>
       )}

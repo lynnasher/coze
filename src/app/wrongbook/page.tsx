@@ -18,8 +18,9 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, getUserToken } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
+import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
@@ -84,29 +85,14 @@ export default function WrongBookPage() {
   }, []);
 
   const recalculateWrongData = useCallback(() => {
-    const records = recordStore.getAll();
-    const wrongQuestionIds = new Set<string>();
-    records.forEach(r => {
-      if (!r.selectedAnswer) return;
-      if (!r.isCorrect) wrongQuestionIds.add(r.questionId);
-    });
-    const newStreaks: Record<string, number> = {};
-    const masteredIds: string[] = [];
-    wrongQuestionIds.forEach(qId => {
-      const qRecords = records.filter(r => r.questionId === qId && r.selectedAnswer).sort((a, b) => a.timestamp - b.timestamp);
-      let streak = 0;
-      for (let i = qRecords.length - 1; i >= 0; i--) {
-        if (qRecords[i].isCorrect) streak++;
-        else break;
-      }
-      if (streak >= 3) masteredIds.push(qId);
-      else newStreaks[qId] = streak;
-    });
-    if (masteredIds.length > 0) {
-      recordStore.save(records.filter(r => !(masteredIds.includes(r.questionId) && !r.isCorrect)));
-    }
-    wrongStreakStore.save(newStreaks);
+    const result = recalculateWrongDataUtil(
+      recordStore.getAll(),
+      (records) => recordStore.save(records),
+      (streaks) => wrongStreakStore.save(streaks),
+      () => getWrongQuestionIds().length
+    );
     refreshData();
+    return result;
   }, [refreshData]);
 
   const syncFromCloud = useCallback(async (skipPush: boolean = false) => {
@@ -114,15 +100,16 @@ export default function WrongBookPage() {
     if (!user) return;
     setIsSyncing(true);
     try {
-      // 默认情况下先推送本地数据到云端（手动刷新时）
-      // 但登录后的首次同步应该跳过推送，避免旧数据污染新账号
-      if (!skipPush) {
-        await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
-      }
+      // 安全同步策略：先拉取云端数据，再按需推送
+      // 1. 拉取云端数据（以云端为准，替换本地缓存）
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
         recordStore.save(cloudData.records);
         wrongStreakStore.save(cloudData.streaks);
+      }
+      // 2. 如果不跳过推送，将当前（已与云端合并的）数据推送回云端
+      if (!skipPush) {
+        await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
       }
     } finally {
       setIsSyncing(false);
@@ -134,19 +121,18 @@ export default function WrongBookPage() {
     const user = getStoredUser();
     setCurrentUser(user);
     if (user) {
-      // 首次加载时强制清空本地数据，避免看到之前用户的数据
-      recordStore.clear();
-      wrongStreakStore.clear();
-      // 然后从云端拉取当前用户的数据
+      // 首次加载：先拉取云端数据（skipPush=true，避免推送可能属于其他用户的本地数据）
+      // 之后的操作（如答题）会通过增量同步队列推送
       syncFromCloud(true);
     }
-    // 数据清空后再显示内容
+    // 显示内容
     setMounted(true);
     
-    // 页面卸载前强制同步（防止数据丢失）
+    // 页面卸载前强制同步（使用 sendBeacon 防止数据丢失）
     const handleBeforeUnload = () => {
       if (cloudSyncService.hasPendingSync()) {
-        forceSync();
+        // 使用 sendBeacon 确保 beforeunload 期间请求能发出
+        forceSyncBeacon();
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -241,14 +227,17 @@ export default function WrongBookPage() {
     wrongQuestions.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
   }, [wrongQuestions]);
+  
+  // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
+  const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
 
   const getWrongInfo = useCallback((questionId: string) => {
-    const records = recordStore.getAll().filter(r => r.questionId === questionId);
+    const records = allRecords.filter(r => r.questionId === questionId);
     return { 
       wrongCount: records.filter(r => !r.isCorrect).length, 
       streak: wrongStreakStore.get(questionId) 
     };
-  }, []);
+  }, [allRecords]);
 
   const progressPercent = reviewQuestions.length > 0 ? Math.round(((reviewIndex + 1) / reviewQuestions.length) * 100) : 0;
   const currentReviewQuestion = reviewQuestions[reviewIndex];

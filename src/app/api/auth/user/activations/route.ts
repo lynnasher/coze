@@ -1,27 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { activationCodeService } from '@/lib/services/activation-service';
-
-// 验证用户 token
-function verifyUserToken(request: Request): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  try {
-    const token = authHeader.substring(7);
-    const userData = JSON.parse(Buffer.from(token, 'base64').toString());
-    // 支持 userId 或 id
-    return userData.userId || userData.id || null;
-  } catch {
-    return null;
-  }
-}
+import { verifyApiToken } from '@/lib/api-auth';
 
 // GET - 获取用户已激活的分类和激活记录
 export async function GET(request: Request) {
   try {
-    const userId = verifyUserToken(request);
+    const { userId } = verifyApiToken(request);
     if (!userId) {
       return NextResponse.json({ error: '未授权' }, { status: 401 });
     }

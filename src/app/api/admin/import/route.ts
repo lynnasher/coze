@@ -1,16 +1,7 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
-import { S3Storage } from 'coze-coding-dev-sdk';
+import { getStorage } from '@/lib/image-utils';
 import { requireAdminAuth } from '@/lib/api-auth';
-
-// 初始化存储客户端
-const getStorage = () => {
-  return new S3Storage({
-    endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-    bucketName: process.env.COZE_BUCKET_NAME,
-    region: 'cn-beijing',
-  });
-};
 
 // 转义正则表达式特殊字符
 function escapeRegExp(string: string): string {

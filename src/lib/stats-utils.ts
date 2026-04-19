@@ -1,6 +1,77 @@
 import { PracticeRecord } from './types';
 
 /**
+ * 判断答题记录是否有有效答案
+ */
+export function hasValidAnswer(r: PracticeRecord): boolean {
+  if (!r.selectedAnswer) return false;
+  const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+  return answer.length > 0;
+}
+
+/**
+ * 重新计算错题数据（统一逻辑）
+ * - 遍历所有有效答题记录，找出错题
+ * - 对每道错题从最近一次答题向前计算连续正确次数
+ * - 连续正确 ≥3 次的自动移出错题本（删除其错误记录）
+ * - 更新 wrongStreakStore
+ * - 返回当前错题数量
+ */
+export function recalculateWrongData(
+  allRecords: PracticeRecord[],
+  saveRecords: (records: PracticeRecord[]) => void,
+  saveStreaks: (streaks: Record<string, number>) => void,
+  getWrongCount: () => number
+): number {
+  // 找出所有答错过的题目
+  const wrongQuestionIds = new Set<string>();
+  allRecords.forEach(r => {
+    if (!hasValidAnswer(r)) return;
+    if (!r.isCorrect) {
+      wrongQuestionIds.add(r.questionId);
+    }
+  });
+
+  // 重新计算每道错题的连续正确次数
+  const newStreaks: Record<string, number> = {};
+  const masteredIds: string[] = [];
+
+  wrongQuestionIds.forEach(qId => {
+    const questionRecords = allRecords
+      .filter(r => r.questionId === qId && hasValidAnswer(r))
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    let streak = 0;
+    for (let i = questionRecords.length - 1; i >= 0; i--) {
+      if (questionRecords[i].isCorrect) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    if (streak >= 3) {
+      masteredIds.push(qId);
+    } else {
+      newStreaks[qId] = streak;
+    }
+  });
+
+  // 移除已掌握的错题的错误记录
+  if (masteredIds.length > 0) {
+    const filteredRecords = allRecords.filter(
+      r => !(masteredIds.includes(r.questionId) && !r.isCorrect)
+    );
+    saveRecords(filteredRecords);
+  }
+
+  // 更新连续正确次数
+  saveStreaks(newStreaks);
+
+  return getWrongCount();
+}
+
+/**
  * 计算连续学习天数统计
  */
 export function calculateStreakStats(records: PracticeRecord[]) {

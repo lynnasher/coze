@@ -1,4 +1,5 @@
 import { getSupabaseClient, getSupabaseAdminClient } from '@/storage/database/supabase-client';
+import { createHmac, scryptSync, randomBytes } from 'crypto';
 
 // 用户类型定义
 export interface DbUser {
@@ -19,24 +20,71 @@ export function generateDeviceId(): string {
   return `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// 简单密码加密
-function hashPassword(password: string): string {
-  // 简单 Base64 编码 + 盐，实际生产应使用 bcrypt
-  return Buffer.from(password + '_salt_key_2024').toString('base64');
-}
+// Token 签名密钥（从环境变量读取，回退到固定密钥）
+const TOKEN_SECRET = process.env.TOKEN_SECRET || 'quiz_app_token_secret_2024_secure_key';
 
-// 验证密码
-function verifyPassword(password: string, hashed: string): boolean {
-  return hashPassword(password) === hashed;
-}
-
-// 生成 Token
-function generateToken(userId: string): string {
+// 生成带签名的 Token（HMAC-SHA256）
+export function generateToken(userId: string, role?: string): string {
   const payload = {
     userId,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7天过期
+    role: role || 'user',
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7天过期
+    iat: Date.now(),
   };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
+  const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64');
+  const signature = createHmac('sha256', TOKEN_SECRET).update(payloadStr).digest('hex');
+  return `${payloadStr}.${signature}`;
+}
+
+// 验证 Token 签名
+export function verifyToken(token: string): { userId: string | null; role: string | null; expired: boolean } {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 2) return { userId: null, role: null, expired: false };
+    
+    const [payloadStr, signature] = parts;
+    const expectedSig = createHmac('sha256', TOKEN_SECRET).update(payloadStr).digest('hex');
+    
+    if (signature !== expectedSig) {
+      return { userId: null, role: null, expired: false }; // 签名不匹配 = 伪造
+    }
+    
+    const payload = JSON.parse(Buffer.from(payloadStr, 'base64').toString());
+    
+    if (payload.exp && Date.now() > payload.exp) {
+      return { userId: null, role: null, expired: true }; // 过期
+    }
+    
+    return { userId: payload.userId, role: payload.role || null, expired: false };
+  } catch {
+    return { userId: null, role: null, expired: false };
+  }
+}
+
+// 密码哈希（使用 scrypt，比简单 base64 安全得多）
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('hex');
+  const key = scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${key}`;
+}
+
+// 验证密码（兼容旧格式 base64、新格式 scrypt 和明文密码）
+export function verifyPassword(password: string, hashed: string): boolean {
+  // 检测是否为新格式 scrypt 哈希（包含冒号分隔符）
+  if (hashed.includes(':')) {
+    const [salt, key] = hashed.split(':');
+    const derivedKey = scryptSync(password, salt, 64).toString('hex');
+    return derivedKey === key;
+  }
+  // 兼容旧格式（base64 编码）
+  if (Buffer.from(password + '_salt_key_2024').toString('base64') === hashed) {
+    return true;
+  }
+  // 兼容明文密码（过渡期，登录后自动升级为 scrypt）
+  if (password === hashed) {
+    return true;
+  }
+  return false;
 }
 
 // 用户服务
@@ -98,7 +146,7 @@ export const userService = {
 
     if (error) throw new Error(`注册失败: ${error.message}`);
     const user = data as DbUser;
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role);
 
     return { user, token, deviceId };
   },
@@ -120,6 +168,12 @@ export const userService = {
     // 验证密码
     if (!verifyPassword(password, user.password)) {
       throw new Error('密码错误');
+    }
+
+    // 如果密码是旧格式（base64 或明文），自动升级为 scrypt 哈希
+    if (!user.password.includes(':')) {
+      const newHash = hashPassword(password);
+      await adminClient.from('users').update({ password: newHash }).eq('id', user.id);
     }
 
     // 检查用户状态
@@ -148,7 +202,7 @@ export const userService = {
     user.device_id = deviceId;
 
     // 生成 token
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role);
 
     return { user, token, deviceId };
   },
@@ -211,6 +265,12 @@ export const userService = {
       throw new Error('密码错误');
     }
 
+    // 如果密码是旧格式（base64 或明文），自动升级为 scrypt 哈希
+    if (!user.password.includes(':')) {
+      const newHash = hashPassword(password);
+      await adminClient.from('users').update({ password: newHash }).eq('id', user.id);
+    }
+
     // 检查用户状态
     if (user.status === 'banned') {
       throw new Error('账号已被禁用');
@@ -234,7 +294,7 @@ export const userService = {
     user.device_id = deviceId;
 
     // 生成 token
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, user.role);
 
     return { user, token, deviceId };
   },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { checkLoginRateLimit, getClientIP } from '@/lib/admin-auth';
+import { generateToken, verifyPassword, hashPassword } from '@/lib/services/user-service';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -17,16 +18,6 @@ function validatePasswordStrength(password: string): { valid: boolean; message?:
     return { valid: false, message: '密码需包含数字' };
   }
   return { valid: true };
-}
-
-// 生成 token
-function generateToken(user: { id: string; username: string }): string {
-  const payload = {
-    userId: user.id,
-    username: user.username,
-    exp: Date.now() + 24 * 60 * 60 * 1000, // 24小时后过期
-  };
-  return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
 export async function POST(request: Request) {
@@ -67,15 +58,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // 验证密码
-    if (admin.password !== password) {
+    // 验证密码（支持旧格式 base64 和新格式 scrypt）
+    if (!verifyPassword(password, admin.password)) {
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }
       );
     }
 
-    const token = generateToken({ id: admin.id, username: admin.username });
+    // 如果密码是旧格式（base64 或明文），自动升级为 scrypt 哈希
+    if (!admin.password.includes(':')) {
+      const newHash = hashPassword(password);
+      await supabase
+        .from('admin_users')
+        .update({ password: newHash })
+        .eq('id', admin.id);
+    }
+
+    const token = generateToken(admin.id, 'admin');
 
     // 检查是否需要强制修改密码
     const needChangePassword = admin.is_default_password;

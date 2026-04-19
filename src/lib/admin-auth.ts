@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { verifyToken } from '@/lib/services/user-service';
 
-// 验证 admin token
+// 验证 admin token（使用 HMAC 签名验证）- 保留向后兼容
 export async function verifyAdminToken(request: Request): Promise<{
   valid: boolean;
   userId?: string;
   username?: string;
   error?: string;
 }> {
-  // 从 header 获取 token
   const authHeader = request.headers.get('authorization');
   const token = authHeader?.replace('Bearer ', '');
 
@@ -17,20 +17,22 @@ export async function verifyAdminToken(request: Request): Promise<{
   }
 
   try {
-    // 解析 token
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    const result = verifyToken(token);
     
-    // 检查过期
-    if (payload.exp && Date.now() > payload.exp) {
+    if (result.expired) {
       return { valid: false, error: '令牌已过期' };
     }
+    
+    if (!result.userId) {
+      return { valid: false, error: '无效的令牌' };
+    }
 
-    // 验证用户是否存在
+    // 验证用户是否存在且是管理员
     const supabase = getSupabaseClient();
     const { data: admin, error } = await supabase
       .from('admin_users')
       .select('id, username')
-      .eq('id', payload.userId)
+      .eq('id', result.userId)
       .single();
 
     if (error || !admin) {

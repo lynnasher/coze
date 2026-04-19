@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
+import { verifyApiToken } from '@/lib/api-auth';
 
 // 练习记录类型
 interface PracticeRecord {
@@ -19,28 +20,10 @@ interface WrongQuestion {
   lastWrongAt: number | null;
 }
 
-// 验证用户 token
-function verifyUserToken(request: Request): { userId: string | null; isAdmin: boolean } {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { userId: null, isAdmin: false };
-  }
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-    const userId = payload.userId || payload.id || null;
-    const isAdmin = payload.role === 'admin' || payload.isAdmin === true;
-    return { userId, isAdmin };
-  } catch {
-    return { userId: null, isAdmin: false };
-  }
-}
-
 // 获取用户的错题记录
 export async function GET(request: Request) {
   try {
-    const { userId } = verifyUserToken(request);
+    const { userId } = verifyApiToken(request);
     
     if (!userId) {
       return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });

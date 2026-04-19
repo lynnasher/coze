@@ -1,7 +1,46 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { verifyToken } from '@/lib/services/user-service';
 
-// 验证 admin token 并返回用户信息
+/**
+ * 统一的 API Token 验证工具
+ * 支持 Authorization header 和 URL 查询参数（sendBeacon 场景）
+ * 使用 HMAC 签名验证，防止 token 伪造
+ */
+export function verifyApiToken(request: Request): { userId: string | null; isAdmin: boolean; expired: boolean } {
+  // 优先从 Authorization header 读取
+  let token: string | null = null;
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  // header 中没有 token 时，从 URL 查询参数读取（sendBeacon 场景）
+  if (!token) {
+    try {
+      const { searchParams } = new URL(request.url);
+      token = searchParams.get('token');
+    } catch {
+      // URL 解析失败
+    }
+  }
+
+  if (!token) {
+    return { userId: null, isAdmin: false, expired: false };
+  }
+
+  const result = verifyToken(token);
+  return {
+    userId: result.userId,
+    isAdmin: result.role === 'admin',
+    expired: result.expired,
+  };
+}
+
+/**
+ * 验证管理员 Token 并返回用户信息
+ * 用于后台管理接口的认证守卫
+ */
 export async function requireAdminAuth(request: Request): Promise<{
   success: true;
   userId: string;
@@ -24,11 +63,10 @@ export async function requireAdminAuth(request: Request): Promise<{
   }
 
   try {
-    // 解析 token
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-    
-    // 检查过期
-    if (payload.exp && Date.now() > payload.exp) {
+    // 使用 HMAC 签名验证
+    const result = verifyToken(token);
+
+    if (result.expired) {
       return {
         success: false,
         response: NextResponse.json(
@@ -38,12 +76,22 @@ export async function requireAdminAuth(request: Request): Promise<{
       };
     }
 
-    // 验证用户是否存在
+    if (!result.userId) {
+      return {
+        success: false,
+        response: NextResponse.json(
+          { error: '无效的认证令牌' },
+          { status: 401 }
+        ),
+      };
+    }
+
+    // 验证用户是否存在且是管理员
     const supabase = getSupabaseClient();
     const { data: admin, error } = await supabase
       .from('admin_users')
       .select('id, username')
-      .eq('id', payload.userId)
+      .eq('id', result.userId)
       .single();
 
     if (error || !admin) {

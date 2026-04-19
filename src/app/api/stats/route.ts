@@ -1,28 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
-
-// 验证用户 token
-function verifyUserToken(request: Request): { userId: string | null; isAdmin: boolean } {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return { userId: null, isAdmin: false };
-  }
-
-  try {
-    const token = authHeader.substring(7);
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-    const userId = payload.userId || payload.id || null;
-    const isAdmin = payload.role === 'admin' || payload.isAdmin === true;
-    return { userId, isAdmin };
-  } catch {
-    return { userId: null, isAdmin: false };
-  }
-}
+import { verifyApiToken } from '@/lib/api-auth';
 
 // 获取/提交统计数据
 export async function GET(request: Request) {
   try {
-    const { userId } = verifyUserToken(request);
+    const { userId } = verifyApiToken(request);
     
     if (!userId) {
       return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });
@@ -58,7 +41,7 @@ export async function GET(request: Request) {
 // 提交统计数据
 export async function POST(request: Request) {
   try {
-    const { userId } = verifyUserToken(request);
+    const { userId } = verifyApiToken(request);
     
     if (!userId) {
       return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });
@@ -122,7 +105,7 @@ export async function POST(request: Request) {
 // 删除统计数据（管理员）
 export async function DELETE(request: Request) {
   try {
-    const { isAdmin } = verifyUserToken(request);
+    const { isAdmin } = verifyApiToken(request);
     
     // 只有管理员可以删除统计数据
     if (!isAdmin) {

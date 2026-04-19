@@ -1,26 +1,12 @@
 import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
+import { verifyApiToken } from '@/lib/api-auth';
 
 // 获取题库列表（公开接口，返回所有题库）
 export async function GET(request: Request) {
   try {
     // 获取用户 token（可选，用于标注已激活的分类）
-    const authHeader = request.headers.get('authorization');
-    let userId: string | null = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const payload = JSON.parse(Buffer.from(token, 'base64').toString());
-        
-        // 检查 token 是否过期
-        if (!payload.exp || payload.exp > Date.now()) {
-          userId = payload.userId || payload.id || null;
-        }
-      } catch {
-        // token 解析失败，忽略
-      }
-    }
+    const { userId } = verifyApiToken(request);
 
     // 获取所有题库
     const banks = await bankService.getAllBanks();

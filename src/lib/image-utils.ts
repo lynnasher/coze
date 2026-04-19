@@ -1,13 +1,53 @@
 import { S3Storage } from 'coze-coding-dev-sdk';
 
-// 初始化存储客户端
-const getStorage = () => {
-  return new S3Storage({
-    endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-    bucketName: process.env.COZE_BUCKET_NAME,
-    region: 'cn-beijing',
-  });
+// 初始化存储客户端（单例复用，避免每次请求都创建新实例）
+let _storage: S3Storage | null = null;
+export const getStorage = () => {
+  if (!_storage) {
+    _storage = new S3Storage({
+      endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
+      bucketName: process.env.COZE_BUCKET_NAME,
+      region: 'cn-beijing',
+    });
+  }
+  return _storage;
 };
+
+// ==================== 签名 URL 缓存 ====================
+interface CachedSignedUrl {
+  url: string;
+  expiresAt: number;
+}
+
+// 内存缓存：key -> 签名 URL（服务端复用，避免重复调用 S3）
+const signedUrlCache = new Map<string, CachedSignedUrl>();
+// 缓存有效期：签名 URL 有效期1小时，提前10分钟过期以确保 URL 仍然有效
+const CACHE_MARGIN_MS = 10 * 60 * 1000;
+// 最大缓存条目数，防止内存泄漏
+const MAX_CACHE_SIZE = 2000;
+
+function getCachedSignedUrl(key: string): string | null {
+  const cached = signedUrlCache.get(key);
+  if (cached && cached.expiresAt > Date.now() + CACHE_MARGIN_MS) {
+    return cached.url;
+  }
+  if (cached) {
+    signedUrlCache.delete(key);
+  }
+  return null;
+}
+
+function setCachedSignedUrl(key: string, url: string, expireTime: number): void {
+  // LRU 淘汰：超过上限时删除最早的条目
+  if (signedUrlCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = signedUrlCache.keys().next().value;
+    if (firstKey) signedUrlCache.delete(firstKey);
+  }
+  signedUrlCache.set(key, {
+    url,
+    expiresAt: Date.now() + expireTime * 1000,
+  });
+}
 
 // 判断是否为对象存储的 key（需要在显示时转换为签名 URL）
 function isObjectStorageKey(url: string): boolean {
@@ -38,31 +78,57 @@ export function extractImageUrls(text: string): string[] {
   return [...new Set(urls)];
 }
 
-// 将文本中的图片 key 转换为签名 URL
+// 将文本中的图片 key 转换为签名 URL（带缓存）
 export async function convertImageKeysToUrls(text: string, expireTime: number = 3600): Promise<string> {
   if (!text) return text;
   
   const storage = getStorage();
-  const bucketEndpoint = process.env.COZE_BUCKET_ENDPOINT_URL || '';
   let result = text;
   
   const urls = extractImageUrls(text);
+  // 批量处理：先检查缓存，只对未缓存的 key 生成签名
+  const uncachedKeys: string[] = [];
+  const cachedResults: Record<string, string> = {};
+  
   for (const url of urls) {
-    // 检查是否需要转换（是 key 而不是完整 URL）
     if (isObjectStorageKey(url)) {
-      try {
-        const signedUrl = await storage.generatePresignedUrl({ key: url, expireTime });
-        result = result.replace(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), signedUrl);
-      } catch (error) {
-        console.error(`[ImageUtils] Failed to generate URL for key: ${url}`, error);
+      const cached = getCachedSignedUrl(url);
+      if (cached) {
+        cachedResults[url] = cached;
+      } else {
+        uncachedKeys.push(url);
       }
     }
+  }
+  
+  // 并行生成未缓存的签名 URL
+  if (uncachedKeys.length > 0) {
+    const signedResults = await Promise.allSettled(
+      uncachedKeys.map(async (key) => {
+        const signedUrl = await storage.generatePresignedUrl({ key, expireTime });
+        setCachedSignedUrl(key, signedUrl, expireTime);
+        return { key, signedUrl };
+      })
+    );
+    
+    for (const res of signedResults) {
+      if (res.status === 'fulfilled') {
+        cachedResults[res.value.key] = res.value.signedUrl;
+      } else {
+        console.error(`[ImageUtils] Failed to generate URL for key`, res.reason);
+      }
+    }
+  }
+  
+  // 替换文本中的 key 为签名 URL
+  for (const [key, signedUrl] of Object.entries(cachedResults)) {
+    result = result.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), signedUrl);
   }
   
   return result;
 }
 
-// 将对象中的图片 key 转换为签名 URL
+// 将对象中的图片 key 转换为签名 URL（带缓存）
 export async function convertQuestionImageKeys(
   question: {
     content?: string;
