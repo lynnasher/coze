@@ -14,6 +14,8 @@ import {
   RefreshCw,
   Target,
   Flame,
+  Brain,
+  TrendingUp,
 } from 'lucide-react';
 import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -730,49 +732,154 @@ export default function WrongBookPage() {
                   </div>
                   
                   {/* 功能入口按钮 */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <button 
-                      onClick={() => startReview(filteredQuestions)}
-                      disabled={filteredQuestions.length === 0}
-                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
-                    >
-                      <RefreshCw className="w-5 h-5" />
-                      <span className="text-xs font-medium">全部复习</span>
-                    </button>
-                    <button 
-                      onClick={() => {
-                        // 智能推荐：筛选出连续答对次数少的题目
-                        const recommended = filteredQuestions
-                          .filter(q => (wrongStreakStore.get(q.id) || 0) < 2)
-                          .slice(0, 10);
-                        if (recommended.length > 0) startReview(recommended);
-                      }}
-                      disabled={filteredQuestions.length === 0}
-                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50"
-                    >
-                      <Target className="w-5 h-5" />
-                      <span className="text-xs font-medium">智能推荐</span>
-                    </button>
-                    <button 
-                      onClick={() => {
-                        // 专项突破：筛选出错得最多的题目
-                        const records = recordStore.getAll();
-                        const wrongCounts: Record<string, number> = {};
-                        records.forEach(r => {
-                          if (!r.isCorrect) wrongCounts[r.questionId] = (wrongCounts[r.questionId] || 0) + 1;
-                        });
-                        const breakthrough = filteredQuestions
-                          .sort((a, b) => (wrongCounts[b.id] || 0) - (wrongCounts[a.id] || 0))
-                          .slice(0, 10);
-                        if (breakthrough.length > 0) startReview(breakthrough);
-                      }}
-                      disabled={filteredQuestions.length === 0}
-                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors disabled:opacity-50"
-                    >
-                      <Flame className="w-5 h-5" />
-                      <span className="text-xs font-medium">专项突破</span>
-                    </button>
-                  </div>
+                  {(() => {
+                    const records = recordStore.getAll();
+                    const now = Date.now();
+                    
+                    // ===== 方案一：艾宾浩斯遗忘曲线 + 掌握度模型 =====
+                    const getEbbinghausScore = (q: Question) => {
+                      const qRecords = records.filter(r => r.questionId === q.id && !r.isCorrect);
+                      if (qRecords.length === 0) return 0;
+                      
+                      // 最后一次做错的时间
+                      const lastWrong = Math.max(...qRecords.map(r => r.timestamp));
+                      const daysSinceWrong = (now - lastWrong) / (1000 * 60 * 60 * 24);
+                      
+                      // 连续答对次数（掌握度）
+                      const streak = wrongStreakStore.get(q.id) || 0;
+                      const masteryLevel = streak / 3; // 0-1
+                      
+                      // 艾宾浩斯遗忘曲线：1天后遗忘率约50%，3天后约70%，7天后约80%
+                      const forgettingRate = Math.min(0.9, 0.5 + daysSinceWrong * 0.05);
+                      
+                      // 综合得分：遗忘率越高且掌握度越低，优先级越高
+                      return forgettingRate * (1 - masteryLevel) * 100;
+                    };
+                    
+                    const ebbinghausQuestions = [...filteredQuestions]
+                      .sort((a, b) => getEbbinghausScore(b) - getEbbinghausScore(a))
+                      .slice(0, 10);
+                    
+                    // ===== 方案二：多维度加权评分模型 =====
+                    const getWeightedScore = (q: Question) => {
+                      const qRecords = records.filter(r => r.questionId === q.id);
+                      const wrongRecords = qRecords.filter(r => !r.isCorrect);
+                      
+                      // 维度1：错误次数（权重30%）
+                      const wrongCount = wrongRecords.length;
+                      const errorScore = Math.min(wrongCount / 5, 1) * 30;
+                      
+                      // 维度2：时间衰减（权重25%）- 越近错的越优先
+                      const lastWrong = wrongRecords.length > 0 
+                        ? Math.max(...wrongRecords.map(r => r.timestamp))
+                        : 0;
+                      const daysSinceWrong = (now - lastWrong) / (1000 * 60 * 60 * 24);
+                      const timeScore = Math.max(0, 1 - daysSinceWrong / 7) * 25;
+                      
+                      // 维度3：掌握度（权重25%）- 掌握度越低越优先
+                      const streak = wrongStreakStore.get(q.id) || 0;
+                      const masteryScore = (1 - Math.min(streak / 3, 1)) * 25;
+                      
+                      // 维度4：反复错误（权重20%）- 错误次数/总练习次数
+                      const errorRate = qRecords.length > 0 ? wrongCount / qRecords.length : 0;
+                      const repeatScore = errorRate * 20;
+                      
+                      return errorScore + timeScore + masteryScore + repeatScore;
+                    };
+                    
+                    const weightedQuestions = [...filteredQuestions]
+                      .sort((a, b) => getWeightedScore(b) - getWeightedScore(a))
+                      .slice(0, 10);
+                    
+                    // ===== 方案三：自适应学习路径模型 =====
+                    const getAdaptiveScore = (q: Question) => {
+                      const qRecords = records.filter(r => r.questionId === q.id);
+                      const wrongRecords = qRecords.filter(r => !r.isCorrect);
+                      const streak = wrongStreakStore.get(q.id) || 0;
+                      
+                      // 计算用户当前水平（基于最近10道题的正确率）
+                      const recentRecords = records.slice(-10);
+                      const recentAccuracy = recentRecords.length > 0
+                        ? recentRecords.filter(r => r.isCorrect).length / recentRecords.length
+                        : 0.5;
+                      
+                      // 题目难度（根据历史错误率估算）
+                      const difficulty = qRecords.length > 0
+                        ? wrongRecords.length / qRecords.length
+                        : 0.5;
+                      
+                      // "跳一跳够得着"的题目最优先
+                      // 难度应该略高于当前水平（最近正确率）
+                      const optimalDifficulty = 1 - recentAccuracy + 0.1;
+                      const difficultyMatch = 1 - Math.abs(difficulty - optimalDifficulty);
+                      
+                      // 结合掌握度和难度匹配
+                      const masteryWeight = 0.4;
+                      const difficultyWeight = 0.6;
+                      
+                      const masteryFactor = (1 - Math.min(streak / 3, 1));
+                      
+                      return masteryFactor * masteryWeight * 100 + difficultyMatch * difficultyWeight * 100;
+                    };
+                    
+                    const adaptiveQuestions = [...filteredQuestions]
+                      .sort((a, b) => getAdaptiveScore(b) - getAdaptiveScore(a))
+                      .slice(0, 10);
+                    
+                    return (
+                      <div className="space-y-3">
+                        {/* 第一行：全部复习 + 遗忘曲线推荐 */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => startReview(filteredQuestions)}
+                            disabled={filteredQuestions.length === 0}
+                            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                          >
+                            <RefreshCw className="w-5 h-5" />
+                            <span className="text-xs font-medium">全部复习</span>
+                            <span className="text-[10px] text-gray-400">{filteredQuestions.length}题</span>
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (ebbinghausQuestions.length > 0) startReview(ebbinghausQuestions);
+                            }}
+                            disabled={ebbinghausQuestions.length === 0}
+                            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                          >
+                            <Brain className="w-5 h-5" />
+                            <span className="text-xs font-medium">科学记忆</span>
+                            <span className="text-[10px] text-amber-400">遗忘曲线</span>
+                          </button>
+                        </div>
+                        
+                        {/* 第二行：加权评分 + 自适应 */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => {
+                              if (weightedQuestions.length > 0) startReview(weightedQuestions);
+                            }}
+                            disabled={weightedQuestions.length === 0}
+                            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                          >
+                            <Target className="w-5 h-5" />
+                            <span className="text-xs font-medium">重点攻克</span>
+                            <span className="text-[10px] text-indigo-400">多维分析</span>
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (adaptiveQuestions.length > 0) startReview(adaptiveQuestions);
+                            }}
+                            disabled={adaptiveQuestions.length === 0}
+                            className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                          >
+                            <TrendingUp className="w-5 h-5" />
+                            <span className="text-xs font-medium">自适应</span>
+                            <span className="text-[10px] text-emerald-400">难度匹配</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
 
