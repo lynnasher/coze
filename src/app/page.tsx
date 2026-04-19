@@ -815,8 +815,6 @@ export default function QuizApp() {
                 {/* 连续学习天数卡片 - 带周目标进度 */}
                 {mounted && (() => {
                   const records = recordStore.getAll();
-                  if (records.length === 0) return null;
-                  
                   const streak = calculateStreakStats(records);
                   const isActive = streak.current > 0;
                   
