@@ -12,6 +12,8 @@ import {
   Settings,
   User,
   RefreshCw,
+  Target,
+  Flame,
 } from 'lucide-react';
 import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -565,23 +567,252 @@ export default function WrongBookPage() {
         {/* 有错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
           <>
-            {/* 统计卡片 - 参考图风格 */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">错题总数</p>
-                  <p className="text-4xl font-bold text-gray-900">{wrongQuestions.length}</p>
-                </div>
-                <Button 
-                  onClick={() => startReview(filteredQuestions)} 
-                  disabled={filteredQuestions.length === 0}
-                  className="h-12 px-6 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-medium"
-                >
-                  开始复习
-                </Button>
-              </div>
+            {/* ========== 错题本卡片方案选择 ========== */}
+            {(() => {
+              // 计算统计数据
+              const totalWrong = wrongQuestions.length;
+              const masteredCount = wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
+              const needReviewCount = totalWrong - masteredCount;
+              const masteryRate = totalWrong > 0 ? Math.round((masteredCount / totalWrong) * 100) : 0;
               
-              {/* 题型筛选 */}
+              // 计算今日新增错题
+              const today = new Date().toDateString();
+              const todayWrong = recordStore.getAll().filter(r => {
+                if (r.isCorrect) return false;
+                const recordDate = new Date(r.timestamp).toDateString();
+                return recordDate === today;
+              }).length;
+
+              // ===== 方案一：数据仪表盘风格 =====
+              const Scheme1 = () => (
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+                  <div className="flex items-center gap-4">
+                    {/* 左侧：错题总数 */}
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-1">错题总数</p>
+                      <p className="text-5xl font-bold text-gray-900">{totalWrong}</p>
+                      <div className="flex gap-4 mt-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-xs text-gray-500">已掌握 {masteredCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="text-xs text-gray-500">待复习 {needReviewCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 右侧：环形进度 */}
+                    <div className="relative w-24 h-24">
+                      <svg className="w-full h-full -rotate-90">
+                        <circle cx="48" cy="48" r="40" fill="none" stroke="#f3f4f6" strokeWidth="8" />
+                        <circle 
+                          cx="48" cy="48" r="40" fill="none" 
+                          stroke="url(#gradient1)" strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${masteryRate * 2.51} 251`}
+                        />
+                        <defs>
+                          <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#10b981" />
+                            <stop offset="100%" stopColor="#34d399" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-lg font-bold text-gray-900">{masteryRate}%</span>
+                        <span className="text-[10px] text-gray-400">掌握率</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 底部统计 */}
+                  <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-gray-100">
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-gray-900">{todayWrong}</p>
+                      <p className="text-xs text-gray-400">今日新增</p>
+                    </div>
+                    <div className="text-center border-x border-gray-100">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) > 0).length}
+                      </p>
+                      <p className="text-xs text-gray-400">正在攻克</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-emerald-600">{masteredCount}</p>
+                      <p className="text-xs text-gray-400">已消灭</p>
+                    </div>
+                  </div>
+                  
+                  {/* 开始复习按钮 */}
+                  <Button 
+                    onClick={() => startReview(filteredQuestions)} 
+                    disabled={filteredQuestions.length === 0}
+                    className="w-full h-12 mt-5 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
+                  >
+                    开始复习
+                  </Button>
+                </div>
+              );
+
+              // ===== 方案二：功能入口风格 =====
+              const Scheme2 = () => (
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+                  {/* 标题栏 */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">错题本</h3>
+                      <p className="text-sm text-gray-500">共 <span className="font-semibold text-gray-900">{totalWrong}</span> 道错题待复习</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                      <BookOpen className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  
+                  {/* 进度条 */}
+                  <div className="mb-5">
+                    <div className="flex justify-between text-xs text-gray-500 mb-2">
+                      <span>复习进度</span>
+                      <span>{masteredCount}/{totalWrong}</span>
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all"
+                        style={{ width: `${masteryRate}%` }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* 功能入口按钮 */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <button 
+                      onClick={() => startReview(filteredQuestions)}
+                      disabled={filteredQuestions.length === 0}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-gray-900 text-white hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className="w-5 h-5" />
+                      <span className="text-xs font-medium">全部复习</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        // 智能推荐：筛选出连续答对次数少的题目
+                        const recommended = filteredQuestions
+                          .filter(q => (wrongStreakStore.get(q.id) || 0) < 2)
+                          .slice(0, 10);
+                        if (recommended.length > 0) startReview(recommended);
+                      }}
+                      disabled={filteredQuestions.length === 0}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                    >
+                      <Target className="w-5 h-5" />
+                      <span className="text-xs font-medium">智能推荐</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        // 专项突破：筛选出错得最多的题目
+                        const records = recordStore.getAll();
+                        const wrongCounts: Record<string, number> = {};
+                        records.forEach(r => {
+                          if (!r.isCorrect) wrongCounts[r.questionId] = (wrongCounts[r.questionId] || 0) + 1;
+                        });
+                        const breakthrough = filteredQuestions
+                          .sort((a, b) => (wrongCounts[b.id] || 0) - (wrongCounts[a.id] || 0))
+                          .slice(0, 10);
+                        if (breakthrough.length > 0) startReview(breakthrough);
+                      }}
+                      disabled={filteredQuestions.length === 0}
+                      className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors disabled:opacity-50"
+                    >
+                      <Flame className="w-5 h-5" />
+                      <span className="text-xs font-medium">专项突破</span>
+                    </button>
+                  </div>
+                </div>
+              );
+
+              // ===== 方案三：学习概览风格 =====
+              const Scheme3 = () => (
+                <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-5 mb-4 text-white">
+                  <div className="flex items-start justify-between">
+                    {/* 左侧：主要数据 */}
+                    <div>
+                      <p className="text-white/60 text-sm mb-1">我的错题本</p>
+                      <p className="text-5xl font-bold mb-2">{totalWrong}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-xs">
+                          掌握率 {masteryRate}%
+                        </span>
+                        {masteryRate >= 80 && (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs">
+                            优秀
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 右侧：趋势小图 */}
+                    <div className="w-24 h-16">
+                      <svg viewBox="0 0 100 60" className="w-full h-full">
+                        {/* 网格线 */}
+                        <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                        <line x1="0" y1="30" x2="100" y2="30" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                        <line x1="0" y1="45" x2="100" y2="45" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                        {/* 趋势折线 - 模拟数据 */}
+                        <polyline
+                          fill="none"
+                          stroke="url(#trendGradient)"
+                          strokeWidth="2"
+                          points="10,45 25,40 40,42 55,35 70,30 85,25 95,20"
+                        />
+                        <defs>
+                          <linearGradient id="trendGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="100%" stopColor="#f59e0b" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <p className="text-[10px] text-white/40 text-center mt-1">最近7天趋势</p>
+                    </div>
+                  </div>
+                  
+                  {/* 学习建议 */}
+                  <div className="mt-5 pt-4 border-t border-white/10">
+                    <p className="text-sm text-white/80">
+                      {masteryRate < 30 ? '💪 建议每天复习10道错题，稳扎稳打' :
+                       masteryRate < 60 ? '📈 进步明显！继续保持复习节奏' :
+                       masteryRate < 80 ? '🎯 即将攻克所有错题，加油！' :
+                       '🏆 太棒了！错题掌握率很高'}
+                    </p>
+                  </div>
+                  
+                  {/* 操作按钮 */}
+                  <div className="flex gap-3 mt-4">
+                    <Button 
+                      onClick={() => startReview(filteredQuestions)} 
+                      disabled={filteredQuestions.length === 0}
+                      className="flex-1 h-11 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-medium"
+                    >
+                      开始复习
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => setTypeFilter('all')}
+                      className="h-11 px-4 rounded-xl border-white/20 text-white hover:bg-white/10"
+                    >
+                      筛选
+                    </Button>
+                  </div>
+                </div>
+              );
+
+              // 默认使用方案二（功能入口风格），可以通过修改这里切换
+              return <Scheme2 />;
+            })()}
+
+            {/* 题型筛选 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+              <p className="text-xs text-gray-400 mb-3">题型筛选</p>
               <div className="flex gap-2.5 flex-wrap">
                 {(['all', 'single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
                   const count = typeCounts[t] || 0;
