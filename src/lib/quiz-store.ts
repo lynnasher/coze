@@ -820,9 +820,16 @@ export const calculateStats = (): Stats => {
   const records = recordStore.getAll();
   const questions = questionStore.getAll();
   
-  const correctCount = records.filter(r => r.isCorrect).length;
-  const wrongCount = records.filter(r => !r.isCorrect).length;
-  const totalAttempts = records.length;
+  // 过滤掉空答题记录（没有实际作答过的题目）
+  const validRecords = records.filter(r => {
+    if (!r.selectedAnswer) return false;
+    const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+    return answer.length > 0;
+  });
+  
+  const correctCount = validRecords.filter(r => r.isCorrect).length;
+  const wrongCount = validRecords.filter(r => !r.isCorrect).length;
+  const totalAttempts = validRecords.length;
   
   const accuracy = totalAttempts > 0 
     ? Math.round((correctCount / totalAttempts) * 100) 
@@ -830,9 +837,9 @@ export const calculateStats = (): Stats => {
   
   const wrongQuestions = getWrongQuestionIds();
   
-  // 计算连续正确次数
+  // 计算连续正确次数（基于有效记录）
   let streak = 0;
-  const sortedRecords = [...records].sort((a, b) => b.timestamp - a.timestamp);
+  const sortedRecords = [...validRecords].sort((a, b) => b.timestamp - a.timestamp);
   for (const record of sortedRecords) {
     if (record.isCorrect) {
       streak++;
@@ -841,20 +848,20 @@ export const calculateStats = (): Stats => {
     }
   }
   
-  // 计算学习连续天数
-  const learningStreak = calculateLearningStreak(records);
+  // 计算学习连续天数（基于有效记录）
+  const learningStreak = calculateLearningStreak(validRecords);
   
-  // 计算分类统计
-  const categoryStats = calculateCategoryStats(records);
+  // 计算分类统计（基于有效记录）
+  const categoryStats = calculateCategoryStats(validRecords);
   
-  // 计算每日统计
-  const dailyStats = calculateDailyStats(records);
+  // 计算每日统计（基于有效记录）
+  const dailyStats = calculateDailyStats(validRecords);
   
   // 估算总学习时长（假设平均每题1.5分钟）
   const totalTimeSpent = Math.round(totalAttempts * 1.5);
   
-  // 计算日均做题数（有记录的天数）
-  const studyDays = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size;
+  // 计算日均做题数（有记录的天数，基于有效记录）
+  const studyDays = new Set(validRecords.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size;
   const avgQuestionsPerDay = studyDays > 0 ? Math.round(totalAttempts / studyDays) : 0;
   
   return {

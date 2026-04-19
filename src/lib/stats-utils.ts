@@ -4,12 +4,19 @@ import { PracticeRecord } from './types';
  * 计算连续学习天数统计
  */
 export function calculateStreakStats(records: PracticeRecord[]) {
-  if (records.length === 0) {
+  // 过滤掉空答题记录
+  const validRecords = records.filter(r => {
+    if (!r.selectedAnswer) return false;
+    const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+    return answer.length > 0;
+  });
+  
+  if (validRecords.length === 0) {
     return { current: 0, longest: 0, weekly: 0, goal: 5 };
   }
   
   const studyDates = new Set(
-    records.map(r => new Date(r.timestamp).toISOString().split('T')[0])
+    validRecords.map(r => new Date(r.timestamp).toISOString().split('T')[0])
   );
   const sortedDates = Array.from(studyDates).sort();
   const today = new Date().toISOString().split('T')[0];
@@ -58,11 +65,18 @@ export function calculateStreakStats(records: PracticeRecord[]) {
  * 计算近7天学习趋势
  */
 export function calculateTrendData(records: PracticeRecord[]) {
+  // 过滤掉空答题记录
+  const validRecords = records.filter(r => {
+    if (!r.selectedAnswer) return false;
+    const answer = Array.isArray(r.selectedAnswer) ? r.selectedAnswer : String(r.selectedAnswer);
+    return answer.length > 0;
+  });
+  
   const trend = [];
   for (let i = 6; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const dateStr = date.toISOString().split('T')[0];
-    const count = records.filter(
+    const count = validRecords.filter(
       r => new Date(r.timestamp).toISOString().split('T')[0] === dateStr
     ).length;
     trend.push({ day: date.getDate(), count });
