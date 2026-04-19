@@ -647,7 +647,7 @@ export const bankStore = {
 
 // 计算学习连续天数
 function calculateLearningStreak(records: PracticeRecord[]): LearningStreak {
-  const weeklyGoal = 5; // 默认周目标：每周学习5天
+  const weeklyGoal = 7; // 默认周目标：每周学习7天
   
   if (records.length === 0) {
     return {

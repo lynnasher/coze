@@ -83,7 +83,7 @@ export function calculateStreakStats(records: PracticeRecord[]) {
   });
   
   if (validRecords.length === 0) {
-    return { current: 0, longest: 0, weekly: 0, goal: 5 };
+    return { current: 0, longest: 0, weekly: 0, goal: 7 };
   }
   
   const studyDates = new Set(
@@ -129,7 +129,7 @@ export function calculateStreakStats(records: PracticeRecord[]) {
     if (studyDates.has(d2.toISOString().split('T')[0])) weekly++;
   }
   
-  return { current, longest, weekly, goal: 5 };
+  return { current, longest, weekly, goal: 7 };
 }
 
 /**
