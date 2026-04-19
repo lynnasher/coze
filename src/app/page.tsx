@@ -378,7 +378,7 @@ export default function QuizApp() {
 
   // 当用户登录时从云端同步数据并获取错题数量
   useEffect(() => {
-    if (currentUser && mounted) {
+    if (currentUser) {
       // 首次同步跳过推送（避免旧数据污染新账号），直接拉取云端数据
       if (!hasSyncedRef.current) {
         hasSyncedRef.current = true;
@@ -393,7 +393,7 @@ export default function QuizApp() {
       setWrongCount(0);
       hasSyncedRef.current = false;
     }
-  }, [currentUser, mounted, syncWrongCountFromCloud]);
+  }, [currentUser, syncWrongCountFromCloud]);
 
   // 获取用户激活的分类ID列表
   // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库

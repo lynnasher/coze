@@ -124,7 +124,6 @@ export default function WrongBookPage() {
   }, [recalculateWrongData]);
 
   useEffect(() => {
-    setMounted(true);
     const user = getStoredUser();
     setCurrentUser(user);
     if (user) {
@@ -134,6 +133,8 @@ export default function WrongBookPage() {
       // 然后从云端拉取当前用户的数据
       syncFromCloud(true);
     }
+    // 数据清空后再显示内容
+    setMounted(true);
   }, [checkAuth, syncFromCloud]);
 
   const wrongQuestions = useMemo(() => {
