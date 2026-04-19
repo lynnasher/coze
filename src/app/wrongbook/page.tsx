@@ -565,43 +565,73 @@ export default function WrongBookPage() {
         {/* 有错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
           <>
-            {/* 统计卡片 - 参考图风格 */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <p className="text-sm text-gray-500 mb-1">错题总数</p>
-                  <p className="text-4xl font-bold text-gray-900">{wrongQuestions.length}</p>
+            {/* 统计卡片区域 - 两列布局 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {/* 错题总数卡片 */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">错题总数</p>
+                    <p className="text-4xl font-bold text-gray-900">{wrongQuestions.length}</p>
+                  </div>
+                  <Button 
+                    onClick={() => startReview(filteredQuestions)} 
+                    disabled={filteredQuestions.length === 0}
+                    className="h-12 px-6 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-medium"
+                  >
+                    开始复习
+                  </Button>
                 </div>
-                <Button 
-                  onClick={() => startReview(filteredQuestions)} 
-                  disabled={filteredQuestions.length === 0}
-                  className="h-12 px-6 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-medium"
-                >
-                  开始复习
-                </Button>
+                
+                {/* 题型筛选 */}
+                <div className="flex gap-2 flex-wrap">
+                  {(['all', 'single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
+                    const count = typeCounts[t] || 0;
+                    if (t !== 'all' && count === 0) return null;
+                    const isActive = typeFilter === t;
+                    const label = t === 'all' ? '全部' : TYPE_LABELS[t];
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setTypeFilter(t)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          isActive 
+                            ? 'bg-gray-900 text-white' 
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {label} {count}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              
-              {/* 题型筛选 */}
-              <div className="flex gap-2.5 flex-wrap">
-                {(['all', 'single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
-                  const count = typeCounts[t] || 0;
-                  if (t !== 'all' && count === 0) return null;
-                  const isActive = typeFilter === t;
-                  const label = t === 'all' ? '全部' : TYPE_LABELS[t];
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => setTypeFilter(t)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                        isActive 
-                          ? 'bg-gray-900 text-white' 
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {label} {count}
-                    </button>
-                  );
-                })}
+
+              {/* 错题本卡片 - 参考题库卡片样式 */}
+              <div 
+                className="group bg-white rounded-3xl shadow-sm border border-gray-100 p-5 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-gray-200"
+                onClick={() => startReview(filteredQuestions)}
+              >
+                <div className="flex items-center gap-4 h-full">
+                  {/* 左侧图标 */}
+                  <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-red-500 to-rose-500 rounded-2xl flex items-center justify-center shadow-sm">
+                    <BookOpen className="w-7 h-7 text-white" />
+                  </div>
+                  
+                  {/* 中间内容 */}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-800 text-lg mb-1">错题本</h4>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm text-gray-500">共 {wrongQuestions.length} 道错题</span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">连续答对3次自动移出</p>
+                  </div>
+                  
+                  {/* 右侧箭头 */}
+                  <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                    <ChevronRight className="w-5 h-5 text-red-500" />
+                  </div>
+                </div>
               </div>
             </div>
 
