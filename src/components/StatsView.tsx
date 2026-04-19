@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { 
@@ -8,13 +8,12 @@ import {
   Check,
   X,
   BookOpen,
-  RefreshCw,
   Target,
   TrendingUp,
   Flame,
   ChevronRight,
 } from 'lucide-react';
-import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService, forceSync } from '@/lib/quiz-store';
+import { recordStore } from '@/lib/quiz-store';
 import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
 
 interface StatsViewProps {
@@ -24,19 +23,6 @@ interface StatsViewProps {
 
 export default function StatsView({ mounted, wrongCount }: StatsViewProps) {
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('day');
-
-  const handleSync = useCallback(async () => {
-    const userId = getCurrentUserId();
-    if (userId) {
-      await forceSync();
-      const result = await cloudSyncService.pullData(userId);
-      if (result) {
-        recordStore.save(result.records);
-        wrongStreakStore.save(result.streaks);
-        window.location.reload();
-      }
-    }
-  }, []);
 
   if (!mounted) return null;
 
@@ -49,17 +35,6 @@ export default function StatsView({ mounted, wrongCount }: StatsViewProps) {
 
   return (
     <div className="space-y-4">
-      {/* 同步刷新按钮 */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSync}
-          className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
-        >
-          <RefreshCw className="w-3 h-3" />
-          同步
-        </button>
-      </div>
-      
       {/* 连续学习天数 - 紧凑激励卡片 */}
       <Card className={`border-0 shadow-sm rounded-xl overflow-hidden ${isStreakActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
         <CardContent className="p-3">
