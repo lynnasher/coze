@@ -307,7 +307,7 @@ export default function WrongBookPage() {
       <div className="min-h-screen bg-slate-50">
         {/* 固定顶部栏 - 横向铺满 */}
         <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 py-3 z-30">
-          <div className="max-w-[800px] mx-auto flex items-center justify-between">
+          <div className="max-w-[970px] mx-auto flex items-center justify-between">
             <Button
               variant="ghost"
               size="sm"
@@ -331,7 +331,7 @@ export default function WrongBookPage() {
 
         {/* 进度条 */}
         <div className="bg-white border-b border-slate-100 px-4 py-2">
-          <div className="max-w-[800px] mx-auto">
+          <div className="max-w-[970px] mx-auto">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
@@ -343,7 +343,7 @@ export default function WrongBookPage() {
 
         {/* 错题统计提示 */}
         <div className="bg-amber-50 border-b border-amber-100 px-4 py-2">
-          <div className="max-w-[800px] mx-auto flex gap-4 text-sm text-amber-700">
+          <div className="max-w-[970px] mx-auto flex gap-4 text-sm text-amber-700">
             <span>错题 <span className="font-semibold">{wrongInfo.wrongCount}</span> 次</span>
             <span>掌握度 <span className="font-semibold">{wrongInfo.streak}</span>/3</span>
           </div>
@@ -351,7 +351,7 @@ export default function WrongBookPage() {
 
         {/* 题目内容区域 */}
         <div className="pb-28 px-4 sm:px-6">
-          <div className="max-w-[800px] mx-auto py-3">
+          <div className="max-w-[970px] mx-auto py-3">
             {/* 题目卡片 */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
               {/* 题干头部 */}
@@ -491,7 +491,7 @@ export default function WrongBookPage() {
 
         {/* 底部固定操作栏 */}
         <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
-          <div className="max-w-[800px] mx-auto">
+          <div className="max-w-[970px] mx-auto">
             <div className="flex items-center justify-between gap-3">
               <Button
                 variant="outline"
@@ -551,7 +551,7 @@ export default function WrongBookPage() {
       
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-xl border-b sticky top-0 z-50">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-[970px] mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
               <BookOpen className="w-4 h-4 text-white" />
@@ -571,7 +571,7 @@ export default function WrongBookPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-5">
+      <main className="max-w-[970px] mx-auto px-4 py-5">
         {/* 未登录 */}
         {!currentUser && mounted && (
           <div className="text-center py-16">
