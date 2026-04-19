@@ -707,7 +707,6 @@ export default function QuizApp() {
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
-                  <p className="text-xs text-gray-400">{questions.length} 道题目</p>
                 </div>
               </button>
               
