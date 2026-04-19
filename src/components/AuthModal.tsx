@@ -363,6 +363,10 @@ export function UserStatus({ className }: UserStatusProps) {
   const handleLogout = () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
+    localStorage.removeItem('quiz_records');
+    localStorage.removeItem('quiz_wrong_streak');
+    localStorage.removeItem('quiz_recent_practice');
     setUser(null);
   };
 

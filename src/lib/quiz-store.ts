@@ -900,12 +900,32 @@ export const cloudSyncService = {
     }
   },
 
-  // 登录后自动同步（拉取云端数据并合并）
+  // 登录后自动同步（先清空本地数据，再从云端拉取当前用户数据）
   async syncOnLogin(): Promise<boolean> {
     const userId = getUserId();
     if (!userId) return false;
 
-    return this.syncAll(userId);
+    // 清空本地之前用户的数据，避免新用户看到旧数据
+    recordStore.clear();
+    wrongStreakStore.clear();
+    recentPracticeStore.clear();
+
+    // 从云端拉取当前用户的数据
+    return this.pullData(userId).then(data => {
+      if (data) {
+        if (data.records.length > 0) {
+          recordStore.save(data.records);
+        }
+        if (Object.keys(data.streaks).length > 0) {
+          wrongStreakStore.save(data.streaks);
+        }
+        if (data.recentPractices.length > 0) {
+          recentPracticeStore.save(data.recentPractices);
+        }
+        return true;
+      }
+      return false;
+    });
   },
 };
 

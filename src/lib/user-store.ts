@@ -275,4 +275,11 @@ export const loginUser = (phone: string, password: string): { success: boolean; 
 // 用户登出
 export const logoutUser = () => {
   sessionStore.clear();
+  
+  // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('quiz_records');
+    localStorage.removeItem('quiz_wrong_streak');
+    localStorage.removeItem('quiz_recent_practice');
+  }
 };
