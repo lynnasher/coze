@@ -700,14 +700,12 @@ export default function QuizApp() {
                   // 切换到首页标签
                   setActiveTab('practice');
                 }}
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer"
               >
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
-                  <BookOpen className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
+                  <BookOpen className="w-4 h-4 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
-                </div>
+                <span className="font-semibold text-gray-900">智能刷题</span>
               </button>
               
               {/* 用户信息 */}
