@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -57,6 +57,10 @@ export default function WrongBookPage() {
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+  
+  // 云端题目数据缓存（用于解决不同设备间题目数据不一致问题）
+  const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
@@ -156,11 +160,68 @@ export default function WrongBookPage() {
     };
   }, [checkAuth, syncFromCloud]);
 
+  // 从云端批量获取题目数据
+  const fetchQuestionsFromCloud = useCallback(async (questionIds: string[]) => {
+    if (questionIds.length === 0) return;
+    
+    const token = getUserToken();
+    if (!token) return;
+    
+    setIsLoadingQuestions(true);
+    try {
+      // 分批获取，每批10个
+      const batchSize = 10;
+      const fetchedQuestions: Record<string, Question> = {};
+      
+      for (let i = 0; i < questionIds.length; i += batchSize) {
+        const batch = questionIds.slice(i, i + batchSize);
+        const response = await fetch('/api/questions/batch', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ ids: batch }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          data.questions?.forEach((q: Question) => {
+            fetchedQuestions[q.id] = q;
+          });
+        }
+      }
+      
+      setCloudQuestions(prev => ({ ...prev, ...fetchedQuestions }));
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  }, []);
+
   const wrongQuestions = useMemo(() => {
     const wrongIds = getWrongQuestionIds();
     const allQuestions = questionStore.getAll();
-    return wrongIds.map(id => allQuestions.find(q => q.id === id)).filter((q): q is Question => q !== undefined);
-  }, [refreshKey]);
+    
+    return wrongIds.map(id => {
+      // 优先从本地查找
+      const localQuestion = allQuestions.find(q => q.id === id);
+      if (localQuestion) return localQuestion;
+      // 本地没有则从云端缓存查找
+      return cloudQuestions[id];
+    }).filter((q): q is Question => q !== undefined);
+  }, [refreshKey, cloudQuestions]);
+  
+  // 检测缺失的题目并从云端获取
+  useEffect(() => {
+    const wrongIds = getWrongQuestionIds();
+    const allQuestions = questionStore.getAll();
+    const localIds = new Set(allQuestions.map(q => q.id));
+    const missingIds = wrongIds.filter(id => !localIds.has(id) && !cloudQuestions[id]);
+    
+    if (missingIds.length > 0) {
+      fetchQuestionsFromCloud(missingIds);
+    }
+  }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]);
 
   const filteredQuestions = useMemo(() => {
     if (typeFilter === 'all') return wrongQuestions;
