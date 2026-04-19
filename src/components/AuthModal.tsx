@@ -376,6 +376,10 @@ export function UserStatus({ className }: UserStatusProps) {
     localStorage.removeItem('quiz_wrong_streak');
     localStorage.removeItem('quiz_recent_practice');
     setUser(null);
+    // 触发认证状态变化事件
+    window.dispatchEvent(new Event('user-auth-change'));
+    // 刷新页面以清除所有状态
+    window.location.reload();
   };
 
   if (user) {

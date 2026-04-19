@@ -397,14 +397,18 @@ export default function QuizApp() {
       }
     };
 
-    // 处理用户登录事件（同一标签页内）
+    // 处理用户登录/退出事件（同一标签页内）
     const handleUserAuthChange = () => {
       if (!isMountedRef.current) return;
       const user = getCurrentUser();
+      const hadUser = currentUser !== null;
       setCurrentUser(user);
       if (user) {
         // 重新加载所有数据以更新题库显示
         loadAllData();
+      } else if (hadUser) {
+        // 用户从登录状态退出，刷新页面以清除所有状态
+        window.location.reload();
       }
     };
 
