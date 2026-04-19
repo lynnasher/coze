@@ -812,7 +812,7 @@ export default function QuizApp() {
                   学习数据
                 </h3>
                 
-                {/* 连续学习天数卡片 */}
+                {/* 连续学习天数卡片 - 带周目标进度 */}
                 {mounted && (() => {
                   const records = recordStore.getAll();
                   if (records.length === 0) return null;
@@ -821,31 +821,51 @@ export default function QuizApp() {
                   const isActive = streak.current > 0;
                   
                   return (
-                    <div className={`rounded-xl p-3 mb-3 ${isActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-slate-200'}`}>
-                            <Flame className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <Card className={`border-0 shadow-sm rounded-xl overflow-hidden mb-3 ${isActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                              <Flame className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                            </div>
+                            <div>
+                              <div className={`text-2xl font-bold leading-none ${isActive ? 'text-white' : 'text-slate-700'}`}>
+                                {streak.current}
+                              </div>
+                              <div className={`text-[10px] mt-0.5 ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                                连续天数
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <div className={`text-2xl font-bold leading-none ${isActive ? 'text-white' : 'text-slate-700'}`}>
-                              {streak.current}
+                          <div className="text-right">
+                            <div className={`text-[10px] ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                              最长 {streak.longest}天
                             </div>
-                            <div className={`text-[10px] mt-0.5 ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                              连续天数
-                            </div>
+                            {isActive && (
+                              <span className="text-[10px] text-white font-medium">🔥 继续保持</span>
+                            )}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className={`text-[10px] ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                            最长 {streak.longest}天
+                        
+                        {/* 周目标进度 */}
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-[10px] ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                              本周 {streak.weekly}/{streak.goal}天
+                            </span>
+                            <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                              {Math.round((streak.weekly / streak.goal) * 100)}%
+                            </span>
                           </div>
-                          {isActive && (
-                            <span className="text-[10px] text-white font-medium">🔥 继续保持</span>
-                          )}
+                          <div className={`h-1.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${isActive ? 'bg-white' : 'bg-slate-400'}`}
+                              style={{ width: `${Math.min((streak.weekly / streak.goal) * 100, 100)}%` }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   );
                 })()}
                 
