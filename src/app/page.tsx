@@ -391,21 +391,29 @@ export default function QuizApp() {
   // 当用户登录时从云端同步数据并获取错题数量
   useEffect(() => {
     if (currentUser) {
-      // 首次同步跳过推送（避免旧数据污染新账号），直接拉取云端数据
+      // 首次同步：先推送本地数据到云端（保留未登录时的做题记录），再拉取云端数据合并
       if (!hasSyncedRef.current) {
         hasSyncedRef.current = true;
-        // 强制清空本地数据，避免看到之前用户的数据
-        recordStore.clear();
-        wrongStreakStore.clear();
-        syncWrongCountFromCloud(true);
+        // 先推送本地数据到云端（如果有），避免数据丢失
+        const localRecords = recordStore.getAll();
+        const localStreaks = wrongStreakStore.getAll();
+        if (localRecords.length > 0 || Object.keys(localStreaks).length > 0) {
+          // 有本地数据，先推送再拉取（合并）
+          syncWrongCountFromCloud(false);
+        } else {
+          // 没有本地数据，直接拉取云端数据
+          syncWrongCountFromCloud(true);
+        }
       } else {
         syncWrongCountFromCloud(false);
       }
     } else {
-      setWrongCount(0);
+      // 未登录状态：从本地计算错题数
+      const count = recalculateWrongData();
+      setWrongCount(count);
       hasSyncedRef.current = false;
     }
-  }, [currentUser, syncWrongCountFromCloud]);
+  }, [currentUser, syncWrongCountFromCloud, recalculateWrongData]);
 
   // 获取用户激活的分类ID列表
   // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
@@ -1272,9 +1280,7 @@ export default function QuizApp() {
                       onClick={async () => {
                         const userId = getCurrentUserId();
                         if (userId) {
-                          // 强制同步到云端
                           await forceSync();
-                          // 从云端拉取最新数据
                           const result = await cloudSyncService.pullData(userId);
                           if (result) {
                             recordStore.save(result.records);
@@ -1283,53 +1289,51 @@ export default function QuizApp() {
                           }
                         }
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
-                      同步数据
+                      <RefreshCw className="w-3 h-3" />
+                      同步
                     </button>
                   </div>
                   
-                  {/* 连续学习天数 - 激励卡片 */}
-                  <Card className={`border-0 shadow-md rounded-2xl overflow-hidden ${isStreakActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
-                    <CardContent className="p-4">
+                  {/* 连续学习天数 - 紧凑激励卡片 */}
+                  <Card className={`border-0 shadow-sm rounded-xl overflow-hidden ${isStreakActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
+                    <CardContent className="p-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
-                            <Flame className={`w-7 h-7 ${isStreakActive ? 'text-white' : 'text-slate-400'}`} />
+                        <div className="flex items-center gap-2">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                            <Flame className={`w-5 h-5 ${isStreakActive ? 'text-white' : 'text-slate-400'}`} />
                           </div>
                           <div>
-                            <div className={`text-3xl font-bold ${isStreakActive ? 'text-white' : 'text-slate-700'}`}>
+                            <div className={`text-2xl font-bold leading-none ${isStreakActive ? 'text-white' : 'text-slate-700'}`}>
                               {streak.current}
                             </div>
-                            <div className={`text-sm ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                              连续学习天数
+                            <div className={`text-[10px] mt-0.5 ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                              连续天数
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className={`text-xs mb-1 ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                            最长记录: {streak.longest}天
+                          <div className={`text-[10px] ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                            最长 {streak.longest}天
                           </div>
                           {isStreakActive && (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full">
-                              <span className="text-xs text-white font-medium">🔥 继续保持!</span>
-                            </div>
+                            <span className="text-[10px] text-white font-medium">🔥 继续保持</span>
                           )}
                         </div>
                       </div>
                       
                       {/* 周目标进度 */}
-                      <div className="mt-4 pt-4 border-t border-white/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`text-xs ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
-                            本周目标 ({streak.weekly}/{streak.goal} 天)
+                      <div className="mt-2 pt-2 border-t border-white/10">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[10px] ${isStreakActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                            本周 {streak.weekly}/{streak.goal}天
                           </span>
-                          <span className={`text-xs font-medium ${isStreakActive ? 'text-white' : 'text-slate-500'}`}>
+                          <span className={`text-[10px] font-medium ${isStreakActive ? 'text-white' : 'text-slate-500'}`}>
                             {Math.round((streak.weekly / streak.goal) * 100)}%
                           </span>
                         </div>
-                        <div className={`h-2 rounded-full ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                        <div className={`h-1.5 rounded-full ${isStreakActive ? 'bg-white/20' : 'bg-slate-200'}`}>
                           <div 
                             className={`h-full rounded-full transition-all duration-500 ${isStreakActive ? 'bg-white' : 'bg-slate-400'}`}
                             style={{ width: `${Math.min((streak.weekly / streak.goal) * 100, 100)}%` }}
@@ -1339,29 +1343,29 @@ export default function QuizApp() {
                     </CardContent>
                   </Card>
                   
-                  {/* 近7天学习趋势 */}
-                  <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-semibold text-slate-700">近7天学习趋势</h3>
-                        <TrendingUp className="w-4 h-4 text-slate-400" />
+                  {/* 近7天学习趋势 - 紧凑版 */}
+                  <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-xs font-medium text-slate-600">近7天趋势</h3>
+                        <TrendingUp className="w-3 h-3 text-slate-400" />
                       </div>
-                      <div className="flex items-end justify-between gap-2 h-20">
+                      <div className="flex items-end justify-between gap-1 h-14">
                         {trend.map((t, i) => (
-                          <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                          <div key={i} className="flex flex-col items-center gap-0.5 flex-1">
                             <div 
-                              className={`w-full rounded-t-md transition-all duration-300 ${t.count > 0 ? 'bg-indigo-500' : 'bg-slate-100'}`}
-                              style={{ height: `${(t.count / maxTrend) * 60}px`, minHeight: t.count > 0 ? '4px' : '0' }}
+                              className={`w-full rounded-sm transition-all duration-300 ${t.count > 0 ? 'bg-indigo-500' : 'bg-slate-100'}`}
+                              style={{ height: `${(t.count / maxTrend) * 40}px`, minHeight: t.count > 0 ? '2px' : '0' }}
                             />
-                            <span className="text-[10px] text-slate-400">{t.day}日</span>
+                            <span className="text-[9px] text-slate-400">{t.day}</span>
                           </div>
                         ))}
                       </div>
                     </CardContent>
                   </Card>
                   
-                  {/* 日期筛选按钮 */}
-                  <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+                  {/* 日期筛选 - 紧凑版 */}
+                  <div className="flex gap-1 p-0.5 bg-slate-100 rounded-lg">
                     {[
                       { key: 'day', label: '今日' },
                       { key: 'week', label: '本周' },
@@ -1371,9 +1375,9 @@ export default function QuizApp() {
                       <button
                         key={filter.key}
                         onClick={() => setStatsFilter(filter.key as 'day' | 'week' | 'month' | 'all')}
-                        className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                        className={`flex-1 py-1.5 px-2 rounded-md text-xs font-medium transition-all ${
                           statsFilter === filter.key
-                            ? 'bg-slate-600 text-white shadow-md'
+                            ? 'bg-slate-600 text-white shadow-sm'
                             : 'text-slate-600 hover:bg-white/60'
                         }`}
                       >
@@ -1382,98 +1386,101 @@ export default function QuizApp() {
                     ))}
                   </div>
                   
-                  {/* 统计卡片网格 */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                      <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <BarChart3 className="w-6 h-6 text-slate-600" />
+                  {/* 统计卡片网格 - 紧凑版 */}
+                  <div className="grid grid-cols-4 gap-2">
+                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                      <CardContent className="p-2.5">
+                        <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center mb-1.5">
+                          <BarChart3 className="w-3.5 h-3.5 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).totalCount}</p>
-                        <p className="text-sm text-slate-400">总练习</p>
+                        <p className="text-lg font-bold text-slate-700">{getFilteredStats(statsFilter).totalCount}</p>
+                        <p className="text-[10px] text-slate-400">总练习</p>
                       </CardContent>
                     </Card>
 
-                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                      <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <Target className="w-6 h-6 text-slate-600" />
+                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                      <CardContent className="p-2.5">
+                        <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center mb-1.5">
+                          <Target className="w-3.5 h-3.5 text-slate-600" />
                         </div>
-                        <p className="text-3xl font-bold text-slate-700">{getFilteredStats(statsFilter).accuracy}%</p>
-                        <p className="text-sm text-slate-400">正确率</p>
+                        <p className="text-lg font-bold text-slate-700">{getFilteredStats(statsFilter).accuracy}%</p>
+                        <p className="text-[10px] text-slate-400">正确率</p>
                       </CardContent>
                     </Card>
 
-                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                      <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <Check className="w-6 h-6 text-emerald-500" />
+                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                      <CardContent className="p-2.5">
+                        <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center mb-1.5">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
                         </div>
-                        <p className="text-3xl font-bold text-emerald-600">{getFilteredStats(statsFilter).correctCount}</p>
-                        <p className="text-sm text-slate-400">正确</p>
+                        <p className="text-lg font-bold text-emerald-600">{getFilteredStats(statsFilter).correctCount}</p>
+                        <p className="text-[10px] text-slate-400">正确</p>
                       </CardContent>
                     </Card>
 
-                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                      <CardContent className="p-4">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
-                          <X className="w-6 h-6 text-rose-500" />
+                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                      <CardContent className="p-2.5">
+                        <div className="w-7 h-7 bg-rose-50 rounded-lg flex items-center justify-center mb-1.5">
+                          <X className="w-3.5 h-3.5 text-rose-500" />
                         </div>
-                        <p className="text-3xl font-bold text-rose-600">{getFilteredStats(statsFilter).wrongCount}</p>
-                        <p className="text-sm text-slate-400">错误</p>
+                        <p className="text-lg font-bold text-rose-600">{getFilteredStats(statsFilter).wrongCount}</p>
+                        <p className="text-[10px] text-slate-400">错误</p>
                       </CardContent>
                     </Card>
                   </div>
                   
-                  {/* 学习时长统计 */}
+                  {/* 学习时长统计 - 紧凑版 */}
                   {(() => {
                     const records = recordStore.getAll();
                     const totalMinutes = Math.round(records.length * 1.5);
                     const hours = Math.floor(totalMinutes / 60);
                     const mins = totalMinutes % 60;
+                    const studyDays = new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size;
                     
                     return (
-                      <div className="grid grid-cols-2 gap-3">
-                        <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                          <CardContent className="p-4">
-                            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
-                              <Clock className="w-5 h-5 text-blue-500" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                          <CardContent className="p-2.5 flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Clock className="w-4 h-4 text-blue-500" />
                             </div>
-                            <p className="text-2xl font-bold text-slate-700">
-                              {hours > 0 ? `${hours}h${mins}m` : `${mins}m`}
-                            </p>
-                            <p className="text-xs text-slate-400">总学习时长</p>
+                            <div>
+                              <p className="text-base font-bold text-slate-700">
+                                {hours > 0 ? `${hours}h${mins}m` : `${mins}m`}
+                              </p>
+                              <p className="text-[10px] text-slate-400">总时长</p>
+                            </div>
                           </CardContent>
                         </Card>
                         
-                        <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-white">
-                          <CardContent className="p-4">
-                            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center mb-2">
-                              <Calendar className="w-5 h-5 text-purple-500" />
+                        <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-white">
+                          <CardContent className="p-2.5 flex items-center gap-2">
+                            <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Calendar className="w-4 h-4 text-purple-500" />
                             </div>
-                            <p className="text-2xl font-bold text-slate-700">
-                              {new Set(records.map(r => new Date(r.timestamp).toISOString().split('T')[0])).size}
-                            </p>
-                            <p className="text-xs text-slate-400">学习天数</p>
+                            <div>
+                              <p className="text-base font-bold text-slate-700">{studyDays}</p>
+                              <p className="text-[10px] text-slate-400">学习天数</p>
+                            </div>
                           </CardContent>
                         </Card>
                       </div>
                     );
                   })()}
                   
-                  {/* 错题本导航卡片 */}
+                  {/* 错题本导航卡片 - 紧凑版 */}
                   <Link href="/wrongbook">
-                    <Card className="border-0 shadow-md rounded-2xl overflow-hidden bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-                            <BookOpen className="w-6 h-6 text-slate-600" />
+                    <Card className="border-0 shadow-sm rounded-xl overflow-hidden bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer">
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                            <BookOpen className="w-4 h-4 text-slate-600" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-lg font-bold text-slate-700">错题本</p>
-                            <p className="text-sm text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
+                            <p className="text-sm font-bold text-slate-700">错题本</p>
+                            <p className="text-xs text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
                           </div>
-                          <ChevronRight className="w-6 h-6 text-slate-400" />
+                          <ChevronRight className="w-5 h-5 text-slate-400" />
                         </div>
                       </CardContent>
                     </Card>
