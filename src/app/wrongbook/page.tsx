@@ -720,7 +720,7 @@ export default function WrongBookPage() {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-lg font-bold text-gray-900">{masteryRate}%</span>
-                        <span className="text-[10px] text-gray-400">掌握率</span>
+                        <span className="text-xs text-gray-400">掌握率</span>
                       </div>
                     </div>
                   </div>
@@ -1004,7 +1004,7 @@ export default function WrongBookPage() {
                           </linearGradient>
                         </defs>
                       </svg>
-                      <p className="text-[10px] text-white/40 text-center mt-1">最近7天趋势</p>
+                      <p className="text-xs text-white/40 text-center mt-1">最近7天趋势</p>
                     </div>
                   </div>
                   
