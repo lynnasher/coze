@@ -29,13 +29,14 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { categoryId, categoryName, count, type, maxUses, expiresAt, description } = body;
+    const { categoryId, categoryName, count, quantity, type, maxUses, expiresAt, description } = body;
 
     if (!categoryId || !categoryName) {
       return NextResponse.json({ success: false, error: '请提供分类ID和名称' }, { status: 400 });
     }
 
-    const codeCount = count || 1;
+    // 支持 quantity 或 count 参数（quantity 优先）
+    const codeCount = quantity || count || 1;
     const codes = await activationCodeService.createBatch(
       categoryId,
       categoryName,

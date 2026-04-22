@@ -610,15 +610,43 @@ export default function ActivationCodesPage() {
                 <SelectTrigger>
                   <SelectValue placeholder="选择分类" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px] overflow-y-auto">
                   {categories.length === 0 ? (
                     <SelectItem value="none" disabled>暂无分类，请先创建分类</SelectItem>
                   ) : (
-                    categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {getCategoryPath(cat.id)}
-                      </SelectItem>
-                    ))
+                    (() => {
+                      // 获取顶级分类（按 order 排序）
+                      const topCategories = categories
+                        .filter(c => !c.parentId)
+                        .sort((a, b) => a.order - b.order);
+                      
+                      // 获取子分类（按 order 排序）
+                      const getChildren = (parentId: string) =>
+                        categories
+                          .filter(c => c.parentId === parentId)
+                          .sort((a, b) => a.order - b.order);
+                      
+                      // 按父分类分组渲染
+                      const items: React.ReactNode[] = [];
+                      topCategories.forEach(top => {
+                        // 渲染顶级分类
+                        items.push(
+                          <SelectItem key={top.id} value={top.id} className="font-medium">
+                            {top.name}
+                          </SelectItem>
+                        );
+                        // 渲染其子分类（缩进显示）
+                        const children = getChildren(top.id);
+                        children.forEach(child => {
+                          items.push(
+                            <SelectItem key={child.id} value={child.id} className="pl-6 text-slate-600">
+                              ├─ {child.name}
+                            </SelectItem>
+                          );
+                        });
+                      });
+                      return items;
+                    })()
                   )}
                 </SelectContent>
               </Select>
