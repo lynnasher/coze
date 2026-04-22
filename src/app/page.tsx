@@ -39,7 +39,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats, cacheStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -291,7 +291,7 @@ export default function QuizApp() {
   }, []);
 
   // 统一的初始数据加载函数（使用缓存减少重复请求）
-  const loadAllData = useCallback(async (force: boolean = false) => {
+  const loadAllData = useCallback(async () => {
     // 加载本地数据（从 localStorage 立即获取）
     setQuestions(questionStore.getAll());
     setRecentPractices(recentPracticeStore.getRecent(3));
@@ -300,17 +300,11 @@ export default function QuizApp() {
     const user = getCurrentUser();
     setCurrentUser(user);
     
-    // 如果强制刷新，先清除缓存
-    if (force) {
-      cacheStore.remove(getCacheKey('categories'));
-      cacheStore.remove(getCacheKey('banks'));
-    }
-    
     // 使用缓存加载分类
     const { data: categoriesData } = await cachedFetch<{ categories: Category[] }>(
       '/api/categories',
       getCacheKey('categories'),
-      force ? 0 : CACHE_TTL.CATEGORIES // 强制刷新时设置 TTL 为 0，跳过缓存
+      CACHE_TTL.CATEGORIES
     );
     if (categoriesData?.categories) {
       setCategories(categoriesData.categories);
@@ -328,7 +322,7 @@ export default function QuizApp() {
     }> }>(
       '/api/banks',
       getCacheKey('banks'),
-      force ? 0 : CACHE_TTL.BANKS, // 强制刷新时设置 TTL 为 0，跳过缓存
+      CACHE_TTL.BANKS,
       false // 题库列表公开，不需要认证
     );
     if (banksData?.banks) {
@@ -906,15 +900,6 @@ export default function QuizApp() {
                     <h1 className="text-lg font-semibold text-slate-700 tracking-tight">题库浏览</h1>
                     <p className="text-slate-500 text-xs mt-0.5">选择分类开始练习</p>
                   </div>
-                  
-                  {/* 刷新按钮 */}
-                  <button
-                    onClick={() => loadAllData(true)}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                    title="刷新题库"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
                   
                   {/* 装饰徽章 */}
                   {currentUser && (
