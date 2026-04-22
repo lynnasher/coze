@@ -80,8 +80,8 @@ export async function cachedFetch<T>(
   ttlMs: number = CACHE_TTL.QUESTIONS,
   requireAuth: boolean = false
 ): Promise<{ data: T | null; fromCache: boolean }> {
-  // 检查缓存（对于需要认证的请求，不使用缓存以确保数据最新）
-  if (!requireAuth) {
+  // 检查缓存（ttlMs = 0 表示强制刷新，跳过缓存）
+  if (ttlMs > 0 && !requireAuth) {
     const cached = cacheStore.get<T>(cacheKey);
     if (cached) {
       return { data: cached, fromCache: true };
