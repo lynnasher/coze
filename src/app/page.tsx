@@ -1632,7 +1632,7 @@ function PracticeView({
             
             {/* 案例背景（综合题显示） */}
             {currentQuestion.caseBackground && (
-              <div className="sm:mx-4 mx-3 mt-3 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
+              <div className="sm:mx-4 mx-3 mt-3 p-3 bg-indigo-50 border border-indigo-100 rounded-lg max-h-[30vh] overflow-y-auto">
                 <div className="flex items-start gap-2">
                   <FileText className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
                   <div className="text-xs text-indigo-700 leading-relaxed flex-1">
@@ -1643,7 +1643,7 @@ function PracticeView({
             )}
             
             {/* 题目内容 */}
-            <div className="sm:px-4 px-3 py-3">
+            <div className="sm:px-4 px-3 py-3 max-h-[40vh] overflow-y-auto">
               <div className="text-base font-medium text-slate-800 leading-relaxed">
                 <RichTextWithBreaks content={displayQuestion?.content || ''} textClassName="whitespace-pre-wrap" />
               </div>
