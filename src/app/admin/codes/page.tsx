@@ -696,7 +696,7 @@ export default function ActivationCodesPage() {
                       topCategories.forEach(top => {
                         // 渲染顶级分类
                         items.push(
-                          <SelectItem key={top.id} value={top.id} className="font-medium">
+                          <SelectItem key={top.id} value={top.id} className="font-medium truncate max-w-[250px]">
                             {top.name}
                           </SelectItem>
                         );
@@ -704,7 +704,7 @@ export default function ActivationCodesPage() {
                         const children = getChildren(top.id);
                         children.forEach(child => {
                           items.push(
-                            <SelectItem key={child.id} value={child.id} className="pl-6 text-slate-600">
+                            <SelectItem key={child.id} value={child.id} className="pl-6 text-slate-600 truncate max-w-[250px]">
                               ├─ {child.name}
                             </SelectItem>
                           );

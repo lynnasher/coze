@@ -1549,16 +1549,16 @@ export default function AdminPage() {
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="选择分类" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 <SelectItem value="uncategorized">未分类</SelectItem>
                 {/* 顶级分类 */}
                 {categories.filter(c => !c.parentId).map((cat) => (
-                  <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
+                  <SelectItem key={`parent-${cat.id}`} value={cat.id} className="truncate max-w-[250px]">{cat.name}</SelectItem>
                 ))}
                 {/* 子分类 */}
                 {categories.filter(c => c.parentId).map((child) => (
-                  <SelectItem key={`child-${child.id}`} value={child.id}>
-                    &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
+                  <SelectItem key={`child-${child.id}`} value={child.id} className="pl-6 truncate max-w-[250px]">
+                    ├ {child.name}
                   </SelectItem>
                 ))}
               </SelectContent>
