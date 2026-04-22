@@ -675,7 +675,7 @@ export default function ActivationCodesPage() {
                 <SelectTrigger>
                   <SelectValue placeholder="选择分类" />
                 </SelectTrigger>
-                <SelectContent style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                <SelectContent className="!max-h-[120px] overflow-y-auto">
                   {categories.length === 0 ? (
                     <SelectItem value="none" disabled>暂无分类，请先创建分类</SelectItem>
                   ) : (

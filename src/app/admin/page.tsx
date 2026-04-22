@@ -1549,7 +1549,7 @@ export default function AdminPage() {
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="选择分类" />
               </SelectTrigger>
-              <SelectContent style={{ maxHeight: '120px', overflowY: 'auto' }}>
+              <SelectContent className="!max-h-[120px] overflow-y-auto">
                 <SelectItem value="uncategorized">未分类</SelectItem>
                 {/* 顶级分类 */}
                 {categories.filter(c => !c.parentId).map((cat) => (
