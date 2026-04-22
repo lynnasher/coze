@@ -1388,9 +1388,9 @@ export default function AdminPage() {
             <DialogTitle>管理分类</DialogTitle>
             <DialogDescription>支持创建一级分类和二级分类（子分类）</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+          <div className="space-y-4">
             {/* 已有分类列表 - 二级结构 */}
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
               {categories.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-4">暂无分类，请添加一级分类</p>
               ) : (
