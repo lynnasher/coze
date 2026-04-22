@@ -1299,6 +1299,16 @@ function PracticeView({
   const [currentChildIndex, setCurrentChildIndex] = useState(0);
   // 题目内容区域的 ref，用于滚动聚焦
   const questionContentRef = useRef<HTMLDivElement>(null);
+  // 触摸滑动相关 ref
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartTimeRef = useRef<number | null>(null);
+  // 滑动阈值（像素）
+  const SWIPE_THRESHOLD = 50;
+  // 最大滑动时间（毫秒），超过则不算快速滑动
+  const MAX_SWIPE_TIME = 500;
+  // 垂直滑动阈值，用于区分水平和垂直滑动
+  const VERTICAL_THRESHOLD = 100;
   
   // 计算答题结果统计
   const resultStats = useMemo(() => {
@@ -1413,6 +1423,82 @@ function PracticeView({
       });
     }
   }, []);
+
+  // 处理触摸开始
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    touchStartTimeRef.current = Date.now();
+  }, []);
+
+  // 处理触摸结束，判断滑动方向
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null || touchStartTimeRef.current === null) {
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const endX = touch.clientX;
+    const endY = touch.clientY;
+    const endTime = Date.now();
+
+    const deltaX = endX - touchStartXRef.current;
+    const deltaY = endY - touchStartYRef.current;
+    const deltaTime = endTime - touchStartTimeRef.current;
+
+    // 重置触摸状态
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    touchStartTimeRef.current = null;
+
+    // 如果滑动时间过长，不算快速滑动
+    if (deltaTime > MAX_SWIPE_TIME) {
+      return;
+    }
+
+    // 如果垂直滑动距离过大，认为是垂直滚动，不处理
+    if (Math.abs(deltaY) > VERTICAL_THRESHOLD) {
+      return;
+    }
+
+    // 水平滑动距离必须大于阈值
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) {
+      return;
+    }
+
+    // 判断滑动方向
+    if (deltaX > 0) {
+      // 从左向右滑动 -> 上一题
+      if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+        setCurrentChildIndex(prev => prev - 1);
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      } else if (quizState.currentIndex > 0) {
+        prevQuestion();
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      }
+    } else {
+      // 从右向左滑动 -> 下一题
+      const isComprehensive = currentQuestion?.type === 'comprehensive';
+      const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
+      const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
+
+      if (isLastQuestion && !hasMoreChildren) {
+        // 最后一题，不做任何操作（或可以触发交卷）
+        return;
+      } else if (hasMoreChildren) {
+        setCurrentChildIndex(prev => prev + 1);
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      } else {
+        nextQuestion();
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      }
+    }
+  }, [currentQuestion, currentChildIndex, quizState.currentIndex, quizState.questions.length, prevQuestion, nextQuestion, scrollToQuestion]);
   
   // 如果正在加载，显示加载状态
   if (isLoading) {
@@ -1506,8 +1592,13 @@ function PracticeView({
         </div>
       </div>
 
-      {/* 题目内容区域 */}
-      <div className="pb-28" ref={questionContentRef}>
+      {/* 题目内容区域 - 支持触摸滑动切换题目 */}
+      <div 
+        className="pb-28" 
+        ref={questionContentRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="max-w-[970px] mx-auto sm:px-4 py-3">
           {/* 题目卡片 */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
