@@ -91,6 +91,8 @@ export default function ActivationCodesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
   const [categories, setCategories] = useState<Category[]>([]);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -344,6 +346,13 @@ export default function ActivationCodesPage() {
     );
   });
 
+  // 分页计算
+  const totalPages = Math.ceil(filteredCodes.length / itemsPerPage);
+  const paginatedCodes = filteredCodes.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const validCodes = codes.filter(isCodeValid).length;
   const expiredCodes = codes.filter(c => c.expires_at && new Date(c.expires_at) < new Date()).length;
   const usedCodes = codes.filter(c => c.status === 'used').length;
@@ -465,7 +474,10 @@ export default function ActivationCodesPage() {
               <Input
                 placeholder="搜索激活码或分类..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="pl-9 rounded-lg"
               />
             </div>
@@ -491,14 +503,14 @@ export default function ActivationCodesPage() {
                         加载中...
                       </TableCell>
                     </TableRow>
-                  ) : filteredCodes.length === 0 ? (
+                  ) : paginatedCodes.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         暂无激活码
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredCodes.map((code) => {
+                    paginatedCodes.map((code) => {
                       const isExpired = code.expires_at && new Date(code.expires_at) < new Date();
                       const isUsed = code.status === 'used' || code.uses >= code.max_uses;
                       const activatedUsers = code.activated_users || [];
@@ -572,6 +584,59 @@ export default function ActivationCodesPage() {
                   )}
                 </TableBody>
               </Table>
+              
+              {/* 分页控件 */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                  <div className="text-sm text-gray-500">
+                    共 {filteredCodes.length} 条，第 {currentPage} / {totalPages} 页
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      上一页
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        // 显示当前页附近的页码
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      下一页
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
