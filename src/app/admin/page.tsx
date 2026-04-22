@@ -1388,9 +1388,9 @@ export default function AdminPage() {
             <DialogTitle>管理分类</DialogTitle>
             <DialogDescription>支持创建一级分类和二级分类（子分类）</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
             {/* 已有分类列表 - 二级结构 */}
-            <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+            <div className="space-y-3">
               {categories.length === 0 ? (
                 <p className="text-sm text-slate-500 text-center py-4">暂无分类，请添加一级分类</p>
               ) : (
@@ -1549,16 +1549,16 @@ export default function AdminPage() {
               <SelectTrigger className="mt-2">
                 <SelectValue placeholder="选择分类" />
               </SelectTrigger>
-              <SelectContent className="!max-h-[120px] overflow-y-auto">
+              <SelectContent>
                 <SelectItem value="uncategorized">未分类</SelectItem>
                 {/* 顶级分类 */}
                 {categories.filter(c => !c.parentId).map((cat) => (
-                  <SelectItem key={`parent-${cat.id}`} value={cat.id} className="truncate max-w-[250px]">{cat.name}</SelectItem>
+                  <SelectItem key={`parent-${cat.id}`} value={cat.id}>{cat.name}</SelectItem>
                 ))}
                 {/* 子分类 */}
                 {categories.filter(c => c.parentId).map((child) => (
-                  <SelectItem key={`child-${child.id}`} value={child.id} className="pl-6 truncate max-w-[250px]">
-                    ├ {child.name}
+                  <SelectItem key={`child-${child.id}`} value={child.id}>
+                    &nbsp;&nbsp;&nbsp;&nbsp;├ {child.name}
                   </SelectItem>
                 ))}
               </SelectContent>
