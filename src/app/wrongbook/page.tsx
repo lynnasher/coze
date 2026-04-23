@@ -2,7 +2,14 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ChevronLeft, 
   ChevronRight, 
   Check, 
@@ -1105,35 +1112,24 @@ export default function WrongBookPage() {
               return <Scheme2 />;
             })()}
 
-            {/* 题库分类 */}
+            {/* 题库分类筛选 - 下拉选择 */}
             {bankCounts.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-                <p className="text-xs text-gray-400 mb-3">题库分类</p>
-                <div className="flex gap-2.5 flex-wrap">
-                  <button
-                    onClick={() => setBankFilter('all')}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      bankFilter === 'all'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    全部 {wrongQuestions.length}
-                  </button>
-                  {bankCounts.map(bank => (
-                    <button
-                      key={bank.id}
-                      onClick={() => setBankFilter(bank.id)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
-                        bankFilter === bank.id
-                          ? 'bg-gray-900 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                      title={bank.name}
-                    >
-                      {bank.name} {bank.count}
-                    </button>
-                  ))}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 whitespace-nowrap">题库:</span>
+                  <Select value={bankFilter} onValueChange={setBankFilter}>
+                    <SelectTrigger className="h-8 text-sm flex-1">
+                      <SelectValue placeholder="全部题库" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部题库 ({wrongQuestions.length})</SelectItem>
+                      {bankCounts.map(bank => (
+                        <SelectItem key={bank.id} value={bank.id}>
+                          {bank.name} ({bank.count})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
