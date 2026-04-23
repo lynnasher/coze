@@ -110,6 +110,7 @@ function SortableBankRow({
   onDelete,
   onClick,
   onMoveCategory,
+  onEditQuestions,
   isEditing,
   editingName,
   onEditingNameChange,
@@ -121,6 +122,7 @@ function SortableBankRow({
   onDelete: () => void;
   onClick: () => void;
   onMoveCategory: () => void;
+  onEditQuestions: () => void;
   isEditing: boolean;
   editingName: string;
   onEditingNameChange: (name: string) => void;
@@ -179,7 +181,6 @@ function SortableBankRow({
               value={editingName}
               onChange={(e) => onEditingNameChange(e.target.value)}
               onKeyDown={handleKeyDown}
-              onBlur={onSave}
               className="flex-1 px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
@@ -200,7 +201,10 @@ function SortableBankRow({
           </div>
         ) : (
           <button 
-            onClick={() => onEdit()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
             className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left truncate block w-full"
             title="点击修改名称"
           >
@@ -224,6 +228,10 @@ function SortableBankRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEditQuestions}>
+              <FileText className="h-4 w-4 mr-2" />
+              编辑题目
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onEdit}>
               <Edit3 className="h-4 w-4 mr-2" />
               修改名称
@@ -1563,6 +1571,7 @@ export default function AdminPage() {
                                   }}
                                   onClick={() => goToBankEdit(bank)}
                                   onMoveCategory={() => openMoveCategoryDialog(bank)}
+                                  onEditQuestions={() => goToBankEdit(bank)}
                                   isEditing={editingBankId === bank.id}
                                   editingName={editingBankId === bank.id ? editingBankName : ''}
                                   onEditingNameChange={setEditingBankName}
