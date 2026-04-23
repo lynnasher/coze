@@ -116,16 +116,25 @@ export default function QuizApp() {
     });
   }, []);
 
-  // 加载题库和分类数据
+  // 加载题库和分类数据（使用公开接口）
   const loadBanksAndCategories = useCallback(async () => {
     try {
       const [banksRes, catsRes] = await Promise.all([
-        fetch('/api/admin/banks'),
-        fetch('/api/admin/categories'),
+        fetch('/api/banks'),
+        fetch('/api/categories'),
       ]);
       const banksData = await banksRes.json();
       const catsData = await catsRes.json();
-      setBanks(banksData.banks || []);
+      
+      // 字段映射：API 返回的是 question_count，转为组件期望的 questionCount
+      const mappedBanks = (banksData.banks || []).map((bank: any) => ({
+        ...bank,
+        questionCount: bank.question_count || 0,
+        categoryId: bank.category_id,
+        createdAt: bank.created_at ? new Date(bank.created_at).getTime() : Date.now(),
+      }));
+      
+      setBanks(mappedBanks);
       setCategories(catsData.categories || []);
     } catch (err) {
       console.error('加载数据失败:', err);
