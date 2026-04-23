@@ -56,17 +56,13 @@ export default function WrongBookPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
+  const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   
   // 云端题目数据缓存（用于解决不同设备间题目数据不一致问题）
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
-  // 分类数据（从 API 获取）
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string }>>([]);
-  // 题库数据（从 API 获取，包含 categoryId）
-  const [banks, setBanks] = useState<Array<{ id: string; name: string; categoryId?: string }>>([]);
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
@@ -129,34 +125,6 @@ export default function WrongBookPage() {
       // 首次加载：先拉取云端数据（skipPush=true，避免推送可能属于其他用户的本地数据）
       // 之后的操作（如答题）会通过增量同步队列推送
       syncFromCloud(true);
-      
-      // 加载分类列表
-      fetch('/api/categories')
-        .then(res => res.json())
-        .then(data => {
-          if (data.categories) {
-            setCategories(data.categories.map((c: { id: string; name: string; parentId?: string }) => ({ 
-              id: c.id, 
-              name: c.name,
-              parentId: c.parentId 
-            })));
-          }
-        })
-        .catch(err => console.error('Failed to load categories:', err));
-      
-      // 加载题库列表（包含 categoryId）
-      fetch('/api/banks')
-        .then(res => res.json())
-        .then(data => {
-          if (data.banks) {
-            setBanks(data.banks.map((b: { id: string; name: string; categoryId?: string }) => ({ 
-              id: b.id, 
-              name: b.name,
-              categoryId: b.categoryId 
-            })));
-          }
-        })
-        .catch(err => console.error('Failed to load banks:', err));
     }
     // 显示内容
     setMounted(true);
@@ -244,22 +212,14 @@ export default function WrongBookPage() {
 
   const filteredQuestions = useMemo(() => {
     let result = wrongQuestions;
-    if (categoryFilter !== 'all') {
-      result = result.filter(q => {
-        // 优先使用 categoryId，否则通过 bankId 查找（使用 API 获取的 banks）
-        let catId = q.categoryId;
-        if (!catId && q.bankId) {
-          const bank = banks.find(b => b.id === q.bankId);
-          catId = bank?.categoryId;
-        }
-        return catId === categoryFilter;
-      });
+    if (bankFilter !== 'all') {
+      result = result.filter(q => q.bankId === bankFilter);
     }
     if (typeFilter !== 'all') {
       result = result.filter(q => q.type === typeFilter);
     }
     return result;
-  }, [wrongQuestions, typeFilter, categoryFilter, banks]);
+  }, [wrongQuestions, typeFilter, bankFilter]);
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
   const paginatedQuestions = useMemo(() => {
@@ -267,71 +227,42 @@ export default function WrongBookPage() {
     return filteredQuestions.slice(start, start + PAGE_SIZE);
   }, [filteredQuestions, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [typeFilter, categoryFilter]);
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
 
   const typeCounts = useMemo(() => {
-    // 根据当前分类筛选计算题型数量
-    const base = categoryFilter === 'all' 
-      ? wrongQuestions 
-      : wrongQuestions.filter(q => {
-          // 优先使用 categoryId，否则通过 bankId 查找（使用 API 获取的 banks）
-          let catId = q.categoryId;
-          if (!catId && q.bankId) {
-            const bank = banks.find(b => b.id === q.bankId);
-            catId = bank?.categoryId;
-          }
-          return catId === categoryFilter;
-        });
+    // 根据当前题库筛选计算题型数量
+    const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
-  }, [wrongQuestions, categoryFilter, banks]);
+  }, [wrongQuestions, bankFilter]);
 
-  // 按分类统计（使用从 API 获取的 categories）
-  const categoryCounts = useMemo(() => {
+  // 按题库分类统计
+  const bankCounts = useMemo(() => {
+    const banks = bankStore.getAll();
     const counts: { id: string; name: string; count: number }[] = [];
     
-    // 先收集所有有错题的分类（优先使用 categoryId，否则通过 bankId 查找）
-    const categoryMap = new Map<string, number>();
+    // 先收集所有有错题的题库
+    const bankMap = new Map<string, number>();
     wrongQuestions.forEach(q => {
-      let catId = q.categoryId;
-      
-      // 如果没有 categoryId，尝试通过 bankId 查找（使用 API 获取的 banks）
-      if (!catId && q.bankId) {
-        const bank = banks.find(b => b.id === q.bankId);
-        if (bank?.categoryId) {
-          catId = bank.categoryId;
-        }
-      }
-      
-      if (catId) {
-        categoryMap.set(catId, (categoryMap.get(catId) || 0) + 1);
+      if (q.bankId) {
+        bankMap.set(q.bankId, (bankMap.get(q.bankId) || 0) + 1);
       }
     });
     
-    // 匹配分类名称，并构建父分类-子分类的显示格式
-    categoryMap.forEach((count, categoryId) => {
-      const category = categories.find(c => c.id === categoryId);
-      let name = category?.name || '未分类';
-      
-      // 如果有父分类，显示为"父分类-子分类"格式
-      if (category?.parentId) {
-        const parent = categories.find(c => c.id === category.parentId);
-        if (parent) {
-          name = `${parent.name}-${category.name}`;
-        }
-      }
-      
+    // 匹配题库名称
+    bankMap.forEach((count, bankId) => {
+      const bank = banks.find(b => b.id === bankId);
       counts.push({
-        id: categoryId,
-        name,
+        id: bankId,
+        name: bank?.name || '未知题库',
         count,
       });
     });
     
     // 按错题数量降序排列
     return counts.sort((a, b) => b.count - a.count);
-  }, [wrongQuestions, categories, banks]);
+  }, [wrongQuestions]);
   
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
@@ -1147,38 +1078,38 @@ export default function WrongBookPage() {
               return <Scheme2 />;
             })()}
 
-            {/* 分类筛选 - 始终显示 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-              <p className="text-xs text-gray-400 mb-3">分类筛选</p>
-              <div className="flex gap-2.5 flex-wrap">
-                <button
-                  onClick={() => setCategoryFilter('all')}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    categoryFilter === 'all'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  全部 {wrongQuestions.length}
-                </button>
-                {categoryCounts.length > 0 ? categoryCounts.map(cat => (
+            {/* 题库分类 */}
+            {bankCounts.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+                <p className="text-xs text-gray-400 mb-3">题库分类</p>
+                <div className="flex gap-2.5 flex-wrap">
                   <button
-                    key={cat.id}
-                    onClick={() => setCategoryFilter(cat.id)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
-                      categoryFilter === cat.id
+                    onClick={() => setBankFilter('all')}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      bankFilter === 'all'
                         ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
-                    title={cat.name}
                   >
-                    {cat.name} {cat.count}
+                    全部 {wrongQuestions.length}
                   </button>
-                )) : (
-                  <span className="text-xs text-gray-400 py-2">暂无分类数据</span>
-                )}
+                  {bankCounts.map(bank => (
+                    <button
+                      key={bank.id}
+                      onClick={() => setBankFilter(bank.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
+                        bankFilter === bank.id
+                          ? 'bg-gray-900 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={bank.name}
+                    >
+                      {bank.name} {bank.count}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* 题型筛选 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
@@ -1214,17 +1145,15 @@ export default function WrongBookPage() {
                 return (
                   <div 
                     key={question.id} 
-                    className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">
-                          <span className={`inline-flex items-center justify-center w-8 h-4 rounded-full text-[9px] font-medium text-white mr-2 align-middle ${typeColors?.bg || 'bg-gray-500'}`}>
-                            {TYPE_LABELS[question.type]}
-                          </span>
-                          {question.content}
-                        </p>
-                        <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-400">
+                    <div className="flex items-start gap-3">
+                      <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
+                        {TYPE_LABELS[question.type]}
+                      </span>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">{question.content}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                           <span>错 {info.wrongCount} 次</span>
                           {info.streak > 0 && (
                             <span className="text-emerald-600 font-medium">连续答对 {info.streak} 次</span>
@@ -1235,7 +1164,7 @@ export default function WrongBookPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => startReview([question])}
-                        className="shrink-0 h-8 px-3 rounded-lg text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                        className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                       >
                         复习
                       </Button>
