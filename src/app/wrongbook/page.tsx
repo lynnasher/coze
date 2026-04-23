@@ -1094,9 +1094,13 @@ export default function WrongBookPage() {
             })()}
 
             {/* 题库分类 */}
-            {categoryCounts.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-                <p className="text-xs text-gray-400 mb-3">题库分类</p>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+              <p className="text-xs text-gray-400 mb-3">题库分类</p>
+              {categoryCounts.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  暂无分类数据（错题数：{wrongQuestions.length}）
+                </p>
+              ) : (
                 <div className="flex gap-2.5 flex-wrap">
                   <button
                     onClick={() => setCategoryFilter('all')}
@@ -1123,8 +1127,8 @@ export default function WrongBookPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* 题型筛选 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
