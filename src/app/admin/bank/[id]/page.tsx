@@ -219,28 +219,110 @@ export default function BankEditPage() {
   const saveQuestion = async (question: Question) => {
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/questions/${question.id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          type: question.type,
-          content: question.content,
-          options: question.options,
-          answer: question.answer,
-          explanation: question.explanation,
-          difficulty: question.difficulty,
-          tags: question.tags,
-        }),
-      });
+      
+      // 如果是综合题，先保存父题，再处理子题
+      if (question.type === 'comprehensive') {
+        // 保存父题
+        const parentResponse = await fetch(`/api/admin/questions/${question.id}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            type: question.type,
+            content: '', // 综合题内容为空，案例背景存 case_background
+            case_background: question.caseBackground,
+            explanation: question.explanation,
+            difficulty: question.difficulty,
+            tags: question.tags,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error('保存失败');
+        if (!parentResponse.ok) {
+          throw new Error('保存父题失败');
+        }
+
+        // 获取现有子题
+        const existingChildren = questions.filter(q => q.parentId === question.id);
+        
+        // 处理子题：更新或新增
+        const currentChildIds = question.children?.map(c => c.id) || [];
+        const existingChildIds = existingChildren.map(c => c.id);
+        
+        // 删除被移除的子题
+        const toDelete = existingChildren.filter(c => !currentChildIds.includes(c.id));
+        for (const child of toDelete) {
+          await fetch(`/api/admin/questions/${child.id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        }
+
+        // 保存/更新子题
+        if (question.children) {
+          for (const child of question.children) {
+            const isExisting = existingChildIds.includes(child.id);
+            const childData = {
+              ...child,
+              parentId: question.id,
+              bankId: bankId,
+              type: child.type,
+              content: child.content || '',
+              options: ['single', 'multiple'].includes(child.type) ? child.options : undefined,
+              answer: child.answer,
+              difficulty: child.difficulty || 'medium',
+              tags: child.tags || [],
+            };
+
+            if (isExisting) {
+              await fetch(`/api/admin/questions/${child.id}`, {
+                method: 'PUT',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(childData),
+              });
+            } else {
+              await fetch(`/api/admin/banks/${bankId}/questions`, {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ question: childData }),
+              });
+            }
+          }
+        }
+      } else {
+        // 非综合题，直接保存
+        const response = await fetch(`/api/admin/questions/${question.id}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            type: question.type,
+            content: question.content,
+            options: question.options,
+            answer: question.answer,
+            explanation: question.explanation,
+            difficulty: question.difficulty,
+            tags: question.tags,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('保存失败');
+        }
       }
 
       await loadData();
+      setSuccess('题目保存成功');
+      setIsEditModalOpen(false);
     } catch (error) {
       console.error('保存题目失败:', error);
       setError('保存题目失败，请重试');
@@ -253,17 +335,73 @@ export default function BankEditPage() {
       const newQuestion = { ...question, id: generateId(), bankId, createdAt: Date.now() };
       const token = localStorage.getItem('admin_token');
       
-      const response = await fetch(`/api/admin/banks/${bankId}/questions`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ question: newQuestion }),
-      });
+      // 如果是综合题
+      if (question.type === 'comprehensive' && question.children && question.children.length > 0) {
+        // 先创建父题
+        const parentData = {
+          type: question.type,
+          content: '',
+          case_background: question.caseBackground,
+          explanation: question.explanation,
+          difficulty: question.difficulty,
+          tags: question.tags || [],
+        };
+        
+        const parentResponse = await fetch(`/api/admin/banks/${bankId}/questions`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ question: { ...parentData, id: newQuestion.id, bankId, createdAt: Date.now() } }),
+        });
 
-      if (!response.ok) {
-        throw new Error('添加失败');
+        if (!parentResponse.ok) {
+          throw new Error('添加综合题失败');
+        }
+
+        const parentResult = await parentResponse.json();
+        const parentId = parentResult.id || newQuestion.id;
+
+        // 创建子题
+        for (const child of question.children) {
+          const childData = {
+            ...child,
+            id: child.id || generateId(),
+            parentId: parentId,
+            bankId: bankId,
+            type: child.type,
+            content: child.content || '',
+            options: ['single', 'multiple'].includes(child.type) ? child.options : undefined,
+            answer: child.answer,
+            difficulty: child.difficulty || 'medium',
+            tags: child.tags || [],
+            createdAt: Date.now(),
+          };
+
+          await fetch(`/api/admin/banks/${bankId}/questions`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ question: childData }),
+          });
+        }
+      } else {
+        // 非综合题，直接添加
+        const response = await fetch(`/api/admin/banks/${bankId}/questions`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ question: newQuestion }),
+        });
+
+        if (!response.ok) {
+          throw new Error('添加失败');
+        }
       }
 
       await loadData();
@@ -312,7 +450,13 @@ export default function BankEditPage() {
 
   // 打开编辑弹窗
   const openEditModal = (question: Question) => {
-    setEditingQuestion({ ...question });
+    // 如果是综合题，获取所有子题
+    if (question.type === 'comprehensive') {
+      const childQuestions = questions.filter(q => q.parentId === question.id);
+      setEditingQuestion({ ...question, children: childQuestions });
+    } else {
+      setEditingQuestion({ ...question });
+    }
     setIsEditModalOpen(true);
   };
 
@@ -580,6 +724,9 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
   const [answer, setAnswer] = useState<string | string[]>('a');
   const [explanation, setExplanation] = useState('');
   const [difficulty, setDifficulty] = useState('medium');
+  
+  // 子题列表（综合题用）
+  const [children, setChildren] = useState<Question[]>([]);
 
   // 初始化数据
   useEffect(() => {
@@ -596,6 +743,8 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
       setAnswer(question.answer || 'a');
       setExplanation(question.explanation || '');
       setDifficulty(question.difficulty || 'medium');
+      // 综合题的子题
+      setChildren(question.children || []);
     } else {
       setType('single');
       setContent('');
@@ -608,6 +757,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
       setAnswer('a');
       setExplanation('');
       setDifficulty('medium');
+      setChildren([]);
     }
   }, [question, open]);
 
@@ -616,11 +766,58 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
     setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, text } : opt));
   };
 
+  // 添加子题
+  const addChildQuestion = () => {
+    const newChild: Question = {
+      id: generateId(),
+      type: 'single',
+      content: '',
+      options: [
+        { id: 'a', text: '' },
+        { id: 'b', text: '' },
+        { id: 'c', text: '' },
+        { id: 'd', text: '' },
+      ],
+      answer: 'a',
+      difficulty: 'medium',
+      tags: [],
+      createdAt: Date.now(),
+    };
+    setChildren([...children, newChild]);
+  };
+
+  // 删除子题
+  const removeChildQuestion = (index: number) => {
+    setChildren(children.filter((_, i) => i !== index));
+  };
+
+  // 更新子题
+  const updateChildQuestion = (index: number, updates: Partial<Question>) => {
+    setChildren(children.map((child, i) => 
+      i === index ? { ...child, ...updates } : child
+    ));
+  };
+
   // 提交
   const handleSubmit = () => {
     if (!content.trim()) {
       alert('请输入题目内容');
       return;
+    }
+
+    // 综合题必须至少有一个子题
+    if (type === 'comprehensive' && children.length === 0) {
+      alert('综合题至少需要添加一道子题');
+      return;
+    }
+
+    // 验证子题
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (!child.content.trim()) {
+        alert(`子题 ${i + 1} 的内容不能为空`);
+        return;
+      }
     }
 
     const filteredOptions = options.filter(opt => opt.text.trim());
@@ -637,6 +834,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
       tags: [],
       bankId: question?.bankId,
       createdAt: question?.createdAt || Date.now(),
+      children: type === 'comprehensive' ? children : undefined,
     };
 
     onSave(questionData);
@@ -670,16 +868,135 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
             </Select>
           </div>
 
-          {/* 题目内容 */}
-          <div className="space-y-2">
-            <Label>{type === 'comprehensive' ? '案例背景' : '题目内容'}</Label>
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder={type === 'comprehensive' ? '请输入案例背景材料...' : '请输入题目内容...'}
-              rows={4}
-            />
-          </div>
+          {/* 案例背景（综合题） */}
+          {type === 'comprehensive' && (
+            <>
+              <div className="space-y-2">
+                <Label>案例背景</Label>
+                <Textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="请输入案例背景材料..."
+                  rows={4}
+                />
+              </div>
+
+              {/* 子题列表 */}
+              <div className="space-y-3 border rounded-lg p-4 bg-slate-50">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">子题列表 ({children.length})</Label>
+                  <Button size="sm" onClick={addChildQuestion}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    添加子题
+                  </Button>
+                </div>
+                
+                {children.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    暂无子题，请点击上方按钮添加
+                  </p>
+                ) : (
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                    {children.map((child, index) => (
+                      <div key={child.id} className="border rounded-lg p-3 bg-white">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">子题 {index + 1}</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => removeChildQuestion(index)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        {/* 子题题型 */}
+                        <div className="mb-2">
+                          <Select 
+                            value={child.type} 
+                            onValueChange={(v) => updateChildQuestion(index, { type: v as QuestionType })}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="single">单选题</SelectItem>
+                              <SelectItem value="multiple">多选题</SelectItem>
+                              <SelectItem value="true-false">判断题</SelectItem>
+                              <SelectItem value="fill-blank">填空题</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {/* 子题内容 */}
+                        <Textarea
+                          value={child.content}
+                          onChange={(e) => updateChildQuestion(index, { content: e.target.value })}
+                          placeholder="请输入子题内容..."
+                          rows={2}
+                          className="mb-2"
+                        />
+                        
+                        {/* 子题选项（单选/多选） */}
+                        {['single', 'multiple'].includes(child.type) && (
+                          <div className="space-y-1 mb-2">
+                            <Label className="text-xs text-slate-500">选项</Label>
+                            <div className="grid grid-cols-1 gap-1">
+                              {child.options?.map((opt) => (
+                                <div key={opt.id} className="flex items-center gap-2">
+                                  <span className="w-5 text-xs font-medium">{opt.id}.</span>
+                                  <Input
+                                    value={opt.text}
+                                    onChange={(e) => {
+                                      const newOptions = child.options?.map(o => 
+                                        o.id === opt.id ? { ...o, text: e.target.value } : o
+                                      );
+                                      updateChildQuestion(index, { options: newOptions });
+                                    }}
+                                    placeholder={`选项 ${opt.id.toUpperCase()}`}
+                                    className="h-7 text-sm"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 子题答案 */}
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs text-slate-500 whitespace-nowrap">答案：</Label>
+                          <Input
+                            value={typeof child.answer === 'string' ? child.answer : child.answer?.join(', ')}
+                            onChange={(e) => updateChildQuestion(index, { 
+                              answer: child.type === 'multiple' 
+                                ? e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                                : e.target.value 
+                            })}
+                            placeholder={child.type === 'multiple' ? '多个答案用逗号分隔，如: a,b' : '如: a'}
+                            className="h-7 text-sm flex-1"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* 题目内容（非综合题） */}
+          {type !== 'comprehensive' && (
+            <div className="space-y-2">
+              <Label>题目内容</Label>
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="请输入题目内容..."
+                rows={4}
+              />
+            </div>
+          )}
 
           {/* 选项 */}
           {showOptions && (
