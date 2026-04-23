@@ -1654,88 +1654,107 @@ function PracticeView({
             
             {/* 选项区域 */}
             <div className="sm:px-4 px-3 pb-4">
-              {/* 选项列表 */}
-              <div className="space-y-2">
-                {displayQuestion?.options?.map((option, index) => {
-                  const isMulti = displayQuestion.type === 'multiple';
-                  // 使用 displayQuestionAnswer 来判断是否选中
-                  const isSelected = isMulti
-                    ? Array.isArray(displayQuestionAnswer) && displayQuestionAnswer.includes(option.id)
-                    : displayQuestionAnswer === option.id;
-                  const isCorrectAnswer = Array.isArray(displayQuestion.answer)
-                    ? displayQuestion.answer.includes(option.id)
-                    : displayQuestion.answer === option.id;
-                  
-                  // 选中和显示结果时的样式
-                  let optionStyle = 'bg-slate-50/50';
-                  if (isSelected && showExplanation) {
-                    // 显示结果后：选中且正确的绿色，选中且错误的红色
-                    optionStyle = isCorrectAnswer
-                      ? 'bg-emerald-50'
-                      : 'bg-red-50';
-                  } else if (isSelected) {
-                    // 未显示结果时：只显示选中状态
-                    optionStyle = 'bg-indigo-50';
-                  } else if (showExplanation && isCorrectAnswer) {
-                    // 显示结果后：未选中但正确的也显示绿色
-                    optionStyle = 'bg-emerald-50';
-                  }
-                  
-                  // 多选题处理逻辑
-                  const handleOptionClick = () => {
-                    if (showExplanation || !displayQuestion) return;
-                    if (isMulti) {
-                      // 多选题：切换选项选中状态
-                      const current = Array.isArray(displayQuestionAnswer) ? displayQuestionAnswer : [];
-                      if (current.includes(option.id)) {
-                        selectAnswer(displayQuestion.id, current.filter(id => id !== option.id));
-                      } else {
-                        selectAnswer(displayQuestion.id, [...current, option.id]);
+              {/* 填空题输入框 */}
+              {displayQuestion?.type === 'fill-blank' && (
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="输入你的答案..."
+                    value={(displayQuestionAnswer as string) || ''}
+                    onChange={(e) => {
+                      if (displayQuestion) {
+                        selectAnswer(displayQuestion.id, e.target.value);
                       }
-                    } else {
-                      // 单选题/判断题：直接选择
-                      selectAnswer(displayQuestion.id, option.id);
+                    }}
+                    disabled={showExplanation}
+                    className="min-h-[80px] rounded-xl border-2 border-slate-200 focus:border-blue-300 bg-white text-sm"
+                  />
+                </div>
+              )}
+
+              {/* 其他题型选项 */}
+              {displayQuestion?.type !== 'fill-blank' && (
+                <div className="space-y-2">
+                  {displayQuestion?.options?.map((option, index) => {
+                    const isMulti = displayQuestion.type === 'multiple';
+                    // 使用 displayQuestionAnswer 来判断是否选中
+                    const isSelected = isMulti
+                      ? Array.isArray(displayQuestionAnswer) && displayQuestionAnswer.includes(option.id)
+                      : displayQuestionAnswer === option.id;
+                    const isCorrectAnswer = Array.isArray(displayQuestion.answer)
+                      ? displayQuestion.answer.includes(option.id)
+                      : displayQuestion.answer === option.id;
+                    
+                    // 选中和显示结果时的样式
+                    let optionStyle = 'bg-slate-50/50';
+                    if (isSelected && showExplanation) {
+                      // 显示结果后：选中且正确的绿色，选中且错误的红色
+                      optionStyle = isCorrectAnswer
+                        ? 'bg-emerald-50'
+                        : 'bg-red-50';
+                    } else if (isSelected) {
+                      // 未显示结果时：只显示选中状态
+                      optionStyle = 'bg-indigo-50';
+                    } else if (showExplanation && isCorrectAnswer) {
+                      // 显示结果后：未选中但正确的也显示绿色
+                      optionStyle = 'bg-emerald-50';
                     }
-                  };
-                  
-                  return (
-                    <div
-                      key={option.id}
-                      className={`flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer ${optionStyle}`}
-                      onClick={handleOptionClick}
-                    >
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold text-xs transition-colors flex-shrink-0 ${
-                        isSelected && showExplanation
-                          ? isCorrectAnswer
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-red-500 text-white'
-                          : isSelected
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {isSelected ? (
-                          <Check className="w-3.5 h-3.5" />
-                        ) : (
-                          String.fromCharCode(65 + index)
+                    
+                    // 多选题处理逻辑
+                    const handleOptionClick = () => {
+                      if (showExplanation || !displayQuestion) return;
+                      if (isMulti) {
+                        // 多选题：切换选项选中状态
+                        const current = Array.isArray(displayQuestionAnswer) ? displayQuestionAnswer : [];
+                        if (current.includes(option.id)) {
+                          selectAnswer(displayQuestion.id, current.filter(id => id !== option.id));
+                        } else {
+                          selectAnswer(displayQuestion.id, [...current, option.id]);
+                        }
+                      } else {
+                        // 单选题/判断题：直接选择
+                        selectAnswer(displayQuestion.id, option.id);
+                      }
+                    };
+                    
+                    return (
+                      <div
+                        key={option.id}
+                        className={`flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer ${optionStyle}`}
+                        onClick={handleOptionClick}
+                      >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold text-xs transition-colors flex-shrink-0 ${
+                          isSelected && showExplanation
+                            ? isCorrectAnswer
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-red-500 text-white'
+                            : isSelected
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {isSelected ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            String.fromCharCode(65 + index)
+                          )}
+                        </div>
+                        <div className="flex-1 text-sm font-medium text-slate-700">
+                          <RichTextWithBreaks content={option.text} textClassName="whitespace-pre-wrap" />
+                        </div>
+                        {showExplanation && isCorrectAnswer && (
+                          <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                        {showExplanation && isSelected && !isCorrectAnswer && (
+                          <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-2">
+                            <X className="w-3 h-3 text-white" />
+                          </div>
                         )}
                       </div>
-                      <div className="flex-1 text-sm font-medium text-slate-700">
-                        <RichTextWithBreaks content={option.text} textClassName="whitespace-pre-wrap" />
-                      </div>
-                      {showExplanation && isCorrectAnswer && (
-                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      {showExplanation && isSelected && !isCorrectAnswer && (
-                        <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-2">
-                          <X className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             
             {/* 答案与解析 - 需手动点击按钮显示 */}
