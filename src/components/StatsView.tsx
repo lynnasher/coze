@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { 
@@ -13,16 +13,21 @@ import {
   Flame,
   ChevronRight,
 } from 'lucide-react';
-import { recordStore } from '@/lib/quiz-store';
+import { recordStore, wrongStreakStore } from '@/lib/quiz-store';
 import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
 
-interface StatsViewProps {
-  mounted: boolean;
-  wrongCount: number;
-}
-
-export default function StatsView({ mounted, wrongCount }: StatsViewProps) {
+export default function StatsView() {
+  const [mounted, setMounted] = useState(false);
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('day');
+  const [wrongCount, setWrongCount] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+    // 计算错题数量
+    const streaks = wrongStreakStore.getAll();
+    const count = Object.values(streaks).filter(s => s.count < 3).length;
+    setWrongCount(count);
+  }, []);
 
   if (!mounted) return null;
 
