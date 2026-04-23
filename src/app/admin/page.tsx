@@ -344,16 +344,35 @@ function processOptions(q: Record<string, unknown>): { id: string; text: string 
   return undefined;
 }
 
-// 处理答案
-function processAnswer(q: Record<string, unknown>): string | string[] {
+// 处理答案（根据题目类型正确处理）
+function processAnswer(q: Record<string, unknown>, questionType: QuestionType = 'single'): string | string[] {
   let answer: string | string[] = 'a';
   const qAnswer = q.answer || q.ans;
   if (qAnswer) {
     if (typeof qAnswer === 'string') {
       const ans = qAnswer.trim().toLowerCase();
-      if (ans.length > 1) {
-        answer = ans.split('');
+      
+      // 根据题目类型决定答案格式
+      if (questionType === 'fill-blank') {
+        // 填空题：答案保持为完整字符串，不拆分
+        answer = ans;
+      } else if (questionType === 'multiple') {
+        // 多选题：可能是 "AB" 或 ["A", "B"] 格式
+        if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
+          // 纯字母字符串如 "AB" 拆分为数组
+          answer = ans.split('').map(c => c.toLowerCase());
+        } else {
+          answer = ans;
+        }
+      } else if (questionType === 'true-false') {
+        // 判断题：标准化为 true/false
+        if (ans === 'true' || ans === 't' || ans === '对' || ans === '正确' || ans === '√') {
+          answer = 'true';
+        } else {
+          answer = 'false';
+        }
       } else {
+        // 单选题：保持单字符
         answer = ans;
       }
     } else if (Array.isArray(qAnswer)) {
@@ -390,15 +409,33 @@ function processChildOptions(child: Record<string, unknown>): { id: string; text
 }
 
 // 处理子题目答案
-function processChildAnswer(child: Record<string, unknown>): string | string[] {
+function processChildAnswer(child: Record<string, unknown>, childType: QuestionType = 'single'): string | string[] {
   let answer: string | string[] = 'a';
   const childQAnswer = child.answer || child.ans;
   if (childQAnswer) {
     if (typeof childQAnswer === 'string') {
       const ans = childQAnswer.trim().toLowerCase();
-      if (ans.length > 1) {
-        answer = ans.split('');
+      
+      // 根据子题类型决定答案格式
+      if (childType === 'fill-blank') {
+        // 填空题：答案保持为完整字符串
+        answer = ans;
+      } else if (childType === 'multiple') {
+        // 多选题
+        if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
+          answer = ans.split('').map(c => c.toLowerCase());
+        } else {
+          answer = ans;
+        }
+      } else if (childType === 'true-false') {
+        // 判断题
+        if (ans === 'true' || ans === 't' || ans === '对' || ans === '正确' || ans === '√') {
+          answer = 'true';
+        } else {
+          answer = 'false';
+        }
       } else {
+        // 单选题
         answer = ans;
       }
     } else if (Array.isArray(childQAnswer)) {
@@ -413,13 +450,14 @@ function processChildren(children: Record<string, unknown>[], parentId: string, 
   return children.map((child) => {
     const childContent = (child.question as string) || (child.content as string) || (child.stem as string) || '';
     const childQType = child.type || child.qtype;
+    const childType = detectQuestionType(childQType);
     return {
       id: generateId(),
       parentId: parentId,
-      type: detectQuestionType(childQType),
+      type: childType,
       content: childContent,
       options: processChildOptions(child),
-      answer: processChildAnswer(child),
+      answer: processChildAnswer(child, childType),
       explanation: ((child.explanation as string) || (child.parsetext as string)) || undefined,
       difficulty: (child.difficulty as string) || 'medium',
       tags: [],
@@ -436,7 +474,7 @@ function processQuestion(q: Record<string, unknown>, bankId: string, parentId?: 
   const questionType = detectQuestionType(qType);
   
   const options = processOptions(q);
-  const answer = processAnswer(q);
+  const answer = processAnswer(q, questionType);
   const questionId = generateId();
   const content = (q.question as string) || (q.content as string) || (q.stem as string) || '';
   const explanation = (q.explanation as string) || (q.parsetext as string) || '';
