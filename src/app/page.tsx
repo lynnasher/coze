@@ -61,10 +61,16 @@ export default function HomePage() {
     refreshUser,
     syncFromCloud,
     mounted,
+    setIsPracticing,
   } = useApp();
 
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
+
+  // 同步做题状态到全局（控制底部导航显示/隐藏）
+  useEffect(() => {
+    setIsPracticing(hasStarted);
+  }, [hasStarted, setIsPracticing]);
 
   // 首页统计数据
   const [homeStats, setHomeStats] = useState({

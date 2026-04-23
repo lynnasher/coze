@@ -10,7 +10,7 @@ import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 
 export function AppHeader() {
   const pathname = usePathname();
-  const { currentUser, kicked, kickMessage, handleKicked } = useApp();
+  const { currentUser, kicked, kickMessage, handleKicked, isPracticing } = useApp();
 
   // 判断当前页面
   const isLibrary = pathname === '/library';
@@ -47,37 +47,39 @@ export function AppHeader() {
         </div>
       </header>
 
-      {/* 页面导航 */}
-      <div className="bg-white border-b">
-        <div className="max-w-[970px] mx-auto px-4">
-          <div className="flex gap-1 py-2">
-            {[
-              { key: 'practice', label: '首页', href: '/' },
-              { key: 'library', label: '题库', href: '/library' },
-              { key: 'stats', label: '统计', href: '/stats' },
-            ].map((item) => {
-              const isActive = 
-                (item.key === 'practice' && isHome) ||
-                (item.key === 'library' && isLibrary) ||
-                (item.key === 'stats' && isStats);
-              
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={`flex-1 flex items-center justify-center py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-slate-100 text-slate-700'
-                      : 'text-slate-500 hover:bg-slate-50'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+      {/* 页面导航 - 做题时隐藏 */}
+      {!isPracticing && (
+        <div className="bg-white border-b">
+          <div className="max-w-[970px] mx-auto px-4">
+            <div className="flex gap-1 py-2">
+              {[
+                { key: 'practice', label: '首页', href: '/' },
+                { key: 'library', label: '题库', href: '/library' },
+                { key: 'stats', label: '统计', href: '/stats' },
+              ].map((item) => {
+                const isActive = 
+                  (item.key === 'practice' && isHome) ||
+                  (item.key === 'library' && isLibrary) ||
+                  (item.key === 'stats' && isStats);
+                
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={`flex-1 flex items-center justify-center py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      isActive
+                        ? 'bg-slate-100 text-slate-700'
+                        : 'text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

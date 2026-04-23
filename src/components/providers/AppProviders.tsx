@@ -30,6 +30,8 @@ interface AppContextType {
   kickMessage: string;
   handleKicked: () => void;
   mounted: boolean;
+  isPracticing: boolean;
+  setIsPracticing: (practicing: boolean) => void;
 }
 
 // 创建上下文
@@ -42,6 +44,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   const [wrongCount, setWrongCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isPracticing, setIsPracticing] = useState(false);
 
   // 设备验证（单设备登录）
   const { kicked, kickMessage, clearKickState } = useDeviceValidation({
@@ -143,6 +146,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
         kickMessage,
         handleKicked,
         mounted,
+        isPracticing,
+        setIsPracticing,
       }}
     >
       {children}
