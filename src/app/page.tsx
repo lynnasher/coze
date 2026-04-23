@@ -1316,24 +1316,56 @@ function PracticeView({
     let wrong = 0;
     let unanswered = 0;
     
+    // 获取所有需要统计的题目（包括子题目）
+    const allQuestions: Question[] = [];
     quizState.questions.forEach(q => {
+      if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
+        // 综合题：添加父题和所有子题
+        allQuestions.push(q);
+        allQuestions.push(...q.children);
+      } else if (!q.parentId) {
+        // 普通题目（不是子题）：添加
+        allQuestions.push(q);
+      }
+    });
+    
+    allQuestions.forEach(q => {
       const answer = quizState.answers[q.id];
-      if (answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
+      
+      // 判断是否未答
+      const isUnanswered = 
+        answer === undefined || 
+        answer === '' || 
+        answer === null ||
+        (Array.isArray(answer) && answer.length === 0);
+      
+      if (isUnanswered) {
         unanswered++;
       } else {
         // 检查是否正确
         const qAnswer = q.answer;
-        if (Array.isArray(qAnswer)) {
+        
+        // 填空题比较（精确匹配，区分大小写）
+        if (q.type === 'fill-blank') {
+          if (String(answer) === String(qAnswer)) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        } else if (Array.isArray(qAnswer)) {
           // 多选题
-          const userAnswer = Array.isArray(answer) ? answer.sort() : [answer];
-          const correctAnswer = qAnswer.sort();
-          if (JSON.stringify(userAnswer) === JSON.stringify(correctAnswer)) {
+          const userAnswer = Array.isArray(answer) ? answer.sort() : [String(answer).toLowerCase()];
+          const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();
+          // 确保两个数组长度相同且所有元素相同
+          const isCorrect = userAnswer.length === correctAnswer.length && 
+            userAnswer.every((a, i) => a === correctAnswer[i]);
+          if (isCorrect) {
             correct++;
           } else {
             wrong++;
           }
         } else {
-          // 单选/判断/填空
+          // 单选/判断题
           if (String(answer).toLowerCase() === String(qAnswer).toLowerCase()) {
             correct++;
           } else {
@@ -1343,8 +1375,8 @@ function PracticeView({
       }
     });
     
-    const total = quizState.questions.length;
-    const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const total = allQuestions.length;
+    const accuracy = total > 0 && (correct + wrong) > 0 ? Math.round((correct / (correct + wrong + unanswered)) * 100) : (total > 0 ? Math.round((correct / total) * 100) : 0);
     
     return { correct, wrong, unanswered, total, accuracy };
   }, [quizState.questions, quizState.answers]);
