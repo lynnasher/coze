@@ -207,59 +207,51 @@ export default function QuizApp() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50">
-      {/* 顶部导航 - 毛玻璃效果 */}
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 border-b border-white/20">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                <Brain className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">智能刷题</h1>
-                <p className="text-[10px] text-slate-400 font-medium tracking-wide">SMART QUIZ</p>
-              </div>
+      {/* 简洁顶部导航 */}
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center">
+              <Brain className="w-4 h-4 text-white" />
             </div>
-            
-            {/* 右侧操作 */}
-            <div className="flex items-center gap-3">
-              {currentUser ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500">
-                      <AvatarFallback className="text-white text-xs font-semibold">
-                        {getUserInitials(currentUser.nickname || currentUser.phone)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="hidden sm:block">
-                      <p className="text-sm font-medium text-slate-700">{currentUser.nickname || currentUser.phone}</p>
-                      <p className="text-[10px] text-slate-400">{currentUser.activatedCategories?.length || 0} 个已激活分类</p>
-                    </div>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      localStorage.removeItem('user-storage');
-                      setCurrentUser(null);
-                    }}
-                    className="text-slate-400 hover:text-slate-600 text-xs"
-                  >
-                    退出
-                  </Button>
+            <span className="text-base font-semibold text-slate-800">智能刷题</span>
+          </div>
+          
+          {/* 右侧用户区 */}
+          <div className="flex items-center gap-3">
+            {currentUser ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Avatar className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-500">
+                    <AvatarFallback className="text-white text-xs font-medium">
+                      {getUserInitials(currentUser.nickname || currentUser.phone)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-slate-700 hidden sm:inline">
+                    {currentUser.nickname || currentUser.phone}
+                  </span>
                 </div>
-              ) : (
-                <Button 
-                  size="sm" 
-                  className="rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 shadow-lg shadow-indigo-500/25 h-9 px-5"
-                  onClick={() => setAuthModalOpen(true)}
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('user-storage');
+                    setCurrentUser(null);
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  <User className="w-4 h-4 mr-1.5" />
-                  <span className="text-sm font-medium">登录</span>
-                </Button>
-              )}
-            </div>
+                  退出
+                </button>
+              </>
+            ) : (
+              <Button 
+                size="sm" 
+                className="h-8 text-xs bg-indigo-500 hover:bg-indigo-600 rounded-lg"
+                onClick={() => setAuthModalOpen(true)}
+              >
+                <User className="w-3.5 h-3.5 mr-1" />
+                登录
+              </Button>
+            )}
           </div>
         </div>
       </header>
