@@ -3,8 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -14,30 +13,18 @@ import Link from 'next/link';
 import { 
   Library, 
   BarChart3, 
-  ChevronLeft, 
   ChevronRight, 
   Check,
   X,
   Trophy,
-  Target,
   BookOpen,
-  Star,
   RefreshCw,
-  FileText,
-  FileCheck,
-  Grid3X3,
-  ArrowLeft,
-  TrendingUp,
-  RotateCcw,
   Settings,
   Folder,
   FolderOpen,
   Home,
   User,
-  History,
-  Flame,
-  Calendar,
-  Clock
+  Flame
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
@@ -112,7 +99,6 @@ export default function QuizApp() {
   
   // 题库管理状态
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(7200);
   
   // 练习模式状态
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);

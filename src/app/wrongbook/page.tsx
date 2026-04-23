@@ -30,6 +30,7 @@ import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/compon
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 import { QuizCard } from '@/components/quiz/QuizCard';
+import { VirtualList } from '@/components/ui/virtual-list';
 import { TYPE_LABELS, checkAnswer } from '@/lib/wrongbook-utils';
 
 // 错题本页面专用颜色配置
@@ -55,8 +56,6 @@ export default function WrongBookPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
   const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 20;
   
   // 云端题目数据缓存
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
@@ -232,13 +231,8 @@ export default function WrongBookPage() {
     return result;
   }, [wrongQuestions, typeFilter, bankFilter]);
 
-  const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
-  const paginatedQuestions = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredQuestions.slice(start, start + PAGE_SIZE);
-  }, [filteredQuestions, currentPage]);
-
-  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
+  // 使用虚拟列表展示所有错题，无需分页
+const paginatedQuestions = filteredQuestions;
 
   const typeCounts = useMemo(() => {
     const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
@@ -608,55 +602,48 @@ export default function WrongBookPage() {
               typeCounts={typeCounts}
             />
 
-            {/* 错题列表 */}
-            <div className="space-y-2.5">
-              {paginatedQuestions.map(question => {
-                const info = getWrongInfo(question.id);
-                const typeColors = TYPE_COLORS[question.type];
-                return (
-                  <div 
-                    key={question.id} 
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
-                        {TYPE_LABELS[question.type]}
-                      </span>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">{question.content}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
-                          <span>错 {info.wrongCount} 次</span>
-                          {info.streak > 0 && (
-                            <span className="text-emerald-600 font-medium">连续答对 {info.streak} 次</span>
-                          )}
+            {/* 错题列表 - 使用虚拟列表优化大数据量性能 */}
+            {paginatedQuestions.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">
+                该题型暂无错题
+              </div>
+            ) : (
+              <VirtualList
+                items={paginatedQuestions}
+                renderItem={(question) => {
+                  const info = getWrongInfo(question.id);
+                  const typeColors = TYPE_COLORS[question.type];
+                  return (
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all mb-2.5">
+                      <div className="flex items-start gap-3">
+                        <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
+                          {TYPE_LABELS[question.type]}
+                        </span>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">{question.content}</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                            <span>错 {info.wrongCount} 次</span>
+                            {info.streak > 0 && (
+                              <span className="text-emerald-600 font-medium">连续答对 {info.streak} 次</span>
+                            )}
+                          </div>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startReview([question])}
+                          className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                        >
+                          复习
+                        </Button>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => startReview([question])}
-                        className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                      >
-                        复习
-                      </Button>
                     </div>
-                  </div>
-                );
-              })}
-
-              {paginatedQuestions.length === 0 && (
-                <div className="text-center py-12 text-gray-400 text-sm">
-                  该题型暂无错题
-                </div>
-              )}
-            </div>
-
-            {/* 分页 */}
-            {totalPages > 1 && (
-              <WrongBookPagination 
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
+                  );
+                }}
+                itemHeight={88} // 卡片高度 + margin
+                containerHeight={600} // 可视区域高度
+                overscan={5}
+                className="rounded-xl"
               />
             )}
           </>
@@ -734,33 +721,7 @@ function WrongBookStats({ wrongQuestions, filteredQuestions, onStartReview }: Wr
         </div>
       </div>
       
-      {/* 进度条 */}
-      <div className="mb-5">
-        <div className="flex justify-between text-xs text-gray-500 mb-2">
-          <span>复习进度</span>
-          <span>{masteredCount}/{totalWrong}</span>
-        </div>
-        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all"
-            style={{ width: `${masteryRate}%` }}
-          />
-        </div>
-        <div className="flex gap-4 mt-2">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-xs text-gray-500">已掌握 {masteredCount}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-amber-500" />
-            <span className="text-xs text-gray-500">待复习 {needReviewCount}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-xs text-gray-500">今日新增 {todayWrong}</span>
-          </div>
-        </div>
-      </div>
+   
       
       {/* 功能入口 */}
       <div className="space-y-3">
@@ -887,55 +848,4 @@ function WrongBookTypeFilter({ typeFilter, onTypeChange, typeCounts }: WrongBook
   );
 }
 
-interface WrongBookPaginationProps {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}
 
-function WrongBookPagination({ currentPage, totalPages, onPageChange }: WrongBookPaginationProps) {
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
-    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1);
-  
-  return (
-    <div className="flex items-center justify-center gap-1 mt-6">
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={currentPage === 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        className="h-10 w-10 p-0 rounded-xl"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </Button>
-      
-      {pages.map((p, idx, arr) => (
-        <div key={p} className="flex items-center">
-          {idx > 0 && p - arr[idx - 1] > 1 && (
-            <span className="w-10 text-center text-gray-400 text-sm">...</span>
-          )}
-          <button
-            onClick={() => onPageChange(p)}
-            className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${
-              currentPage === p 
-                ? 'bg-gray-900 text-white' 
-                : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            {p}
-          </button>
-        </div>
-      ))}
-      
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={currentPage === totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-        className="h-10 w-10 p-0 rounded-xl"
-      >
-        <ChevronRight className="w-5 h-5" />
-      </Button>
-    </div>
-  );
-}
