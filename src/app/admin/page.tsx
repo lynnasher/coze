@@ -109,13 +109,23 @@ function SortableBankRow({
   onEdit, 
   onDelete,
   onClick,
-  onMoveCategory
+  onMoveCategory,
+  isEditing,
+  editingName,
+  onEditingNameChange,
+  onSave,
+  onCancel
 }: { 
   bank: QuestionBank; 
   onEdit: () => void; 
   onDelete: () => void;
   onClick: () => void;
   onMoveCategory: () => void;
+  isEditing: boolean;
+  editingName: string;
+  onEditingNameChange: (name: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
 }) {
   const {
     attributes,
@@ -138,6 +148,17 @@ function SortableBankRow({
     return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
+  // 处理编辑状态下的键盘事件
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  };
+
   return (
     <TableRow ref={setNodeRef} style={style} className="hover:bg-slate-50">
       <TableCell>
@@ -150,13 +171,42 @@ function SortableBankRow({
           <GripVertical className="h-4 w-4 text-slate-400" />
         </button>
       </TableCell>
-      <TableCell>
-        <button 
-          onClick={() => onClick()}
-          className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
-        >
-          {bank.name}
-        </button>
+      <TableCell className="max-w-[300px]">
+        {isEditing ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={editingName}
+              onChange={(e) => onEditingNameChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={onSave}
+              className="flex-1 px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <button
+              onClick={onSave}
+              className="p-1 text-green-600 hover:bg-green-50 rounded"
+              title="保存"
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onCancel}
+              className="p-1 text-red-600 hover:bg-red-50 rounded"
+              title="取消"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button 
+            onClick={() => onEdit()}
+            className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left truncate block w-full"
+            title="点击修改名称"
+          >
+            {bank.name}
+          </button>
+        )}
       </TableCell>
       <TableCell onClick={onClick} className="cursor-pointer">
         <Badge variant="secondary">
@@ -824,17 +874,25 @@ export default function AdminPage() {
     }
   };
 
-  // 开始编辑题库名称
+  // 开始编辑题库名称（点击名称直接进入编辑）
   const startEditBankName = (bank: QuestionBank) => {
     setEditingBankId(bank.id);
     setEditingBankName(bank.name);
-    setTimeout(() => inputRef.current?.select(), 0);
   };
 
   // 保存题库名称
   const saveBankName = async () => {
     if (!editingBankId || !editingBankName.trim()) {
       setEditingBankId(null);
+      setEditingBankName('');
+      return;
+    }
+
+    // 如果名称没变化，直接取消
+    const currentBank = banks.find(b => b.id === editingBankId);
+    if (currentBank && currentBank.name === editingBankName.trim()) {
+      setEditingBankId(null);
+      setEditingBankName('');
       return;
     }
 
@@ -867,6 +925,7 @@ export default function AdminPage() {
       setError(err instanceof Error ? err.message : '更新失败');
     } finally {
       setEditingBankId(null);
+      setEditingBankName('');
     }
   };
 
@@ -1504,6 +1563,11 @@ export default function AdminPage() {
                                   }}
                                   onClick={() => goToBankEdit(bank)}
                                   onMoveCategory={() => openMoveCategoryDialog(bank)}
+                                  isEditing={editingBankId === bank.id}
+                                  editingName={editingBankId === bank.id ? editingBankName : ''}
+                                  onEditingNameChange={setEditingBankName}
+                                  onSave={saveBankName}
+                                  onCancel={cancelEditBankName}
                                 />
                               ))}
                             </TableBody>

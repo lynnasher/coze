@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { getLoginPath } from '@/lib/admin-config';
 import { Shield } from 'lucide-react';
 
@@ -20,7 +20,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
   const [isChecking, setIsChecking] = useState(true);
