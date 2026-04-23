@@ -133,7 +133,7 @@ export function QuizCard({
     >
       <div className="max-w-[970px] mx-auto sm:px-4 py-3">
         {/* 题目卡片 */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border-x border-b border-slate-100 overflow-hidden">
           {/* 题干头部 */}
           <div className="sm:px-4 px-3 py-2.5 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
             <div className="flex items-center justify-between gap-2">

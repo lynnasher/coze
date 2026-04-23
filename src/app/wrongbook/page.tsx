@@ -460,10 +460,10 @@ export default function WrongBookPage() {
           </div>
         </div>
 
-        <div className="h-14" />
+        <div className="h-12" />
 
         {/* 错题统计提示 */}
-        <div className="bg-amber-50 px-4 py-2">
+        <div className="bg-amber-50 px-4 py-2 border-b border-amber-100">
           <div className="max-w-[970px] mx-auto flex gap-4 text-sm text-amber-700">
             <span>错题 <span className="font-semibold">{wrongInfo.wrongCount}</span> 次</span>
             <span>掌握度 <span className="font-semibold">{wrongInfo.streak}</span>/3</span>
