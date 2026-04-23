@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
@@ -56,6 +56,7 @@ export default function WrongBookPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
+  const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   
@@ -210,9 +211,15 @@ export default function WrongBookPage() {
   }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]);
 
   const filteredQuestions = useMemo(() => {
-    if (typeFilter === 'all') return wrongQuestions;
-    return wrongQuestions.filter(q => q.type === typeFilter);
-  }, [wrongQuestions, typeFilter]);
+    let result = wrongQuestions;
+    if (bankFilter !== 'all') {
+      result = result.filter(q => q.bankId === bankFilter);
+    }
+    if (typeFilter !== 'all') {
+      result = result.filter(q => q.type === typeFilter);
+    }
+    return result;
+  }, [wrongQuestions, typeFilter, bankFilter]);
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
   const paginatedQuestions = useMemo(() => {
@@ -220,12 +227,41 @@ export default function WrongBookPage() {
     return filteredQuestions.slice(start, start + PAGE_SIZE);
   }, [filteredQuestions, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [typeFilter]);
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
 
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: wrongQuestions.length };
-    wrongQuestions.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
+    // 根据当前题库筛选计算题型数量
+    const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
+    const counts: Record<string, number> = { all: base.length };
+    base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
+  }, [wrongQuestions, bankFilter]);
+
+  // 按题库分类统计
+  const bankCounts = useMemo(() => {
+    const banks = bankStore.getAll();
+    const counts: { id: string; name: string; count: number }[] = [];
+    
+    // 先收集所有有错题的题库
+    const bankMap = new Map<string, number>();
+    wrongQuestions.forEach(q => {
+      if (q.bankId) {
+        bankMap.set(q.bankId, (bankMap.get(q.bankId) || 0) + 1);
+      }
+    });
+    
+    // 匹配题库名称
+    bankMap.forEach((count, bankId) => {
+      const bank = banks.find(b => b.id === bankId);
+      counts.push({
+        id: bankId,
+        name: bank?.name || '未知题库',
+        count,
+      });
+    });
+    
+    // 按错题数量降序排列
+    return counts.sort((a, b) => b.count - a.count);
   }, [wrongQuestions]);
   
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
@@ -1041,6 +1077,39 @@ export default function WrongBookPage() {
               // 默认使用方案二（功能入口风格），可以通过修改这里切换
               return <Scheme2 />;
             })()}
+
+            {/* 题库分类 */}
+            {bankCounts.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+                <p className="text-xs text-gray-400 mb-3">题库分类</p>
+                <div className="flex gap-2.5 flex-wrap">
+                  <button
+                    onClick={() => setBankFilter('all')}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      bankFilter === 'all'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    全部 {wrongQuestions.length}
+                  </button>
+                  {bankCounts.map(bank => (
+                    <button
+                      key={bank.id}
+                      onClick={() => setBankFilter(bank.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
+                        bankFilter === bank.id
+                          ? 'bg-gray-900 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      title={bank.name}
+                    >
+                      {bank.name} {bank.count}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 题型筛选 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
