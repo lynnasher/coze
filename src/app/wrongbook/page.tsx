@@ -63,9 +63,37 @@ export default function WrongBookPage() {
   // 云端题目数据缓存（用于解决不同设备间题目数据不一致问题）
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
+  }, []);
+
+  // 加载题库数据
+  useEffect(() => {
+    const loadBanks = async () => {
+      try {
+        const response = await fetch('/api/banks');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.banks) {
+            setBanks(data.banks);
+            // 同时保存到 bankStore
+            bankStore.save(data.banks.map((b: { id: string; name: string; description?: string; question_count?: number; category_id?: string; created_at?: string }) => ({
+              id: b.id,
+              name: b.name,
+              description: b.description,
+              questionCount: b.question_count || 0,
+              categoryId: b.category_id,
+              createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now(),
+            })));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load banks:', error);
+      }
+    };
+    loadBanks();
   }, []);
 
   // 设备验证（单设备登录）
@@ -239,7 +267,6 @@ export default function WrongBookPage() {
 
   // 按题库分类统计
   const bankCounts = useMemo(() => {
-    const banks = bankStore.getAll();
     const counts: { id: string; name: string; count: number }[] = [];
     
     // 先收集所有有错题的题库
@@ -262,7 +289,7 @@ export default function WrongBookPage() {
     
     // 按错题数量降序排列
     return counts.sort((a, b) => b.count - a.count);
-  }, [wrongQuestions]);
+  }, [wrongQuestions, banks]);
   
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
