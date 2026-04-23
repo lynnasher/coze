@@ -26,7 +26,6 @@ import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
 import { AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
-import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { VirtualList } from '@/components/ui/virtual-list';
 import { TYPE_LABELS, checkAnswer } from '@/lib/wrongbook-utils';
@@ -88,19 +87,6 @@ export default function WrongBookPage() {
     };
     loadBanks();
   }, []);
-
-  // 设备验证（单设备登录）
-  const { kicked, kickMessage, clearKickState } = useDeviceValidation({
-    interval: 30000,
-    validateOnFocus: true,
-  });
-
-  // 处理被踢下线
-  const handleKicked = () => {
-    setCurrentUser(null);
-    clearKickState();
-    window.location.href = '/';
-  };
 
   const refreshData = useCallback(() => {
     setRefreshKey(k => k + 1);
