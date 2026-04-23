@@ -39,6 +39,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
+import { BANK_COLORS } from '@/config';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
@@ -61,16 +62,6 @@ const StatsView = dynamic(() => import('@/components/StatsView'), {
 // 从 AuthModal 获取当前用户
 const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
   return getStoredUser();
-};
-
-// 淡雅色调
-const COLORS = {
-  purple: 'from-slate-400 to-slate-500',
-  green: 'from-stone-400 to-stone-500',
-  blue: 'from-gray-400 to-gray-500',
-  orange: 'from-zinc-400 to-zinc-500',
-  pink: 'from-neutral-400 to-neutral-500',
-  red: 'from-slate-500 to-stone-500',
 };
 
 export default function QuizApp() {
