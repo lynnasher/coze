@@ -202,9 +202,9 @@ export default function BankEditPage() {
     
     if (searchTerm) {
       filtered = filtered.filter(q => 
-        q.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.caseBackground?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.explanation?.toLowerCase().includes(searchTerm.toLowerCase())
+        (q.content?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (q.caseBackground?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (q.explanation?.toLowerCase() || '').includes(searchTerm.toLowerCase())
       );
     }
     
@@ -585,7 +585,8 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
   useEffect(() => {
     if (question) {
       setType(question.type);
-      setContent(question.content || '');
+      // 综合题的案例背景存储在 caseBackground 字段
+      setContent(question.type === 'comprehensive' ? (question.caseBackground || '') : (question.content || ''));
       setOptions(question.options || [
         { id: 'a', text: '' },
         { id: 'b', text: '' },

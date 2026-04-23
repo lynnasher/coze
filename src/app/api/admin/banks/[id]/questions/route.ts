@@ -67,7 +67,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const question: Question = body.question;
 
-    if (!question || !question.content) {
+    if (!question) {
+      return NextResponse.json({ error: '题目数据不能为空' }, { status: 400 });
+    }
+    
+    // 综合题的案例背景存储在 caseBackground 字段
+    const hasContent = question.type === 'comprehensive' 
+      ? !!question.caseBackground 
+      : !!question.content;
+    
+    if (!hasContent) {
       return NextResponse.json({ error: '题目内容不能为空' }, { status: 400 });
     }
 
