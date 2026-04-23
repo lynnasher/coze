@@ -41,7 +41,6 @@ import {
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
-import { checkAnswerCorrect } from '@/lib/question-utils';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
@@ -1321,18 +1320,59 @@ function PracticeView({
     const allQuestions: Question[] = [];
     quizState.questions.forEach(q => {
       if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
+        // 综合题：添加父题和所有子题
         allQuestions.push(q);
         allQuestions.push(...q.children);
       } else if (!q.parentId) {
+        // 普通题目（不是子题）：添加
         allQuestions.push(q);
       }
     });
     
     allQuestions.forEach(q => {
-      const result = checkAnswerCorrect(q, quizState.answers[q.id]);
-      if (result.isUnanswered) unanswered++;
-      else if (result.isCorrect) correct++;
-      else wrong++;
+      const answer = quizState.answers[q.id];
+      
+      // 判断是否未答
+      const isUnanswered = 
+        answer === undefined || 
+        answer === '' || 
+        answer === null ||
+        (Array.isArray(answer) && answer.length === 0);
+      
+      if (isUnanswered) {
+        unanswered++;
+      } else {
+        // 检查是否正确
+        const qAnswer = q.answer;
+        
+        // 填空题比较（精确匹配，区分大小写）
+        if (q.type === 'fill-blank') {
+          if (String(answer) === String(qAnswer)) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        } else if (Array.isArray(qAnswer)) {
+          // 多选题
+          const userAnswer = Array.isArray(answer) ? answer.sort() : [String(answer).toLowerCase()];
+          const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();
+          // 确保两个数组长度相同且所有元素相同
+          const isCorrect = userAnswer.length === correctAnswer.length && 
+            userAnswer.every((a, i) => a === correctAnswer[i]);
+          if (isCorrect) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        } else {
+          // 单选/判断题
+          if (String(answer).toLowerCase() === String(qAnswer).toLowerCase()) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        }
+      }
     });
     
     const total = allQuestions.length;
@@ -2097,7 +2137,34 @@ function PracticeView({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {typeQuestions.map(({ q, idx }) => {
-                      const parentStatus = checkAnswerCorrect(q, quizState.answers[q.id]);
+                      // 检查题目状态
+                      const getQuestionStatus = (question: Question): { isCorrect: boolean; isWrong: boolean; isUnanswered: boolean } => {
+                        const answer = quizState.answers[question.id];
+                        const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
+                        
+                        let isCorrect = false;
+                        let isWrong = false;
+                        
+                        if (!isUnanswered) {
+                          const qAnswer = question.answer;
+                          if (question.type === 'fill-blank') {
+                            // 填空题精确匹配
+                            isCorrect = String(answer) === String(qAnswer);
+                          } else if (Array.isArray(qAnswer)) {
+                            const userAnswer = Array.isArray(answer) ? answer.sort() : [String(answer).toLowerCase()];
+                            const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();
+                            isCorrect = userAnswer.length === correctAnswer.length && 
+                              userAnswer.every((a, i) => a === correctAnswer[i]);
+                          } else {
+                            isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
+                          }
+                          isWrong = !isCorrect;
+                        }
+                        
+                        return { isCorrect, isWrong, isUnanswered };
+                      };
+                      
+                      const parentStatus = getQuestionStatus(q);
                       
                       // 综合题显示逻辑
                       if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
@@ -2119,7 +2186,7 @@ function PracticeView({
                             </div>
                             {/* 子题序号 */}
                             {q.children.map((child, childIdx) => {
-                              const childStatus = checkAnswerCorrect(child, quizState.answers[child.id]);
+                              const childStatus = getQuestionStatus(child);
                               return (
                                 <div
                                   key={child.id}

@@ -428,21 +428,8 @@ export function useQuiz() {
     return selectedAnswer === question.answer;
   }, []);
 
-  // 跳转到指定题目（支持索引或题目ID）
-  const goToQuestion = useCallback((indexOrId: number | string) => {
-    let index: number;
-    if (typeof indexOrId === 'string') {
-      // 通过ID查找索引
-      index = quizState.questions.findIndex(q => q.id === indexOrId);
-      if (index === -1) {
-        // 也检查子题目
-        index = quizState.questions.findIndex(q => 
-          q.children && q.children.some(c => c.id === indexOrId)
-        );
-      }
-    } else {
-      index = indexOrId;
-    }
+  // 跳转到指定题目
+  const goToQuestion = useCallback((index: number) => {
     if (index >= 0 && index < quizState.questions.length) {
       setQuizState(prev => ({
         ...prev,
@@ -450,7 +437,7 @@ export function useQuiz() {
         showResult: false,
       }));
     }
-  }, [quizState.questions]);
+  }, [quizState.questions.length]);
 
   // 重新开始
   const restartQuiz = useCallback(() => {
