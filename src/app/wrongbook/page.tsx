@@ -584,7 +584,7 @@ const paginatedQuestions = filteredQuestions;
                   const info = getWrongInfo(question.id);
                   const typeColors = TYPE_COLORS[question.type];
                   return (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all mb-2.5">
+                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all mb-3">
                       <div className="flex items-start gap-3">
                         <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
                           {TYPE_LABELS[question.type]}
@@ -610,9 +610,9 @@ const paginatedQuestions = filteredQuestions;
                     </div>
                   );
                 }}
-                itemHeight={88} // 卡片高度 + margin
-                containerHeight={600} // 可视区域高度
-                overscan={5}
+                itemHeight={116}
+                containerHeight={600}
+                overscan={3}
                 className="rounded-xl"
               />
             )}
