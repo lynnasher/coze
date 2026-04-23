@@ -202,7 +202,7 @@ export const initDefaultAdmin = () => {
       id: generateUserId(),
       phone: 'admin',
       nickname: '管理员',
-      password: hashPassword('admin123'),
+      password: hashPassword('Admin123'),
       createdAt: Date.now(),
       role: 'admin',
       status: 'active',
