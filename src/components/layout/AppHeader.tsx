@@ -16,6 +16,10 @@ export function AppHeader() {
   const isLibrary = pathname === '/library';
   const isStats = pathname === '/stats';
   const isHome = pathname === '/';
+  const isWrongBook = pathname === '/wrongbook';
+  
+  // 错题页面也隐藏底部导航
+  const hideBottomNav = isPracticing || isWrongBook;
 
   return (
     <>
@@ -47,8 +51,8 @@ export function AppHeader() {
         </div>
       </header>
 
-      {/* 页面导航 - 做题时隐藏 */}
-      {!isPracticing && (
+      {/* 页面导航 - 做题或错题本时隐藏 */}
+      {!hideBottomNav && (
         <div className="bg-white border-b">
           <div className="max-w-[970px] mx-auto px-4">
             <div className="flex gap-1 py-2">
