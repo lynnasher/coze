@@ -42,6 +42,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   BookOpen,
   FileText,
   Trash2,
@@ -64,6 +81,7 @@ import {
   Plus,
   User,
   Key,
+  GripVertical,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -80,8 +98,94 @@ interface QuestionBank {
   categoryId?: string;
   questionIds: string[];
   questionCount?: number; // 题目数量（来自数据库）
+  sortOrder?: number; // 排序序号
   createdAt: number;
   updatedAt: number;
+}
+
+// 可拖拽排序的题库行组件
+function SortableBankRow({ 
+  bank, 
+  onEdit, 
+  onDelete,
+  onClick 
+}: { 
+  bank: QuestionBank; 
+  onEdit: () => void; 
+  onDelete: () => void;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: bank.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className="hover:bg-slate-50">
+      <TableCell>
+        <button 
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="h-4 w-4 text-slate-400" />
+        </button>
+      </TableCell>
+      <TableCell>
+        <button 
+          onClick={() => onClick()}
+          className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
+        >
+          {bank.name}
+        </button>
+      </TableCell>
+      <TableCell onClick={onClick} className="cursor-pointer">
+        <Badge variant="secondary">
+          {bank.questionCount || 0} 题
+        </Badge>
+      </TableCell>
+      <TableCell className="text-slate-500">
+        {formatDate(bank.createdAt)}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>
+              <Edit3 className="h-4 w-4 mr-2" />
+              修改名称
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="text-red-600">
+              <Trash2 className="h-4 w-4 mr-2" />
+              删除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 interface Category {
@@ -490,6 +594,7 @@ export default function AdminPage() {
           description: string | null;
           question_count: number;
           category_id: string | null;
+          sort_order: number | null;
           created_at: string;
         }) => ({
           id: b.id,
@@ -498,8 +603,11 @@ export default function AdminPage() {
           questionIds: [],
           questionCount: b.question_count || 0,
           categoryId: b.category_id || undefined,
+          sortOrder: b.sort_order ?? undefined,
           createdAt: new Date(b.created_at).getTime()
-        }));
+        }))
+        // 按 sortOrder 排序
+        .sort((a: QuestionBank, b: QuestionBank) => (a.sortOrder ?? 9999) - (b.sortOrder ?? 9999));
         
         setBanks(dbBanks);
         // 计算总题目数（使用数据库中的 question_count）
@@ -811,6 +919,63 @@ export default function AdminPage() {
   };
 
   // 删除题库
+  // DnD 传感器配置
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // 处理拖拽结束
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = banks.findIndex((b) => b.id === active.id);
+      const newIndex = banks.findIndex((b) => b.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // 重新排序
+        const newBanks = arrayMove(banks, oldIndex, newIndex);
+        
+        // 更新状态
+        setBanks(newBanks);
+
+        // 保存排序到数据库
+        try {
+          const token = localStorage.getItem('admin_token');
+          const response = await fetch('/api/admin/banks/reorder', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              orders: newBanks.map((bank, index) => ({
+                id: bank.id,
+                sortOrder: index
+              }))
+            })
+          });
+
+          if (!response.ok) {
+            console.error('保存排序失败');
+            // 失败后重新加载
+            loadBanks();
+          }
+        } catch (error) {
+          console.error('保存排序失败:', error);
+          loadBanks();
+        }
+      }
+    }
+  }, [banks, loadBanks]);
+
   const handleDeleteBank = async () => {
     if (!bankToDelete) return;
 
@@ -1300,78 +1465,44 @@ export default function AdminPage() {
                           {categoryName}
                         </h3>
                         <span className="text-sm text-slate-400">({categoryBanks.length})</span>
+                        <span className="text-xs text-slate-400 ml-2">（拖拽排序）</span>
                       </div>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>题库名称</TableHead>
-                            <TableHead>题目数量</TableHead>
-                            <TableHead>创建时间</TableHead>
-                            <TableHead className="text-right">操作</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {categoryBanks.map((bank) => (
-                            <TableRow key={bank.id} className="hover:bg-slate-50">
-                              <TableCell>
-                                <button 
-                                  onClick={() => openEditBankDialog(bank)}
-                                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left"
-                                >
-                                  {bank.name}
-                                </button>
-                              </TableCell>
-                              <TableCell onClick={() => goToBankEdit(bank)} className="cursor-pointer">
-                                <Badge variant="secondary">
-                                  {bank.questionCount || 0} 题
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-slate-500">
-                                {formatDate(bank.createdAt)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => startEditBankName(bank)}>
-                                      <Edit3 className="h-4 w-4 mr-2" />
-                                      修改名称
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => openMoveCategoryDialog(bank)}>
-                                      <FolderOpen className="h-4 w-4 mr-2" />
-                                      移动分类
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => goToBankEdit(bank)}>
-                                      <List className="h-4 w-4 mr-2" />
-                                      编辑题目
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleExportBank(bank)}>
-                                      <Download className="h-4 w-4 mr-2" />
-                                      导出 Word
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        setBankToDelete(bank);
-                                        setIsDeleteDialogOpen(true);
-                                      }}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      删除题库
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={categoryBanks.map(b => b.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-10"></TableHead>
+                                <TableHead>题库名称</TableHead>
+                                <TableHead>题目数量</TableHead>
+                                <TableHead>创建时间</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {categoryBanks.map((bank) => (
+                                <SortableBankRow
+                                  key={bank.id}
+                                  bank={bank}
+                                  onEdit={() => startEditBankName(bank)}
+                                  onDelete={() => {
+                                    setBankToDelete(bank);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                  onClick={() => goToBankEdit(bank)}
+                                />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   );
                 })}
