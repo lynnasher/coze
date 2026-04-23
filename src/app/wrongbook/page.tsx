@@ -18,8 +18,6 @@ import {
   User,
   RefreshCw,
   Brain,
-  TrendingUp,
-  Sparkles,
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -715,45 +713,7 @@ function WrongBookStats({ wrongQuestions, filteredQuestions, onStartReview }: Wr
   const needReviewCount = totalWrong - masteredCount;
   const masteryRate = totalWrong > 0 ? Math.round((masteredCount / totalWrong) * 100) : 0;
   
-  const today = new Date().toDateString();
-  const todayWrong = recordStore.getAll().filter(r => {
-    if (r.isCorrect) return false;
-    const recordDate = new Date(r.timestamp).toDateString();
-    return recordDate === today;
-  }).length;
-
   const records = recordStore.getAll();
-  const now = Date.now();
-  
-  // 智能推荐
-  const recommendedQuestions = useMemo(() => {
-    const analyzed = filteredQuestions.map(q => {
-      const qRecords = records.filter(r => r.questionId === q.id);
-      const wrongRecords = qRecords.filter(r => !r.isCorrect);
-      
-      const wrongCount = wrongRecords.length;
-      const errorScore = Math.min(wrongCount / 5, 1) * 30;
-      
-      const lastWrong = wrongRecords.length > 0 
-        ? Math.max(...wrongRecords.map(r => r.timestamp))
-        : 0;
-      const daysSinceWrong = (now - lastWrong) / (1000 * 60 * 60 * 24);
-      const timeScore = Math.max(0, 1 - daysSinceWrong / 7) * 25;
-      
-      const streak = wrongStreakStore.get(q.id) || 0;
-      const masteryScore = (1 - Math.min(streak / 3, 1)) * 25;
-      
-      const errorRate = qRecords.length > 0 ? wrongCount / qRecords.length : 0;
-      const repeatScore = errorRate * 20;
-      
-      return {
-        question: q,
-        totalScore: errorScore + timeScore + masteryScore + repeatScore,
-      };
-    }).sort((a, b) => b.totalScore - a.totalScore);
-    
-    return analyzed.slice(0, 10).map(a => a.question);
-  }, [filteredQuestions, records, now]);
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
@@ -769,89 +729,44 @@ function WrongBookStats({ wrongQuestions, filteredQuestions, onStartReview }: Wr
       
    
       
-      {/* 功能入口 */}
-      <div className="space-y-3">
+      {/* 功能入口 - 最近错题 & 常错题 */}
+      <div className="grid grid-cols-2 gap-3">
         <button 
-          onClick={() => recommendedQuestions.length > 0 && onStartReview(recommendedQuestions)}
-          disabled={recommendedQuestions.length === 0}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 shadow-sm"
+          onClick={() => {
+            const recentWrong = [...filteredQuestions]
+              .sort((a, b) => {
+                const getLastWrongTime = (q: Question) => {
+                  const qRecords = records.filter(r => r.questionId === q.id && !r.isCorrect);
+                  return qRecords.length > 0 ? Math.max(...qRecords.map(r => r.timestamp)) : 0;
+                };
+                return getLastWrongTime(b) - getLastWrongTime(a);
+              });
+            if (recentWrong.length > 0) onStartReview(recentWrong);
+          }}
+          disabled={filteredQuestions.length === 0}
+          className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50"
         >
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <div className="flex-1 text-left">
-            <div className="font-semibold">智能推荐</div>
-            <div className="text-xs text-indigo-100">
-              基于多维度分析推荐 · 共{recommendedQuestions.length}题
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 opacity-70" />
+          <RefreshCw className="w-5 h-5" />
+          <span className="text-sm font-medium">最近错题</span>
         </button>
         
-        <div className="grid grid-cols-3 gap-3">
-          <button 
-            onClick={() => onStartReview(filteredQuestions)}
-            disabled={filteredQuestions.length === 0}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="text-xs font-medium">全部</span>
-          </button>
-          
-          <button 
-            onClick={() => {
-              const memoryQuestions = [...filteredQuestions]
-                .sort((a, b) => {
-                  const getScore = (q: Question) => {
-                    const qRecords = records.filter(r => r.questionId === q.id && !r.isCorrect);
-                    if (qRecords.length === 0) return 0;
-                    const lastWrong = Math.max(...qRecords.map(r => r.timestamp));
-                    const daysSinceWrong = (now - lastWrong) / (1000 * 60 * 60 * 24);
-                    const streak = wrongStreakStore.get(q.id) || 0;
-                    return (0.5 + daysSinceWrong * 0.05) * (1 - streak / 3);
-                  };
-                  return getScore(b) - getScore(a);
-                })
-                .slice(0, 10);
-              if (memoryQuestions.length > 0) onStartReview(memoryQuestions);
-            }}
-            disabled={filteredQuestions.length === 0}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors disabled:opacity-50"
-          >
-            <Brain className="w-4 h-4" />
-            <span className="text-xs font-medium">记忆</span>
-          </button>
-          
-          <button 
-            onClick={() => {
-              const recentRecords = records.slice(-10);
-              const recentAccuracy = recentRecords.length > 0
-                ? recentRecords.filter(r => r.isCorrect).length / recentRecords.length
-                : 0.5;
-              const adaptiveQs = [...filteredQuestions]
-                .sort((a, b) => {
-                  const getScore = (q: Question) => {
-                    const qRecords = records.filter(r => r.questionId === q.id);
-                    const wrongRecords = qRecords.filter(r => !r.isCorrect);
-                    const streak = wrongStreakStore.get(q.id) || 0;
-                    const difficulty = qRecords.length > 0
-                      ? wrongRecords.length / qRecords.length
-                      : 0.5;
-                    const optimalDifficulty = 1 - recentAccuracy + 0.1;
-                    return (1 - Math.min(streak / 3, 1)) * 40 + (1 - Math.abs(difficulty - optimalDifficulty)) * 60;
-                  };
-                  return getScore(b) - getScore(a);
-                })
-                .slice(0, 10);
-              if (adaptiveQs.length > 0) onStartReview(adaptiveQs);
-            }}
-            disabled={filteredQuestions.length === 0}
-            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span className="text-xs font-medium">适应</span>
-          </button>
-        </div>
+        <button 
+          onClick={() => {
+            const frequentWrong = [...filteredQuestions]
+              .sort((a, b) => {
+                const getWrongCount = (q: Question) => {
+                  return records.filter(r => r.questionId === q.id && !r.isCorrect).length;
+                };
+                return getWrongCount(b) - getWrongCount(a);
+              });
+            if (frequentWrong.length > 0) onStartReview(frequentWrong);
+          }}
+          disabled={filteredQuestions.length === 0}
+          className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors disabled:opacity-50"
+        >
+          <Brain className="w-5 h-5" />
+          <span className="text-sm font-medium">常错题</span>
+        </button>
       </div>
     </div>
   );
