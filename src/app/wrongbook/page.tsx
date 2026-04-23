@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, categoryStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
@@ -56,7 +56,7 @@ export default function WrongBookPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
+  const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   
@@ -212,18 +212,14 @@ export default function WrongBookPage() {
 
   const filteredQuestions = useMemo(() => {
     let result = wrongQuestions;
-    if (categoryFilter !== 'all') {
-      const banks = bankStore.getAll();
-      const bankIdsInCategory = new Set(
-        banks.filter(b => b.categoryId === categoryFilter).map(b => b.id)
-      );
-      result = result.filter(q => q.bankId && bankIdsInCategory.has(q.bankId));
+    if (bankFilter !== 'all') {
+      result = result.filter(q => q.bankId === bankFilter);
     }
     if (typeFilter !== 'all') {
       result = result.filter(q => q.type === typeFilter);
     }
     return result;
-  }, [wrongQuestions, typeFilter, categoryFilter]);
+  }, [wrongQuestions, typeFilter, bankFilter]);
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
   const paginatedQuestions = useMemo(() => {
@@ -231,46 +227,35 @@ export default function WrongBookPage() {
     return filteredQuestions.slice(start, start + PAGE_SIZE);
   }, [filteredQuestions, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [typeFilter, categoryFilter]);
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
 
   const typeCounts = useMemo(() => {
-    // 根据当前分类筛选计算题型数量
-    let base = wrongQuestions;
-    if (categoryFilter !== 'all') {
-      const banks = bankStore.getAll();
-      const bankIdsInCategory = new Set(
-        banks.filter(b => b.categoryId === categoryFilter).map(b => b.id)
-      );
-      base = base.filter(q => q.bankId && bankIdsInCategory.has(q.bankId));
-    }
+    // 根据当前题库筛选计算题型数量
+    const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
-  }, [wrongQuestions, categoryFilter]);
+  }, [wrongQuestions, bankFilter]);
 
-  // 按分类统计错题数量
-  const categoryCounts = useMemo(() => {
+  // 按题库分类统计
+  const bankCounts = useMemo(() => {
     const banks = bankStore.getAll();
-    const categories = categoryStore.getAll();
     const counts: { id: string; name: string; count: number }[] = [];
     
-    // 先收集所有有错题的分类
-    const categoryMap = new Map<string, number>();
+    // 先收集所有有错题的题库
+    const bankMap = new Map<string, number>();
     wrongQuestions.forEach(q => {
       if (q.bankId) {
-        const bank = banks.find(b => b.id === q.bankId);
-        if (bank?.categoryId) {
-          categoryMap.set(bank.categoryId, (categoryMap.get(bank.categoryId) || 0) + 1);
-        }
+        bankMap.set(q.bankId, (bankMap.get(q.bankId) || 0) + 1);
       }
     });
     
-    // 匹配分类名称
-    categoryMap.forEach((count, categoryId) => {
-      const category = categories.find(c => c.id === categoryId);
+    // 匹配题库名称
+    bankMap.forEach((count, bankId) => {
+      const bank = banks.find(b => b.id === bankId);
       counts.push({
-        id: categoryId,
-        name: category?.name || '未分类',
+        id: bankId,
+        name: bank?.name || '未知题库',
         count,
       });
     });
@@ -1094,41 +1079,37 @@ export default function WrongBookPage() {
             })()}
 
             {/* 题库分类 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-              <p className="text-xs text-gray-400 mb-3">题库分类</p>
-              {categoryCounts.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  暂无分类数据（错题数：{wrongQuestions.length}）
-                </p>
-              ) : (
+            {bankCounts.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+                <p className="text-xs text-gray-400 mb-3">题库分类</p>
                 <div className="flex gap-2.5 flex-wrap">
                   <button
-                    onClick={() => setCategoryFilter('all')}
+                    onClick={() => setBankFilter('all')}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      categoryFilter === 'all'
+                      bankFilter === 'all'
                         ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     全部 {wrongQuestions.length}
                   </button>
-                  {categoryCounts.map(cat => (
+                  {bankCounts.map(bank => (
                     <button
-                      key={cat.id}
-                      onClick={() => setCategoryFilter(cat.id)}
+                      key={bank.id}
+                      onClick={() => setBankFilter(bank.id)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
-                        categoryFilter === cat.id
+                        bankFilter === bank.id
                           ? 'bg-gray-900 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
-                      title={cat.name}
+                      title={bank.name}
                     >
-                      {cat.name} {cat.count}
+                      {bank.name} {bank.count}
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* 题型筛选 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
