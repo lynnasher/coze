@@ -12,8 +12,8 @@ export function AppHeader() {
   const pathname = usePathname();
   const { currentUser, kicked, kickMessage, handleKicked, isPracticing } = useApp();
 
-  // 管理后台页面不显示导航栏
-  if (pathname.startsWith('/admin')) {
+  // 管理后台页面或做题模式不显示导航栏
+  if (pathname.startsWith('/admin') || isPracticing) {
     return (
       <DeviceKickedDialog 
         open={kicked} 
@@ -28,9 +28,6 @@ export function AppHeader() {
   const isStats = pathname === '/stats';
   const isHome = pathname === '/';
   const isWrongBook = pathname === '/wrongbook';
-  
-  // 错题页面也隐藏底部导航
-  const hideBottomNav = isPracticing || isWrongBook;
 
   return (
     <>
@@ -62,8 +59,8 @@ export function AppHeader() {
         </div>
       </header>
 
-      {/* 页面导航 - 做题或错题本时隐藏 */}
-      {!hideBottomNav && (
+      {/* 页面导航 - 错题本时隐藏 */}
+      {!isWrongBook && (
         <div className="bg-white border-b">
           <div className="max-w-[970px] mx-auto px-4">
             <div className="flex gap-1 py-2">
