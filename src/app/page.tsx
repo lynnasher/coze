@@ -1310,37 +1310,6 @@ function PracticeView({
   // 垂直滑动阈值，用于区分水平和垂直滑动
   const VERTICAL_THRESHOLD = 100;
   
-  // 格式化题目编号（综合题子题显示为 111(1)、111(2) 格式）
-  const formatQuestionNumber = useMemo(() => {
-    const numberMap = new Map<string, { parentNum: number; childIndex: number }>();
-    let parentCounter = 0;
-    
-    quizState.questions.forEach((q, idx) => {
-      if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
-        // 综合题：父题
-        parentCounter++;
-        numberMap.set(q.id, { parentNum: parentCounter, childIndex: 0 });
-        // 子题
-        q.children.forEach((child, childIdx) => {
-          numberMap.set(child.id, { parentNum: parentCounter, childIndex: childIdx + 1 });
-        });
-      } else if (!q.parentId) {
-        // 普通题目（不是子题）
-        parentCounter++;
-        numberMap.set(q.id, { parentNum: parentCounter, childIndex: 0 });
-      }
-    });
-    
-    return (questionId: string) => {
-      const info = numberMap.get(questionId);
-      if (!info) return '?';
-      if (info.childIndex === 0) {
-        return String(info.parentNum);
-      }
-      return `${info.parentNum}(${info.childIndex})`;
-    };
-  }, [quizState.questions]);
-  
   // 计算答题结果统计
   const resultStats = useMemo(() => {
     let correct = 0;
@@ -1978,67 +1947,60 @@ function PracticeView({
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* 按顺序显示所有题目（包括子题），子题跟在父题后面 */}
-            {(() => {
-              const allQuestionsWithNumber: { q: Question; idx: number; displayNum: string }[] = [];
-              let flatIdx = 0;
-              
-              quizState.questions.forEach((q) => {
-                if (!q.parentId) { // 只处理顶级题目
-                  if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
-                    // 综合题：先添加父题
-                    allQuestionsWithNumber.push({ q, idx: flatIdx++, displayNum: formatQuestionNumber(q.id) });
-                    // 再添加所有子题
-                    q.children.forEach((child) => {
-                      allQuestionsWithNumber.push({ q: child, idx: flatIdx++, displayNum: formatQuestionNumber(child.id) });
-                    });
-                  } else {
-                    // 普通题目
-                    allQuestionsWithNumber.push({ q, idx: flatIdx++, displayNum: formatQuestionNumber(q.id) });
-                  }
-                }
-              });
-              
+            {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
+              const typeQuestions = quizState.questions
+                .map((q, idx) => ({ q, idx }))
+                .filter(item => item.q.type === type);
+              if (typeQuestions.length === 0) return null;
+              const typeLabel = type === 'single' ? '单选题' : 
+                               type === 'multiple' ? '多选题' : 
+                               type === 'true-false' ? '判断题' : 
+                               type === 'fill-blank' ? '填空题' : '综合题';
+              const typeColor = type === 'single' ? 'bg-indigo-500' : 
+                               type === 'multiple' ? 'bg-purple-500' : 
+                               type === 'true-false' ? 'bg-cyan-500' : 
+                               type === 'fill-blank' ? 'bg-teal-500' : 'bg-rose-500';
               return (
-                <div className="flex flex-wrap gap-2">
-                  {allQuestionsWithNumber.map(({ q, displayNum }) => {
-                    const answered = !!quizState.answers[q.id];
-                    const record = recordStore.getByQuestionId(q.id);
-                    const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
-                    const isCurrent = quizState.currentIndex === quizState.questions.findIndex(sq => sq.id === q.id);
-                    const isSubQuestion = !!q.parentId;
-                    const isParentQuestion = q.type === 'comprehensive';
-                    
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => {
-                          const targetIdx = quizState.questions.findIndex(sq => sq.id === q.id);
-                          if (targetIdx !== -1) {
-                            goToQuestion(targetIdx);
-                          }
-                          setShowAnswerSheet(false);
-                        }}
-                        className={`min-w-[2.5rem] h-9 px-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
-                          isCurrent
-                            ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
-                            : answered
-                              ? isWrong
-                                ? 'bg-red-100 text-red-700 border-2 border-red-300'
-                                : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                              : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200'
-                        } ${isSubQuestion ? 'text-xs opacity-75' : ''} ${isParentQuestion ? 'ring-2 ring-rose-300' : ''}`}
-                      >
-                        {displayNum}
-                      </button>
-                    );
-                  })}
+                <div key={type}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
+                    <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
+                    <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {typeQuestions.map(({ q, idx }) => {
+                      const answered = !!quizState.answers[q.id];
+                      const record = recordStore.getByQuestionId(q.id);
+                      const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
+                      const isCurrent = idx === quizState.currentIndex;
+                      return (
+                        <button
+                          key={q.id}
+                          onClick={() => {
+                            goToQuestion(idx);
+                            setShowAnswerSheet(false);
+                          }}
+                          className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                            isCurrent
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
+                              : answered
+                                ? isWrong
+                                  ? 'bg-red-100 text-red-700 border-2 border-red-300'
+                                  : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                                : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200'
+                          }`}
+                        >
+                          {idx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
-            })()}
+            })}
             <div className="flex items-center gap-4 text-xs text-slate-500 pt-2 border-t border-slate-100">
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-gradient-to-r from-orange-500 to-amber-500"></div>
+                <div className="w-4 h-4 rounded bg-gradient-to-r from-indigo-500 to-purple-500"></div>
                 <span>当前</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2052,10 +2014,6 @@ function PracticeView({
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-slate-100 border border-slate-200"></div>
                 <span>未答</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-slate-100 border border-rose-300"></div>
-                <span>综合</span>
               </div>
             </div>
           </div>
@@ -2105,123 +2063,67 @@ function PracticeView({
           
           {/* 答题卡 */}
           <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
-            {/* 获取所有题目（包括子题）并标记序号 */}
-            {(() => {
-              const allQuestionsWithNumber: { q: Question; displayNum: string; isCorrect: boolean; isWrong: boolean; isUnanswered: boolean }[] = [];
-              
-              quizState.questions.forEach((q) => {
-                if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
-                  // 综合题父题
-                  const answer = quizState.answers[q.id];
-                  const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
-                  const { qAnswer } = { qAnswer: q.answer };
-                  let isCorrect = false;
-                  let isWrong = false;
-                  if (!isUnanswered) {
-                    isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
-                    isWrong = !isCorrect;
-                  }
-                  allQuestionsWithNumber.push({ q, displayNum: formatQuestionNumber(q.id), isCorrect, isWrong, isUnanswered });
-                  
-                  // 子题
-                  q.children.forEach((child) => {
-                    const childAnswer = quizState.answers[child.id];
-                    const childIsUnanswered = childAnswer === undefined || childAnswer === '' || (Array.isArray(childAnswer) && childAnswer.length === 0);
-                    
-                    let childIsCorrect = false;
-                    let childIsWrong = false;
-                    
-                    if (!childIsUnanswered) {
-                      const childQAnswer = child.answer;
-                      if (Array.isArray(childQAnswer)) {
-                        const userAnswer = Array.isArray(childAnswer) ? childAnswer.sort() : [childAnswer];
-                        const correctAnswer = childQAnswer.map(a => String(a).toLowerCase()).sort();
-                        childIsCorrect = userAnswer.length === correctAnswer.length && userAnswer.every((a, i) => a === correctAnswer[i]);
-                      } else if (child.type === 'fill-blank') {
-                        childIsCorrect = String(childAnswer) === String(childQAnswer);
-                      } else {
-                        childIsCorrect = String(childAnswer).toLowerCase() === String(childQAnswer).toLowerCase();
-                      }
-                      childIsWrong = !childIsCorrect;
-                    }
-                    
-                    allQuestionsWithNumber.push({ q: child, displayNum: formatQuestionNumber(child.id), isCorrect: childIsCorrect, isWrong: childIsWrong, isUnanswered: childIsUnanswered });
-                  });
-                } else if (!q.parentId) {
-                  // 普通题目
-                  const answer = quizState.answers[q.id];
-                  const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
-                  
-                  let isCorrect = false;
-                  let isWrong = false;
-                  
-                  if (!isUnanswered) {
-                    const qAnswer = q.answer;
-                    if (Array.isArray(qAnswer)) {
-                      const userAnswer = Array.isArray(answer) ? answer.sort() : [answer];
-                      const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();
-                      isCorrect = userAnswer.length === correctAnswer.length && userAnswer.every((a, i) => a === correctAnswer[i]);
-                    } else if (q.type === 'fill-blank') {
-                      isCorrect = String(answer) === String(qAnswer);
-                    } else {
-                      isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
-                    }
-                    isWrong = !isCorrect;
-                  }
-                  
-                  allQuestionsWithNumber.push({ q, displayNum: formatQuestionNumber(q.id), isCorrect, isWrong, isUnanswered });
-                }
-              });
-              
-              // 按题型分组显示
-              const types: { type: string; label: string; color: string }[] = [
-                { type: 'single', label: '单选题', color: 'bg-indigo-500' },
-                { type: 'multiple', label: '多选题', color: 'bg-purple-500' },
-                { type: 'true-false', label: '判断题', color: 'bg-cyan-500' },
-                { type: 'fill-blank', label: '填空题', color: 'bg-teal-500' },
-                { type: 'comprehensive', label: '综合题', color: 'bg-rose-500' },
-              ];
-              
+            {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
+              const typeQuestions = quizState.questions
+                .map((q, idx) => ({ q, idx }))
+                .filter(item => item.q.type === type);
+              if (typeQuestions.length === 0) return null;
+              const typeLabel = type === 'single' ? '单选题' : 
+                               type === 'multiple' ? '多选题' : 
+                               type === 'true-false' ? '判断题' : 
+                               type === 'fill-blank' ? '填空题' : '综合题';
+              const typeColor = type === 'single' ? 'bg-indigo-500' : 
+                               type === 'multiple' ? 'bg-purple-500' : 
+                               type === 'true-false' ? 'bg-cyan-500' : 
+                               type === 'fill-blank' ? 'bg-teal-500' : 'bg-rose-500';
               return (
-                <>
-                  {types.map(({ type, label, color }) => {
-                    const typeQuestions = allQuestionsWithNumber.filter(item => item.q.type === type);
-                    if (typeQuestions.length === 0) return null;
-                    
-                    return (
-                      <div key={type}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`w-2 h-2 rounded-full ${color}`}></span>
-                          <span className="text-sm font-medium text-slate-700">{label}</span>
-                          <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
+                <div key={type}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
+                    <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
+                    <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {typeQuestions.map(({ q, idx }) => {
+                      const answer = quizState.answers[q.id];
+                      const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
+                      
+                      let isCorrect = false;
+                      let isWrong = false;
+                      
+                      if (!isUnanswered) {
+                        const qAnswer = q.answer;
+                        if (Array.isArray(qAnswer)) {
+                          const userAnswer = Array.isArray(answer) ? answer.sort() : [answer];
+                          const correctAnswer = qAnswer.sort();
+                          isCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctAnswer);
+                          isWrong = !isCorrect;
+                        } else {
+                          isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
+                          isWrong = !isCorrect;
+                        }
+                      }
+                      
+                      return (
+                        <div
+                          key={q.id}
+                          className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                            isCorrect
+                              ? 'bg-emerald-500 text-white'
+                              : isWrong
+                                ? 'bg-red-500 text-white'
+                                : 'bg-slate-200 text-slate-600'
+                          }`}
+                          title={isCorrect ? '正确' : isWrong ? '错误' : '未答'}
+                        >
+                          {idx + 1}
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          {typeQuestions.map(({ q, displayNum, isCorrect, isWrong, isUnanswered }) => {
-                            const isSubQuestion = !!q.parentId;
-                            
-                            return (
-                              <div
-                                key={q.id}
-                                className={`min-w-[2.5rem] h-9 px-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
-                                  isCorrect
-                                    ? 'bg-emerald-500 text-white'
-                                    : isWrong
-                                      ? 'bg-red-500 text-white'
-                                      : 'bg-slate-200 text-slate-600'
-                                } ${isSubQuestion ? 'text-xs' : ''}`}
-                                title={isCorrect ? '正确' : isWrong ? '错误' : '未答'}
-                              >
-                                {displayNum}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
+                      );
+                    })}
+                  </div>
+                </div>
               );
-            })()}
+            })}
           </div>
           
           {/* 图例 */}
