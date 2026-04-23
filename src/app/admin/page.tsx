@@ -42,6 +42,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   BookOpen,
   FileText,
   Trash2,
@@ -64,6 +81,7 @@ import {
   Plus,
   User,
   Key,
+  GripVertical,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -85,47 +103,50 @@ interface QuestionBank {
   updatedAt: number;
 }
 
-// 排序的题库行组件（使用下拉框调整顺序）
+// 可拖拽排序的题库行组件
 function SortableBankRow({ 
   bank, 
-  totalBanks,
-  currentIndex,
-  onReorder,
+  onEdit, 
+  onDelete,
   onClick 
 }: { 
   bank: QuestionBank; 
-  totalBanks: number;
-  currentIndex: number;
-  onReorder: (newIndex: number) => void;
+  onEdit: () => void; 
+  onDelete: () => void;
   onClick: () => void;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: bank.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  };
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  const handleOrderChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newIndex = parseInt(e.target.value, 10) - 1;
-    if (newIndex >= 0 && newIndex < totalBanks && newIndex !== currentIndex) {
-      onReorder(newIndex);
-    }
-  };
-
   return (
-    <TableRow className="hover:bg-slate-50">
-      <TableCell className="w-[120px]">
-        <select
-          value={currentIndex + 1}
-          onChange={handleOrderChange}
-          className="w-16 h-8 px-2 text-sm border border-slate-200 rounded-md bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+    <TableRow ref={setNodeRef} style={style} className="hover:bg-slate-50">
+      <TableCell>
+        <button 
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded"
           onClick={(e) => e.stopPropagation()}
         >
-          {Array.from({ length: totalBanks }, (_, i) => (
-            <option key={i + 1} value={i + 1}>
-              #{i + 1}
-            </option>
-          ))}
-        </select>
+          <GripVertical className="h-4 w-4 text-slate-400" />
+        </button>
       </TableCell>
       <TableCell>
         <button 
@@ -142,6 +163,26 @@ function SortableBankRow({
       </TableCell>
       <TableCell className="text-slate-500">
         {formatDate(bank.createdAt)}
+      </TableCell>
+      <TableCell className="text-right">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>
+              <Edit3 className="h-4 w-4 mr-2" />
+              修改名称
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="text-red-600">
+              <Trash2 className="h-4 w-4 mr-2" />
+              删除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </TableCell>
     </TableRow>
   );
@@ -878,43 +919,60 @@ export default function AdminPage() {
   };
 
   // 删除题库
-  // 处理排序变更
-  const handleReorder = useCallback(async (bankId: string, newIndex: number) => {
-    const oldIndex = banks.findIndex((b) => b.id === bankId);
-    if (oldIndex === -1 || oldIndex === newIndex) return;
+  // DnD 传感器配置
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-    // 重新排序
-    const newBanks = [...banks];
-    const [removed] = newBanks.splice(oldIndex, 1);
-    newBanks.splice(newIndex, 0, removed);
-    
-    // 更新状态
-    setBanks(newBanks);
+  // 处理拖拽结束
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
 
-    // 保存排序到数据库
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/admin/banks/reorder', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          orders: newBanks.map((bank, index) => ({
-            id: bank.id,
-            sortOrder: index
-          }))
-        })
-      });
+    if (over && active.id !== over.id) {
+      const oldIndex = banks.findIndex((b) => b.id === active.id);
+      const newIndex = banks.findIndex((b) => b.id === over.id);
 
-      if (!response.ok) {
-        console.error('保存排序失败');
-        loadBanks();
+      if (oldIndex !== -1 && newIndex !== -1) {
+        // 重新排序
+        const newBanks = arrayMove(banks, oldIndex, newIndex);
+        
+        // 更新状态
+        setBanks(newBanks);
+
+        // 保存排序到数据库
+        try {
+          const token = localStorage.getItem('admin_token');
+          const response = await fetch('/api/admin/banks/reorder', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              orders: newBanks.map((bank, index) => ({
+                id: bank.id,
+                sortOrder: index
+              }))
+            })
+          });
+
+          if (!response.ok) {
+            console.error('保存排序失败');
+            // 失败后重新加载
+            loadBanks();
+          }
+        } catch (error) {
+          console.error('保存排序失败:', error);
+          loadBanks();
+        }
       }
-    } catch (error) {
-      console.error('保存排序失败:', error);
-      loadBanks();
     }
   }, [banks, loadBanks]);
 
@@ -1407,30 +1465,44 @@ export default function AdminPage() {
                           {categoryName}
                         </h3>
                         <span className="text-sm text-slate-400">({categoryBanks.length})</span>
-                        <span className="text-xs text-slate-400 ml-2">（下拉调整排序）</span>
+                        <span className="text-xs text-slate-400 ml-2">（拖拽排序）</span>
                       </div>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[120px]">排序</TableHead>
-                            <TableHead>题库名称</TableHead>
-                            <TableHead>题目数量</TableHead>
-                            <TableHead>创建时间</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {categoryBanks.map((bank, index) => (
-                            <SortableBankRow
-                              key={bank.id}
-                              bank={bank}
-                              totalBanks={categoryBanks.length}
-                              currentIndex={index}
-                              onReorder={(newIndex) => handleReorder(bank.id, newIndex)}
-                              onClick={() => goToBankEdit(bank)}
-                            />
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={categoryBanks.map(b => b.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-10"></TableHead>
+                                <TableHead>题库名称</TableHead>
+                                <TableHead>题目数量</TableHead>
+                                <TableHead>创建时间</TableHead>
+                                <TableHead className="text-right">操作</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {categoryBanks.map((bank) => (
+                                <SortableBankRow
+                                  key={bank.id}
+                                  bank={bank}
+                                  onEdit={() => startEditBankName(bank)}
+                                  onDelete={() => {
+                                    setBankToDelete(bank);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                  onClick={() => goToBankEdit(bank)}
+                                />
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </SortableContext>
+                      </DndContext>
                     </div>
                   );
                 })}
