@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Check, BookOpen, Sparkles, RefreshCcw } from 'lucide-react';
+import { FileText, Check, BookOpen } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import type { Question } from '@/lib/types';
@@ -232,32 +232,29 @@ export function QuizCard({
 
             {/* 答案和解析 */}
             {showExplanation && displayQuestion && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
                 {/* 激励提示 */}
-                <div className={`mb-3 p-3 rounded-xl ${isCorrect ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200' : 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200'}`}>
+                <div className={`p-3 rounded-xl ${isCorrect ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200'}`}>
                   <div className="flex items-center gap-2">
                     {isCorrect ? (
                       <>
-                        <Sparkles className="w-5 h-5 text-emerald-500" />
-                        <span className="font-bold text-emerald-700">回答正确！</span>
-                        <span className="text-emerald-600 text-sm">继续保持，你很棒！</span>
+                        <Check className="w-5 h-5 text-emerald-600" />
+                        <span className="font-bold text-emerald-700">太棒了！答对了</span>
                       </>
                     ) : (
                       <>
-                        <RefreshCcw className="w-5 h-5 text-amber-500" />
-                        <span className="font-bold text-amber-700">回答错误</span>
-                        <span className="text-amber-600 text-sm">别灰心，继续加油！</span>
+                        <span className="text-red-500 text-lg">✗</span>
+                        <span className="font-bold text-red-700">哎呀，答错了</span>
                       </>
                     )}
                   </div>
                 </div>
 
                 {/* 正确答案 */}
-                <div className="mb-3">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Check className={`w-4 h-4 ${isCorrect ? 'text-emerald-500' : 'text-red-500'}`} />
-                    <span className={`text-sm font-bold ${isCorrect ? 'text-emerald-700' : 'text-red-700'}`}>
-                      正确答案：
+                <div className={`p-3 rounded-xl border ${isCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500">正确答案：</span>
+                    <span className={`font-bold ${isCorrect ? 'text-emerald-600' : 'text-slate-700'}`}>
                       {Array.isArray(displayQuestion.answer)
                         ? displayQuestion.answer.join(', ')
                         : displayQuestion.answer}
@@ -267,7 +264,7 @@ export function QuizCard({
 
                 {/* 解析 */}
                 {displayQuestion.explanation && (
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
                     <div className="flex items-start gap-2">
                       <BookOpen className="w-4 h-4 text-slate-600 mt-0.5 flex-shrink-0" />
                       <div className="text-sm text-slate-700 leading-relaxed">
