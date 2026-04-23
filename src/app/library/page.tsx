@@ -674,6 +674,9 @@ function PracticeView({
           onExit();
         }}
         onShowAnswerSheet={() => setShowAnswerSheet(true)}
+        onSubmit={() => {
+          setShowResultSheet(true);
+        }}
       />
 
       {/* 综合题子题目切换 */}
