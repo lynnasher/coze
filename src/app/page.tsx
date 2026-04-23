@@ -1973,6 +1973,58 @@ function PracticeView({
                       const record = recordStore.getByQuestionId(q.id);
                       const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
                       const isCurrent = idx === quizState.currentIndex;
+                      
+                      // 综合题显示父题和子题
+                      if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
+                        return (
+                          <div key={q.id} className="flex flex-wrap gap-2">
+                            {/* 父题序号 */}
+                            <button
+                              onClick={() => {
+                                goToQuestion(q.id);
+                                setShowAnswerSheet(false);
+                              }}
+                              className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                                isCurrent
+                                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
+                                  : answered
+                                    ? isWrong
+                                      ? 'bg-red-100 text-red-700 border-2 border-red-300'
+                                      : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                                    : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200'
+                              }`}
+                            >
+                              {idx + 1}
+                            </button>
+                            {/* 子题序号 */}
+                            {q.children.map((child, childIdx) => {
+                              const childAnswered = !!quizState.answers[child.id];
+                              const childRecord = recordStore.getByQuestionId(child.id);
+                              const childIsWrong = childAnswered && childRecord.length > 0 && !childRecord[childRecord.length - 1].isCorrect;
+                              return (
+                                <button
+                                  key={child.id}
+                                  onClick={() => {
+                                    goToQuestion(child.id);
+                                    setShowAnswerSheet(false);
+                                  }}
+                                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                                    childAnswered
+                                      ? childIsWrong
+                                        ? 'bg-red-50 text-red-600 border border-red-200'
+                                        : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                      : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  {idx + 1}({childIdx + 1})
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+                      
+                      // 普通题目
                       return (
                         <button
                           key={q.id}
@@ -2085,36 +2137,90 @@ function PracticeView({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {typeQuestions.map(({ q, idx }) => {
-                      const answer = quizState.answers[q.id];
-                      const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
-                      
-                      let isCorrect = false;
-                      let isWrong = false;
-                      
-                      if (!isUnanswered) {
-                        const qAnswer = q.answer;
-                        if (Array.isArray(qAnswer)) {
-                          const userAnswer = Array.isArray(answer) ? answer.sort() : [answer];
-                          const correctAnswer = qAnswer.sort();
-                          isCorrect = JSON.stringify(userAnswer) === JSON.stringify(correctAnswer);
-                          isWrong = !isCorrect;
-                        } else {
-                          isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
+                      // 检查题目状态
+                      const getQuestionStatus = (question: Question): { isCorrect: boolean; isWrong: boolean; isUnanswered: boolean } => {
+                        const answer = quizState.answers[question.id];
+                        const isUnanswered = answer === undefined || answer === '' || (Array.isArray(answer) && answer.length === 0);
+                        
+                        let isCorrect = false;
+                        let isWrong = false;
+                        
+                        if (!isUnanswered) {
+                          const qAnswer = question.answer;
+                          if (question.type === 'fill-blank') {
+                            // 填空题精确匹配
+                            isCorrect = String(answer) === String(qAnswer);
+                          } else if (Array.isArray(qAnswer)) {
+                            const userAnswer = Array.isArray(answer) ? answer.sort() : [String(answer).toLowerCase()];
+                            const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();
+                            isCorrect = userAnswer.length === correctAnswer.length && 
+                              userAnswer.every((a, i) => a === correctAnswer[i]);
+                          } else {
+                            isCorrect = String(answer).toLowerCase() === String(qAnswer).toLowerCase();
+                          }
                           isWrong = !isCorrect;
                         }
+                        
+                        return { isCorrect, isWrong, isUnanswered };
+                      };
+                      
+                      const parentStatus = getQuestionStatus(q);
+                      
+                      // 综合题显示逻辑
+                      if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
+                        return (
+                          <div key={q.id} className="flex flex-wrap gap-2">
+                            {/* 父题序号（可点击查看） */}
+                            <div
+                              onClick={() => goToQuestion(q.id)}
+                              className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                                parentStatus.isCorrect
+                                  ? 'bg-emerald-500 text-white'
+                                  : parentStatus.isWrong
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-slate-200 text-slate-600'
+                              }`}
+                              title={parentStatus.isCorrect ? '正确' : parentStatus.isWrong ? '错误' : '未答'}
+                            >
+                              {idx + 1}
+                            </div>
+                            {/* 子题序号 */}
+                            {q.children.map((child, childIdx) => {
+                              const childStatus = getQuestionStatus(child);
+                              return (
+                                <div
+                                  key={child.id}
+                                  onClick={() => goToQuestion(child.id)}
+                                  className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
+                                    childStatus.isCorrect
+                                      ? 'bg-emerald-400 text-white'
+                                      : childStatus.isWrong
+                                        ? 'bg-red-400 text-white'
+                                        : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                  }`}
+                                  title={`${idx + 1}(${childIdx + 1}) - ${childStatus.isCorrect ? '正确' : childStatus.isWrong ? '错误' : '未答'}`}
+                                >
+                                  {idx + 1}({childIdx + 1})
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
                       }
                       
+                      // 普通题目
                       return (
                         <div
                           key={q.id}
-                          className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
-                            isCorrect
+                          onClick={() => goToQuestion(q.id)}
+                          className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                            parentStatus.isCorrect
                               ? 'bg-emerald-500 text-white'
-                              : isWrong
+                              : parentStatus.isWrong
                                 ? 'bg-red-500 text-white'
                                 : 'bg-slate-200 text-slate-600'
                           }`}
-                          title={isCorrect ? '正确' : isWrong ? '错误' : '未答'}
+                          title={parentStatus.isCorrect ? '正确' : parentStatus.isWrong ? '错误' : '未答'}
                         >
                           {idx + 1}
                         </div>
