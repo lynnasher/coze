@@ -3,44 +3,16 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { getLoginPath } from '@/lib/admin-config';
 import {
   BookOpen,
   Users,
   Key,
   Tag,
-  List,
   Settings,
   LogOut,
   Shield,
 } from 'lucide-react';
-
-// 懒加载后台子页面
-const BanksPage = dynamic(() => import('./BanksPage'), {
-  loading: () => <AdminLoading />,
-  ssr: false,
-});
-
-const UsersPage = dynamic(() => import('./UsersPage'), {
-  loading: () => <AdminLoading />,
-  ssr: false,
-});
-
-const CodesPage = dynamic(() => import('./CodesPage'), {
-  loading: () => <AdminLoading />,
-  ssr: false,
-});
-
-const CategoriesPage = dynamic(() => import('./CategoriesPage'), {
-  loading: () => <AdminLoading />,
-  ssr: false,
-});
-
-const SettingsPage = dynamic(() => import('./SettingsPage'), {
-  loading: () => <AdminLoading />,
-  ssr: false,
-});
 
 // 加载状态
 function AdminLoading() {
@@ -53,18 +25,23 @@ function AdminLoading() {
 
 // 菜单项配置
 const menuItems = [
-  { href: '/admin', icon: BookOpen, label: '题库管理', component: BanksPage },
-  { href: '/admin/users', icon: Users, label: '用户管理', component: UsersPage },
-  { href: '/admin/codes', icon: Key, label: '激活码', component: CodesPage },
-  { href: '/admin/categories', icon: Tag, label: '分类管理', component: CategoriesPage },
-  { href: '/admin/settings', icon: Settings, label: '设置', component: SettingsPage },
+  { href: '/admin', icon: BookOpen, label: '题库管理' },
+  { href: '/admin/users', icon: Users, label: '用户管理' },
+  { href: '/admin/codes', icon: Key, label: '激活码' },
+  { href: '/admin/categories', icon: Tag, label: '分类管理' },
+  { href: '/admin/settings', icon: Settings, label: '设置' },
 ];
 
-export default function AdminLayout() {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
 
   // 验证 token
   const checkAuth = useCallback(() => {
@@ -78,48 +55,41 @@ export default function AdminLayout() {
       // Token 格式: base64payload.signature (HMAC-SHA256)
       const payloadStr = token.split('.')[0];
       const payload = JSON.parse(atob(payloadStr));
-      if (payload.exp < Date.now()) {
+      
+      if (!payload.exp || payload.exp < Date.now() / 1000) {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
         router.push(getLoginPath());
         return;
       }
+
+      const userStr = localStorage.getItem('admin_user');
+      if (userStr) {
+        setCurrentUser(JSON.parse(userStr));
+      }
       setIsAuthenticated(true);
-      setCurrentUser(payload);
     } catch {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
       router.push(getLoginPath());
     }
   }, [router]);
 
   useEffect(() => {
     checkAuth();
+    setIsChecking(false);
   }, [checkAuth]);
 
+  // 登出
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push(getLoginPath());
   };
 
-  // 根据路径选择要渲染的组件（不在渲染期间创建组件）
-  const renderComponent = () => {
-    if (pathname === '/admin' || pathname === '/admin/banks') {
-      return <BanksPage />;
-    }
-    if (pathname === '/admin/users') {
-      return <UsersPage />;
-    }
-    if (pathname === '/admin/codes') {
-      return <CodesPage />;
-    }
-    if (pathname === '/admin/categories') {
-      return <CategoriesPage />;
-    }
-    if (pathname === '/admin/settings' || pathname === '/admin/change-password') {
-      return <SettingsPage />;
-    }
-    return <BanksPage />;
-  };
+  if (isChecking) {
+    return <AdminLoading />;
+  }
 
   if (!isAuthenticated) {
     return <AdminLoading />;
@@ -185,10 +155,10 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      {/* 主内容区 */}
+      {/* 主内容区 - 子页面会自动渲染在这里 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Suspense fallback={<AdminLoading />}>
-          {renderComponent()}
+          {children}
         </Suspense>
       </main>
     </div>
