@@ -5,25 +5,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { 
   Library, 
   BarChart3, 
   ChevronRight,
   Check,
   Trophy,
-  Target,
   BookOpen,
-  Star,
-  RefreshCw,
-  Folder,
-  FolderOpen,
   User,
   Flame,
-  History,
+  Home,
 } from 'lucide-react';
-
 import { recordStore, calculateStats } from '@/lib/quiz-store';
 import { Category, QuestionBank } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
@@ -32,7 +24,6 @@ import { getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 import { calculateStreakStats } from '@/lib/stats-utils';
-import StatsView from '@/components/StatsView';
 import dynamic from 'next/dynamic';
 
 const StatsViewLazy = dynamic(() => import('@/components/StatsView'), {
@@ -164,11 +155,39 @@ export default function QuizApp() {
     loadData();
   }, [loadUserInfo, loadData]);
 
-  // 获取用户激活的分类ID列表
-  const getActivatedCategoryIds = useCallback(() => {
-    if (!currentUser) return [];
-    return currentUser.activatedCategories || [];
-  }, [currentUser]);
+  // 计算可显示的题库
+  const getVisibleBanks = useCallback(() => {
+    if (!currentUser) {
+      return banks;
+    }
+    const activatedIds = currentUser.activatedCategories || [];
+    return banks.filter(b => !b.categoryId || activatedIds.includes(b.categoryId));
+  }, [banks, currentUser]);
+
+  const visibleBanks = getVisibleBanks();
+
+  // 计算可显示的分类
+  const getVisibleCategories = useCallback(() => {
+    if (!currentUser) {
+      return categories;
+    }
+    const activatedIds = currentUser.activatedCategories || [];
+    return categories.filter(c => activatedIds.includes(c.id));
+  }, [categories, currentUser]);
+
+  const visibleCategories = getVisibleCategories();
+
+  // 计算连续学习天数
+  const streak = (() => {
+    if (!mounted) return { current: 0, longest: 0, weekly: 0, goal: 7 };
+    const allRecords = recordStore.getAll();
+    return calculateStreakStats(allRecords);
+  })();
+
+  // 登录状态变化
+  const handleAuthChange = useCallback(() => {
+    loadUserInfo();
+  }, [loadUserInfo]);
 
   // 开始练习
   const handleStartPractice = useCallback((bankId: string) => {
@@ -179,186 +198,150 @@ export default function QuizApp() {
     router.push(`/practice?bank=${bankId}&mode=sequential`);
   }, [currentUser, router]);
 
-  // 计算连续学习天数
-  const streakDays = (() => {
-    if (!mounted) return 0;
-    const allRecords = recordStore.getAll();
-    const streak = calculateStreakStats(allRecords);
-    return streak.current;
-  })();
-
-  // 登录状态变化
-  const handleAuthChange = useCallback(() => {
-    loadUserInfo();
-  }, [loadUserInfo]);
-
-  // 计算可显示的题库（未登录用户可以看到所有题库，登录用户只能看到激活的分类）
-  const getVisibleBanks = useCallback(() => {
-    if (!currentUser) {
-      // 未登录：显示所有题库
-      return banks;
-    }
-    const activatedIds = currentUser.activatedCategories || [];
-    // 登录用户：显示激活分类的题库 + 未分类题库
-    return banks.filter(b => !b.categoryId || activatedIds.includes(b.categoryId));
-  }, [banks, currentUser]);
-
-  const visibleBanks = getVisibleBanks();
-
-  // 计算可显示的分类
-  const getVisibleCategories = useCallback(() => {
-    if (!currentUser) {
-      // 未登录：显示所有分类
-      return categories;
-    }
-    const activatedIds = currentUser.activatedCategories || [];
-    // 登录用户：只显示激活的分类
-    return categories.filter(c => activatedIds.includes(c.id));
-  }, [categories, currentUser]);
-
-  const visibleCategories = getVisibleCategories();
+  // 获取分类颜色样式
+  const getCategoryColor = (color: string) => {
+    const colorMap: Record<string, string> = {
+      blue: 'bg-blue-100 text-blue-700',
+      green: 'bg-green-100 text-green-700',
+      red: 'bg-red-100 text-red-700',
+      yellow: 'bg-yellow-100 text-yellow-700',
+      purple: 'bg-purple-100 text-purple-700',
+      pink: 'bg-pink-100 text-pink-700',
+      indigo: 'bg-indigo-100 text-indigo-700',
+      cyan: 'bg-cyan-100 text-cyan-700',
+    };
+    return colorMap[color] || 'bg-gray-100 text-gray-700';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 顶部导航 */}
+      {/* 顶部 Tab 导航 */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="max-w-[970px] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
-                <Library className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold text-slate-800">智能刷题</h1>
-                <p className="text-xs text-slate-400">{banks.reduce((sum, b) => sum + (b.questionIds?.length || 0), 0)} 题</p>
-              </div>
-            </div>
-            
-            {/* 右侧操作 */}
-            <div className="flex items-center gap-2">
-              {currentUser ? (
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-slate-700">{currentUser.nickname || currentUser.phone}</p>
-                    <p className="text-xs text-slate-400">已激活 {currentUser.activatedCategories?.length || 0} 个分类</p>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => {
-                      localStorage.removeItem('user-storage');
-                      setCurrentUser(null);
-                    }}
-                    className="text-slate-400 hover:text-slate-600 h-8"
-                  >
-                    退出
-                  </Button>
-                </div>
-              ) : (
-                <Button 
-                  size="sm" 
-                  className="rounded-lg bg-indigo-500 hover:bg-indigo-600 h-9"
-                  onClick={() => setAuthModalOpen(true)}
-                >
-                  <User className="w-4 h-4 mr-1" />
-                  <span className="text-sm">登录</span>
-                </Button>
-              )}
-            </div>
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'home'
+                  ? 'text-slate-800 bg-white'
+                  : 'text-slate-400 bg-slate-50 hover:text-slate-600'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              首页
+            </button>
+            <button
+              onClick={() => setActiveTab('library')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'library'
+                  ? 'text-slate-800 bg-white'
+                  : 'text-slate-400 bg-slate-50 hover:text-slate-600'
+              }`}
+            >
+              <Library className="w-4 h-4" />
+              题库
+            </button>
+            <button
+              onClick={() => setActiveTab('stats')}
+              className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                activeTab === 'stats'
+                  ? 'text-slate-800 bg-white'
+                  : 'text-slate-400 bg-slate-50 hover:text-slate-600'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              统计
+            </button>
           </div>
         </div>
       </header>
-
-      {/* Tab 切换 */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-[970px] mx-auto px-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setActiveTab('home')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'home'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <BookOpen className="w-4 h-4 inline mr-1" />
-                首页
-              </button>
-              <button
-                onClick={() => setActiveTab('library')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'library'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Library className="w-4 h-4 inline mr-1" />
-                题库浏览
-              </button>
-              <button
-                onClick={() => setActiveTab('stats')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'stats'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4 inline mr-1" />
-                统计
-              </button>
-            </div>
-          </Tabs>
-        </div>
-      </div>
 
       {/* 主内容区 */}
       <main className="max-w-[970px] mx-auto px-4 py-4">
         {/* 首页 Tab */}
         {activeTab === 'home' && (
           <>
-            {/* 欢迎卡片 */}
-            {mounted && (
-              <Card className={`border-0 shadow-sm rounded-xl overflow-hidden mb-4 ${streakDays > 0 ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-white'}`}>
+            {/* 顶部横幅 */}
+            <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-5 mb-5 text-white relative overflow-hidden shadow-lg">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
+              <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/10 rounded-full"></div>
+              <div className="relative flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center shadow-sm">
+                  <span className="text-3xl">📚</span>
+                </div>
+                <div className="flex-1">
+                  <h1 className="text-xl font-bold mb-1">智能刷题助手</h1>
+                  <p className="text-white/80 text-sm">高效备考，轻松掌握</p>
+                </div>
+                <div className="text-4xl">🤔</div>
+              </div>
+            </div>
+
+            {/* 学习数据模块 */}
+            <div className="mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                <h2 className="text-base font-semibold text-slate-700">学习数据</h2>
+              </div>
+
+              {/* 连续学习卡片 */}
+              <Card className={`border-0 rounded-2xl overflow-hidden shadow-sm mb-3 ${streak.current > 0 ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${streakDays > 0 ? 'bg-white/20' : 'bg-slate-100'}`}>
-                        <Flame className={`w-6 h-6 ${streakDays > 0 ? 'text-white' : 'text-slate-400'}`} />
+                      <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${streak.current > 0 ? 'bg-white/20' : 'bg-slate-200'}`}>
+                        <Flame className={`w-7 h-7 ${streak.current > 0 ? 'text-white' : 'text-slate-400'}`} />
                       </div>
                       <div>
-                        <div className={`text-2xl font-bold ${streakDays > 0 ? 'text-white' : 'text-slate-700'}`}>
-                          {streakDays}
+                        <div className={`text-3xl font-bold ${streak.current > 0 ? 'text-white' : 'text-slate-700'}`}>
+                          {mounted ? streak.current : '-'}
                         </div>
-                        <div className={`text-sm ${streakDays > 0 ? 'text-orange-100' : 'text-slate-400'}`}>
+                        <div className={`text-sm ${streak.current > 0 ? 'text-orange-100' : 'text-slate-400'}`}>
                           连续学习天数
                         </div>
                       </div>
                     </div>
-                    {streakDays > 0 && (
-                      <span className="px-3 py-1 bg-white/20 rounded-full text-white text-xs font-medium">
-                        继续保持
+                    <div className="text-right">
+                      <div className={`text-sm font-medium ${streak.current > 0 ? 'text-white' : 'text-slate-500'}`}>
+                        最长 {mounted ? streak.longest : 0} 天
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 本周进度 */}
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-xs ${streak.current > 0 ? 'text-orange-100' : 'text-slate-400'}`}>
+                        本周 {mounted ? streak.weekly : 0}/{streak.goal} 天
                       </span>
-                    )}
+                      <span className={`text-xs font-medium ${streak.current > 0 ? 'text-white' : 'text-slate-500'}`}>
+                        {streak.goal > 0 ? Math.round((streak.weekly / streak.goal) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className={`h-2 rounded-full ${streak.current > 0 ? 'bg-white/20' : 'bg-slate-200'}`}>
+                      <div 
+                        className={`h-full rounded-full transition-all ${streak.current > 0 ? 'bg-white' : 'bg-slate-400'}`}
+                        style={{ width: `${Math.min((streak.weekly / streak.goal) * 100, 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            )}
 
-            {/* 统计卡片 */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="bg-white rounded-xl p-3 text-center border border-slate-100">
-                <p className="text-xl font-bold text-slate-700">{mounted ? wrongCount : '-'}</p>
-                <p className="text-xs text-slate-500">错题</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 text-center border border-slate-100">
-                <p className="text-xl font-bold text-emerald-600">{mounted ? homeStats.correctCount : '-'}</p>
-                <p className="text-xs text-slate-500">已掌握</p>
-              </div>
-              <div className="bg-white rounded-xl p-3 text-center border border-slate-100">
-                <p className="text-xl font-bold text-indigo-600">{mounted ? homeStats.accuracy : 0}%</p>
-                <p className="text-xs text-slate-500">正确率</p>
+              {/* 统计卡片组 */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-white rounded-xl p-3 text-center border border-slate-100 shadow-sm">
+                  <p className="text-xl font-bold text-slate-700">{mounted ? wrongCount : '-'}</p>
+                  <p className="text-xs text-slate-500 mt-1">错题</p>
+                </div>
+                <div className="bg-white rounded-xl p-3 text-center border border-slate-100 shadow-sm">
+                  <p className="text-xl font-bold text-emerald-600">{mounted ? homeStats.correctCount : '-'}</p>
+                  <p className="text-xs text-slate-500 mt-1">已掌握</p>
+                </div>
+                <div className="bg-white rounded-xl p-3 text-center border border-slate-100 shadow-sm">
+                  <p className="text-xl font-bold text-indigo-600">{mounted ? homeStats.accuracy : 0}%</p>
+                  <p className="text-xs text-slate-500 mt-1">正确率</p>
+                </div>
               </div>
             </div>
 
@@ -367,42 +350,64 @@ export default function QuizApp() {
               <Card className="border-0 shadow-sm rounded-xl bg-white hover:shadow-md transition-shadow mb-4 cursor-pointer">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-slate-600" />
+                    <div className="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-amber-600" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-slate-700">错题本</p>
-                      <p className="text-xs text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
+                      <p className="text-xs text-slate-400">{mounted ? wrongCount : '-'} 道待复习</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                    <ChevronRight className="w-5 h-5 text-slate-300" />
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* 快速入口 */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setActiveTab('library')}
-                className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all text-left"
-              >
-                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center mb-2">
-                  <Library className="w-5 h-5 text-indigo-600" />
-                </div>
-                <p className="text-sm font-semibold text-slate-700">题库浏览</p>
-                <p className="text-xs text-slate-400 mt-0.5">{visibleBanks.length} 个题库</p>
-              </button>
-              <button
-                onClick={() => setActiveTab('stats')}
-                className="bg-white rounded-xl p-4 border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all text-left"
-              >
-                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center mb-2">
-                  <BarChart3 className="w-5 h-5 text-emerald-600" />
-                </div>
-                <p className="text-sm font-semibold text-slate-700">学习统计</p>
-                <p className="text-xs text-slate-400 mt-0.5">查看学习进度</p>
-              </button>
-            </div>
+            {/* 登录引导 */}
+            {!currentUser && (
+              <Card className="border-0 shadow-sm rounded-xl bg-white cursor-pointer hover:shadow-md transition-shadow" onClick={() => setAuthModalOpen(true)}>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center">
+                      <User className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-slate-700">登录解锁全部功能</p>
+                      <p className="text-xs text-slate-400">查看激活题库、记录学习进度</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* 已登录用户信息 */}
+            {currentUser && (
+              <Card className="border-0 shadow-sm rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 text-white">
+                    <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold">{currentUser.nickname || currentUser.phone}</p>
+                      <p className="text-xs text-white/80">已激活 {currentUser.activatedCategories?.length || 0} 个分类</p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        localStorage.removeItem('user-storage');
+                        setCurrentUser(null);
+                      }}
+                      className="text-white/80 hover:text-white hover:bg-white/20 h-8"
+                    >
+                      退出
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
 
@@ -494,7 +499,9 @@ export default function QuizApp() {
                 {visibleBanks.filter(b => !b.categoryId).length > 0 && (
                   <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
-                      <FolderOpen className="w-4 h-4 text-slate-400" />
+                      <div className="w-5 h-5 bg-slate-100 rounded-lg flex items-center justify-center">
+                        <Library className="w-3 h-3 text-slate-400" />
+                      </div>
                       <h3 className="text-sm font-semibold text-slate-700">未分类</h3>
                       <span className="text-xs text-slate-400 ml-auto">({visibleBanks.filter(b => !b.categoryId).length} 题库)</span>
                     </div>
@@ -535,7 +542,9 @@ export default function QuizApp() {
                               <div key={`parent-${parentId}`} className="mb-4">
                                 {parentCategory && (
                                   <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
-                                    <Folder className="w-4 h-4 text-slate-400" />
+                                    <div className="w-5 h-5 bg-slate-100 rounded-lg flex items-center justify-center">
+                                      <Library className="w-3 h-3 text-slate-400" />
+                                    </div>
                                     <span className="text-sm font-semibold text-slate-700">
                                       {parentCategory.name}
                                     </span>
@@ -552,15 +561,13 @@ export default function QuizApp() {
                                           className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-3 -m-2 rounded-xl transition-all duration-200"
                                           onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                                         >
-                                          {selectedCategoryId === category.id ? (
-                                            <FolderOpen className="w-4 h-4 text-slate-500" />
-                                          ) : (
-                                            <Folder className="w-4 h-4 text-slate-400" />
-                                          )}
-                                          <span className="text-sm font-medium text-slate-700 flex-1">
+                                          <div className="w-5 h-5 bg-slate-100 rounded-lg flex items-center justify-center">
+                                            <Library className={`w-3 h-3 transition-transform ${selectedCategoryId === category.id ? 'text-indigo-500' : 'text-slate-400'}`} />
+                                          </div>
+                                          <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${getCategoryColor(category.color)}`}>
                                             {category.name}
                                           </span>
-                                          <span className="text-xs text-slate-400">
+                                          <span className="text-xs text-slate-400 ml-auto">
                                             {categoryBanks.length} 个题库
                                           </span>
                                           <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
@@ -594,32 +601,16 @@ export default function QuizApp() {
                             
                             if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
                             
-                            const getCategoryColor = (color: string) => {
-                              const colorMap: Record<string, string> = {
-                                blue: 'bg-blue-100 text-blue-700',
-                                green: 'bg-green-100 text-green-700',
-                                red: 'bg-red-100 text-red-700',
-                                yellow: 'bg-yellow-100 text-yellow-700',
-                                purple: 'bg-purple-100 text-purple-700',
-                                pink: 'bg-pink-100 text-pink-700',
-                                indigo: 'bg-indigo-100 text-indigo-700',
-                                cyan: 'bg-cyan-100 text-cyan-700',
-                              };
-                              return colorMap[color] || 'bg-gray-100 text-gray-700';
-                            };
-                            
                             return (
                               <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm mb-4">
                                 <div 
                                   className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
                                   onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
                                 >
-                                  {selectedCategoryId === category.id ? (
-                                    <FolderOpen className="w-4 h-4 text-slate-500" />
-                                  ) : (
-                                    <Folder className="w-4 h-4 text-slate-400" />
-                                  )}
-                                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${getCategoryColor(category.color)}`}>
+                                  <div className="w-5 h-5 bg-slate-100 rounded-lg flex items-center justify-center">
+                                    <Library className={`w-3 h-3 transition-transform ${selectedCategoryId === category.id ? 'text-indigo-500' : 'text-slate-400'}`} />
+                                  </div>
+                                  <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${getCategoryColor(category.color)}`}>
                                     {category.name}
                                   </span>
                                   <span className="text-xs text-gray-500 ml-auto pr-1 font-medium">
@@ -655,7 +646,9 @@ export default function QuizApp() {
                                       return (
                                         <div key={child.id}>
                                           <div className="flex items-center gap-2 mb-2">
-                                            <FolderOpen className="w-3 h-3 text-gray-500" />
+                                            <div className="w-4 h-4 bg-slate-100 rounded flex items-center justify-center">
+                                              <Library className="w-2.5 h-2.5 text-gray-500" />
+                                            </div>
                                             <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${getCategoryColor(child.color)}`}>
                                               {child.name}
                                             </span>
@@ -685,9 +678,6 @@ export default function QuizApp() {
                 )}
               </div>
             )}
-
-            {/* 底部安全间距 */}
-            <div className="h-8" />
           </>
         )}
 
