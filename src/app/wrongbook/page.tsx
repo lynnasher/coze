@@ -328,7 +328,6 @@ export default function WrongBookPage() {
     };
   }, []);
 
-  const progressPercent = reviewQuestions.length > 0 ? Math.round(((reviewIndex + 1) / reviewQuestions.length) * 100) : 0;
   const currentReviewQuestion = reviewQuestions[reviewIndex];
 
   const startReview = useCallback((questions: Question[]) => {
@@ -462,18 +461,6 @@ export default function WrongBookPage() {
         </div>
 
         <div className="h-14" />
-
-        {/* 进度条 */}
-        <div className="bg-white px-4 py-2">
-          <div className="max-w-[970px] mx-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
-              </div>
-              <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">{progressPercent}%</span>
-            </div>
-          </div>
-        </div>
 
         {/* 错题统计提示 */}
         <div className="bg-amber-50 px-4 py-2">
