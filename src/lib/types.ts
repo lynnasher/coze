@@ -25,6 +25,7 @@ export interface Question {
   caseBackground?: string; // 案例背景（综合题大题描述）
   caseContext?: string; // 案例上下文/材料
   children?: Question[]; // 综合题的子题目
+  images?: string[]; // 题目图片URL列表
 }
 
 export interface PracticeRecord {
