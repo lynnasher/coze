@@ -1122,57 +1122,6 @@ export default function AdminPage() {
           </Alert>
         )}
 
-        {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">题库总数</CardTitle>
-              <BookOpen className="h-5 w-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.totalBanks}</div>
-              <p className="text-xs text-slate-500 mt-1">个题库</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">题目总数</CardTitle>
-              <FileText className="h-5 w-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.totalQuestions}</div>
-              <p className="text-xs text-slate-500 mt-1">道题目</p>
-            </CardContent>
-          </Card>
-
-          <Link href="/admin/users">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-500">用户管理</CardTitle>
-                <User className="h-5 w-5 text-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">管理</div>
-                <p className="text-xs text-slate-500 mt-1">查看/添加用户</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link href="/admin/codes">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-500">激活码管理</CardTitle>
-                <Key className="h-5 w-5 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">生成</div>
-                <p className="text-xs text-slate-500 mt-1">创建/管理激活码</p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-
         {/* 导入区域 */}
         <Card className="mb-8">
           <CardHeader className="flex flex-row items-center justify-between">
