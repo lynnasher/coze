@@ -152,11 +152,9 @@ src/
 │   ├── AuthModal.tsx           # 用户认证组件（登录/注册）
 │   ├── DeviceKickedDialog.tsx  # 设备被挤下线提示
 │   ├── quiz/                    # 刷题相关组件
-│   │   ├── QuizCard.tsx         # 题目卡片
-│   │   ├── QuizOption.tsx       # 选项组件
-│   │   ├── QuizProgress.tsx     # 进度组件
-│   │   ├── QuizResult.tsx       # 结果组件
-│   │   └── QuizControls.tsx     # 控制组件
+│   │   ├── QuizCard.tsx         # 题目卡片（题目展示、选项、填空、答案解析）
+│   │   ├── AnswerSheet.tsx      # 答题卡（题目导航、交卷）
+│   │   └── ResultModal.tsx      # 结果弹窗（交卷后统计显示）
 │   ├── library/                 # 题库管理组件
 │   │   ├── QuestionList.tsx     # 题目列表
 │   │   ├── ImportModal.tsx      # 导入弹窗
@@ -168,6 +166,8 @@ src/
 │   ├── quiz-store.ts            # 刷题状态管理
 │   ├── pdf-parser.ts            # PDF 解析工具
 │   ├── types.ts                 # 类型定义
+│   ├── import-utils.ts          # 题目导入工具函数（共享）
+│   ├── api-error-handler.ts     # API 错误处理中间件
 │   └── services/                 # 服务层
 │       ├── user-service.ts      # 用户服务（Supabase）
 │       ├── activation-service.ts # 激活码服务（Supabase）

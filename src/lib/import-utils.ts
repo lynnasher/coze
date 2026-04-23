@@ -231,3 +231,67 @@ export function processQuestion(
     children,
   } as Question;
 }
+
+/**
+ * 将嵌套的综合题（包含子题）扁平化处理
+ * @param questions 原始题目数组（可能包含带 children 的综合题）
+ * @param bankId 题库ID
+ * @returns 扁平化后的题目数组
+ */
+export function flattenQuestions(
+  questions: unknown[],
+  bankId: string
+): Question[] {
+  const result: Question[] = [];
+
+  for (const q of questions) {
+    if (!q || typeof q !== 'object') continue;
+
+    const question = q as Record<string, unknown>;
+    
+    // 处理综合题的子题
+    const rawChildren = question.children;
+    let processedChildren: Question[] | undefined;
+    
+    if (Array.isArray(rawChildren) && rawChildren.length > 0) {
+      processedChildren = rawChildren.map((child, index) => {
+        const childObj = child as Record<string, unknown>;
+        const childType = detectQuestionType(childObj.type);
+        return {
+          id: `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_child_${index}`,
+          parentId: String(question.id || `temp_${index}`),
+          type: childType,
+          content: String(childObj.content || childObj.question || ''),
+          options: childType === 'fill-blank' ? undefined : processChildOptions(childObj),
+          answer: processChildAnswer(childObj, childType),
+          explanation: String(childObj.explanation || childObj.analysis || ''),
+          difficulty: 'medium',
+          tags: [],
+          bankId,
+          createdAt: Date.now(),
+        } as Question;
+      });
+    }
+
+    // 处理父题
+    const questionType = detectQuestionType(question.type);
+    const processedQuestion: Question = {
+      id: String(question.id || `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`),
+      type: questionType,
+      content: String(question.content || question.question || ''),
+      options: questionType === 'fill-blank' ? undefined : processOptions(question),
+      answer: processAnswer(question, questionType),
+      explanation: String(question.explanation || question.analysis || ''),
+      difficulty: (question.difficulty === 'easy' || question.difficulty === 'hard') ? question.difficulty : 'medium',
+      tags: Array.isArray(question.tags) ? question.tags as string[] : [],
+      bankId,
+      caseBackground: question.caseBackground ? String(question.caseBackground) : undefined,
+      createdAt: Date.now(),
+      children: processedChildren,
+    };
+
+    result.push(processedQuestion);
+  }
+
+  return result;
+}
