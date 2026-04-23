@@ -108,12 +108,14 @@ function SortableBankRow({
   bank, 
   onEdit, 
   onDelete,
-  onClick 
+  onClick,
+  onMoveCategory
 }: { 
   bank: QuestionBank; 
   onEdit: () => void; 
   onDelete: () => void;
   onClick: () => void;
+  onMoveCategory: () => void;
 }) {
   const {
     attributes,
@@ -175,6 +177,10 @@ function SortableBankRow({
             <DropdownMenuItem onClick={onEdit}>
               <Edit3 className="h-4 w-4 mr-2" />
               修改名称
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onMoveCategory}>
+              <FolderOpen className="h-4 w-4 mr-2" />
+              移动分类
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-red-600">
@@ -1497,6 +1503,7 @@ export default function AdminPage() {
                                     setIsDeleteDialogOpen(true);
                                   }}
                                   onClick={() => goToBankEdit(bank)}
+                                  onMoveCategory={() => openMoveCategoryDialog(bank)}
                                 />
                               ))}
                             </TableBody>
