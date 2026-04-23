@@ -12,6 +12,17 @@ export function AppHeader() {
   const pathname = usePathname();
   const { currentUser, kicked, kickMessage, handleKicked, isPracticing } = useApp();
 
+  // 管理后台页面不显示导航栏
+  if (pathname.startsWith('/admin')) {
+    return (
+      <DeviceKickedDialog 
+        open={kicked} 
+        message={kickMessage}
+        onConfirm={handleKicked}
+      />
+    );
+  }
+
   // 判断当前页面
   const isLibrary = pathname === '/library';
   const isStats = pathname === '/stats';
