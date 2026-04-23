@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, categoryStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
@@ -56,7 +56,7 @@ export default function WrongBookPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
-  const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   
@@ -212,14 +212,18 @@ export default function WrongBookPage() {
 
   const filteredQuestions = useMemo(() => {
     let result = wrongQuestions;
-    if (bankFilter !== 'all') {
-      result = result.filter(q => q.bankId === bankFilter);
+    if (categoryFilter !== 'all') {
+      const banks = bankStore.getAll();
+      const bankIdsInCategory = new Set(
+        banks.filter(b => b.categoryId === categoryFilter).map(b => b.id)
+      );
+      result = result.filter(q => q.bankId && bankIdsInCategory.has(q.bankId));
     }
     if (typeFilter !== 'all') {
       result = result.filter(q => q.type === typeFilter);
     }
     return result;
-  }, [wrongQuestions, typeFilter, bankFilter]);
+  }, [wrongQuestions, typeFilter, categoryFilter]);
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
   const paginatedQuestions = useMemo(() => {
@@ -227,35 +231,46 @@ export default function WrongBookPage() {
     return filteredQuestions.slice(start, start + PAGE_SIZE);
   }, [filteredQuestions, currentPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, categoryFilter]);
 
   const typeCounts = useMemo(() => {
-    // 根据当前题库筛选计算题型数量
-    const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
+    // 根据当前分类筛选计算题型数量
+    let base = wrongQuestions;
+    if (categoryFilter !== 'all') {
+      const banks = bankStore.getAll();
+      const bankIdsInCategory = new Set(
+        banks.filter(b => b.categoryId === categoryFilter).map(b => b.id)
+      );
+      base = base.filter(q => q.bankId && bankIdsInCategory.has(q.bankId));
+    }
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
-  }, [wrongQuestions, bankFilter]);
+  }, [wrongQuestions, categoryFilter]);
 
-  // 按题库分类统计
-  const bankCounts = useMemo(() => {
+  // 按分类统计错题数量
+  const categoryCounts = useMemo(() => {
     const banks = bankStore.getAll();
+    const categories = categoryStore.getAll();
     const counts: { id: string; name: string; count: number }[] = [];
     
-    // 先收集所有有错题的题库
-    const bankMap = new Map<string, number>();
+    // 先收集所有有错题的分类
+    const categoryMap = new Map<string, number>();
     wrongQuestions.forEach(q => {
       if (q.bankId) {
-        bankMap.set(q.bankId, (bankMap.get(q.bankId) || 0) + 1);
+        const bank = banks.find(b => b.id === q.bankId);
+        if (bank?.categoryId) {
+          categoryMap.set(bank.categoryId, (categoryMap.get(bank.categoryId) || 0) + 1);
+        }
       }
     });
     
-    // 匹配题库名称
-    bankMap.forEach((count, bankId) => {
-      const bank = banks.find(b => b.id === bankId);
+    // 匹配分类名称
+    categoryMap.forEach((count, categoryId) => {
+      const category = categories.find(c => c.id === categoryId);
       counts.push({
-        id: bankId,
-        name: bank?.name || '未知题库',
+        id: categoryId,
+        name: category?.name || '未分类',
         count,
       });
     });
@@ -1079,32 +1094,32 @@ export default function WrongBookPage() {
             })()}
 
             {/* 题库分类 */}
-            {bankCounts.length > 0 && (
+            {categoryCounts.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
                 <p className="text-xs text-gray-400 mb-3">题库分类</p>
                 <div className="flex gap-2.5 flex-wrap">
                   <button
-                    onClick={() => setBankFilter('all')}
+                    onClick={() => setCategoryFilter('all')}
                     className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      bankFilter === 'all'
+                      categoryFilter === 'all'
                         ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     全部 {wrongQuestions.length}
                   </button>
-                  {bankCounts.map(bank => (
+                  {categoryCounts.map(cat => (
                     <button
-                      key={bank.id}
-                      onClick={() => setBankFilter(bank.id)}
+                      key={cat.id}
+                      onClick={() => setCategoryFilter(cat.id)}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
-                        bankFilter === bank.id
+                        categoryFilter === cat.id
                           ? 'bg-gray-900 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
-                      title={bank.name}
+                      title={cat.name}
                     >
-                      {bank.name} {bank.count}
+                      {cat.name} {cat.count}
                     </button>
                   ))}
                 </div>
