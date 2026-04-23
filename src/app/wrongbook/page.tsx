@@ -316,16 +316,14 @@ export default function WrongBookPage() {
     return counts.sort((a, b) => b.count - a.count);
   }, [wrongQuestionsStats, banks]);
   
-  // 一次读取全部记录
-  const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
-
+  // 获取错题统计信息
   const getWrongInfo = useCallback((questionId: string) => {
-    const records = allRecords.filter(r => r.questionId === questionId);
+    const records = recordStore.getAll().filter(r => r.questionId === questionId);
     return { 
       wrongCount: records.filter(r => !r.isCorrect).length, 
       streak: wrongStreakStore.get(questionId) 
     };
-  }, [allRecords]);
+  }, []);
 
   const progressPercent = reviewQuestions.length > 0 ? Math.round(((reviewIndex + 1) / reviewQuestions.length) * 100) : 0;
   const currentReviewQuestion = reviewQuestions[reviewIndex];
