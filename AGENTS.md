@@ -172,7 +172,11 @@ src/
 │   ├── quiz/                    # 刷题相关组件
 │   │   ├── QuizCard.tsx         # 题目卡片（题目展示、选项、填空、答案解析）
 │   │   ├── AnswerSheet.tsx      # 答题卡（题目导航、交卷）
-│   │   └── ResultModal.tsx      # 结果弹窗（交卷后统计显示）
+│   │   ├── ResultModal.tsx      # 结果弹窗（交卷后统计显示）
+│   │   ├── PracticeHeader.tsx   # 练习页面头部（进度、导航）
+│   │   └── QuizControls.tsx     # 练习控制栏（上一题/下一题/查看答案）
+│   ├── home/                    # 主页组件
+│   │   └── HomeView.tsx         # 主页视图（题库列表、分类）
 │   ├── library/                 # 题库管理组件
 │   │   ├── QuestionList.tsx     # 题目列表
 │   │   ├── ImportModal.tsx      # 导入弹窗
