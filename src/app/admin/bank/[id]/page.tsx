@@ -243,8 +243,24 @@ export default function BankEditPage() {
           throw new Error('保存父题失败');
         }
 
-        // 获取现有子题
-        const existingChildren = questions.filter(q => q.parentId === question.id);
+        // 获取现有子题（从 children 数组中获取）
+        const existingChildren = question.children || [];
+        
+        // 获取当前题库中的所有题目（用于比对）
+        const currentAllQuestions = questions;
+        
+        // 删除被移除的子题（原来有但现在没有的）
+        for (const existingChild of currentAllQuestions) {
+          if (existingChild.parentId === question.id) {
+            const stillExists = existingChildren.some(c => c.id === existingChild.id);
+            if (!stillExists) {
+              await fetch(`/api/admin/questions/${existingChild.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+            }
+          }
+        }
         
         // 处理子题：更新或新增
         const currentChildIds = question.children?.map(c => c.id) || [];
@@ -265,7 +281,7 @@ export default function BankEditPage() {
             const isExisting = existingChildIds.includes(child.id);
             const childData = {
               ...child,
-              parentId: question.id,
+              parent_id: question.id, // 使用数据库字段名
               bankId: bankId,
               type: child.type,
               content: child.content || '',
@@ -368,7 +384,7 @@ export default function BankEditPage() {
           const childData = {
             ...child,
             id: child.id || generateId(),
-            parentId: parentId,
+            parent_id: parentId, // 使用数据库字段名
             bankId: bankId,
             type: child.type,
             content: child.content || '',
@@ -450,10 +466,10 @@ export default function BankEditPage() {
 
   // 打开编辑弹窗
   const openEditModal = (question: Question) => {
-    // 如果是综合题，获取所有子题
+    // 如果是综合题，使用 children 数组中的子题
+    // 因为 API 返回时只返回父题，子题在父题的 children 数组中
     if (question.type === 'comprehensive') {
-      const childQuestions = questions.filter(q => q.parentId === question.id);
-      setEditingQuestion({ ...question, children: childQuestions });
+      setEditingQuestion({ ...question, children: question.children || [] });
     } else {
       setEditingQuestion({ ...question });
     }
