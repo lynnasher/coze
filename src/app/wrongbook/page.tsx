@@ -716,8 +716,17 @@ function WrongBookStats({ wrongQuestions, filteredQuestions, onStartReview }: Wr
       
    
       
-      {/* 功能入口 - 最近错题 & 常错题 */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* 功能入口 - 全部错题 & 最近错题 & 常错题 */}
+      <div className="grid grid-cols-3 gap-3">
+        <button 
+          onClick={() => onStartReview(filteredQuestions)}
+          disabled={filteredQuestions.length === 0}
+          className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors disabled:opacity-50"
+        >
+          <BookOpen className="w-5 h-5" />
+          <span className="text-sm font-medium">全部错题</span>
+        </button>
+        
         <button 
           onClick={() => {
             const recentWrong = [...filteredQuestions]
