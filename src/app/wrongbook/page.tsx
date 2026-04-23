@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -27,7 +27,6 @@ import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-ut
 import Link from 'next/link';
 import { AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { QuizCard } from '@/components/quiz/QuizCard';
-import { VirtualList } from '@/components/ui/virtual-list';
 import { TYPE_LABELS, checkAnswer } from '@/lib/wrongbook-utils';
 
 // 错题本页面专用颜色配置
@@ -53,6 +52,13 @@ export default function WrongBookPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<QuestionType | 'all'>('all');
   const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
+  
+  // 分页状态
+  const PAGE_SIZE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const listContainerRef = useRef<HTMLDivElement>(null);
   
   // 云端题目数据缓存
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
@@ -181,56 +187,118 @@ export default function WrongBookPage() {
     }
   }, []);
 
-  const wrongQuestions = useMemo(() => {
-    const wrongIds = getWrongQuestionIds();
-    const allQuestions = questionStore.getAll();
-    
-    return wrongIds.map(id => {
-      const localQuestion = allQuestions.find(q => q.id === id);
-      if (localQuestion) return localQuestion;
-      return cloudQuestions[id];
-    }).filter((q): q is Question => q !== undefined);
-  }, [refreshKey, cloudQuestions]);
+  // 获取所有错题ID（用于统计）
+  const allWrongIds = useMemo(() => getWrongQuestionIds(), [refreshKey]);
   
-  // 检测缺失的题目并从云端获取
-  useEffect(() => {
-    const wrongIds = getWrongQuestionIds();
-    const allQuestions = questionStore.getAll();
-    const localIds = new Set(allQuestions.map(q => q.id));
-    const missingIds = wrongIds.filter(id => !localIds.has(id) && !cloudQuestions[id]);
+  // 分页加载错题数据
+  const [displayedQuestions, setDisplayedQuestions] = useState<Question[]>([]);
+  
+  // 加载指定页的错题
+  const loadMoreQuestions = useCallback(async (page: number, isReset = false) => {
+    if (isLoadingMore && !isReset) return;
     
-    if (missingIds.length > 0) {
-      fetchQuestionsFromCloud(missingIds);
+    setIsLoadingMore(true);
+    
+    try {
+      // 获取所有错题ID
+      const wrongIds = getWrongQuestionIds();
+      
+      // 筛选（在分页前筛选）
+      let filteredIds = wrongIds;
+      if (bankFilter !== 'all' || typeFilter !== 'all') {
+        const allQuestions = questionStore.getAll();
+        filteredIds = wrongIds.filter(id => {
+          const q = allQuestions.find(q => q.id === id) || cloudQuestions[id];
+          if (!q) return false;
+          if (bankFilter !== 'all' && q.bankId !== bankFilter) return false;
+          if (typeFilter !== 'all' && q.type !== typeFilter) return false;
+          return true;
+        });
+      }
+      
+      // 分页切片
+      const start = 0;
+      const end = page * PAGE_SIZE;
+      const pageIds = filteredIds.slice(start, end);
+      
+      // 获取题目详情
+      const allQuestions = questionStore.getAll();
+      const questions = pageIds.map(id => {
+        const localQuestion = allQuestions.find(q => q.id === id);
+        if (localQuestion) return localQuestion;
+        return cloudQuestions[id];
+      }).filter((q): q is Question => q !== undefined);
+      
+      setDisplayedQuestions(questions);
+      setHasMore(end < filteredIds.length);
+      
+      // 检测缺失的题目并从云端获取
+      const localIds = new Set(allQuestions.map(q => q.id));
+      const missingIds = pageIds.filter(id => !localIds.has(id) && !cloudQuestions[id]);
+      if (missingIds.length > 0) {
+        fetchQuestionsFromCloud(missingIds);
+      }
+    } finally {
+      setIsLoadingMore(false);
     }
-  }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]);
+  }, [bankFilter, typeFilter, cloudQuestions, fetchQuestionsFromCloud, isLoadingMore]);
+  
+  // 初始加载和筛选变化时重置
+  useEffect(() => {
+    setCurrentPage(1);
+    setHasMore(true);
+    loadMoreQuestions(1, true);
+  }, [refreshKey, bankFilter, typeFilter]);
+  
+  // 加载更多
+  const handleLoadMore = useCallback(() => {
+    if (!hasMore || isLoadingMore) return;
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    loadMoreQuestions(nextPage);
+  }, [currentPage, hasMore, isLoadingMore, loadMoreQuestions]);
+  
+  // 滚动加载检测
+  useEffect(() => {
+    const container = listContainerRef.current;
+    if (!container) return;
+    
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // 距离底部100px时加载更多
+      if (scrollHeight - scrollTop - clientHeight < 100) {
+        handleLoadMore();
+      }
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleLoadMore]);
+  
+  // 用于统计的完整错题列表（轻量级，只计算数量）
+  const wrongQuestionsStats = useMemo(() => {
+    return allWrongIds.map(id => {
+      const q = questionStore.getAll().find(q => q.id === id) || cloudQuestions[id];
+      return q;
+    }).filter((q): q is Question => q !== undefined);
+  }, [allWrongIds, cloudQuestions]);
 
-  const filteredQuestions = useMemo(() => {
-    let result = wrongQuestions;
-    if (bankFilter !== 'all') {
-      result = result.filter(q => q.bankId === bankFilter);
-    }
-    if (typeFilter !== 'all') {
-      result = result.filter(q => q.type === typeFilter);
-    }
-    return result;
-  }, [wrongQuestions, typeFilter, bankFilter]);
-
-  // 使用虚拟列表展示所有错题，无需分页
-const paginatedQuestions = filteredQuestions;
+  const filteredQuestions = displayedQuestions;
+  const paginatedQuestions = filteredQuestions;
 
   const typeCounts = useMemo(() => {
-    const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
+    const base = bankFilter === 'all' ? wrongQuestionsStats : wrongQuestionsStats.filter(q => q.bankId === bankFilter);
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
-  }, [wrongQuestions, bankFilter]);
+  }, [wrongQuestionsStats, bankFilter]);
 
   // 按题库分类统计
   const bankCounts = useMemo(() => {
     const counts: { id: string; name: string; count: number }[] = [];
     const bankMap = new Map<string, number>();
     
-    wrongQuestions.forEach(q => {
+    wrongQuestionsStats.forEach(q => {
       if (q.bankId) {
         bankMap.set(q.bankId, (bankMap.get(q.bankId) || 0) + 1);
       }
@@ -246,7 +314,7 @@ const paginatedQuestions = filteredQuestions;
     });
     
     return counts.sort((a, b) => b.count - a.count);
-  }, [wrongQuestions, banks]);
+  }, [wrongQuestionsStats, banks]);
   
   // 一次读取全部记录
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
@@ -506,7 +574,7 @@ const paginatedQuestions = filteredQuestions;
         )}
 
         {/* 无错题 */}
-        {currentUser && mounted && !isSyncing && wrongQuestions.length === 0 && (
+        {currentUser && mounted && !isSyncing && wrongQuestionsStats.length === 0 && (
           <div className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
               <Check className="w-7 h-7 text-white" />
@@ -520,11 +588,11 @@ const paginatedQuestions = filteredQuestions;
         )}
 
         {/* 有错题 */}
-        {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
+        {currentUser && mounted && !isSyncing && wrongQuestionsStats.length > 0 && (
           <>
             {/* 统计仪表盘 */}
             <WrongBookStats 
-              wrongQuestions={wrongQuestions}
+              wrongQuestions={wrongQuestionsStats}
               filteredQuestions={filteredQuestions}
               onStartReview={startReview}
             />
@@ -539,7 +607,7 @@ const paginatedQuestions = filteredQuestions;
                       <SelectValue placeholder="全部题库" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">全部题库 ({wrongQuestions.length})</SelectItem>
+                      <SelectItem value="all">全部题库 ({wrongQuestionsStats.length})</SelectItem>
                       {bankCounts.map(bank => (
                         <SelectItem key={bank.id} value={bank.id}>
                           {bank.name} ({bank.count})
@@ -558,19 +626,24 @@ const paginatedQuestions = filteredQuestions;
               typeCounts={typeCounts}
             />
 
-            {/* 错题列表 - 使用虚拟列表优化大数据量性能 */}
+            {/* 错题列表 - 分页加载，每页20题 */}
             {paginatedQuestions.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-sm">
                 该题型暂无错题
               </div>
             ) : (
-              <VirtualList
-                items={paginatedQuestions}
-                renderItem={(question) => {
+              <div 
+                ref={listContainerRef}
+                className="rounded-xl space-y-3 max-h-[600px] overflow-y-auto"
+              >
+                {paginatedQuestions.map((question) => {
                   const info = getWrongInfo(question.id);
                   const typeColors = TYPE_COLORS[question.type];
                   return (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all mb-3">
+                    <div 
+                      key={question.id}
+                      className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                    >
                       <div className="flex items-start gap-3">
                         <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
                           {TYPE_LABELS[question.type]}
@@ -595,12 +668,26 @@ const paginatedQuestions = filteredQuestions;
                       </div>
                     </div>
                   );
-                }}
-                itemHeight={116}
-                containerHeight={600}
-                overscan={3}
-                className="rounded-xl"
-              />
+                })}
+                
+                {/* 加载更多提示 */}
+                <div className="py-4 text-center">
+                  {isLoadingMore ? (
+                    <div className="flex items-center justify-center gap-2 text-gray-400">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">加载中...</span>
+                    </div>
+                  ) : hasMore ? (
+                    <div className="text-gray-400 text-sm">
+                      已加载 {paginatedQuestions.length} / {typeCounts.all} 题
+                    </div>
+                  ) : (
+                    <div className="text-gray-400 text-sm">
+                      已加载全部 {paginatedQuestions.length} 题
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </>
         )}
