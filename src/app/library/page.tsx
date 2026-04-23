@@ -701,7 +701,7 @@ function PracticeView({
       )}
 
       {/* 题目内容区域 */}
-      <div ref={questionContentRef} className="max-w-[970px] mx-auto px-4 py-4">
+      <div ref={questionContentRef} className="max-w-[970px] mx-auto px-4 pt-[52px] pb-4">
         <QuizCard
           question={currentQuestion}
           displayQuestion={displayQuestion}
