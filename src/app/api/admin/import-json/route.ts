@@ -210,11 +210,11 @@ function detectQuestionType(qType: unknown): QuestionType {
     if (t === 'single') return 'single';
     else if (t === 'multiple') return 'multiple';
     else if (t === 'true-false' || t === 'truefalse' || t === 'judge') return 'true-false';
-    else if (t === 'fill-blank' || t === 'fillblank' || t === 'fill') return 'fill-blank';
+    else if (t === 'fill-blank' || t === 'fillblank' || t === 'fill' || t === 'short') return 'fill-blank';
     else if (t === 'comprehensive') return 'comprehensive';
     else if (t.includes('多选')) return 'multiple';
     else if (t.includes('判断')) return 'true-false';
-    else if (t.includes('填空')) return 'fill-blank';
+    else if (t.includes('填空') || t.includes('简答') || t.includes('问答')) return 'fill-blank';
     else if (t.includes('综合') || t.includes('案例')) return 'comprehensive';
     return 'single';
   }
