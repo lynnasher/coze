@@ -54,6 +54,15 @@ export function PracticeHeader({
           </Button>
         </div>
 
+        {/* 进度条 */}
+        <div className="mt-2">
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+              style={{ width: `${totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
