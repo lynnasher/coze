@@ -1147,38 +1147,38 @@ export default function WrongBookPage() {
               return <Scheme2 />;
             })()}
 
-            {/* 分类筛选 */}
-            {categoryCounts.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
-                <p className="text-xs text-gray-400 mb-3">分类筛选</p>
-                <div className="flex gap-2.5 flex-wrap">
+            {/* 分类筛选 - 始终显示 */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+              <p className="text-xs text-gray-400 mb-3">分类筛选</p>
+              <div className="flex gap-2.5 flex-wrap">
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    categoryFilter === 'all'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  全部 {wrongQuestions.length}
+                </button>
+                {categoryCounts.length > 0 ? categoryCounts.map(cat => (
                   <button
-                    onClick={() => setCategoryFilter('all')}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      categoryFilter === 'all'
+                    key={cat.id}
+                    onClick={() => setCategoryFilter(cat.id)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
+                      categoryFilter === cat.id
                         ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
+                    title={cat.name}
                   >
-                    全部 {wrongQuestions.length}
+                    {cat.name} {cat.count}
                   </button>
-                  {categoryCounts.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setCategoryFilter(cat.id)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all max-w-[200px] truncate ${
-                        categoryFilter === cat.id
-                          ? 'bg-gray-900 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                      title={cat.name}
-                    >
-                      {cat.name} {cat.count}
-                    </button>
-                  ))}
-                </div>
+                )) : (
+                  <span className="text-xs text-gray-400 py-2">暂无分类数据</span>
+                )}
               </div>
-            )}
+            </div>
 
             {/* 题型筛选 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
@@ -1214,15 +1214,17 @@ export default function WrongBookPage() {
                 return (
                   <div 
                     key={question.id} 
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                    className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-all"
                   >
-                    <div className="flex items-start gap-3">
-                      <span className={`shrink-0 w-9 h-5 rounded-full text-[10px] font-medium text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
-                        {TYPE_LABELS[question.type]}
-                      </span>
-                      <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">{question.content}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">
+                          <span className={`inline-flex items-center justify-center w-8 h-4 rounded-full text-[9px] font-medium text-white mr-2 align-middle ${typeColors?.bg || 'bg-gray-500'}`}>
+                            {TYPE_LABELS[question.type]}
+                          </span>
+                          {question.content}
+                        </p>
+                        <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-400">
                           <span>错 {info.wrongCount} 次</span>
                           {info.streak > 0 && (
                             <span className="text-emerald-600 font-medium">连续答对 {info.streak} 次</span>
@@ -1233,7 +1235,7 @@ export default function WrongBookPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => startReview([question])}
-                        className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                        className="shrink-0 h-8 px-3 rounded-lg text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                       >
                         复习
                       </Button>
