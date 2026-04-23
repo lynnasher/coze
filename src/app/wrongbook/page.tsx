@@ -473,9 +473,7 @@ export default function WrongBookPage() {
         {/* 使用 QuizCard 组件 */}
         <QuizCard
           question={currentReviewQuestion}
-          displayQuestion={currentReviewQuestion}
           currentIndex={reviewIndex}
-          currentChildIndex={0}
           showExplanation={showExplanation}
           answer={localAnswer}
           onAnswerSelect={handleAnswerSelect}

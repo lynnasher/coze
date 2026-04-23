@@ -704,9 +704,7 @@ function PracticeView({
       <div ref={questionContentRef} className="max-w-[970px] mx-auto px-4 pt-[52px] pb-4">
         <QuizCard
           question={currentQuestion}
-          displayQuestion={displayQuestion}
           currentIndex={quizState.currentIndex}
-          currentChildIndex={currentChildIndex}
           showExplanation={showExplanation}
           answer={currentAnswer}
           onAnswerSelect={selectAnswer}
