@@ -464,7 +464,7 @@ export default function WrongBookPage() {
         <div className="h-14" />
 
         {/* 进度条 */}
-        <div className="bg-white border-b border-slate-100 px-4 py-2">
+        <div className="bg-white px-4 py-2">
           <div className="max-w-[970px] mx-auto">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -476,7 +476,7 @@ export default function WrongBookPage() {
         </div>
 
         {/* 错题统计提示 */}
-        <div className="bg-amber-50 border-b border-amber-100 px-4 py-2">
+        <div className="bg-amber-50 px-4 py-2">
           <div className="max-w-[970px] mx-auto flex gap-4 text-sm text-amber-700">
             <span>错题 <span className="font-semibold">{wrongInfo.wrongCount}</span> 次</span>
             <span>掌握度 <span className="font-semibold">{wrongInfo.streak}</span>/3</span>
