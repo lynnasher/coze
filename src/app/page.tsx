@@ -50,9 +50,6 @@ import { calculateStreakStats, calculateTrendData, calculateFilteredStats, recal
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { AnswerSheet } from '@/components/quiz/AnswerSheet';
 import { ResultModal } from '@/components/quiz/ResultModal';
-import { PracticeHeader } from '@/components/quiz/PracticeHeader';
-import { QuizControls } from '@/components/quiz/QuizControls';
-import { HomeView } from '@/components/home/HomeView';
 import dynamic from 'next/dynamic';
 
 // 统计页面懒加载（首屏不需要，切换到统计 Tab 时才加载）
@@ -1566,21 +1563,69 @@ function PracticeView({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* 顶部导航栏 - 使用 PracticeHeader 组件 */}
-      <PracticeHeader
-        currentIndex={quizState.currentIndex}
-        totalQuestions={quizState.questions.length}
-        progressPercent={progressPercent}
-        onBack={() => {
-          if (confirm('确定要退出练习吗？')) {
-            onExit();
-          }
-        }}
-        onShowAnswerSheet={() => setShowAnswerSheet(true)}
-      />
+      {/* 固定顶部栏 - 横向铺满 */}
+      <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 py-3 z-30">
+        <div className="max-w-[970px] mx-auto flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (confirm('确定要退出练习吗？')) {
+                onExit();
+              }
+            }}
+            className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-9 px-3"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            <span className="text-sm">退出</span>
+          </Button>
+          
+          <span className="text-sm font-medium text-slate-600">
+            {quizState.currentIndex + 1} / {quizState.questions.length}
+          </span>
+          
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleFinishAndExit()}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg h-9 w-9 p-0"
+              title="交卷"
+            >
+              <FileCheck className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowAnswerSheet(true)}
+              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-9 w-9 p-0"
+              title="答题卡"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* 占位高度，防止内容被固定导航遮挡 */}
-      <div className="h-[88px]" />
+      <div className="h-14" />
+
+      {/* 进度条 */}
+      <div className="bg-white border-b border-slate-100 px-4 py-2">
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
+              {progressPercent}%
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* 题目内容区域 - 使用 QuizCard 组件 */}
       <QuizCard
@@ -1600,51 +1645,108 @@ function PracticeView({
         onTouchEnd={handleTouchEnd}
       />
 
-      {/* 底部固定操作栏 - 使用 QuizControls 组件 */}
-      <QuizControls
-        currentQuestion={currentQuestion}
-        currentIndex={quizState.currentIndex}
-        totalQuestions={quizState.questions.length}
-        currentChildIndex={currentChildIndex}
-        onPrev={() => {
-          if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
-            setCurrentChildIndex(prev => prev - 1);
-            setShowExplanation(false);
-            setTimeout(scrollToQuestion, 50);
-          } else if (quizState.currentIndex > 0) {
-            prevQuestion();
-            setShowExplanation(false);
-            setTimeout(scrollToQuestion, 50);
-          }
-        }}
-        onNext={() => {
-          const isComprehensive = currentQuestion?.type === 'comprehensive';
-          const hasMoreChildren = isComprehensive && 
-            currentQuestion.children && 
-            currentChildIndex < currentQuestion.children.length - 1;
-          
-          if (hasMoreChildren) {
-            setCurrentChildIndex(prev => prev + 1);
-            setShowExplanation(false);
-            setTimeout(scrollToQuestion, 50);
-          } else {
-            nextQuestion();
-            setShowExplanation(false);
-            setTimeout(scrollToQuestion, 50);
-          }
-        }}
-        onViewAnswer={() => {
-          submitAnswer();
-          setShowExplanation(true);
-          setTimeout(scrollToQuestion, 100);
-        }}
-        onFinish={handleFinishAndExit}
-        isFirstQuestion={
-          currentQuestion?.type === 'comprehensive' 
-            ? currentChildIndex === 0 && quizState.currentIndex === 0
-            : quizState.currentIndex === 0
-        }
-      />
+      {/* 底部固定操作栏 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            {/* 上一题 */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // 如果是综合题的子题目，切换到上一个子题目
+                if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+                  setCurrentChildIndex(prev => prev - 1);
+                  setShowExplanation(false);
+                  setTimeout(scrollToQuestion, 50);
+                } else if (quizState.currentIndex > 0) {
+                  prevQuestion();
+                  setShowExplanation(false);
+                  setTimeout(scrollToQuestion, 50);
+                }
+              }}
+              disabled={
+                currentQuestion?.type === 'comprehensive' 
+                  ? currentChildIndex === 0 && quizState.currentIndex === 0
+                  : quizState.currentIndex === 0
+              }
+              className="h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="ml-1 text-sm font-medium">
+                {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一题' : '上一题'}
+              </span>
+            </Button>
+
+            {/* 答案与解析按钮 */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                submitAnswer();
+                setShowExplanation(true);
+                setTimeout(scrollToQuestion, 100);
+              }}
+              className="h-11 px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="ml-1.5 text-sm">查看答案</span>
+            </Button>
+
+            {/* 下一题 / 下一题 / 交卷 */}
+            {(() => {
+              const isComprehensive = currentQuestion?.type === 'comprehensive';
+              const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
+              const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
+              
+              if (isLastQuestion && !hasMoreChildren) {
+                // 最后一题且没有更多子题目，显示交卷
+                return (
+                  <Button
+                    size="sm"
+                    onClick={() => handleFinishAndExit()}
+                    className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    <span className="ml-1.5 text-sm">交卷</span>
+                  </Button>
+                );
+              } else if (hasMoreChildren) {
+                // 还有更多子题目，切换到下一个子题目
+                return (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCurrentChildIndex(prev => prev + 1);
+                      setShowExplanation(false);
+                      setTimeout(scrollToQuestion, 50);
+                    }}
+                    className="h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
+                  >
+                    <span className="text-sm">下一题</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                );
+              } else {
+                // 切换到下一大题
+                return (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      nextQuestion();
+                      setShowExplanation(false);
+                      setTimeout(scrollToQuestion, 50);
+                    }}
+                    className="h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
+                  >
+                    <span className="text-sm">下一题</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                );
+              }
+            })()}
+          </div>
+        </div>
+      </div>
 
       {/* 答题卡弹窗 - 使用 AnswerSheet 组件 */}
       <AnswerSheet
