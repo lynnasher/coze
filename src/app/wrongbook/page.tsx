@@ -63,6 +63,8 @@ export default function WrongBookPage() {
   // 云端题目数据缓存（用于解决不同设备间题目数据不一致问题）
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  // 题库数据（从 API 获取）
+  const [banks, setBanks] = useState<Array<{ id: string; name: string }>>([]);
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
@@ -125,6 +127,16 @@ export default function WrongBookPage() {
       // 首次加载：先拉取云端数据（skipPush=true，避免推送可能属于其他用户的本地数据）
       // 之后的操作（如答题）会通过增量同步队列推送
       syncFromCloud(true);
+      
+      // 加载题库列表
+      fetch('/api/banks')
+        .then(res => res.json())
+        .then(data => {
+          if (data.banks) {
+            setBanks(data.banks.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name })));
+          }
+        })
+        .catch(err => console.error('Failed to load banks:', err));
     }
     // 显示内容
     setMounted(true);
@@ -237,9 +249,8 @@ export default function WrongBookPage() {
     return counts;
   }, [wrongQuestions, bankFilter]);
 
-  // 按题库分类统计
+  // 按题库分类统计（使用从 API 获取的 banks）
   const bankCounts = useMemo(() => {
-    const banks = bankStore.getAll();
     const counts: { id: string; name: string; count: number }[] = [];
     
     // 先收集所有有错题的题库
@@ -250,9 +261,9 @@ export default function WrongBookPage() {
       }
     });
     
-    // 匹配题库名称
+    // 匹配题库名称（优先使用 API 返回的 banks，找不到则尝试 localStorage）
     bankMap.forEach((count, bankId) => {
-      const bank = banks.find(b => b.id === bankId);
+      const bank = banks.find(b => b.id === bankId) || bankStore.getById(bankId);
       counts.push({
         id: bankId,
         name: bank?.name || '未知题库',
@@ -262,7 +273,7 @@ export default function WrongBookPage() {
     
     // 按错题数量降序排列
     return counts.sort((a, b) => b.count - a.count);
-  }, [wrongQuestions]);
+  }, [wrongQuestions, banks]);
   
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
