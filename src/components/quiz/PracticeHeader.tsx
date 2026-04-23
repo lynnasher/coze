@@ -1,60 +1,72 @@
 'use client';
 
-import { ChevronLeft, Grid3X3, Send } from 'lucide-react';
+import { ChevronLeft, Grid3X3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PracticeHeaderProps {
   currentIndex: number;
   totalQuestions: number;
+  progressPercent: number;
   onBack: () => void;
   onShowAnswerSheet: () => void;
-  onSubmit: () => void;
 }
 
 export function PracticeHeader({
   currentIndex,
   totalQuestions,
+  progressPercent,
   onBack,
   onShowAnswerSheet,
-  onSubmit,
 }: PracticeHeaderProps) {
   return (
     <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 z-40">
-     
-      
-      <div className="max-w-[970px] mx-auto px-4 h-12 flex items-center justify-between">
-        {/* 左侧：返回按钮 */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="h-9 px-2 text-slate-600 hover:bg-slate-100 -ml-2"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          <span className="ml-1 text-sm font-medium">返回</span>
-        </Button>
-
-       
-
-        {/* 右侧：交卷 + 答题卡按钮 */}
-        <div className="flex items-center gap-2 -mr-2">
+      <div className="max-w-[970px] mx-auto px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          {/* 返回按钮 */}
           <Button
             variant="ghost"
             size="sm"
-            onClick={onSubmit}
-            className="h-9 px-3 text-slate-600 hover:bg-slate-100"
+            onClick={onBack}
+            className="h-9 px-2 text-slate-600 hover:bg-slate-100 -ml-2"
           >
-            <Send className="w-4 h-4" />
-           
+            <ChevronLeft className="w-5 h-5" />
+            <span className="ml-1 text-sm font-medium">返回</span>
           </Button>
+
+          {/* 中间：题目进度 */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-800">
+              {currentIndex + 1}
+            </span>
+            <span className="text-sm text-slate-400">/</span>
+            <span className="text-sm text-slate-500">
+              {totalQuestions}
+            </span>
+          </div>
+
+          {/* 右侧：答题卡按钮 */}
           <Button
             variant="ghost"
             size="sm"
             onClick={onShowAnswerSheet}
-            className="h-9 px-2 text-indigo-600 hover:bg-indigo-50"
+            className="h-9 px-2 text-indigo-600 hover:bg-indigo-50 -mr-2"
           >
             <Grid3X3 className="w-4 h-4" />
+            <span className="ml-1.5 text-sm font-medium">答题卡</span>
           </Button>
+        </div>
+
+        {/* 进度条 */}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
+            {progressPercent}%
+          </span>
         </div>
       </div>
     </div>

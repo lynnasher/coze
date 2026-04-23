@@ -372,7 +372,7 @@ export async function initDefaultAdmin(): Promise<void> {
   if (existingAdmin) return;
 
   // 创建默认管理员
-  const adminPassword = hashPassword('Admin123');
+  const adminPassword = hashPassword('admin123');
   await client.from('users').insert({
     phone: 'admin',
     password: adminPassword,
