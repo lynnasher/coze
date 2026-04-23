@@ -487,7 +487,6 @@ function PracticeView({
     );
   }
 
-  const progressPercent = Math.round(((quizState.currentIndex + 1) / quizState.questions.length) * 100);
   const isComprehensive = currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0;
   const totalChildren = isComprehensive ? currentQuestion.children!.length : 0;
 
@@ -501,7 +500,6 @@ function PracticeView({
       <PracticeHeader
         currentIndex={quizState.currentIndex}
         totalQuestions={quizState.questions.length}
-        progressPercent={progressPercent}
         onBack={() => {
           resetQuiz();
           onExit();

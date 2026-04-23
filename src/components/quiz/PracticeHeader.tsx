@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 interface PracticeHeaderProps {
   currentIndex: number;
   totalQuestions: number;
-  progressPercent: number;
   onBack: () => void;
   onShowAnswerSheet: () => void;
 }
@@ -14,7 +13,6 @@ interface PracticeHeaderProps {
 export function PracticeHeader({
   currentIndex,
   totalQuestions,
-  progressPercent,
   onBack,
   onShowAnswerSheet,
 }: PracticeHeaderProps) {
@@ -56,18 +54,6 @@ export function PracticeHeader({
           </Button>
         </div>
 
-        {/* 进度条 */}
-        <div className="mt-3 flex items-center gap-3">
-          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-          <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
-            {progressPercent}%
-          </span>
-        </div>
       </div>
     </div>
   );
