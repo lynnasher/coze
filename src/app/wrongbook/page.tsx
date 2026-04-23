@@ -264,9 +264,18 @@ export default function WrongBookPage() {
     // 匹配题库名称（优先使用 API 返回的 banks，找不到则尝试 localStorage）
     bankMap.forEach((count, bankId) => {
       const bank = banks.find(b => b.id === bankId) || bankStore.getById(bankId);
+      let name = bank?.name || '未知题库';
+      
+      // 如果名称是默认的"题库"，尝试使用更有区分度的显示
+      if (name === '题库' || !name || name.trim() === '') {
+        // 使用 ID 的后 6 位作为区分
+        const shortId = bankId.slice(-6);
+        name = `题库-${shortId}`;
+      }
+      
       counts.push({
         id: bankId,
-        name: bank?.name || '未知题库',
+        name,
         count,
       });
     });
