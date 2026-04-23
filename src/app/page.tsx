@@ -1978,88 +1978,67 @@ function PracticeView({
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* 获取所有题目（包括子题）并标记序号 */}
+            {/* 按顺序显示所有题目（包括子题），子题跟在父题后面 */}
             {(() => {
               const allQuestionsWithNumber: { q: Question; idx: number; displayNum: string }[] = [];
               let flatIdx = 0;
               
-              quizState.questions.forEach((q, idx) => {
-                if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
-                  // 综合题：添加父题和所有子题
-                  allQuestionsWithNumber.push({ q, idx: flatIdx++, displayNum: formatQuestionNumber(q.id) });
-                  q.children.forEach((child, childIdx) => {
-                    allQuestionsWithNumber.push({ q: child, idx: flatIdx++, displayNum: formatQuestionNumber(child.id) });
-                  });
-                } else if (!q.parentId) {
-                  // 普通题目（不是子题）
-                  allQuestionsWithNumber.push({ q, idx: flatIdx++, displayNum: formatQuestionNumber(q.id) });
+              quizState.questions.forEach((q) => {
+                if (!q.parentId) { // 只处理顶级题目
+                  if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
+                    // 综合题：先添加父题
+                    allQuestionsWithNumber.push({ q, idx: flatIdx++, displayNum: formatQuestionNumber(q.id) });
+                    // 再添加所有子题
+                    q.children.forEach((child) => {
+                      allQuestionsWithNumber.push({ q: child, idx: flatIdx++, displayNum: formatQuestionNumber(child.id) });
+                    });
+                  } else {
+                    // 普通题目
+                    allQuestionsWithNumber.push({ q, idx: flatIdx++, displayNum: formatQuestionNumber(q.id) });
+                  }
                 }
               });
               
-              // 按题型分组显示
-              const types: { type: string; label: string; color: string }[] = [
-                { type: 'single', label: '单选题', color: 'bg-indigo-500' },
-                { type: 'multiple', label: '多选题', color: 'bg-purple-500' },
-                { type: 'true-false', label: '判断题', color: 'bg-cyan-500' },
-                { type: 'fill-blank', label: '填空题', color: 'bg-teal-500' },
-                { type: 'comprehensive', label: '综合题', color: 'bg-rose-500' },
-              ];
-              
               return (
-                <>
-                  {types.map(({ type, label, color }) => {
-                    const typeQuestions = allQuestionsWithNumber.filter(item => item.q.type === type);
-                    if (typeQuestions.length === 0) return null;
+                <div className="flex flex-wrap gap-2">
+                  {allQuestionsWithNumber.map(({ q, displayNum }) => {
+                    const answered = !!quizState.answers[q.id];
+                    const record = recordStore.getByQuestionId(q.id);
+                    const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
+                    const isCurrent = quizState.currentIndex === quizState.questions.findIndex(sq => sq.id === q.id);
+                    const isSubQuestion = !!q.parentId;
+                    const isParentQuestion = q.type === 'comprehensive';
                     
                     return (
-                      <div key={type}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`w-2 h-2 rounded-full ${color}`}></span>
-                          <span className="text-sm font-medium text-slate-700">{label}</span>
-                          <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {typeQuestions.map(({ q, displayNum }) => {
-                            const answered = !!quizState.answers[q.id];
-                            const record = recordStore.getByQuestionId(q.id);
-                            const isWrong = answered && record.length > 0 && !record[record.length - 1].isCorrect;
-                            const isCurrent = quizState.currentIndex === quizState.questions.findIndex(sq => sq.id === q.id);
-                            const isSubQuestion = !!q.parentId;
-                            
-                            return (
-                              <button
-                                key={q.id}
-                                onClick={() => {
-                                  const targetIdx = quizState.questions.findIndex(sq => sq.id === q.id);
-                                  if (targetIdx !== -1) {
-                                    goToQuestion(targetIdx);
-                                  }
-                                  setShowAnswerSheet(false);
-                                }}
-                                className={`min-w-[2.5rem] h-9 px-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
-                                  isCurrent
-                                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
-                                    : answered
-                                      ? isWrong
-                                        ? 'bg-red-100 text-red-700 border-2 border-red-300'
-                                        : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                                      : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200'
-                                } ${isSubQuestion ? 'text-xs' : ''}`}
-                              >
-                                {displayNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
+                      <button
+                        key={q.id}
+                        onClick={() => {
+                          const targetIdx = quizState.questions.findIndex(sq => sq.id === q.id);
+                          if (targetIdx !== -1) {
+                            goToQuestion(targetIdx);
+                          }
+                          setShowAnswerSheet(false);
+                        }}
+                        className={`min-w-[2.5rem] h-9 px-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                          isCurrent
+                            ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
+                            : answered
+                              ? isWrong
+                                ? 'bg-red-100 text-red-700 border-2 border-red-300'
+                                : 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                              : 'bg-slate-100 text-slate-600 border-2 border-slate-200 hover:bg-slate-200'
+                        } ${isSubQuestion ? 'text-xs opacity-75' : ''} ${isParentQuestion ? 'ring-2 ring-rose-300' : ''}`}
+                      >
+                        {displayNum}
+                      </button>
                     );
                   })}
-                </>
+                </div>
               );
             })()}
             <div className="flex items-center gap-4 text-xs text-slate-500 pt-2 border-t border-slate-100">
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                <div className="w-4 h-4 rounded bg-gradient-to-r from-orange-500 to-amber-500"></div>
                 <span>当前</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2073,6 +2052,10 @@ function PracticeView({
               <div className="flex items-center gap-1.5">
                 <div className="w-4 h-4 rounded bg-slate-100 border border-slate-200"></div>
                 <span>未答</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-4 rounded bg-slate-100 border border-rose-300"></div>
+                <span>综合</span>
               </div>
             </div>
           </div>
