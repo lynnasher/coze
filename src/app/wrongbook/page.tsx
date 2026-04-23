@@ -195,9 +195,13 @@ export default function WrongBookPage() {
   
   // 加载指定页的错题
   const loadMoreQuestions = useCallback(async (page: number, isReset = false) => {
-    if (isLoadingMore && !isReset) return;
-    
-    setIsLoadingMore(true);
+    // 使用函数式获取最新状态，避免依赖 isLoadingMore
+    let shouldReturn = false;
+    setIsLoadingMore(prev => {
+      if (prev && !isReset) shouldReturn = true;
+      return true;
+    });
+    if (shouldReturn) return;
     
     try {
       // 获取所有错题ID
@@ -216,20 +220,21 @@ export default function WrongBookPage() {
         });
       }
       
-      // 分页切片
-      const start = 0;
+      // 分页切片 - 只加载当前页的数据
+      const start = (page - 1) * PAGE_SIZE;
       const end = page * PAGE_SIZE;
       const pageIds = filteredIds.slice(start, end);
       
       // 获取题目详情
       const allQuestions = questionStore.getAll();
-      const questions = pageIds.map(id => {
+      const newQuestions = pageIds.map(id => {
         const localQuestion = allQuestions.find(q => q.id === id);
         if (localQuestion) return localQuestion;
         return cloudQuestions[id];
       }).filter((q): q is Question => q !== undefined);
       
-      setDisplayedQuestions(questions);
+      // 累加数据（不是替换）
+      setDisplayedQuestions(prev => isReset ? newQuestions : [...prev, ...newQuestions]);
       setHasMore(end < filteredIds.length);
       
       // 检测缺失的题目并从云端获取
@@ -241,7 +246,7 @@ export default function WrongBookPage() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [bankFilter, typeFilter, cloudQuestions, fetchQuestionsFromCloud, isLoadingMore]);
+  }, [bankFilter, typeFilter, cloudQuestions, fetchQuestionsFromCloud]);
   
   // 初始加载和筛选变化时重置
   useEffect(() => {
@@ -258,21 +263,21 @@ export default function WrongBookPage() {
     loadMoreQuestions(nextPage);
   }, [currentPage, hasMore, isLoadingMore, loadMoreQuestions]);
   
-  // 滚动加载检测
+  // 页面滚动加载检测
   useEffect(() => {
-    const container = listContainerRef.current;
-    if (!container) return;
-    
     const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      // 距离底部100px时加载更多
-      if (scrollHeight - scrollTop - clientHeight < 100) {
+      // 距离页面底部200px时加载更多
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = window.innerHeight;
+      
+      if (scrollHeight - scrollTop - clientHeight < 200) {
         handleLoadMore();
       }
     };
     
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [handleLoadMore]);
   
   // 用于统计的完整错题列表（轻量级，只计算数量）
@@ -632,7 +637,7 @@ export default function WrongBookPage() {
             ) : (
               <div 
                 ref={listContainerRef}
-                className="rounded-xl space-y-3 max-h-[600px] overflow-y-auto"
+                className="rounded-xl space-y-3"
               >
                 {paginatedQuestions.map((question) => {
                   const info = getWrongInfo(question.id);
