@@ -18,7 +18,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
@@ -229,7 +229,15 @@ export default function WrongBookPage() {
   const filteredQuestions = useMemo(() => {
     let result = wrongQuestions;
     if (categoryFilter !== 'all') {
-      result = result.filter(q => q.categoryId === categoryFilter);
+      result = result.filter(q => {
+        // 优先使用 categoryId，否则通过 bankId 查找
+        let catId = q.categoryId;
+        if (!catId && q.bankId) {
+          const bank = bankStore.getById(q.bankId);
+          catId = bank?.categoryId;
+        }
+        return catId === categoryFilter;
+      });
     }
     if (typeFilter !== 'all') {
       result = result.filter(q => q.type === typeFilter);
@@ -247,7 +255,16 @@ export default function WrongBookPage() {
 
   const typeCounts = useMemo(() => {
     // 根据当前分类筛选计算题型数量
-    const base = categoryFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.categoryId === categoryFilter);
+    const base = categoryFilter === 'all' 
+      ? wrongQuestions 
+      : wrongQuestions.filter(q => {
+          let catId = q.categoryId;
+          if (!catId && q.bankId) {
+            const bank = bankStore.getById(q.bankId);
+            catId = bank?.categoryId;
+          }
+          return catId === categoryFilter;
+        });
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
@@ -257,11 +274,21 @@ export default function WrongBookPage() {
   const categoryCounts = useMemo(() => {
     const counts: { id: string; name: string; count: number }[] = [];
     
-    // 先收集所有有错题的分类
+    // 先收集所有有错题的分类（优先使用 categoryId，否则通过 bankId 查找）
     const categoryMap = new Map<string, number>();
     wrongQuestions.forEach(q => {
-      if (q.categoryId) {
-        categoryMap.set(q.categoryId, (categoryMap.get(q.categoryId) || 0) + 1);
+      let catId = q.categoryId;
+      
+      // 如果没有 categoryId，尝试通过 bankId 查找
+      if (!catId && q.bankId) {
+        const bank = bankStore.getById(q.bankId);
+        if (bank?.categoryId) {
+          catId = bank.categoryId;
+        }
+      }
+      
+      if (catId) {
+        categoryMap.set(catId, (categoryMap.get(catId) || 0) + 1);
       }
     });
     
