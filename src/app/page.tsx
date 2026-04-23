@@ -23,7 +23,7 @@ import {
   Flame,
   History,
 } from 'lucide-react';
-import { BANK_COLORS } from '@/config';
+
 import { recordStore, calculateStats } from '@/lib/quiz-store';
 import { Category, QuestionBank } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
