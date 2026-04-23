@@ -65,6 +65,8 @@ export default function WrongBookPage() {
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   // 分类数据（从 API 获取）
   const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string }>>([]);
+  // 题库数据（从 API 获取，包含 categoryId）
+  const [banks, setBanks] = useState<Array<{ id: string; name: string; categoryId?: string }>>([]);
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
@@ -141,6 +143,20 @@ export default function WrongBookPage() {
           }
         })
         .catch(err => console.error('Failed to load categories:', err));
+      
+      // 加载题库列表（包含 categoryId）
+      fetch('/api/banks')
+        .then(res => res.json())
+        .then(data => {
+          if (data.banks) {
+            setBanks(data.banks.map((b: { id: string; name: string; categoryId?: string }) => ({ 
+              id: b.id, 
+              name: b.name,
+              categoryId: b.categoryId 
+            })));
+          }
+        })
+        .catch(err => console.error('Failed to load banks:', err));
     }
     // 显示内容
     setMounted(true);
@@ -230,10 +246,10 @@ export default function WrongBookPage() {
     let result = wrongQuestions;
     if (categoryFilter !== 'all') {
       result = result.filter(q => {
-        // 优先使用 categoryId，否则通过 bankId 查找
+        // 优先使用 categoryId，否则通过 bankId 查找（使用 API 获取的 banks）
         let catId = q.categoryId;
         if (!catId && q.bankId) {
-          const bank = bankStore.getById(q.bankId);
+          const bank = banks.find(b => b.id === q.bankId);
           catId = bank?.categoryId;
         }
         return catId === categoryFilter;
@@ -243,7 +259,7 @@ export default function WrongBookPage() {
       result = result.filter(q => q.type === typeFilter);
     }
     return result;
-  }, [wrongQuestions, typeFilter, categoryFilter]);
+  }, [wrongQuestions, typeFilter, categoryFilter, banks]);
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
   const paginatedQuestions = useMemo(() => {
@@ -258,9 +274,10 @@ export default function WrongBookPage() {
     const base = categoryFilter === 'all' 
       ? wrongQuestions 
       : wrongQuestions.filter(q => {
+          // 优先使用 categoryId，否则通过 bankId 查找（使用 API 获取的 banks）
           let catId = q.categoryId;
           if (!catId && q.bankId) {
-            const bank = bankStore.getById(q.bankId);
+            const bank = banks.find(b => b.id === q.bankId);
             catId = bank?.categoryId;
           }
           return catId === categoryFilter;
@@ -268,7 +285,7 @@ export default function WrongBookPage() {
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
-  }, [wrongQuestions, categoryFilter]);
+  }, [wrongQuestions, categoryFilter, banks]);
 
   // 按分类统计（使用从 API 获取的 categories）
   const categoryCounts = useMemo(() => {
@@ -279,9 +296,9 @@ export default function WrongBookPage() {
     wrongQuestions.forEach(q => {
       let catId = q.categoryId;
       
-      // 如果没有 categoryId，尝试通过 bankId 查找
+      // 如果没有 categoryId，尝试通过 bankId 查找（使用 API 获取的 banks）
       if (!catId && q.bankId) {
-        const bank = bankStore.getById(q.bankId);
+        const bank = banks.find(b => b.id === q.bankId);
         if (bank?.categoryId) {
           catId = bank.categoryId;
         }
@@ -314,7 +331,7 @@ export default function WrongBookPage() {
     
     // 按错题数量降序排列
     return counts.sort((a, b) => b.count - a.count);
-  }, [wrongQuestions, categories]);
+  }, [wrongQuestions, categories, banks]);
   
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
@@ -1200,7 +1217,7 @@ export default function WrongBookPage() {
                     className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start gap-3">
-                      <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
+                      <span className={`shrink-0 w-9 h-5 rounded-full text-[10px] font-medium text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
                         {TYPE_LABELS[question.type]}
                       </span>
                       <div className="flex-1 min-w-0 pt-0.5">
