@@ -1635,7 +1635,7 @@ function PracticeView({
               <div className="sm:mx-4 mx-3 mt-3 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
                 <div className="flex items-start gap-2">
                   <FileText className="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-indigo-700 leading-relaxed flex-1">
+                  <div className="text-sm text-indigo-700 leading-relaxed flex-1 font-medium">
                     <RichTextWithBreaks content={currentQuestion.caseBackground} textClassName="whitespace-pre-wrap" />
                   </div>
                 </div>
