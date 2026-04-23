@@ -15,7 +15,6 @@ import {
   Check, 
   BookOpen,
   ArrowLeft,
-  Settings,
   User,
   RefreshCw,
   Brain,
@@ -26,9 +25,8 @@ import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreak
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import Link from 'next/link';
-import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
+import { AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
-import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { VirtualList } from '@/components/ui/virtual-list';
 import { TYPE_LABELS, checkAnswer } from '@/lib/wrongbook-utils';
@@ -495,34 +493,6 @@ const paginatedQuestions = filteredQuestions;
   // ============ 列表页面 ============
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
-      <DeviceKickedDialog 
-        open={kicked} 
-        message={kickMessage}
-        onConfirm={handleKicked}
-      />
-      
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b sticky top-0 z-50">
-        <div className="max-w-[970px] mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-semibold text-gray-900">智能刷题</span>
-          </Link>
-          <div className="flex items-center gap-1">
-            {currentUser?.role === 'admin' && (
-              <Link href="/admin">
-                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-gray-500">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </Link>
-            )}
-            <UserStatus />
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-[970px] mx-auto px-4 py-5">
         {/* 未登录 */}
         {!currentUser && mounted && (
