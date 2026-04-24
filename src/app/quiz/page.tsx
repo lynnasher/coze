@@ -28,7 +28,7 @@ import {
   Grid3X3,
   ArrowLeft,
 } from 'lucide-react';
-import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService } from '@/lib/quiz-store';
+import { recordStore } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
@@ -71,6 +71,7 @@ function QuizPageContent() {
     startQuiz,
     selectAnswer,
     submitAnswer,
+    finishQuiz,
     prevQuestion,
     nextQuestion,
     goToQuestion,
@@ -186,7 +187,7 @@ function QuizPageContent() {
   
   // 交卷
   const handleFinishAndExit = useCallback(async () => {
-    // 计算结果
+    // 先计算结果（用于显示）
     let correct = 0;
     let wrong = 0;
     let unanswered = 0;
@@ -222,19 +223,13 @@ function QuizPageContent() {
     const total = allQuestions.length;
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
     
+    // 调用 finishQuiz 保存练习记录（包含云端同步）
+    await finishQuiz();
+    
+    // 显示结果
     setResultStats({ accuracy, total, correct, wrong, unanswered });
     setShowResultSheet(true);
-    
-    // 保存练习记录
-    const userId = getCurrentUserId();
-    if (userId) {
-      await cloudSyncService.saveRecordsAndStreaks(
-        userId,
-        recordStore.getAll(),
-        wrongStreakStore.getAll()
-      );
-    }
-  }, [quizState]);
+  }, [quizState, finishQuiz]);
   
   // 返回首页
   const handleReturnHome = useCallback(() => {
