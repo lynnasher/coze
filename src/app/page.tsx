@@ -80,9 +80,13 @@ export default function HomePage() {
     }
     
     if (shouldLogout && currentUser) {
-      logout();
+      // 清除登录状态并刷新页面
+      localStorage.removeItem('quiz_user_token');
+      localStorage.removeItem('quiz_user_data');
+      window.location.href = '/';
     }
-  }, [searchParams, currentUser, hasHydrated, logout]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, currentUser, hasHydrated]);
 
   // 页面加载时同步 localStorage 用户数据到 Zustand
   useEffect(() => {
