@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
@@ -16,8 +16,8 @@ import {
   User,
   Flame
 } from 'lucide-react';
-import { recordStore, getWrongQuestionIds, recentPracticeStore, RecentPractice, calculateStats } from '@/lib/quiz-store';
-import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
+import { recordStore, getWrongQuestionIds, calculateStats } from '@/lib/quiz-store';
+import { UserStatus, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { calculateStreakStats } from '@/lib/stats-utils';
 import dynamic from 'next/dynamic';
 
@@ -46,9 +46,6 @@ export default function QuizApp() {
     }
   }, []);
   
-  // 最近练习记录状态
-  const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
-  
   // 客户端挂载状态（防止 hydration mismatch）
   const [mounted, setMounted] = useState(false);
   
@@ -62,9 +59,6 @@ export default function QuizApp() {
     role: string;
     activatedCategories?: string[];
   } | null>(null);
-  
-  // 登录弹窗状态
-  const [authModalOpen, setAuthModalOpen] = useState(false);
   
   // 错题数量状态（优先使用云端同步后的本地数据）
   const [wrongCount, setWrongCount] = useState<number>(0);
@@ -92,13 +86,9 @@ export default function QuizApp() {
   useEffect(() => {
     refreshHomeStats();
   }, [refreshHomeStats]);
-  
-
-
   // 初始化加载（只在首次渲染时执行）
   useEffect(() => {
     isMountedRef.current = true;
-    setRecentPractices(recentPracticeStore.getRecent(3));
     setWrongCount(getWrongQuestionIds().length);
     // 确保组件在客户端挂载
     setMounted(true);
@@ -167,22 +157,22 @@ export default function QuizApp() {
                 <p className="text-[10px] text-gray-400 -mt-0.5">高效备考</p>
               </div>
             </div>
-              
-              {/* 用户信息 */}
-              <div className="flex items-center gap-2">
-                {currentUser?.role === 'admin' && (
-                  <Link href="/admin">
-                    <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
-                      <Settings className="w-4 h-4" />
-                      <span className="hidden sm:inline">管理</span>
-                    </Button>
-                  </Link>
-                )}
-                <UserStatus />
-              </div>
+            
+            {/* 用户信息 */}
+            <div className="flex items-center gap-2">
+              {currentUser?.role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">管理</span>
+                  </Button>
+                </Link>
+              )}
+              <UserStatus />
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
       {/* 主内容 */}
       <main className="max-w-[970px] mx-auto px-4 py-4">
@@ -349,25 +339,6 @@ export default function QuizApp() {
           </TabsContent>
         </Tabs>
     </main>
-    
-    {/* 登录弹窗 */}
-    <AuthModal
-      open={authModalOpen}
-      onOpenChange={setAuthModalOpen}
-      onAuthChange={() => {
-        // 刷新用户状态
-        const user = getStoredUser();
-        if (user) {
-          setCurrentUser({
-            id: user.id,
-            phone: user.phone,
-            nickname: user.nickname,
-            role: user.role,
-            activatedCategories: user.activated_categories || [],
-          });
-        }
-      }}
-    />
     </div>
   );
 }
