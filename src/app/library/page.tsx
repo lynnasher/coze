@@ -246,7 +246,7 @@ export default function LibraryPage() {
     } else if (targetBankId) {
       // 指定题库
       try {
-        const response = await fetch(`/api/admin/banks/${targetBankId}/questions`);
+        const response = await fetch(`/api/banks/${targetBankId}/questions`);
         const data = await response.json();
         questions = data.questions || [];
       } catch (error) {
