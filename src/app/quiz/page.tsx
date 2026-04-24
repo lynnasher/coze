@@ -596,13 +596,13 @@ function QuizPageContent() {
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
-                  <AlertDialogCancel className="flex-1 h-10 rounded-lg border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:bg-slate-50">
+                <div className="flex gap-2 sm:gap-3">
+                  <AlertDialogCancel className="flex-1 min-w-0 px-3 h-10 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs sm:text-sm font-medium hover:bg-slate-50 whitespace-nowrap">
                     取消
                   </AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={handleFinishAndExit}
-                    className="flex-1 h-10 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium"
+                    className="flex-1 min-w-0 px-3 h-10 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-medium whitespace-nowrap"
                   >
                     确认交卷
                   </AlertDialogAction>
