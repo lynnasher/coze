@@ -82,12 +82,16 @@ const COLORS = {
 export default function QuizApp() {
   const router = useRouter();
   
-  // 跳转到做题页面
+  // 跳转到做题页面（带预加载优化）
   const navigateToQuiz = useCallback((bankId: string) => {
     const params = new URLSearchParams();
     params.set('bankId', bankId);
     params.set('mode', 'sequential');
-    router.push(`/quiz?${params.toString()}`);
+    const path = `/quiz?${params.toString()}`;
+    // 预加载目标页面
+    router.prefetch(path);
+    // 跳转到做题页面
+    router.push(path);
   }, [router]);
   
 
