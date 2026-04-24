@@ -582,22 +582,24 @@ function QuizPageContent() {
                   <FileCheck className="w-4 h-4" />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="rounded-2xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>确认交卷</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <span>确定要提交所有答案吗？提交后将无法修改答案。</span>
+              <AlertDialogContent className="rounded-2xl w-[calc(100%-2rem)] max-w-sm mx-auto">
+                <AlertDialogHeader className="space-y-3">
+                  <AlertDialogTitle className="text-lg">确认交卷</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-2.5 text-sm">
+                    <p>确定要提交所有答案吗？提交后将无法修改答案。</p>
                     {unansweredCount > 0 && (
-                      <span className="text-amber-600 font-medium flex items-center gap-1.5">
-                        <span className="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
-                        还有 {unansweredCount} 题未作答
-                      </span>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-amber-700 font-medium">
+                          还有 {unansweredCount} 题未作答
+                        </span>
+                      </div>
                     )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleFinishAndExit}>
+                <AlertDialogFooter className="gap-2 sm:gap-0">
+                  <AlertDialogCancel className="flex-1 sm:flex-none">取消</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleFinishAndExit} className="flex-1 sm:flex-none">
                     确认交卷
                   </AlertDialogAction>
                 </AlertDialogFooter>
