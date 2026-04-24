@@ -372,7 +372,7 @@ function QuizPageContent() {
     return (
       <>
         {/* 统计卡片 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-4 gap-2 mb-4">
           <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
             <p className="text-2xl font-bold">{resultStats.accuracy}%</p>
             <p className="text-xs opacity-80">正确率</p>
@@ -418,10 +418,10 @@ function QuizPageContent() {
                     // 综合题显示
                     if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
                       return (
-                        <div key={q.id} className="flex flex-wrap gap-1.5 sm:gap-2">
-                          <button
+                        <div key={q.id} className="flex flex-wrap gap-2">
+                          <div
                             onClick={() => goToQuestion(idx)}
-                            className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center ${
+                            className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                               parentStatus.isCorrect
                                 ? 'bg-emerald-500 text-white'
                                 : parentStatus.isWrong
@@ -430,14 +430,14 @@ function QuizPageContent() {
                             }`}
                           >
                             {idx + 1}
-                          </button>
+                          </div>
                           {q.children.map((child, childIdx) => {
                             const childStatus = getQuestionStatus(child);
                             return (
-                              <button
+                              <div
                                 key={child.id}
                                 onClick={() => goToQuestion(idx)}
-                                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-md sm:rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
+                                className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
                                   childStatus.isCorrect
                                     ? 'bg-emerald-400 text-white'
                                     : childStatus.isWrong
@@ -446,7 +446,7 @@ function QuizPageContent() {
                                 }`}
                               >
                                 {idx + 1}({childIdx + 1})
-                              </button>
+                              </div>
                             );
                           })}
                         </div>
@@ -454,10 +454,10 @@ function QuizPageContent() {
                     }
                     
                     return (
-                      <button
+                      <div
                         key={q.id}
                         onClick={() => goToQuestion(idx)}
-                        className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center ${
+                        className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                           parentStatus.isCorrect
                             ? 'bg-emerald-500 text-white'
                             : parentStatus.isWrong
@@ -466,7 +466,7 @@ function QuizPageContent() {
                         }`}
                       >
                         {idx + 1}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -476,17 +476,17 @@ function QuizPageContent() {
         </div>
         
         {/* 图例 */}
-        <div className="grid grid-cols-3 gap-2 text-xs text-slate-500 pt-3 border-t border-slate-100 mt-4">
-          <div className="flex items-center justify-center gap-1.5">
-            <div className="w-4 h-4 rounded bg-emerald-500"></div>
+        <div className="flex items-center justify-center gap-6 text-xs text-slate-500 pt-3 border-t border-slate-100 mt-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded bg-emerald-500"></div>
             <span>做对</span>
           </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <div className="w-4 h-4 rounded bg-red-500"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded bg-red-500"></div>
             <span>做错</span>
           </div>
-          <div className="flex items-center justify-center gap-1.5">
-            <div className="w-4 h-4 rounded bg-slate-200"></div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded bg-slate-200"></div>
             <span>未答</span>
           </div>
         </div>
@@ -907,7 +907,7 @@ function QuizPageContent() {
       
       {/* 答题卡弹窗 */}
       <Dialog open={showAnswerSheet} onOpenChange={setShowAnswerSheet}>
-        <DialogContent className="w-[calc(100%-1.5rem)] sm:max-w-md max-h-[80vh] overflow-y-auto rounded-2xl p-4">
+        <DialogContent className="max-w-[90vw] sm:max-w-md max-h-[80vh] overflow-y-auto rounded-2xl p-4">
           <DialogHeader className="pb-2">
             <DialogTitle className="text-base flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
@@ -927,7 +927,7 @@ function QuizPageContent() {
           handleReturnHome();
         }
       }}>
-        <DialogContent className="w-[calc(100%-1.5rem)] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-4">
+        <DialogContent className="max-w-[90vw] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5">
           <DialogHeader className="pb-3 text-center">
             <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
               <FileCheck className="w-8 h-8 text-white" />
