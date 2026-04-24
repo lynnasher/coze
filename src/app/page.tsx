@@ -125,27 +125,22 @@ export default function HomePage() {
             
             <div className="flex items-center gap-2">
               {isLoggedIn() ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600">
-                    {currentUser?.nickname || currentUser?.phone}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => logout()}
-                    className="text-slate-500"
+                <Link href="/profile">
+                  <button
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-100 hover:bg-indigo-200 text-indigo-600 transition-colors"
+                    title="个人中心"
                   >
-                    退出
-                  </Button>
-                </div>
+                    <User className="w-5 h-5" />
+                  </button>
+                </Link>
               ) : (
-                <Button 
-                  size="sm"
+                <button 
                   onClick={() => setAuthModalOpen(true)}
-                  className="bg-slate-800 hover:bg-slate-700"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+                  title="登录"
                 >
-                  登录
-                </Button>
+                  <User className="w-5 h-5" />
+                </button>
               )}
             </div>
           </div>
