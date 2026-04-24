@@ -19,6 +19,11 @@ import {
   Settings,
   User,
   RefreshCw,
+  Target,
+  Flame,
+  Brain,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -730,14 +735,97 @@ export default function WrongBookPage() {
         {/* 有错题 */}
         {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
           <>
-            {/* ========== 错题本统计卡片 ========== */}
+            {/* ========== 错题本卡片方案选择 ========== */}
             {(() => {
               // 计算统计数据
               const totalWrong = wrongQuestions.length;
               const masteredCount = wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
+              const needReviewCount = totalWrong - masteredCount;
               const masteryRate = totalWrong > 0 ? Math.round((masteredCount / totalWrong) * 100) : 0;
+              
+              // 计算今日新增错题
+              const today = new Date().toDateString();
+              const todayWrong = recordStore.getAll().filter(r => {
+                if (r.isCorrect) return false;
+                const recordDate = new Date(r.timestamp).toDateString();
+                return recordDate === today;
+              }).length;
 
-              return (
+              // ===== 方案一：数据仪表盘风格 =====
+              const Scheme1 = () => (
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+                  <div className="flex items-center gap-4">
+                    {/* 左侧：错题总数 */}
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-1">错题总数</p>
+                      <p className="text-5xl font-bold text-gray-900">{totalWrong}</p>
+                      <div className="flex gap-4 mt-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-xs text-gray-500">已掌握 {masteredCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="text-xs text-gray-500">待复习 {needReviewCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 右侧：环形进度 */}
+                    <div className="relative w-24 h-24">
+                      <svg className="w-full h-full -rotate-90">
+                        <circle cx="48" cy="48" r="40" fill="none" stroke="#f3f4f6" strokeWidth="8" />
+                        <circle 
+                          cx="48" cy="48" r="40" fill="none" 
+                          stroke="url(#gradient1)" strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${masteryRate * 2.51} 251`}
+                        />
+                        <defs>
+                          <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#10b981" />
+                            <stop offset="100%" stopColor="#34d399" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-lg font-bold text-gray-900">{masteryRate}%</span>
+                        <span className="text-xs text-gray-400">掌握率</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* 底部统计 */}
+                  <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-gray-100">
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-gray-900">{todayWrong}</p>
+                      <p className="text-xs text-gray-400">今日新增</p>
+                    </div>
+                    <div className="text-center border-x border-gray-100">
+                      <p className="text-lg font-semibold text-gray-900">
+                        {wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) > 0).length}
+                      </p>
+                      <p className="text-xs text-gray-400">正在攻克</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-emerald-600">{masteredCount}</p>
+                      <p className="text-xs text-gray-400">已消灭</p>
+                    </div>
+                  </div>
+                  
+                  {/* 开始复习按钮 */}
+                  <Button 
+                    onClick={() => startReview(filteredQuestions)} 
+                    disabled={filteredQuestions.length === 0}
+                    className="w-full h-12 mt-5 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
+                  >
+                    开始复习
+                  </Button>
+                </div>
+              );
+
+              // ===== 方案二：功能入口风格 =====
+              const Scheme2 = () => (
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
                   {/* 标题栏 */}
                   <div className="flex items-center justify-between mb-4">
@@ -751,7 +839,7 @@ export default function WrongBookPage() {
                   </div>
                   
                   {/* 进度条 */}
-                  <div className="mb-4">
+                  <div className="mb-5">
                     <div className="flex justify-between text-xs text-gray-500 mb-2">
                       <span>复习进度</span>
                       <span>{masteredCount}/{totalWrong}</span>
@@ -764,16 +852,264 @@ export default function WrongBookPage() {
                     </div>
                   </div>
                   
-                  {/* 开始复习按钮 */}
-                  <Button 
-                    onClick={() => startReview(filteredQuestions)} 
-                    disabled={filteredQuestions.length === 0}
-                    className="w-full h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium"
-                  >
-                    开始复习
-                  </Button>
+                  {/* 功能入口按钮 */}
+                  {(() => {
+                    const records = recordStore.getAll();
+                    const now = Date.now();
+                    
+                    // ===== 智能推荐：多维度加权评分模型（方案二） =====
+                    interface QuestionAnalysis {
+                      question: Question;
+                      totalScore: number;
+                      dimensions: {
+                        errorCount: number;
+                        errorScore: number;
+                        timeScore: number;
+                        masteryScore: number;
+                        repeatScore: number;
+                      };
+                    }
+                    
+                    const analyzeQuestion = (q: Question): QuestionAnalysis => {
+                      const qRecords = records.filter(r => r.questionId === q.id);
+                      const wrongRecords = qRecords.filter(r => !r.isCorrect);
+                      
+                      // 维度1：错误次数（权重30%）
+                      const wrongCount = wrongRecords.length;
+                      const errorScore = Math.min(wrongCount / 5, 1) * 30;
+                      
+                      // 维度2：时间衰减（权重25%）- 越近错的越优先
+                      const lastWrong = wrongRecords.length > 0 
+                        ? Math.max(...wrongRecords.map(r => r.timestamp))
+                        : 0;
+                      const daysSinceWrong = (now - lastWrong) / (1000 * 60 * 60 * 24);
+                      const timeScore = Math.max(0, 1 - daysSinceWrong / 7) * 25;
+                      
+                      // 维度3：掌握度（权重25%）- 掌握度越低越优先
+                      const streak = wrongStreakStore.get(q.id) || 0;
+                      const masteryScore = (1 - Math.min(streak / 3, 1)) * 25;
+                      
+                      // 维度4：反复错误（权重20%）- 错误次数/总练习次数
+                      const errorRate = qRecords.length > 0 ? wrongCount / qRecords.length : 0;
+                      const repeatScore = errorRate * 20;
+                      
+                      return {
+                        question: q,
+                        totalScore: errorScore + timeScore + masteryScore + repeatScore,
+                        dimensions: {
+                          errorCount: wrongCount,
+                          errorScore,
+                          timeScore,
+                          masteryScore,
+                          repeatScore,
+                        },
+                      };
+                    };
+                    
+                    const analyzedQuestions = filteredQuestions
+                      .map(analyzeQuestion)
+                      .sort((a, b) => b.totalScore - a.totalScore);
+                    
+                    const topQuestions = analyzedQuestions.slice(0, 10);
+                    const recommendedQuestions = topQuestions.map(a => a.question);
+                    
+                    // 计算推荐理由（最高分的维度）
+                    const getTopDimension = (analysis: QuestionAnalysis) => {
+                      const dims = [
+                        { key: 'error', score: analysis.dimensions.errorScore, label: '多次错误' },
+                        { key: 'time', score: analysis.dimensions.timeScore, label: '最近做错' },
+                        { key: 'mastery', score: analysis.dimensions.masteryScore, label: '掌握度低' },
+                        { key: 'repeat', score: analysis.dimensions.repeatScore, label: '反复出错' },
+                      ];
+                      return dims.sort((a, b) => b.score - a.score)[0];
+                    };
+                    
+                    // 统计推荐题目的特点
+                    const recommendationSummary = (() => {
+                      if (topQuestions.length === 0) return null;
+                      const dimCounts: Record<string, number> = {};
+                      topQuestions.forEach(q => {
+                        const topDim = getTopDimension(q);
+                        dimCounts[topDim.label] = (dimCounts[topDim.label] || 0) + 1;
+                      });
+                      const topReason = Object.entries(dimCounts)
+                        .sort((a, b) => b[1] - a[1])[0];
+                      return topReason;
+                    })();
+                    
+                    return (
+                      <div className="space-y-3">
+                        {/* 智能推荐（主要按钮） */}
+                        <button 
+                          onClick={() => {
+                            if (recommendedQuestions.length > 0) startReview(recommendedQuestions);
+                          }}
+                          disabled={recommendedQuestions.length === 0}
+                          className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 transition-all disabled:opacity-50 shadow-sm"
+                        >
+                          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                            <Sparkles className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <div className="font-semibold">智能推荐</div>
+                            <div className="text-xs text-indigo-100">
+                              {recommendationSummary 
+                                ? `优先${recommendationSummary[0]}的题目 · 共${recommendedQuestions.length}题`
+                                : `基于多维度分析推荐 · 共${recommendedQuestions.length}题`}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-5 h-5 opacity-70" />
+                        </button>
+                        
+                        {/* 其他选项 */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <button 
+                            onClick={() => startReview(filteredQuestions)}
+                            disabled={filteredQuestions.length === 0}
+                            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            <span className="text-xs font-medium">全部</span>
+                          </button>
+                          
+                          <button 
+                            onClick={() => {
+                              // 科学记忆：基于艾宾浩斯遗忘曲线
+                              const getEbbinghausScore = (q: Question) => {
+                                const qRecords = records.filter(r => r.questionId === q.id && !r.isCorrect);
+                                if (qRecords.length === 0) return 0;
+                                const lastWrong = Math.max(...qRecords.map(r => r.timestamp));
+                                const daysSinceWrong = (now - lastWrong) / (1000 * 60 * 60 * 24);
+                                const streak = wrongStreakStore.get(q.id) || 0;
+                                const forgettingRate = Math.min(0.9, 0.5 + daysSinceWrong * 0.05);
+                                return forgettingRate * (1 - streak / 3) * 100;
+                              };
+                              const memoryQuestions = [...filteredQuestions]
+                                .sort((a, b) => getEbbinghausScore(b) - getEbbinghausScore(a))
+                                .slice(0, 10);
+                              if (memoryQuestions.length > 0) startReview(memoryQuestions);
+                            }}
+                            disabled={filteredQuestions.length === 0}
+                            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                          >
+                            <Brain className="w-4 h-4" />
+                            <span className="text-xs font-medium">记忆</span>
+                          </button>
+                          
+                          <button 
+                            onClick={() => {
+                              // 难度适应：基于当前水平
+                              const recentRecords = records.slice(-10);
+                              const recentAccuracy = recentRecords.length > 0
+                                ? recentRecords.filter(r => r.isCorrect).length / recentRecords.length
+                                : 0.5;
+                              const getAdaptiveScore = (q: Question) => {
+                                const qRecords = records.filter(r => r.questionId === q.id);
+                                const wrongRecords = qRecords.filter(r => !r.isCorrect);
+                                const streak = wrongStreakStore.get(q.id) || 0;
+                                const difficulty = qRecords.length > 0
+                                  ? wrongRecords.length / qRecords.length
+                                  : 0.5;
+                                const optimalDifficulty = 1 - recentAccuracy + 0.1;
+                                const difficultyMatch = 1 - Math.abs(difficulty - optimalDifficulty);
+                                const masteryFactor = (1 - Math.min(streak / 3, 1));
+                                return masteryFactor * 40 + difficultyMatch * 60;
+                              };
+                              const adaptiveQs = [...filteredQuestions]
+                                .sort((a, b) => getAdaptiveScore(b) - getAdaptiveScore(a))
+                                .slice(0, 10);
+                              if (adaptiveQs.length > 0) startReview(adaptiveQs);
+                            }}
+                            disabled={filteredQuestions.length === 0}
+                            className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                          >
+                            <TrendingUp className="w-4 h-4" />
+                            <span className="text-xs font-medium">适应</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
+
+              // ===== 方案三：学习概览风格 =====
+              const Scheme3 = () => (
+                <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-lg p-5 mb-4 text-white">
+                  <div className="flex items-start justify-between">
+                    {/* 左侧：主要数据 */}
+                    <div>
+                      <p className="text-white/60 text-sm mb-1">我的错题本</p>
+                      <p className="text-5xl font-bold mb-2">{totalWrong}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full bg-white/10 text-xs">
+                          掌握率 {masteryRate}%
+                        </span>
+                        {masteryRate >= 80 && (
+                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs">
+                            优秀
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* 右侧：趋势小图 */}
+                    <div className="w-24 h-16">
+                      <svg viewBox="0 0 100 60" className="w-full h-full">
+                        {/* 网格线 */}
+                        <line x1="0" y1="15" x2="100" y2="15" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                        <line x1="0" y1="30" x2="100" y2="30" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                        <line x1="0" y1="45" x2="100" y2="45" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+                        {/* 趋势折线 - 模拟数据 */}
+                        <polyline
+                          fill="none"
+                          stroke="url(#trendGradient)"
+                          strokeWidth="2"
+                          points="10,45 25,40 40,42 55,35 70,30 85,25 95,20"
+                        />
+                        <defs>
+                          <linearGradient id="trendGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="100%" stopColor="#f59e0b" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <p className="text-xs text-white/40 text-center mt-1">最近7天趋势</p>
+                    </div>
+                  </div>
+                  
+                  {/* 学习建议 */}
+                  <div className="mt-5 pt-4 border-t border-white/10">
+                    <p className="text-sm text-white/80">
+                      {masteryRate < 30 ? '💪 建议每天复习10道错题，稳扎稳打' :
+                       masteryRate < 60 ? '📈 进步明显！继续保持复习节奏' :
+                       masteryRate < 80 ? '🎯 即将攻克所有错题，加油！' :
+                       '🏆 太棒了！错题掌握率很高'}
+                    </p>
+                  </div>
+                  
+                  {/* 操作按钮 */}
+                  <div className="flex gap-3 mt-4">
+                    <Button 
+                      onClick={() => startReview(filteredQuestions)} 
+                      disabled={filteredQuestions.length === 0}
+                      className="flex-1 h-11 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-medium"
+                    >
+                      开始复习
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => setTypeFilter('all')}
+                      className="h-11 px-4 rounded-xl border-white/20 text-white hover:bg-white/10"
+                    >
+                      筛选
+                    </Button>
+                  </div>
+                </div>
+              );
+
+              // 默认使用方案二（功能入口风格），可以通过修改这里切换
+              return <Scheme2 />;
             })()}
 
             {/* 题库分类筛选 - 下拉选择 */}

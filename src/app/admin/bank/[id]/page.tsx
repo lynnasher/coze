@@ -980,7 +980,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                         )}
                         
                         {/* 子题答案 */}
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2">
                           <Label className="text-xs text-slate-500 whitespace-nowrap">答案：</Label>
                           <Input
                             value={typeof child.answer === 'string' ? child.answer : child.answer?.join(', ')}
@@ -991,18 +991,6 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                             })}
                             placeholder={child.type === 'multiple' ? '多个答案用逗号分隔，如: a,b' : '如: a'}
                             className="h-7 text-sm flex-1"
-                          />
-                        </div>
-                        
-                        {/* 子题解析 */}
-                        <div className="space-y-1">
-                          <Label className="text-xs text-slate-500">解析（可选）</Label>
-                          <Textarea
-                            value={child.explanation || ''}
-                            onChange={(e) => updateChildQuestion(index, { explanation: e.target.value })}
-                            placeholder="请输入子题解析..."
-                            rows={2}
-                            className="text-sm"
                           />
                         </div>
                       </div>

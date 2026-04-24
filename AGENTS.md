@@ -68,28 +68,10 @@
 - shadcn/ui 组件库
 
 ### 3.2 状态管理
-- **Zustand** - 主要状态管理方案（新）
-  - `useQuizStore` - 刷题状态管理
-  - `useUserStore` - 用户状态管理  
-  - `useCacheStore` - 缓存管理
-- React useState/useReducer - 组件级状态（旧版兼容）
-- localStorage 本地持久化 - 通过 Zustand persist 中间件
+- React useState/useReducer
+- localStorage 本地持久化
 
-### 3.3 数据持久化层
-- **StorageProvider** - 存储适配器抽象层
-  - `localStorage` - 默认存储方式
-  - `indexedDB` - 大数据量存储
-  - `MemoryStorage` - 内存存储（测试用）
-- **quiz-storage** - 刷题数据封装（练习记录、错题本、学习进度）
-- **user-storage** - 用户数据封装（偏好设置、设备ID）
-
-### 3.4 性能优化组件
-- **VirtualList** - 虚拟列表组件
-  - 只渲染可视区域项目
-  - 支持固定高度和动态高度
-  - 支持无限滚动加载
-
-### 3.5 文档解析
+### 3.3 文档解析
 - mammoth.js (Word 文档解析)
 - pdf-parse (PDF 文档解析)
 - 自定义正则表达式提取题目
@@ -170,9 +152,11 @@ src/
 │   ├── AuthModal.tsx           # 用户认证组件（登录/注册）
 │   ├── DeviceKickedDialog.tsx  # 设备被挤下线提示
 │   ├── quiz/                    # 刷题相关组件
-│   │   ├── QuizCard.tsx         # 题目卡片（题目展示、选项、填空、答案解析）
-│   │   ├── AnswerSheet.tsx      # 答题卡（题目导航、交卷）
-│   │   └── ResultModal.tsx      # 结果弹窗（交卷后统计显示）
+│   │   ├── QuizCard.tsx         # 题目卡片
+│   │   ├── QuizOption.tsx       # 选项组件
+│   │   ├── QuizProgress.tsx     # 进度组件
+│   │   ├── QuizResult.tsx       # 结果组件
+│   │   └── QuizControls.tsx     # 控制组件
 │   ├── library/                 # 题库管理组件
 │   │   ├── QuestionList.tsx     # 题目列表
 │   │   ├── ImportModal.tsx      # 导入弹窗
@@ -181,21 +165,9 @@ src/
 │       └── StatsCard.tsx        # 统计卡片
 ├── lib/
 │   ├── utils.ts                 # 工具函数
-│   ├── quiz-store.ts            # 刷题状态管理（旧版，将被 Zustand 替代）
+│   ├── quiz-store.ts            # 刷题状态管理
 │   ├── pdf-parser.ts            # PDF 解析工具
 │   ├── types.ts                 # 类型定义
-│   ├── import-utils.ts          # 题目导入工具函数（共享）
-│   ├── api-error-handler.ts     # API 错误处理中间件
-│   ├── store/                    # Zustand 状态管理
-│   │   ├── index.ts             # Store 统一导出
-│   │   ├── quiz-store.ts        # 刷题状态 Store
-│   │   ├── user-store.ts        # 用户状态 Store
-│   │   └── cache-store.ts       # 缓存管理 Store
-│   ├── storage/                  # 数据持久化层
-│   │   ├── index.ts             # Storage 统一导出
-│   │   ├── storage-provider.ts  # 存储适配器抽象
-│   │   ├── quiz-storage.ts      # 刷题数据存储封装
-│   │   └── user-storage.ts      # 用户数据存储封装
 │   └── services/                 # 服务层
 │       ├── user-service.ts      # 用户服务（Supabase）
 │       ├── activation-service.ts # 激活码服务（Supabase）
