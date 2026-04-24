@@ -19,6 +19,39 @@ interface QuizStoreState extends QuizState {
   
   // 预加载状态
   preloadIndex: number;
+  
+  // 子题相关
+  currentChildIndex: number;
+  showExplanation: boolean;
+}
+
+interface QuizStoreActions {
+  // 练习控制
+  startQuiz: (questions: Question[], mode: PracticeMode) => void;
+  selectAnswer: (questionId: string, answer: string | string[]) => void;
+  nextQuestion: () => void;
+  prevQuestion: () => void;
+  goToQuestion: (index: number) => void;
+  submitAnswer: () => void;
+  finishQuiz: () => void;
+  restartQuiz: () => void;
+  resetQuiz: () => void;
+  
+  // 状态更新
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  setHasStarted: (started: boolean) => void;
+  incrementTime: () => void;
+  updatePreloadIndex: (index: number) => void;
+  setCurrentChildIndex: (index: number) => void;
+  setShowExplanation: (show: boolean) => void;
+  
+  // 计算属性获取器
+  getCurrentQuestion: () => Question | null;
+  getCurrentAnswer: () => string | string[] | undefined;
+  getIsAnswerCorrect: () => boolean;
+  getProgress: () => { current: number; total: number; percent: number };
+  getStats: () => { correct: number; wrong: number; unanswered: number; accuracy: number };
 }
 
 interface QuizStoreActions {
@@ -64,6 +97,8 @@ const initialState: Omit<QuizStoreState, keyof QuizStoreActions> = {
   hasStarted: false,
   error: null,
   preloadIndex: -1,
+  currentChildIndex: 0,
+  showExplanation: false,
 };
 
 // ==================== Store 创建 ====================
@@ -158,6 +193,8 @@ export const useQuizStore = create<QuizStore>()(
           isComplete: false,
           hasStarted: true,
           preloadIndex: -1,
+          currentChildIndex: 0,
+          showExplanation: false,
         }));
       },
 
@@ -182,6 +219,14 @@ export const useQuizStore = create<QuizStore>()(
 
       updatePreloadIndex: (index) => {
         set({ preloadIndex: index });
+      },
+
+      setCurrentChildIndex: (index) => {
+        set({ currentChildIndex: index });
+      },
+
+      setShowExplanation: (show) => {
+        set({ showExplanation: show });
       },
 
       // ==================== 计算属性获取器 ====================
@@ -274,6 +319,8 @@ export const useQuizStore = create<QuizStore>()(
         answers: state.answers,
         timeSpent: state.timeSpent,
         mode: state.mode,
+        currentChildIndex: state.currentChildIndex,
+        showExplanation: state.showExplanation,
       }),
     }
   )
