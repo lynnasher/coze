@@ -2,27 +2,13 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
 import {
   ChevronLeft, 
   ChevronRight, 
@@ -33,23 +19,16 @@ import {
   Settings,
   User,
   Library,
-  Home,
-  BarChart3,
   RefreshCw,
   Grid3X3,
   FileCheck,
   FileText,
-  Plus,
-  Minus,
   Loader2,
-  Cloud,
   Folder,
   FolderOpen,
-  Sparkles,
-  Timer,
   Trophy,
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken, wrongStreakStore, getWrongQuestionIds } from '@/lib/quiz-store';
+import { questionStore, recordStore, wrongStreakStore, getWrongQuestionIds } from '@/lib/quiz-store';
 import { Question, QuestionType, QuestionBank } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { AuthModal, UserStatus, getCurrentUser as getStoredUser } from '@/components/AuthModal';
@@ -59,7 +38,6 @@ import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 
 // ==================== 类型定义 ====================
 
@@ -143,17 +121,13 @@ export default function LibraryPage() {
     accuracy: 0,
   });
   
-  // 同步状态
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
-
   // ==================== 数据加载 ====================
   
   // 加载题库数据
   const loadBanks = useCallback(async () => {
     setIsLoadingBanks(true);
     try {
-      const response = await fetch('/api/admin/banks');
+      const response = await fetch('/api/banks');
       const data = await response.json();
       if (data.banks) {
         setBanks(data.banks);
@@ -168,7 +142,7 @@ export default function LibraryPage() {
   // 加载分类数据
   const loadCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/categories');
+      const response = await fetch('/api/categories');
       const data = await response.json();
       if (data.categories) {
         setCategories(data.categories);
@@ -237,17 +211,6 @@ export default function LibraryPage() {
       calculateStats();
     }
   }, [currentUser, loadBanks, loadCategories, calculateStats]);
-
-  // 云端同步
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    const interval = setInterval(() => {
-      handleSync();
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [currentUser]);
 
   // ==================== 事件处理 ====================
   
@@ -412,30 +375,14 @@ export default function LibraryPage() {
       const currentStreak = streaks[currentQuestion.id] || 0;
       wrongStreakStore.save({ ...streaks, [currentQuestion.id]: currentStreak + 1 });
     }
-    
-    // 云端同步
-    if (currentUser) {
-      queueRecordForSync({
-        id: `record_${Date.now()}`,
-        questionId: currentQuestion.id,
-        isCorrect,
-        selectedAnswer: userAnswer || '',
-        timestamp: Date.now(),
-      });
-    }
-  }, [currentQuestion, localAnswers, isAnswerCorrect, currentUser]);
+  }, [currentQuestion, localAnswers, isAnswerCorrect]);
 
   // 交卷
   const handleFinishAndExit = useCallback(() => {
     setShowAnswerSheet(false);
     setShowResultSheet(true);
     setLocalShowResult(true);
-    
-    // 强制同步
-    if (currentUser) {
-      forceSyncBeacon();
-    }
-  }, [currentUser]);
+  }, []);
 
   // 重置练习
   const resetQuiz = useCallback(() => {
@@ -523,28 +470,6 @@ export default function LibraryPage() {
   const handleReturnHome = useCallback(() => {
     handleExitPractice();
   }, [handleExitPractice]);
-
-  // 云端同步
-  const handleSync = useCallback(async () => {
-    if (!currentUser || isSyncing) return;
-    
-    setIsSyncing(true);
-    try {
-      const token = getUserToken();
-      if (!token) return;
-      
-      // 先拉取云端数据
-      await cloudSyncService.pullData(token);
-      // 再推送本地数据
-      await cloudSyncService.saveRecordsAndStreaks(token, recordStore.getAll(), wrongStreakStore.getAll());
-      
-      setLastSyncTime(Date.now());
-    } catch (error) {
-      console.error('同步失败:', error);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [currentUser, isSyncing]);
 
   // 触摸滑动处理
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -982,66 +907,37 @@ export default function LibraryPage() {
   // ==================== 题库浏览页面 ====================
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      {/* 顶部导航 */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200/50 shadow-sm">
+    <div className="min-h-screen bg-gray-50">
+      {/* 顶部区域 */}
+      <header className="bg-white sticky top-0 z-50 shadow-sm">
         <div className="max-w-[970px] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Logo区域 */}
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
+            {/* 产品标识 */}
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-base font-bold text-slate-800">智能刷题</h1>
-                <p className="text-xs text-slate-500">{questionStats.total} 道错题待复习</p>
+                <h1 className="text-base font-bold text-gray-900">智能刷题</h1>
+                <p className="text-[10px] text-gray-400 -mt-0.5">高效备考</p>
               </div>
             </div>
             
-            {/* 用户区域 */}
+            {/* 用户信息 */}
             <div className="flex items-center gap-2">
-              {/* 同步按钮 */}
-              <button
-                onClick={handleSync}
-                disabled={isSyncing || !currentUser}
-                className="p-2 rounded-xl hover:bg-slate-100 transition-colors disabled:opacity-50"
-                title={lastSyncTime ? `上次同步: ${new Date(lastSyncTime).toLocaleTimeString()}` : '点击同步'}
-              >
-                <Cloud className={cn(
-                  "w-4 h-4",
-                  isSyncing ? "text-blue-500 animate-pulse" : "text-slate-500"
-                )} />
-              </button>
-              
-              {currentUser ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600 font-medium hidden sm:inline">
-                    {currentUser.nickname || currentUser.phone}
-                  </span>
-                  <button
-                    onClick={() => {
-                      localStorage.removeItem('user');
-                      localStorage.removeItem('token');
-                      setCurrentUser(null);
-                    }}
-                    className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
-                  >
-                    <Settings className="w-4 h-4 text-slate-500" />
-                  </button>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setAuthModalOpen(true)}
-                >
-                  登录
-                </Button>
+              {currentUser?.role === 'admin' && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">管理</span>
+                  </Button>
+                </Link>
               )}
+              <UserStatus />
             </div>
           </div>
         </div>
-      </div>
+      </header>
       
       {/* 主内容区域 */}
       <div className="max-w-[970px] mx-auto px-4 py-4">
