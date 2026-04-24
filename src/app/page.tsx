@@ -75,18 +75,17 @@ export default function HomePage() {
     const shouldLogin = searchParams.get('login') === 'true';
     const shouldLogout = searchParams.get('logout') === 'true';
     
-    if (shouldLogin && !currentUser) {
+    if (shouldLogin && !isLoggedIn()) {
       setAuthModalOpen(true);
     }
     
-    if (shouldLogout && currentUser) {
+    if (shouldLogout && isLoggedIn()) {
       // 清除登录状态并刷新页面
-      localStorage.removeItem('quiz_user_token');
-      localStorage.removeItem('quiz_user_data');
+      logout();
       window.location.href = '/';
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, currentUser, hasHydrated]);
+  }, [searchParams, hasHydrated]);
 
   // 页面加载时同步 localStorage 用户数据到 Zustand
   useEffect(() => {
