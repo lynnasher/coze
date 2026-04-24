@@ -1,4 +1,8 @@
 import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel, Category, LearningStreak, CategoryStat, DailyStat } from './types';
+import { generateId } from './import-utils';
+
+// 重新导出 generateId 以保持向后兼容
+export { generateId };
 
 // 统一存储 Keys - 前后台共用
 const STORAGE_KEYS = {
@@ -881,12 +885,7 @@ export const calculateStats = (): Stats => {
     totalTimeSpent,
     avgQuestionsPerDay,
   };
-};
-
-// 生成唯一ID
-export const generateId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
+};// generateId 已从 @/lib/import-utils 导入
 
 // ==================== 云端数据同步服务 ====================
 export interface CloudSyncStatus {

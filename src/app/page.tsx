@@ -7,9 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { 
   Library, 
@@ -55,10 +53,19 @@ const StatsView = dynamic(() => import('@/components/StatsView'), {
   loading: () => <div className="flex items-center justify-center py-20 text-sm text-slate-400">加载中...</div>,
 });
 
-// 从 AuthModal 获取当前用户
-const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
-  return getStoredUser();
-};
+// 题型配置常量
+const QUESTION_TYPE_CONFIG = {
+  single: { label: '单选题', color: 'bg-indigo-500' },
+  multiple: { label: '多选题', color: 'bg-purple-500' },
+  'true-false': { label: '判断题', color: 'bg-cyan-500' },
+  'fill-blank': { label: '填空题', color: 'bg-teal-500' },
+  comprehensive: { label: '综合题', color: 'bg-rose-500' },
+} as const;
+
+type QuestionTypeKey = keyof typeof QUESTION_TYPE_CONFIG;
+
+// 从 AuthModal 获取当前用户（直接使用，不再包装）
+const getCurrentUser = getStoredUser;
 
 // 淡雅色调
 const COLORS = {
@@ -1949,19 +1956,12 @@ function PracticeView({
                 .map((q, idx) => ({ q, idx }))
                 .filter(item => item.q.type === type);
               if (typeQuestions.length === 0) return null;
-              const typeLabel = type === 'single' ? '单选题' : 
-                               type === 'multiple' ? '多选题' : 
-                               type === 'true-false' ? '判断题' : 
-                               type === 'fill-blank' ? '填空题' : '综合题';
-              const typeColor = type === 'single' ? 'bg-indigo-500' : 
-                               type === 'multiple' ? 'bg-purple-500' : 
-                               type === 'true-false' ? 'bg-cyan-500' : 
-                               type === 'fill-blank' ? 'bg-teal-500' : 'bg-rose-500';
+              const config = QUESTION_TYPE_CONFIG[type as QuestionTypeKey];
               return (
                 <div key={type}>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
-                    <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
+                    <span className={`w-2 h-2 rounded-full ${config.color}`}></span>
+                    <span className="text-sm font-medium text-slate-700">{config.label}</span>
                     <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -2118,19 +2118,12 @@ function PracticeView({
                 .map((q, idx) => ({ q, idx }))
                 .filter(item => item.q.type === type);
               if (typeQuestions.length === 0) return null;
-              const typeLabel = type === 'single' ? '单选题' : 
-                               type === 'multiple' ? '多选题' : 
-                               type === 'true-false' ? '判断题' : 
-                               type === 'fill-blank' ? '填空题' : '综合题';
-              const typeColor = type === 'single' ? 'bg-indigo-500' : 
-                               type === 'multiple' ? 'bg-purple-500' : 
-                               type === 'true-false' ? 'bg-cyan-500' : 
-                               type === 'fill-blank' ? 'bg-teal-500' : 'bg-rose-500';
+              const config = QUESTION_TYPE_CONFIG[type as QuestionTypeKey];
               return (
                 <div key={type}>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`w-2 h-2 rounded-full ${typeColor}`}></span>
-                    <span className="text-sm font-medium text-slate-700">{typeLabel}</span>
+                    <span className={`w-2 h-2 rounded-full ${config.color}`}></span>
+                    <span className="text-sm font-medium text-slate-700">{config.label}</span>
                     <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
                   </div>
                   <div className="flex flex-wrap gap-2">

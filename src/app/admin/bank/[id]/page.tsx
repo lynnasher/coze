@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getLoginPath } from '@/lib/admin-config';
+import { generateId } from '@/lib/import-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,11 +73,6 @@ interface QuestionBank {
   questionIds: string[];
   createdAt: number;
   updatedAt: number;
-}
-
-// 生成 ID
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // 题型显示映射
