@@ -148,6 +148,32 @@ export default function HomePage() {
     );
   }
 
+  // 未登录状态 - 显示简洁的登录页面
+  if (!isLoggedIn()) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <TopNav />
+        <main className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center max-w-sm">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-3xl flex items-center justify-center shadow-lg">
+              <BookOpen className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">智能刷题</h2>
+            <p className="text-gray-500 text-sm mb-8">登录后可浏览题库、开始练习、记录错题</p>
+            <Button 
+              size="lg" 
+              className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-8 h-12 text-base"
+              onClick={() => setAuthModalOpen(true)}
+            >
+              立即登录
+            </Button>
+          </div>
+        </main>
+        <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
@@ -219,31 +245,6 @@ export default function HomePage() {
 
 
 
-     
-
-        {/* 未登录提示 */}
-        {!isLoggedIn() && (
-          <Card className="mt-6 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-gray-900">登录后查看更多题库</h4>
-                  <p className="text-xs text-gray-600 mt-0.5">登录后可解锁已激活的分类并开始练习</p>
-                </div>
-                <Button 
-                  size="sm" 
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setAuthModalOpen(true)}
-                >
-                  登录
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </main>
 
       {/* 登录弹窗 */}
