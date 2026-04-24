@@ -166,7 +166,7 @@ export const useUserStore = create<UserStore>()(
       isLoggedIn: () => !!get().user && !!get().token,
     }),
     {
-      name: 'user-store',
+      name: 'quiz_user_data', // 与 AuthModal 使用相同的 key
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
@@ -174,10 +174,14 @@ export const useUserStore = create<UserStore>()(
         isDeviceValid: state.isDeviceValid,
         lastValidationTime: state.lastValidationTime,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.hasHydrated = true;
+      // 处理从 localStorage 恢复时的数据格式转换
+      merge: (persistedState: any, currentState) => {
+        // 转换 snake_case 到 camelCase
+        if (persistedState?.user?.activated_categories) {
+          persistedState.user.activatedCategories = persistedState.user.activated_categories;
+          delete persistedState.user.activated_categories;
         }
+        return { ...currentState, ...persistedState, hasHydrated: true };
       },
     }
   )

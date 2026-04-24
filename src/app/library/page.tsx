@@ -92,6 +92,11 @@ export default function LibraryPage() {
     setAuthModalOpen(false);
   };
 
+  // 辅助函数：获取题库的 categoryId（处理 camelCase 和 snake_case）
+  const getBankCategoryId = (bank: QuestionBank): string | undefined => {
+    return bank.categoryId || (bank as any).category_id;
+  };
+
   // 获取用户激活的分类
   const activatedCategoryIds = currentUser?.activatedCategories || [];
   const activatedCategories = categories.filter(c => activatedCategoryIds.includes(c.id));
@@ -232,17 +237,17 @@ export default function LibraryPage() {
           ) : (
             <>
               {/* 未分类题库 */}
-              {banks.filter(b => !b.categoryId).length > 0 && (
+              {banks.filter(b => !getBankCategoryId(b)).length > 0 && (
                 <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
                   <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
                     <FolderOpen className="w-4 h-4 text-slate-400" />
                     <h3 className="text-sm font-semibold text-slate-700">未分类</h3>
                     <span className="text-xs text-slate-400 ml-auto">
-                      ({banks.filter(b => !b.categoryId).length} 题库)
+                      ({banks.filter(b => !getBankCategoryId(b)).length} 题库)
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {banks.filter(b => !b.categoryId).map((bank) => (
+                    {banks.filter(b => !getBankCategoryId(b)).map((bank) => (
                       <BankCard 
                         key={bank.id} 
                         bank={bank} 
@@ -288,7 +293,7 @@ export default function LibraryPage() {
                               )}
                               <div className="space-y-2">
                                 {children.map(category => {
-                                  const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                                  const categoryBanks = banks.filter(b => getBankCategoryId(b) === category.id);
                                   if (categoryBanks.length === 0) return null;
                                   
                                   return (
