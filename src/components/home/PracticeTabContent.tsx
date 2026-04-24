@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { BookOpen, ChevronRight, Trophy, Flame, User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { recordStore } from '@/lib/quiz-store';
+import { calculateStreakStats } from '@/lib/stats-utils';
 
 interface HomeStats {
   correctCount: number;
@@ -20,54 +22,6 @@ interface PracticeTabContentProps {
     role: string;
     activatedCategories?: string[];
   } | null;
-}
-
-// 计算连续学习天数统计
-function calculateStreakStats(records: { timestamp: number }[]) {
-  if (!records || records.length === 0) {
-    return { current: 0, longest: 0, weekly: 0, goal: 7 };
-  }
-  
-  // 按日期分组
-  const dateSet = new Set<string>();
-  records.forEach(r => {
-    const date = new Date(r.timestamp).toDateString();
-    dateSet.add(date);
-  });
-  
-  // 计算连续天数
-  let current = 0;
-  let longest = 0;
-  let tempStreak = 0;
-  const sortedDates = Array.from(dateSet).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  
-  // 计算当前连续天数
-  const today = new Date().toDateString();
-  const yesterday = new Date(Date.now() - 86400000).toDateString();
-  
-  if (sortedDates[0] === today || sortedDates[0] === yesterday) {
-    tempStreak = 1;
-    for (let i = 1; i < sortedDates.length; i++) {
-      const prev = new Date(sortedDates[i - 1]);
-      const curr = new Date(sortedDates[i]);
-      const diffDays = Math.round((prev.getTime() - curr.getTime()) / 86400000);
-      if (diffDays === 1) {
-        tempStreak++;
-      } else {
-        break;
-      }
-    }
-    current = tempStreak;
-  }
-  
-  longest = sortedDates.length;
-  
-  // 计算本周练习天数
-  const weekStart = new Date();
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  const weekly = sortedDates.filter(d => new Date(d) >= weekStart).length;
-  
-  return { current, longest, weekly, goal: 7 };
 }
 
 export function PracticeTabContent({ 
@@ -98,8 +52,8 @@ export function PracticeTabContent({
         
         {/* 连续学习天数卡片 - 带周目标进度 */}
         {mounted && (() => {
-          const records: { timestamp: number }[] = [];
-          const streak = calculateStreakStats(records);
+          const allRecords = recordStore.getAll();
+          const streak = calculateStreakStats(allRecords);
           const isActive = streak.current > 0;
           
           return (
