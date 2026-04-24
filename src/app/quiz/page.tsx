@@ -418,10 +418,14 @@ function QuizPageContent() {
                     // 综合题显示
                     if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
                       return (
-                        <div key={q.id} className="flex flex-wrap gap-2">
-                          <div
-                            onClick={() => goToQuestion(idx)}
-                            className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                        <div key={q.id} className="flex flex-wrap gap-1.5 sm:gap-2">
+                          <button
+                            onClick={() => {
+                              setShowResultSheet(false);
+                              goToQuestion(idx);
+                              setShowExplanation(true);
+                            }}
+                            className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                               parentStatus.isCorrect
                                 ? 'bg-emerald-500 text-white'
                                 : parentStatus.isWrong
@@ -430,14 +434,18 @@ function QuizPageContent() {
                             }`}
                           >
                             {idx + 1}
-                          </div>
+                          </button>
                           {q.children.map((child, childIdx) => {
                             const childStatus = getQuestionStatus(child);
                             return (
-                              <div
+                              <button
                                 key={child.id}
-                                onClick={() => goToQuestion(idx)}
-                                className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
+                                onClick={() => {
+                                  setShowResultSheet(false);
+                                  goToQuestion(idx);
+                                  setShowExplanation(true);
+                                }}
+                                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                                   childStatus.isCorrect
                                     ? 'bg-emerald-400 text-white'
                                     : childStatus.isWrong
@@ -446,7 +454,7 @@ function QuizPageContent() {
                                 }`}
                               >
                                 {idx + 1}({childIdx + 1})
-                              </div>
+                              </button>
                             );
                           })}
                         </div>
@@ -454,10 +462,14 @@ function QuizPageContent() {
                     }
                     
                     return (
-                      <div
+                      <button
                         key={q.id}
-                        onClick={() => goToQuestion(idx)}
-                        className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                        onClick={() => {
+                          setShowResultSheet(false);
+                          goToQuestion(idx);
+                          setShowExplanation(true);
+                        }}
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
                           parentStatus.isCorrect
                             ? 'bg-emerald-500 text-white'
                             : parentStatus.isWrong
@@ -466,7 +478,7 @@ function QuizPageContent() {
                         }`}
                       >
                         {idx + 1}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
