@@ -199,7 +199,6 @@ export default function PracticePage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bankId, mode, isWrongBook, wrongQuestionIds.join(',')]); // 只在参数变化时重新加载
-}
 
   // 计时器
   useEffect(() => {
