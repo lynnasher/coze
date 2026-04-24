@@ -158,6 +158,7 @@ function QuizPageContent() {
           setShowExplanation(false);
           scrollToQuestion();
         } else if (quizState.currentIndex > 0) {
+          setCurrentChildIndex(0); // 切换到其他题目时重置子题索引
           prevQuestion();
           setShowExplanation(false);
           scrollToQuestion();
@@ -172,7 +173,7 @@ function QuizPageContent() {
           setShowExplanation(false);
           scrollToQuestion();
         } else if (quizState.currentIndex < quizState.questions.length - 1) {
-          nextQuestion();
+          setCurrentChildIndex(0); nextQuestion();
           setShowExplanation(false);
           scrollToQuestion();
         }
@@ -846,6 +847,7 @@ function QuizPageContent() {
                   setShowExplanation(false);
                   setTimeout(scrollToQuestion, 50);
                 } else if (quizState.currentIndex > 0) {
+                  setCurrentChildIndex(0); // 切换到其他题目时重置子题索引
                   prevQuestion();
                   setShowExplanation(false);
                   setTimeout(scrollToQuestion, 50);
@@ -907,7 +909,7 @@ function QuizPageContent() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      nextQuestion();
+                      setCurrentChildIndex(0); nextQuestion();
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
