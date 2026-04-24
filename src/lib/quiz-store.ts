@@ -1,4 +1,4 @@
-import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, MemoryLevel, Category, LearningStreak, CategoryStat, DailyStat } from './types';
+import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, Category, LearningStreak, CategoryStat, DailyStat } from './types';
 import { generateId } from './import-utils';
 
 // 重新导出 generateId 以保持向后兼容

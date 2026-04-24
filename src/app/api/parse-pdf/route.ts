@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { HeaderUtils } from 'coze-coding-dev-sdk';
 import { parsePdfText, convertToQuestions } from '@/lib/pdf-parser';
-import { questionStore } from '@/lib/quiz-store';
 import { requireAdminAuth } from '@/lib/api-auth';
 
 // 解析 PDF 文件（需要管理员认证）
@@ -13,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+// const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
     
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

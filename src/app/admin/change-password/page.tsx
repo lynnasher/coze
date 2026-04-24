@@ -71,7 +71,7 @@ export default function ChangePasswordPage() {
       setTimeout(() => {
         router.push('/admin');
       }, 2000);
-    } catch (err) {
+    } catch {
       setError('网络错误，请稍后重试');
     } finally {
       setIsLoading(false);

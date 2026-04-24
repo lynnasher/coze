@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Lock, LogIn, RefreshCw, Shield } from 'lucide-react';
+import { AlertCircle, Lock, RefreshCw, Shield } from 'lucide-react';
 import { useCaptcha, CaptchaDisplay, verifyCaptcha } from '@/components/Captcha';
 
 export default function AdminLoginPage() {
@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
       } else {
         router.push('/admin');
       }
-    } catch (err) {
+    } catch {
       setError('网络错误，请稍后重试');
     } finally {
       setIsLoading(false);

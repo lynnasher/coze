@@ -27,7 +27,6 @@ import {
   FileCheck,
   Grid3X3,
   ArrowLeft,
-  RefreshCw,
 } from 'lucide-react';
 import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
@@ -243,6 +242,7 @@ function QuizPageContent() {
   }, [resetQuiz, router]);
   
   // 子组件：答题卡
+  // eslint-disable-next-line react-hooks/static-components
   const AnswerSheetContent = () => (
     <div className="space-y-4">
       {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
@@ -344,6 +344,7 @@ function QuizPageContent() {
   );
   
   // 子组件：交卷结果
+  // eslint-disable-next-line react-hooks/static-components
   const ResultSheetContent = () => {
     const getQuestionStatus = (question: Question): { isCorrect: boolean; isWrong: boolean; isUnanswered: boolean } => {
       const answer = quizState.answers[question.id];
@@ -928,6 +929,7 @@ function QuizPageContent() {
               <span>答题卡</span>
             </DialogTitle>
           </DialogHeader>
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <AnswerSheetContent />
         </DialogContent>
       </Dialog>
@@ -946,6 +948,7 @@ function QuizPageContent() {
             </div>
             <DialogTitle className="text-xl font-bold text-slate-800">答题完成</DialogTitle>
           </DialogHeader>
+          {/* eslint-disable-next-line react-hooks/static-components */}
           <ResultSheetContent />
         </DialogContent>
       </Dialog>

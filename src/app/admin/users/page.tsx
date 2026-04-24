@@ -260,12 +260,6 @@ export default function UsersPage() {
     );
   });
 
-  const toggleCategory = (userId: string, currentCategories: string[], categoryId: string) => {
-    const newCategories = currentCategories.includes(categoryId)
-      ? currentCategories.filter(c => c !== categoryId)
-      : [...currentCategories, categoryId];
-    handleCategoriesChange(userId, newCategories);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">

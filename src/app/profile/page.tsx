@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { User, LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Copy } from 'lucide-react';
+import { LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/components/AuthModal';
-import { format } from 'date-fns';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 
@@ -91,7 +90,7 @@ export default function ProfilePage() {
     window.location.href = '/';
   };
 
-  const loadData = async (retryCount = 0) => {
+  const loadData = async (_retryCount = 0) => {
     // 从 API 获取用户已激活的分类记录（优先加载，因为需要验证 token）
     const token = localStorage.getItem('quiz_user_token');
     if (token) {
