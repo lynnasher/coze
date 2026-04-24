@@ -85,6 +85,27 @@ export default function LibraryPage() {
   const [practiceMode, setPracticeMode] = useState<'sequential' | 'random' | 'wrong'>('sequential');
   const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
   
+  // 使用 useQuiz hook
+  const {
+    quizState,
+    currentQuestion,
+    currentAnswer,
+    isAnswerCorrect,
+    isLoading,
+    hasStarted,
+    startQuiz: quizStartQuiz,
+    selectAnswer: quizSelectAnswer,
+    nextQuestion: quizNextQuestion,
+    prevQuestion: quizPrevQuestion,
+    submitAnswer: quizSubmitAnswer,
+    finishQuiz,
+    goToQuestion: quizGoToQuestion,
+    restartQuiz,
+    resetQuiz: quizResetQuiz,
+    stats,
+    setHasStarted,
+  } = useQuiz();
+  
   // 题库数据
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [categories, setCategories] = useState<{id: string; name: string; color: string; parentId?: string}[]>([]);
@@ -238,24 +259,45 @@ export default function LibraryPage() {
     let questions: Question[] = [];
     let targetBankId = bankId || practiceBankId;
     
+    if (targetBankId) {
+      // 从 API 加载题目
+      try {
+        const url = targetBankId ? `/api/questions?bankId=${targetBankId}` : '/api/questions';
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.questions && data.questions.length > 0) {
+            questions = data.questions;
+            // 保存到本地存储
+            const existingQuestions = questionStore.getAll();
+            const existingIds = new Set(existingQuestions.map(q => q.id));
+            const newQuestions = questions.filter(q => !existingIds.has(q.id));
+            if (newQuestions.length > 0) {
+              questionStore.addMultiple(newQuestions);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load questions from API:', error);
+      }
+    }
+    
+    // 如果 API 没有获取到，从本地存储获取
+    if (questions.length === 0) {
+      const allQuestions = questionStore.getAll();
+      if (targetBankId) {
+        questions = allQuestions.filter(q => q.bankId === targetBankId);
+      } else {
+        questions = allQuestions;
+      }
+    }
+    
     if (mode === 'wrong') {
       // 错题模式
       const wrongIds = getWrongQuestionIds();
-      const allQuestions = questionStore.getAll();
-      questions = wrongIds.map(id => allQuestions.find(q => q.id === id)).filter(Boolean) as Question[];
-    } else if (targetBankId) {
-      // 指定题库
-      try {
-        const response = await fetch(`/api/banks/${targetBankId}/questions`);
-        const data = await response.json();
-        questions = data.questions || [];
-      } catch (error) {
-        console.error('加载题目失败:', error);
-        return;
+      if (wrongIds.length > 0) {
+        questions = questions.filter(q => wrongIds.includes(q.id));
       }
-    } else {
-      // 所有题目
-      questions = questionStore.getAll();
     }
     
     if (questions.length === 0) {
