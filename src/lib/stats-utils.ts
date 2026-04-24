@@ -86,22 +86,36 @@ export function calculateStreakStats(records: PracticeRecord[]) {
     return { current: 0, longest: 0, weekly: 0, goal: 7 };
   }
   
+  // 使用本地时区获取日期字符串（修复时区问题）
+  const getLocalDateString = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const studyDates = new Set(
-    validRecords.map(r => new Date(r.timestamp).toISOString().split('T')[0])
+    validRecords.map(r => getLocalDateString(r.timestamp))
   );
   const sortedDates = Array.from(studyDates).sort();
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   
-  // 当前连续天数
+  // 获取本地时区的今天和昨天
+  const today = getLocalDateString(Date.now());
+  const yesterday = getLocalDateString(Date.now() - 24 * 60 * 60 * 1000);
+  
+  // 当前连续天数（从最后一天向前计算）
   let current = 0;
   const lastDate = sortedDates[sortedDates.length - 1];
   if (lastDate === today || lastDate === yesterday) {
     current = 1;
     for (let i = sortedDates.length - 2; i >= 0; i--) {
-      const curr = new Date(sortedDates[i + 1]);
-      const prev = new Date(sortedDates[i]);
-      if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
+      const currDate = new Date(sortedDates[i + 1]);
+      const prevDate = new Date(sortedDates[i]);
+      // 计算日期差（考虑时区）
+      const currDay = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate());
+      const prevDay = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+      if ((currDay.getTime() - prevDay.getTime()) / (24 * 60 * 60 * 1000) === 1) {
         current++;
       } else break;
     }
@@ -110,23 +124,30 @@ export function calculateStreakStats(records: PracticeRecord[]) {
   // 最长连续天数
   let longest = 1, temp = 1;
   for (let i = 1; i < sortedDates.length; i++) {
-    const curr = new Date(sortedDates[i]);
-    const prev = new Date(sortedDates[i - 1]);
-    if ((curr.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000) === 1) {
+    const currDate = new Date(sortedDates[i]);
+    const prevDate = new Date(sortedDates[i - 1]);
+    const currDay = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate());
+    const prevDay = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+    if ((currDay.getTime() - prevDay.getTime()) / (24 * 60 * 60 * 1000) === 1) {
       temp++;
       longest = Math.max(longest, temp);
     } else temp = 1;
   }
   
-  // 本周进度
+  // 本周进度（从周一开始计算）
   const now = new Date();
+  const nowDay = now.getDay();
+  // 周一作为一周开始（getDay() 周日=0，周一=1）
+  const mondayOffset = nowDay === 0 ? -6 : 1 - nowDay;
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setDate(now.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+  
   let weekly = 0;
   for (let d = 0; d < 7; d++) {
     const d2 = new Date(weekStart);
     d2.setDate(weekStart.getDate() + d);
-    if (studyDates.has(d2.toISOString().split('T')[0])) weekly++;
+    if (studyDates.has(getLocalDateString(d2.getTime()))) weekly++;
   }
   
   return { current, longest, weekly, goal: 7 };
@@ -143,12 +164,21 @@ export function calculateTrendData(records: PracticeRecord[]) {
     return answer.length > 0;
   });
   
+  // 使用本地时区获取日期字符串
+  const getLocalDateString = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const trend = [];
   for (let i = 6; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date.getTime());
     const count = validRecords.filter(
-      r => new Date(r.timestamp).toISOString().split('T')[0] === dateStr
+      r => getLocalDateString(r.timestamp) === dateStr
     ).length;
     trend.push({ day: date.getDate(), count });
   }
