@@ -111,14 +111,12 @@ export default function LibraryPage() {
 
   // 登录成功回调 - 从 localStorage 读取用户数据并同步到 Zustand
   const handleAuthSuccess = () => {
-    // 从 localStorage 读取 AuthModal 保存的用户数据
     const token = localStorage.getItem('quiz_user_token');
     const userData = localStorage.getItem('quiz_user_data');
     
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        // 转换 snake_case 到 camelCase
         const user: UserType = {
           ...parsedUser,
           activatedCategories: parsedUser.activated_categories || [],
@@ -130,9 +128,38 @@ export default function LibraryPage() {
     }
     
     setAuthModalOpen(false);
-    // 刷新页面以确保状态同步
     window.location.reload();
   };
+
+  // 未登录状态渲染
+  if (!isLoggedIn()) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <TopNav />
+        <main className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center max-w-sm">
+            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-3xl flex items-center justify-center shadow-lg">
+              <User className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">请先登录</h2>
+            <p className="text-gray-500 text-sm mb-8">登录后可浏览题库并开始练习</p>
+            <Button 
+              size="lg" 
+              className="rounded-2xl bg-blue-600 hover:bg-blue-700 px-8 h-12 text-base"
+              onClick={() => setAuthModalOpen(true)}
+            >
+              立即登录
+            </Button>
+          </div>
+        </main>
+        <AuthModal 
+          open={authModalOpen} 
+          onOpenChange={setAuthModalOpen} 
+          onSuccess={handleAuthSuccess}
+        />
+      </div>
+    );
+  }
 
   // 辅助函数：获取题库的 categoryId（处理 camelCase 和 snake_case）
   const getBankCategoryId = (bank: QuestionBank): string | undefined => {
@@ -182,30 +209,6 @@ export default function LibraryPage() {
             </div>
           </div>
         </div>
-
-        {/* 未登录提示 */}
-        {!isLoggedIn() && (
-          <Card className="mb-5 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <User className="w-5 h-5 text-blue-600" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-gray-900">登录后查看已激活的题库</h4>
-                  <p className="text-xs text-gray-600 mt-0.5">请先登录以查看和练习题库</p>
-                </div>
-                <Button 
-                  size="sm" 
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700"
-                  onClick={() => setAuthModalOpen(true)}
-                >
-                  登录
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* 已登录但无激活分类 */}
         {isLoggedIn() && activatedCategoryIds.length === 0 && (
