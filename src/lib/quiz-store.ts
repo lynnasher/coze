@@ -663,16 +663,25 @@ function calculateLearningStreak(records: PracticeRecord[]): LearningStreak {
     };
   }
   
+  // 使用本地时区获取日期字符串
+  const getLocalDateString = (timestamp: number): string => {
+    const date = new Date(timestamp);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   // 获取所有有记录的日期（去重）
   const studyDates = new Set<string>();
   records.forEach(r => {
-    const date = new Date(r.timestamp).toISOString().split('T')[0];
-    studyDates.add(date);
+    const dateStr = getLocalDateString(r.timestamp);
+    studyDates.add(dateStr);
   });
   
   const sortedDates = Array.from(studyDates).sort();
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const today = getLocalDateString(Date.now());
+  const yesterday = getLocalDateString(Date.now() - 24 * 60 * 60 * 1000);
   
   // 计算当前连续天数
   let currentStreak = 0;
@@ -708,10 +717,12 @@ function calculateLearningStreak(records: PracticeRecord[]): LearningStreak {
     }
   }
   
-  // 计算本周进度
+  // 计算本周进度（从周一开始）
   const now = new Date();
+  const nowDay = now.getDay();
+  const mondayOffset = nowDay === 0 ? -6 : 1 - nowDay; // 周日时减6天，其他情况到周一的天数
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setDate(now.getDate() + mondayOffset);
   weekStart.setHours(0, 0, 0, 0);
   
   let weeklyProgress = 0;
@@ -719,7 +730,7 @@ function calculateLearningStreak(records: PracticeRecord[]): LearningStreak {
   for (let d = 0; d < 7; d++) {
     const date = new Date(weekStart);
     date.setDate(weekStart.getDate() + d);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(date.getTime());
     if (studyDates.has(dateStr)) {
       weekDates.add(dateStr);
     }
