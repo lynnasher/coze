@@ -102,86 +102,80 @@ export function useQuiz() {
     setIsLoading(false);
   }, []); // 空依赖，确保只执行一次
 
-  // 开始练习 - 优化：并行加载题库名称和题目
+  // 开始练习
   const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
     // 立即设置 hasStarted 为 true，避免页面闪烁
     setHasStarted(true);
     
     let questions: Question[] = [];
+    const currentBankId = bankId;
     let currentBankName = '全部题目';
     let currentCategoryId: string | undefined;
     let currentCategoryName: string | undefined;
     
-    // 并行执行：获取题库名称 + 加载题目
-    const [questionsResult, bankInfo] = await Promise.all([
-      // 加载题目（异步）
-      (async () => {
-        if (bankId) {
-          // 从数据库加载该题库的题目
-          const dbQuestions = await loadQuestionsFromDb(bankId);
-          if (dbQuestions && dbQuestions.length > 0) {
-            // 保存题目到本地存储
-            const existingQuestions = questionStore.getAll();
-            const existingIds = new Set(existingQuestions.map(q => q.id));
-            const newQuestions = dbQuestions.filter(q => !existingIds.has(q.id));
-            if (newQuestions.length > 0) {
-              questionStore.addMultiple(newQuestions);
+    // 如果有题库ID，获取题库名称
+    if (bankId) {
+      // 检查是否是分类ID格式
+      if (bankId.startsWith('cat_')) {
+        currentCategoryId = bankId.replace('cat_', '');
+        // 尝试获取分类名称（通过 API 或本地存储）
+        try {
+          const storedCategories = localStorage.getItem('quiz_categories');
+          if (storedCategories) {
+            const cats = JSON.parse(storedCategories);
+            const cat = cats.find((c: { id: string }) => c.id === currentCategoryId);
+            if (cat) {
+              currentCategoryName = cat.name;
             }
-            return dbQuestions;
           }
-          
-          // 如果数据库没有，再从 localStorage 获取
-          const localQuestions = questionStore.getAll();
-          const bank = bankStore.getById(bankId);
-          if (bank && bank.questionIds.length > 0) {
-            return localQuestions.filter(q => bank.questionIds.includes(q.id));
-          }
-          return localQuestions.filter(q => q.bankId === bankId);
-        }
-        return questionStore.getAll();
-      })(),
-      
-      // 获取题库名称（异步）
-      (async () => {
-        if (!bankId) return null;
-        
-        if (bankId.startsWith('cat_')) {
-          // 分类ID格式
-          currentCategoryId = bankId.replace('cat_', '');
-          try {
-            const storedCategories = localStorage.getItem('quiz_categories');
-            if (storedCategories) {
-              const cats = JSON.parse(storedCategories);
-              const cat = cats.find((c: { id: string }) => c.id === currentCategoryId);
-              if (cat) {
-                currentCategoryName = cat.name;
-                return { name: currentCategoryName, type: 'category' as const };
-              }
-            }
-          } catch {}
-          return { name: '分类练习', type: 'category' as const };
-        }
-        
-        // 题库ID格式 - 优先从 API 获取
+        } catch {}
+        currentBankName = currentCategoryName || '分类练习';
+      } else {
+        // 尝试从数据库获取题库名称
         try {
           const response = await fetch(`/api/banks/${bankId}`);
           if (response.ok) {
             const data = await response.json();
-            if (data.bank?.name) {
-              return { name: data.bank.name, type: 'bank' as const };
-            }
+            currentBankName = data.bank?.name || '题库练习';
           }
         } catch {}
         
-        // API 失败时从本地存储获取
-        const bank = bankStore.getById(bankId);
-        return bank ? { name: bank.name, type: 'bank' as const } : null;
-      })(),
-    ]);
+        // 如果 API 失败，尝试从本地存储获取
+        if (currentBankName === '题库练习') {
+          const bank = bankStore.getById(bankId);
+          if (bank) {
+            currentBankName = bank.name;
+          }
+        }
+      }
+    }
     
-    questions = questionsResult;
-    if (bankInfo) {
-      currentBankName = bankInfo.name;
+    if (bankId) {
+      // 从数据库加载该题库的题目
+      const dbQuestions = await loadQuestionsFromDb(bankId);
+      if (dbQuestions && dbQuestions.length > 0) {
+        questions = dbQuestions;
+        // 保存题目到本地存储，以便错题本等模块能正确匹配题目ID
+        const existingQuestions = questionStore.getAll();
+        const existingIds = new Set(existingQuestions.map(q => q.id));
+        const newQuestions = questions.filter(q => !existingIds.has(q.id));
+        if (newQuestions.length > 0) {
+          questionStore.addMultiple(newQuestions);
+        }
+      }
+      
+      // 如果数据库没有，再从 localStorage 获取
+      if (questions.length === 0) {
+        const localQuestions = questionStore.getAll();
+        const bank = bankStore.getById(bankId);
+        if (bank && bank.questionIds.length > 0) {
+          questions = localQuestions.filter(q => bank.questionIds.includes(q.id));
+        } else {
+          questions = localQuestions.filter(q => q.bankId === bankId);
+        }
+      }
+    } else {
+      questions = questionStore.getAll();
     }
     
     if (mode === 'random') {
@@ -200,10 +194,10 @@ export function useQuiz() {
     }
 
     // 保存最近练习记录
-    if (bankId && questions.length > 0) {
-      const existingRecord = recentPracticeStore.getByBankId(bankId);
+    if (currentBankId && questions.length > 0) {
+      const existingRecord = recentPracticeStore.getByBankId(currentBankId);
       recentPracticeStore.update({
-        bankId: bankId,
+        bankId: currentBankId,
         bankName: currentBankName,
         categoryId: currentCategoryId,
         categoryName: currentCategoryName,
@@ -227,7 +221,7 @@ export function useQuiz() {
       mode,
       timeSpent: 0,
       isComplete: false,
-      bankId: bankId || undefined,
+      bankId: currentBankId || undefined,
       bankName: currentBankName || undefined,
       categoryId: currentCategoryId,
       categoryName: currentCategoryName,
