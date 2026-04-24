@@ -258,7 +258,7 @@ function QuizPageContent() {
               <span className="text-sm font-medium text-slate-700">{config.label}</span>
               <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {typeQuestions.map(({ q, idx }) => {
                 const answered = !!quizState.answers[q.id];
                 const record = recordStore.getByQuestionId(q.id);
@@ -271,7 +271,7 @@ function QuizPageContent() {
                     <div key={q.id} className="flex flex-wrap gap-2">
                       <button
                         onClick={() => { goToQuestion(idx); setShowAnswerSheet(false); }}
-                        className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center ${
                           isCurrent
                             ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
                             : answered
@@ -287,7 +287,7 @@ function QuizPageContent() {
                         <button
                           key={child.id}
                           onClick={() => { goToQuestion(idx); setShowAnswerSheet(false); }}
-                          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
                             !!quizState.answers[child.id]
                               ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                               : 'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
@@ -304,7 +304,7 @@ function QuizPageContent() {
                   <button
                     key={q.id}
                     onClick={() => { goToQuestion(idx); setShowAnswerSheet(false); }}
-                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center ${
                       isCurrent
                         ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg'
                         : answered
@@ -322,7 +322,7 @@ function QuizPageContent() {
           </div>
         );
       })}
-      <div className="flex items-center gap-4 text-xs text-slate-500 pt-2 border-t border-slate-100">
+      <div className="grid grid-cols-2 sm:flex sm:items-center sm:gap-4 text-xs text-slate-500 pt-2 border-t border-slate-100 gap-x-4 gap-y-1">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded bg-gradient-to-r from-indigo-500 to-purple-500"></div>
           <span>当前</span>
@@ -411,7 +411,7 @@ function QuizPageContent() {
                   <span className="text-sm font-medium text-slate-700">{config.label}</span>
                   <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {typeQuestions.map(({ q, idx }) => {
                     const parentStatus = getQuestionStatus(q);
                     
