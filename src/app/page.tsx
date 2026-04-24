@@ -65,13 +65,15 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     loadData();
-    
-    // 检查 URL 参数，如果需要登录则自动打开登录弹窗
+  }, [loadData]);
+  
+  // 检查 URL 参数，如果需要登录则自动打开登录弹窗
+  useEffect(() => {
     const shouldLogin = searchParams.get('login') === 'true';
-    if (shouldLogin && !isLoggedIn()) {
+    if (shouldLogin && !currentUser) {
       setAuthModalOpen(true);
     }
-  }, [loadData, searchParams, isLoggedIn]);
+  }, [searchParams, currentUser]);
 
   // 页面加载时同步 localStorage 用户数据到 Zustand
   useEffect(() => {
