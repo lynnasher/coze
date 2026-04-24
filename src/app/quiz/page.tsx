@@ -371,30 +371,6 @@ function QuizPageContent() {
     
     return (
       <>
-        {/* 统计卡片 */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.accuracy}%</p>
-            <p className="text-xs opacity-80">正确率</p>
-          </div>
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.total}</p>
-            <p className="text-xs opacity-80">总题数</p>
-          </div>
-          <div className="bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.correct}</p>
-            <p className="text-xs opacity-80">做对</p>
-          </div>
-          <div className="bg-gradient-to-br from-red-500 to-rose-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.wrong + resultStats.unanswered}</p>
-            <p className="text-xs opacity-80">错误</p>
-          </div>
-        </div>
-        
-        {/* 详细说明 */}
-        <div className="text-center text-sm text-slate-500 mb-4">
-          <p>做对 {resultStats.correct} 题，做错 {resultStats.wrong} 题，未答 {resultStats.unanswered} 题</p>
-        </div>
         
         {/* 答题卡 */}
         <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
