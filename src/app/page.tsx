@@ -25,7 +25,7 @@ import { StreakCard, TrendChart, FilterTabs, StatsGrid, WrongBookCard } from '@/
 type StatsFilter = 'day' | 'week' | 'month' | 'all';
 
 export default function HomePage() {
-  const { user: currentUser, isLoggedIn, login, logout } = useUserStore();
+  const { user: currentUser, isLoggedIn, logout, hasHydrated } = useUserStore();
   
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -80,7 +80,7 @@ export default function HomePage() {
   // 获取最近练习的题库
   const recentBanks = banks.slice(0, 3);
 
-  if (isLoading || !mounted) {
+  if (isLoading || !mounted || !hasHydrated) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />

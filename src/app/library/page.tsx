@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 export default function LibraryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user: currentUser, isLoggedIn, login, logout } = useUserStore();
+  const { user: currentUser, isLoggedIn, login, logout, hasHydrated } = useUserStore();
   const { startQuiz } = useQuizStore();
 
   const [banks, setBanks] = useState<QuestionBank[]>([]);
@@ -96,7 +96,7 @@ export default function LibraryPage() {
   const activatedCategoryIds = currentUser?.activatedCategories || [];
   const activatedCategories = categories.filter(c => activatedCategoryIds.includes(c.id));
 
-  if (isLoading) {
+  if (isLoading || !hasHydrated) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />

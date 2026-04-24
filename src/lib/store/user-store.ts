@@ -28,6 +28,9 @@ interface UserStoreState {
   // 设备验证状态
   isDeviceValid: boolean;
   lastValidationTime: number;
+  
+  // 持久化恢复状态
+  hasHydrated: boolean;
 }
 
 interface UserStoreActions {
@@ -64,6 +67,7 @@ const initialState: Omit<UserStoreState, keyof UserStoreActions> = {
   isLoading: false,
   isDeviceValid: true,
   lastValidationTime: 0,
+  hasHydrated: false,
 };
 
 // ==================== Store 创建 ====================
@@ -170,6 +174,11 @@ export const useUserStore = create<UserStore>()(
         isDeviceValid: state.isDeviceValid,
         lastValidationTime: state.lastValidationTime,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.hasHydrated = true;
+        }
+      },
     }
   )
 );

@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { QuestionBank, Category, Question } from '@/lib/types';
 import { recordStore, getWrongQuestionIds, questionStore, wrongStreakStore } from '@/lib/quiz-store';
+import { useUserStore } from '@/lib/store';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
 interface WrongQuestion extends Question {
@@ -41,6 +42,7 @@ interface WrongQuestion extends Question {
 }
 
 export default function WrongBookPage() {
+  const { hasHydrated } = useUserStore();
   const [questions, setQuestions] = useState<WrongQuestion[]>([]);
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -146,7 +148,7 @@ export default function WrongBookPage() {
     return banks.find(b => b.id === bankId)?.name || '未知题库';
   };
 
-  if (isLoading) {
+  if (isLoading || !hasHydrated) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
