@@ -157,6 +157,25 @@ export default function LibraryPage() {
     const user = getStoredUser();
     if (user) {
       setCurrentUser(user);
+      
+      // 获取用户激活的分类
+      try {
+        const token = localStorage.getItem('quiz_user_token');
+        if (token) {
+          const response = await fetch('/api/auth/user/activations', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setCurrentUser(prev => prev ? {
+              ...prev,
+              activatedCategories: data.activatedCategories || []
+            } : null);
+          }
+        }
+      } catch (error) {
+        console.error('获取激活分类失败:', error);
+      }
     }
   }, []);
 
