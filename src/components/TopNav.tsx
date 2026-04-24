@@ -6,6 +6,8 @@ import {
   ArrowLeft, 
   GraduationCap, 
   User,
+  LogOut,
+  LogIn,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/lib/store';
@@ -43,23 +45,23 @@ export function TopNav({
             {/* 用户区域 */}
             <div className="flex items-center gap-2">
               {isLoggedIn() ? (
-                // 已登录：显示个人中心入口（紫色背景）
-                <Link href="/profile">
+                // 已登录：显示退出按钮（红色背景）
+                <Link href="/?logout=true">
                   <button
-                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-100 hover:bg-indigo-200 text-indigo-600 transition-colors"
-                    title="个人中心"
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
+                    title="退出登录"
                   >
-                    <User className="w-5 h-5" />
+                    <LogOut className="w-5 h-5" />
                   </button>
                 </Link>
               ) : (
-                // 未登录：显示登录入口（深色背景），点击带回登录参数
+                // 未登录：显示登录按钮（绿色背景）
                 <Link href="/?login=true">
                   <button
-                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors"
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-green-50 hover:bg-green-100 text-green-600 transition-colors"
                     title="登录"
                   >
-                    <User className="w-5 h-5" />
+                    <LogIn className="w-5 h-5" />
                   </button>
                 </Link>
               )}

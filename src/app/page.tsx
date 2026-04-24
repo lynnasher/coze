@@ -67,13 +67,22 @@ export default function HomePage() {
     loadData();
   }, [loadData]);
   
-  // 检查 URL 参数，如果需要登录则自动打开登录弹窗
+  // 检查 URL 参数，处理登录/退出
   useEffect(() => {
+    // 等待 store 恢复完成
+    if (!hasHydrated) return;
+    
     const shouldLogin = searchParams.get('login') === 'true';
+    const shouldLogout = searchParams.get('logout') === 'true';
+    
     if (shouldLogin && !currentUser) {
       setAuthModalOpen(true);
     }
-  }, [searchParams, currentUser]);
+    
+    if (shouldLogout && currentUser) {
+      logout();
+    }
+  }, [searchParams, currentUser, hasHydrated, logout]);
 
   // 页面加载时同步 localStorage 用户数据到 Zustand
   useEffect(() => {
