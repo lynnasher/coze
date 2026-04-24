@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -19,8 +19,6 @@ import {
   Settings,
   User,
   RefreshCw,
-  Target,
-  Flame,
   Brain,
   TrendingUp,
   Sparkles,
@@ -1103,7 +1101,7 @@ export default function WrongBookPage() {
               );
 
               // 默认使用方案二（功能入口风格），可以通过修改这里切换
-              return <Scheme2 />;
+              return <Scheme1 />;
             })()}
 
             {/* 题库分类筛选 - 下拉选择 */}
