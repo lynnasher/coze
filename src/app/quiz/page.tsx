@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   ChevronLeft, 
@@ -578,6 +579,9 @@ function QuizPageContent() {
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent className="max-w-sm mx-auto rounded-xl p-5">
+                <VisuallyHidden>
+                  <AlertDialogTitle>确认交卷</AlertDialogTitle>
+                </VisuallyHidden>
                 <div className="text-center mb-4">
                   <div className="w-10 h-10 mx-auto mb-2 bg-slate-100 rounded-full flex items-center justify-center">
                     <FileCheck className="w-5 h-5 text-slate-600" />
