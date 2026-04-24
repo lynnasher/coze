@@ -53,6 +53,18 @@ export default function ProfilePage() {
     }
   }, [hasHydrated]);
 
+  // 监听登录状态变化，自动刷新页面
+  useEffect(() => {
+    const handleAuthChange = () => {
+      window.location.reload();
+    };
+
+    window.addEventListener('user-auth-change', handleAuthChange);
+    return () => {
+      window.removeEventListener('user-auth-change', handleAuthChange);
+    };
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     const token = localStorage.getItem('quiz_user_token');

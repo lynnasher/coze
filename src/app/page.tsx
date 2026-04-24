@@ -66,6 +66,19 @@ export default function HomePage() {
     setMounted(true);
     loadData();
   }, [loadData]);
+
+  // 监听登录状态变化，自动刷新页面
+  useEffect(() => {
+    const handleAuthChange = () => {
+      // 登录状态改变时刷新页面
+      window.location.reload();
+    };
+
+    window.addEventListener('user-auth-change', handleAuthChange);
+    return () => {
+      window.removeEventListener('user-auth-change', handleAuthChange);
+    };
+  }, []);
   
   // 检查 URL 参数，处理登录/退出
   useEffect(() => {

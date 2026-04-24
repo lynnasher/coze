@@ -413,6 +413,18 @@ export default function AdminPage() {
     }
   }, [router]);
 
+  // 监听登录状态变化，自动刷新页面
+  useEffect(() => {
+    const handleAuthChange = () => {
+      window.location.reload();
+    };
+
+    window.addEventListener('user-auth-change', handleAuthChange);
+    return () => {
+      window.removeEventListener('user-auth-change', handleAuthChange);
+    };
+  }, []);
+
   // 从数据库加载分类
   const loadCategories = useCallback(async () => {
     try {
