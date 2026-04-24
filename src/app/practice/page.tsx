@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Timer,
   Check,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useQuizStore } from '@/lib/store/quiz-store';
@@ -356,8 +357,26 @@ export default function PracticePage() {
         />
       </div>
 
+      {/* 进度信息和交卷按钮 */}
+      <div className="fixed top-[60px] left-0 right-0 bg-white border-b border-slate-100 z-30">
+        <div className="max-w-[970px] mx-auto px-4">
+          <div className="flex items-center justify-between h-10">
+            <span className="text-xs text-slate-500">
+              已答 {Object.keys(answers).length} / {questions.length} 题
+            </span>
+            <button
+              onClick={handleFinishAndExit}
+              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium rounded-lg transition-colors"
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              交卷
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 主内容区 */}
-      <main className="pt-16">
+      <main className="pt-[104px]">
         {currentQuestion && (
           <QuizCard
             question={currentQuestion}

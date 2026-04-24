@@ -216,10 +216,7 @@ export default function HomePage() {
           <StatsGrid stats={filteredStats} />
         </div>
 
-        {/* 错题本导航 */}
-        <div className="mt-4">
-          <WrongBookCard wrongCount={filteredStats.wrongCount} />
-        </div>
+
 
      
 
