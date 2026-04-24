@@ -45,15 +45,25 @@ export function TopNav({
             {/* 用户区域 */}
             <div className="flex items-center gap-2">
               {isLoggedIn() ? (
-                // 已登录：显示退出按钮（红色背景）
-                <Link href="/?logout=true">
-                  <button
-                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
-                    title="退出登录"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                </Link>
+                // 已登录：显示用户图标（进入个人中心）+ 退出图标
+                <>
+                  <Link href="/profile">
+                    <button
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors"
+                      title="个人中心"
+                    >
+                      <User className="w-5 h-5" />
+                    </button>
+                  </Link>
+                  <Link href="/?logout=true">
+                    <button
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
+                      title="退出登录"
+                    >
+                      <LogOut className="w-5 h-5" />
+                    </button>
+                  </Link>
+                </>
               ) : (
                 // 未登录：显示登录按钮（绿色背景）
                 <Link href="/?login=true">
