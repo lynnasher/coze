@@ -586,7 +586,7 @@ function QuizPageContent() {
                 <AlertDialogHeader className="space-y-3">
                   <AlertDialogTitle className="text-lg">确认交卷</AlertDialogTitle>
                   <AlertDialogDescription className="space-y-2.5 text-sm">
-                    <p>确定要提交所有答案吗？提交后将无法修改答案。</p>
+                    <span className="block">确定要提交所有答案吗？提交后将无法修改答案。</span>
                     {unansweredCount > 0 && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-center gap-2">
                         <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></div>
