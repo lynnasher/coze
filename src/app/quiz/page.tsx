@@ -371,6 +371,10 @@ function QuizPageContent() {
     
     return (
       <>
+        {/* 详细说明 */}
+        <div className="text-center text-sm text-slate-600 mb-4 pb-3 border-b border-slate-100">
+          <p>做对 {resultStats.correct} 题，做错 {resultStats.wrong} 题，未答 {resultStats.unanswered} 题</p>
+        </div>
         
         {/* 答题卡 */}
         <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
