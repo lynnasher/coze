@@ -231,3 +231,82 @@ export function processQuestion(
     children,
   } as Question;
 }
+
+/**
+ * 检查答案是否正确（共享方法）
+ * 用于统一答题校验逻辑
+ */
+export function checkAnswer(question: Question, selectedAnswer: string | string[] | undefined): boolean {
+  if (!selectedAnswer) return false;
+  
+  if (Array.isArray(question.answer)) {
+    // 正确答案本身是多选项
+    if (Array.isArray(selectedAnswer)) {
+      // 用户答案也是数组
+      return (
+        question.answer.length === selectedAnswer.length &&
+        question.answer.every(a => selectedAnswer.includes(a))
+      );
+    }
+    // 用户只选了一个但标准答案多选 → 错
+    return false;
+  }
+  
+  // 正确答案不是数组（单选/判断/填空）
+  if (Array.isArray(selectedAnswer)) {
+    // 用户选了多个但标准答案单选 → 错
+    return selectedAnswer.length === 1 && selectedAnswer[0] === question.answer;
+  }
+  
+  return selectedAnswer === question.answer;
+}
+
+/**
+ * 扁平化处理题目（支持综合题）
+ * 将包含子题的综合题转换为父题+子题的扁平结构
+ */
+export function flattenQuestions(questions: Record<string, unknown>[], bankId: string): Question[] {
+  const result: Question[] = [];
+  
+  for (const q of questions) {
+    const children = q.children as Record<string, unknown>[] | undefined;
+    const hasChildren = Array.isArray(children) && children.length > 0;
+    
+    const qType = q.type || q.qtype;
+    const isComprehensive = 
+      (typeof qType === 'number' && qType === 5) ||
+      (typeof qType === 'string' && (qType.toLowerCase().trim() === 'comprehensive' || qType.includes('综合') || qType.includes('案例')));
+    
+    if (hasChildren && isComprehensive) {
+      // 综合题
+      const questionId = generateId();
+      const caseBackground = (q.question as string) || (q.content as string) || (q.stem as string) || '';
+      const childQuestions = processChildren(children, questionId, bankId);
+      
+      const comprehensiveQuestion: Question = {
+        id: questionId,
+        parentId: undefined,
+        type: 'comprehensive',
+        content: '',
+        caseBackground,
+        children: childQuestions,
+        options: undefined,
+        answer: '',
+        explanation: '',
+        difficulty: 'medium',
+        tags: [],
+        bankId,
+        createdAt: Date.now(),
+      };
+      
+      result.push(comprehensiveQuestion);
+    } else {
+      const processed = processQuestion(q, bankId);
+      if (processed) {
+        result.push(processed);
+      }
+    }
+  }
+  
+  return result;
+}

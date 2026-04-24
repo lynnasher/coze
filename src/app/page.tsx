@@ -1981,7 +1981,7 @@ function PracticeView({
                             {/* 父题序号 */}
                             <button
                               onClick={() => {
-                                goToQuestion(q.id);
+                                goToQuestion(idx);
                                 setShowAnswerSheet(false);
                               }}
                               className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center ${
@@ -2005,7 +2005,8 @@ function PracticeView({
                                 <button
                                   key={child.id}
                                   onClick={() => {
-                                    goToQuestion(child.id);
+                                    // 子题跳转到父题（综合题的子题不是独立条目）
+                                    goToQuestion(idx);
                                     setShowAnswerSheet(false);
                                   }}
                                   className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
@@ -2172,7 +2173,7 @@ function PracticeView({
                           <div key={q.id} className="flex flex-wrap gap-2">
                             {/* 父题序号（可点击查看） */}
                             <div
-                              onClick={() => goToQuestion(q.id)}
+                              onClick={() => goToQuestion(idx)}
                               className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                                 parentStatus.isCorrect
                                   ? 'bg-emerald-500 text-white'
@@ -2190,7 +2191,7 @@ function PracticeView({
                               return (
                                 <div
                                   key={child.id}
-                                  onClick={() => goToQuestion(child.id)}
+                                  onClick={() => goToQuestion(idx)}
                                   className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
                                     childStatus.isCorrect
                                       ? 'bg-emerald-400 text-white'
@@ -2212,7 +2213,7 @@ function PracticeView({
                       return (
                         <div
                           key={q.id}
-                          onClick={() => goToQuestion(q.id)}
+                          onClick={() => goToQuestion(idx)}
                           className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                             parentStatus.isCorrect
                               ? 'bg-emerald-500 text-white'

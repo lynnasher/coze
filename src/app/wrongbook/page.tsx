@@ -28,6 +28,7 @@ import {
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
+import { checkAnswer as sharedCheckAnswer } from '@/lib/import-utils';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
@@ -409,14 +410,8 @@ export default function WrongBookPage() {
     }
   }, [reviewIndex, reviewQuestions.length, refreshData]);
 
-  function checkAnswerInline(question: Question, answer: string | string[] | undefined): boolean {
-    if (!answer) return false;
-    if (Array.isArray(question.answer)) {
-      const userAnswers = Array.isArray(answer) ? answer : [answer];
-      return userAnswers.length === question.answer.length && userAnswers.every(a => question.answer.includes(a));
-    }
-    return answer === question.answer;
-  }
+  // 使用共享的答案检查方法
+  const checkAnswerInline = sharedCheckAnswer;
 
   const getOptionLabel = (index: number) => String.fromCharCode(65 + index);
 

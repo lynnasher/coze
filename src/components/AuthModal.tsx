@@ -104,6 +104,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
         if (data.success) {
           localStorage.setItem(TOKEN_KEY, data.token);
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          userCache = data.user; // 更新缓存
           // 保存设备ID（用于单设备登录验证）
           if (data.deviceId) {
             localStorage.setItem(DEVICE_KEY, data.deviceId);
@@ -159,6 +160,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
         if (data.success) {
           localStorage.setItem(TOKEN_KEY, data.token);
           localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          userCache = data.user; // 更新缓存
           // 保存设备ID（用于单设备登录验证）
           if (data.deviceId) {
             localStorage.setItem(DEVICE_KEY, data.deviceId);
@@ -344,6 +346,7 @@ export function UserStatus({ className }: UserStatusProps) {
       } catch {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        clearUserCache(); // 清除缓存
         setUser(null);
       }
     } else {
@@ -356,6 +359,7 @@ export function UserStatus({ className }: UserStatusProps) {
     
     // 监听 localStorage 变化
     const handleStorageChange = () => {
+      clearUserCache(); // 清除缓存以读取最新数据
       checkAuth();
     };
     
@@ -371,6 +375,7 @@ export function UserStatus({ className }: UserStatusProps) {
   const handleLogout = () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    clearUserCache(); // 清除缓存
     // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
     localStorage.removeItem('quiz_records');
     localStorage.removeItem('quiz_wrong_streak');
@@ -420,17 +425,31 @@ export function UserStatus({ className }: UserStatusProps) {
   );
 }
 
+// 用户缓存（减少重复 localStorage 读取）
+let userCache: StoredUser | null = null;
+let cacheInitialized = false;
+
 // 获取当前用户
 export function getCurrentUser(): StoredUser | null {
-  const userData = localStorage.getItem(USER_KEY);
-  if (userData) {
-    try {
-      return JSON.parse(userData);
-    } catch {
-      return null;
+  // 首次调用或已失效时读取 localStorage
+  if (!cacheInitialized) {
+    const userData = localStorage.getItem(USER_KEY);
+    if (userData) {
+      try {
+        userCache = JSON.parse(userData);
+      } catch {
+        userCache = null;
+      }
     }
+    cacheInitialized = true;
   }
-  return null;
+  return userCache;
+}
+
+// 清除用户缓存（登录/登出时调用）
+export function clearUserCache(): void {
+  userCache = null;
+  cacheInitialized = false;
 }
 
 // 获取用户 Token
