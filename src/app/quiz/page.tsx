@@ -577,25 +577,32 @@ function QuizPageContent() {
                   <FileCheck className="w-4 h-4" />
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="rounded-2xl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>确认交卷</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <span>确定要提交所有答案吗？提交后将无法修改答案。</span>
-                    {unansweredCount > 0 && (
-                      <span className="text-amber-600 font-medium flex items-center gap-1.5">
-                        <span className="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
-                        还有 {unansweredCount} 题未作答
-                      </span>
-                    )}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>取消</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleFinishAndExit}>
+              <AlertDialogContent className="max-w-sm mx-auto rounded-xl p-5">
+                <div className="text-center mb-4">
+                  <div className="w-10 h-10 mx-auto mb-2 bg-slate-100 rounded-full flex items-center justify-center">
+                    <FileCheck className="w-5 h-5 text-slate-600" />
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-800">确认交卷</h3>
+                </div>
+                <div className="text-sm text-slate-600 text-center space-y-2 mb-5">
+                  <p>确定要提交所有答案吗？提交后将无法修改答案。</p>
+                  {unansweredCount > 0 && (
+                    <p className="text-amber-600 font-medium">
+                      还有 {unansweredCount} 题未作答
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <AlertDialogCancel className="flex-1 h-10 rounded-lg border-slate-200 text-slate-600 text-sm font-medium">
+                    取消
+                  </AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleFinishAndExit}
+                    className="flex-1 h-10 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-white text-sm font-medium"
+                  >
                     确认交卷
                   </AlertDialogAction>
-                </AlertDialogFooter>
+                </div>
               </AlertDialogContent>
             </AlertDialog>
           </div>
@@ -920,13 +927,13 @@ function QuizPageContent() {
           handleReturnHome();
         }
       }}>
-        <DialogContent className="max-w-sm mx-auto rounded-xl p-4">
-          <DialogHeader className="text-center space-y-2">
-            <div className="w-12 h-12 mx-auto bg-emerald-500 rounded-xl flex items-center justify-center">
-              <FileCheck className="w-6 h-6 text-white" />
+        <DialogContent className="max-w-sm mx-auto rounded-xl p-5">
+          <div className="text-center mb-4">
+            <div className="w-10 h-10 mx-auto mb-2 bg-emerald-100 rounded-full flex items-center justify-center">
+              <FileCheck className="w-5 h-5 text-emerald-600" />
             </div>
-            <DialogTitle className="text-lg font-semibold text-slate-800">答题完成</DialogTitle>
-          </DialogHeader>
+            <h3 className="text-base font-semibold text-slate-800">答题完成</h3>
+          </div>
           <ResultSheetContent />
         </DialogContent>
       </Dialog>
