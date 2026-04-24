@@ -1,5 +1,6 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { 
   Dialog, 
   DialogContent, 
@@ -62,21 +63,19 @@ export function AnswerSheet({
     };
   }).filter(group => group.questions.length > 0);
 
-  // 计算答题统计
-  const totalAnswered = Object.values(answers).filter(a => 
-    a !== undefined && a !== '' && !(Array.isArray(a) && a.length === 0)
-  ).length;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[90vw] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5">
+      <DialogContent className="max-w-[90vw] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5 [&>button]:hidden">
+        {/* 自定义关闭按钮 */}
+        <button
+          onClick={() => onOpenChange(false)}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        
         <DialogHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold text-slate-800">答题卡</DialogTitle>
-            <span className="text-sm text-slate-500">
-              已答 {totalAnswered}/{questions.length} 题
-            </span>
-          </div>
+          <DialogTitle className="text-lg font-bold text-slate-800 text-center">答题卡</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
