@@ -65,13 +65,13 @@ export function TopNav({
                   </Link>
                 </>
               ) : (
-                // 未登录：显示登录文字按钮
+                // 未登录：显示简洁登录按钮
                 <Link href="/?login=true">
                   <Button
+                    variant="ghost"
                     size="sm"
-                    className="rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white px-4 h-9"
+                    className="rounded-lg text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-3 h-9 font-medium"
                   >
-                    <LogIn className="w-4 h-4 mr-1.5" />
                     登录
                   </Button>
                 </Link>
