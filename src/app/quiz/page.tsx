@@ -5,6 +5,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuiz } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { 
   ChevronLeft, 
@@ -428,22 +439,24 @@ function QuizPageContent() {
           </div>
         </div>
         
-        {/* 操作按钮 */}
-        <div className="flex gap-3 pt-4">
+        {/* 底部操作区域 */}
+        <div className="sticky bottom-0 bg-white pt-4 border-t border-slate-100 mt-4">
+          {/* 查看错题按钮 */}
+          {resultStats.wrong > 0 && (
+            <Link href="/wrongbook" className="block mb-3" onClick={() => handleReturnHome()}>
+              <Button className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl text-base font-medium shadow-lg shadow-red-500/20">
+                查看错题 ({resultStats.wrong}题)
+              </Button>
+            </Link>
+          )}
+          {/* 返回首页按钮 */}
           <Button
             variant="outline"
-            className="flex-1 h-11 rounded-xl"
+            className="w-full h-11 rounded-xl border-slate-200 text-slate-600"
             onClick={() => { setShowResultSheet(false); handleReturnHome(); }}
           >
             返回首页
           </Button>
-          {resultStats.wrong > 0 && (
-            <Link href="/wrongbook" className="flex-1" onClick={() => handleReturnHome()}>
-              <Button className="w-full h-11 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl">
-                查看错题
-              </Button>
-            </Link>
-          )}
         </div>
       </>
     );
@@ -487,30 +500,36 @@ function QuizPageContent() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleFinishAndExit}
-              className="rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-            >
-              <FileCheck className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => setShowAnswerSheet(true)}
               className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               <Grid3X3 className="w-4 h-4" />
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                resetQuiz();
-                setShowResultSheet(false);
-              }}
-              className="rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                >
+                  <FileCheck className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>确认交卷</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    确定要提交所有答案吗？提交后将无法修改答案。
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>取消</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleFinishAndExit}>
+                    确认交卷
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>
