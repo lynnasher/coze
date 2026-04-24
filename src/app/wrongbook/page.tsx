@@ -69,6 +69,8 @@ export default function WrongBookPage() {
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
+  // 云端题库缓存（用于补充本地缺失的题库信息）
+  const [cloudBanks, setCloudBanks] = useState<Record<string, { id: string; name: string }>>({});
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
@@ -269,19 +271,61 @@ export default function WrongBookPage() {
       }
     });
     
-    // 匹配题库名称
+    // 匹配题库名称（优先本地，其次云端缓存）
     bankMap.forEach((count, bankId) => {
-      const bank = banks.find(b => b.id === bankId);
+      const bank = banks.find(b => b.id === bankId) || cloudBanks[bankId];
+      const displayName = bank?.name || `未知题库(${bankId.slice(-6)})`;
       counts.push({
         id: bankId,
-        name: bank?.name || '未知题库',
+        name: displayName,
         count,
       });
     });
     
     // 按错题数量降序排列
     return counts.sort((a, b) => b.count - a.count);
-  }, [wrongQuestions, banks]);
+  }, [wrongQuestions, banks, cloudBanks]);
+  
+  // 当发现未知题库时，尝试从云端获取题库信息
+  useEffect(() => {
+    const unknownBankIds = bankCounts
+      .filter(b => b.name.startsWith('未知题库'))
+      .map(b => b.id);
+    
+    if (unknownBankIds.length === 0) return;
+    
+    // 避免重复获取已缓存的题库
+    const idsToFetch = unknownBankIds.filter(id => !cloudBanks[id]);
+    if (idsToFetch.length === 0) return;
+    
+    const fetchUnknownBanks = async () => {
+      try {
+        const response = await fetch('/api/banks/details', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: idsToFetch }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.banks?.length > 0) {
+            const newCloudBanks: Record<string, { id: string; name: string }> = {};
+            data.banks.forEach((b: { id: string; name: string }) => {
+              newCloudBanks[b.id] = b;
+            });
+            setCloudBanks(prev => ({ ...prev, ...newCloudBanks }));
+            console.log('[错题本] 获取到未知题库信息:', data.banks);
+          } else {
+            console.log('[错题本] 未找到未知题库信息:', idsToFetch);
+          }
+        }
+      } catch (error) {
+        console.error('[错题本] 获取未知题库失败:', error);
+      }
+    };
+    
+    fetchUnknownBanks();
+  }, [bankCounts, cloudBanks]);
   
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
@@ -772,23 +816,7 @@ export default function WrongBookPage() {
                     </div>
                   </div>
                   
-                  {/* 底部统计 */}
-                  <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-gray-100">
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-gray-900">{todayWrong}</p>
-                      <p className="text-xs text-gray-400">今日新增</p>
-                    </div>
-                    <div className="text-center border-x border-gray-100">
-                      <p className="text-lg font-semibold text-gray-900">
-                        {wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) > 0).length}
-                      </p>
-                      <p className="text-xs text-gray-400">正在攻克</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-emerald-600">{masteredCount}</p>
-                      <p className="text-xs text-gray-400">已消灭</p>
-                    </div>
-                  </div>
+              
                   
                   {/* 开始复习按钮 */}
                   <Button 
