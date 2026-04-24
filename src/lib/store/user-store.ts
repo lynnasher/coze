@@ -92,6 +92,10 @@ export const useUserStore = create<UserStore>()(
       logout: async () => {
         // 先调用后端 API 清除数据库中的 device_id
         await deviceService.logout();
+        // 清除 localStorage 中的 user-store
+        localStorage.removeItem('user-store-v2');
+        localStorage.removeItem('quiz_user_token');
+        localStorage.removeItem('quiz_user_data');
         // 然后清除本地状态
         set({
           ...initialState,

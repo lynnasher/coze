@@ -9,6 +9,7 @@ import { User as UserIcon, LogOut, UserCircle } from 'lucide-react';
 import type { User as UserType } from '@/lib/types';
 import { cloudSyncService } from '@/lib/quiz-store';
 import { deviceService } from '@/lib/services/device-service';
+import { useUserStore } from '@/lib/store';
 
 // Token 存储
 const TOKEN_KEY = 'quiz_user_token';
@@ -370,8 +371,8 @@ export function UserStatus({ className }: UserStatusProps) {
   }, []);
 
   const handleLogout = async () => {
-    // 调用 deviceService 退出（会调用后端 API 清除 device_id）
-    await deviceService.logout();
+    // 调用 useUserStore 的 logout（会清除所有存储和状态）
+    await useUserStore.getState().logout();
     setUser(null);
     // 刷新页面以清除所有状态
     window.location.reload();

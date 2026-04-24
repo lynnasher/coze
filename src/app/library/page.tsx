@@ -131,7 +131,16 @@ export default function LibraryPage() {
     window.location.reload();
   };
 
-  // 未登录状态渲染
+  // 等待状态恢复完成
+  if (!hasHydrated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  // 未登录状态渲染（必须在 hasHydrated 之后判断）
   if (!isLoggedIn()) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -170,7 +179,7 @@ export default function LibraryPage() {
   const activatedCategoryIds = currentUser?.activatedCategories || [];
   const activatedCategories = categories.filter(c => activatedCategoryIds.includes(c.id));
 
-  if (isLoading || !hasHydrated) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
