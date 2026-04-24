@@ -39,7 +39,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats, createSafeSync } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
@@ -200,7 +200,7 @@ export default function QuizApp() {
     refreshHomeStats();
   }, [refreshHomeStats]);
 
-  // 从云端同步：先 push 本地数据到云端，再 pull 云端数据下来，以云端为准
+  // 从云端同步：使用公共安全同步函数
   const syncWrongCountFromCloud = useCallback(async (skipPush: boolean = false) => {
     const user = getStoredUser();
     if (!user) {
@@ -218,15 +218,12 @@ export default function QuizApp() {
     }
     
     try {
-      // 安全同步策略：先拉取云端数据，再按需推送
-      // 第一步：pull 云端数据（以云端为准，替换本地缓存）
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
         recordStore.save(cloudData.records);
         wrongStreakStore.save(cloudData.streaks);
       }
 
-      // 第二步：如果不跳过推送，将当前（已与云端合并的）数据推送回云端
       if (!skipPush) {
         await cloudSyncService.saveRecordsAndStreaks(
           user.id,

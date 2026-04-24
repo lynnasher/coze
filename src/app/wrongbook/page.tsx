@@ -137,14 +137,13 @@ export default function WrongBookPage() {
     if (!user) return;
     setIsSyncing(true);
     try {
-      // 安全同步策略：先拉取云端数据，再按需推送
-      // 1. 拉取云端数据（以云端为准，替换本地缓存）
+      // 先 pull 云端数据
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
         recordStore.save(cloudData.records);
         wrongStreakStore.save(cloudData.streaks);
       }
-      // 2. 如果不跳过推送，将当前（已与云端合并的）数据推送回云端
+      // 再按需 push 本地数据
       if (!skipPush) {
         await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
       }

@@ -1101,32 +1101,14 @@ export const cloudSyncService = {
     }
   },
 
-  // 保存练习记录到云端
+  // 保存练习记录到云端（内部委托给 saveRecordsAndStreaks）
   async saveRecords(userId: string, records: PracticeRecord[]): Promise<boolean> {
-    try {
-      const response = await authenticatedFetch('/api/user-data', {
-        method: 'POST',
-        body: JSON.stringify({ practiceHistory: records }),
-      });
-      return response.ok;
-    } catch (error) {
-      console.error('保存记录到云端失败:', error);
-      return false;
-    }
+    return this.saveRecordsAndStreaks(userId, records, wrongStreakStore.getAll());
   },
 
-  // 保存错题连续正确次数到云端
+  // 保存错题连续正确次数到云端（内部委托给 saveRecordsAndStreaks）
   async saveStreaks(userId: string, streaks: Record<string, number>): Promise<boolean> {
-    try {
-      const response = await authenticatedFetch('/api/user-data', {
-        method: 'POST',
-        body: JSON.stringify({ streakData: streaks }),
-      });
-      return response.ok;
-    } catch (error) {
-      console.error('保存错题次数到云端失败:', error);
-      return false;
-    }
+    return this.saveRecordsAndStreaks(userId, recordStore.getAll(), streaks);
   },
 
   // 保存最近练习记录到云端
@@ -1298,6 +1280,43 @@ export const cloudSyncService = {
 export const initSampleQuestions = () => {
   // 不再预置示例题目，用户需要导入题库
 };
+
+// ==================== 公共同步工具函数 ====================
+
+/**
+ * 安全同步函数工厂
+ * 封装"先 pull 云端 → 按需 push 本地 → 返回云端数据"的通用逻辑
+ * 用于统一管理前台和错题本的同步行为
+ */
+export function createSafeSync(callbacks: {
+  onDataLoaded?: (data: { records: PracticeRecord[]; streaks: Record<string, number>; recentPractices: RecentPractice[] }) => void;
+  onSyncComplete?: () => void;
+}): () => Promise<{ records: PracticeRecord[]; streaks: Record<string, number>; recentPractices: RecentPractice[] } | null> {
+  return async function safeSync(): Promise<{ records: PracticeRecord[]; streaks: Record<string, number>; recentPractices: RecentPractice[] } | null> {
+    const userId = getUserId();
+    if (!userId) return null;
+
+    // 先拉取云端数据
+    const cloudData = await cloudSyncService.pullData(userId);
+    
+    if (cloudData) {
+      // 触发回调（用于更新 UI 等）
+      callbacks.onDataLoaded?.(cloudData);
+    }
+
+    // 按需推送本地数据到云端
+    await cloudSyncService.saveRecordsAndStreaks(
+      userId,
+      recordStore.getAll(),
+      wrongStreakStore.getAll()
+    );
+
+    // 触发同步完成回调
+    callbacks.onSyncComplete?.();
+    
+    return cloudData;
+  };
+}
 
 // 错题记忆状态管理
 const INTERVALS = {
