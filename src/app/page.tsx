@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   Library, 
-  GraduationCap,
   User,
   BookOpen,
   TrendingUp,
@@ -12,6 +11,7 @@ import {
   ChevronRight,
   Loader2,
 } from 'lucide-react';
+import { TopNav } from '@/components/TopNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AuthModal } from '@/components/AuthModal';
@@ -113,39 +113,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-[970px] mx-auto px-4">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-amber-500 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-semibold text-slate-700">智能刷题</span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {isLoggedIn() ? (
-                <Link href="/profile">
-                  <button
-                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-100 hover:bg-indigo-200 text-indigo-600 transition-colors"
-                    title="个人中心"
-                  >
-                    <User className="w-5 h-5" />
-                  </button>
-                </Link>
-              ) : (
-                <button 
-                  onClick={() => setAuthModalOpen(true)}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors"
-                  title="登录"
-                >
-                  <User className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <TopNav />
 
       {/* 主内容 */}
       <main className="max-w-[970px] mx-auto px-4 py-6">

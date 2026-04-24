@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { TopNav } from '@/components/TopNav';
 import { BankCard } from '@/components/BankCard';
 import { AuthModal } from '@/components/AuthModal';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
@@ -153,49 +154,7 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-[970px] mx-auto px-4">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-3">
-              <Link 
-                href="/"
-                className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-lg flex items-center justify-center">
-                  <GraduationCap className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-semibold text-slate-700">智能刷题</span>
-              </Link>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {isLoggedIn() ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-slate-600">
-                    {currentUser?.nickname || currentUser?.phone}
-                  </span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => logout()}
-                    className="text-slate-500"
-                  >
-                    退出
-                  </Button>
-                </div>
-              ) : (
-                <Button 
-                  size="sm"
-                  onClick={() => setAuthModalOpen(true)}
-                  className="bg-slate-800 hover:bg-slate-700"
-                >
-                  登录
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <TopNav />
 
       {/* 主内容 */}
       <main className="max-w-[970px] mx-auto px-4 py-6">

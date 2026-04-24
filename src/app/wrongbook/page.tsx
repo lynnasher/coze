@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { TopNav } from '@/components/TopNav';
 import { 
   Dialog, 
   DialogContent, 
@@ -159,30 +160,20 @@ export default function WrongBookPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-[970px] mx-auto px-4">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-2">
-              <Link href="/">
-                <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl">
-                  <ArrowLeft className="w-5 h-5 text-slate-600" />
-                </Button>
-              </Link>
-              <h1 className="text-base font-semibold text-slate-700">错题本</h1>
-            </div>
-            
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleReset}
-              className="text-red-500 hover:text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-1.5" />
-              清空
-            </Button>
-          </div>
-        </div>
-      </header>
+      <TopNav 
+        title="错题本" 
+        showBack 
+        backHref="/"
+        rightContent={
+          <button 
+            onClick={handleReset}
+            className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+            title="清空错题"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        }
+      />
 
       {/* 筛选栏 */}
       <div className="max-w-[970px] mx-auto px-4 py-3">

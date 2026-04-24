@@ -3,17 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
-  ArrowLeft, 
-  User, 
   LogOut, 
+  User, 
   Library,
   BookOpen,
-  Settings,
-  ChevronRight,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { TopNav } from '@/components/TopNav';
 import { useUserStore } from '@/lib/store';
 import { recordStore } from '@/lib/quiz-store';
 import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
@@ -41,6 +39,7 @@ export default function ProfilePage() {
     window.location.href = '/';
   };
 
+  // 未登录状态显示
   if (!mounted) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -52,20 +51,7 @@ export default function ProfilePage() {
   if (!isLoggedIn()) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-          <div className="max-w-[970px] mx-auto px-4">
-            <div className="flex items-center justify-between h-14">
-              <div className="flex items-center gap-2">
-                <Link href="/">
-                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl">
-                    <ArrowLeft className="w-5 h-5 text-slate-600" />
-                  </Button>
-                </Link>
-                <h1 className="text-base font-semibold text-slate-700">个人中心</h1>
-              </div>
-            </div>
-          </div>
-        </header>
+        <TopNav title="个人中心" showBack backHref="/" />
         
         <div className="max-w-[970px] mx-auto px-4 py-16 text-center">
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -86,28 +72,20 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* 顶部导航 */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-[970px] mx-auto px-4">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-2">
-              <Link href="/">
-                <Button variant="ghost" size="icon" className="w-9 h-9 rounded-xl">
-                  <ArrowLeft className="w-5 h-5 text-slate-600" />
-                </Button>
-              </Link>
-              <h1 className="text-base font-semibold text-slate-700">个人中心</h1>
-            </div>
-            
-            <button
-              onClick={handleLogout}
-              className="p-2 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-              title="退出登录"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </header>
+      <TopNav 
+        title="个人中心" 
+        showBack 
+        backHref="/"
+        rightContent={
+          <button
+            onClick={handleLogout}
+            className="p-2 text-slate-600 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+            title="退出登录"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        }
+      />
 
       {/* 主内容 */}
       <main className="max-w-[970px] mx-auto px-4 py-6">
@@ -163,7 +141,6 @@ export default function ProfilePage() {
                       <h4 className="text-sm font-medium text-slate-700">题库浏览</h4>
                       <p className="text-xs text-slate-400">浏览所有题库</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-300" />
                   </div>
                 </CardContent>
               </Card>
@@ -180,7 +157,6 @@ export default function ProfilePage() {
                       <h4 className="text-sm font-medium text-slate-700">错题本</h4>
                       <p className="text-xs text-slate-400">查看错题并复习</p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-slate-300" />
                   </div>
                 </CardContent>
               </Card>
