@@ -116,19 +116,6 @@ export const bankService = {
     return data as DbQuestionBank | null;
   },
 
-  // 批量通过 ID 获取题库
-  async getBanksByIds(ids: string[]): Promise<DbQuestionBank[]> {
-    const client = getSupabaseClient();
-    const { data, error } = await client
-      .from('question_banks')
-      .select('*')
-      .in('id', ids)
-      .neq('status', 'disabled');
-
-    if (error) throw new Error(`批量获取题库失败: ${error.message}`);
-    return (data || []) as DbQuestionBank[];
-  },
-
   // 更新题库题目数量
   async updateQuestionCount(bankId: string, count: number): Promise<void> {
     const client = getSupabaseClient();

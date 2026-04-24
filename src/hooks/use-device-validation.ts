@@ -16,14 +16,12 @@ export interface UseDeviceValidationReturn {
  * 用于单设备登录功能，定期验证当前设备是否被挤下线
  * @param options.interval 验证间隔（毫秒），默认 30000（30秒）
  * @param options.validateOnFocus 窗口重新获得焦点时是否验证，默认 true
- * @param options.enabled 是否启用验证，默认 true
  */
 export function useDeviceValidation(options?: {
   interval?: number;
   validateOnFocus?: boolean;
-  enabled?: boolean;
 }): UseDeviceValidationReturn {
-  const { interval = 30000, validateOnFocus = true, enabled = true } = options || {};
+  const { interval = 30000, validateOnFocus = true } = options || {};
   
   const [isValidating, setIsValidating] = useState(false);
   const [kicked, setKicked] = useState(false);
@@ -31,17 +29,6 @@ export function useDeviceValidation(options?: {
   
   // 使用 ref 存储最新的验证函数
   const validateRef = useRef<(() => Promise<void>) | null>(null);
-  
-  // 如果禁用，返回空值
-  if (!enabled) {
-    return {
-      validateDevice: async () => ({ valid: true }),
-      isValidating: false,
-      kicked: false,
-      kickMessage: '',
-      clearKickState: () => {},
-    };
-  }
 
   // 执行设备验证
   const validateDevice = useCallback(async (): Promise<DeviceValidationResult> => {

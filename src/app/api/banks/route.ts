@@ -11,22 +11,9 @@ export async function GET(request: Request) {
     // 获取所有题库
     const banks = await bankService.getAllBanks();
 
-    // 转换字段名（snake_case 到 camelCase）
-    const formattedBanks = banks.map(bank => ({
-      id: bank.id,
-      name: bank.name,
-      description: bank.description,
-      sourceFile: bank.source_file,
-      questionCount: bank.question_count,
-      categoryId: bank.category_id,
-      status: bank.status,
-      createdAt: bank.created_at,
-      updatedAt: bank.updated_at,
-    }));
-
     return NextResponse.json({ 
-      banks: formattedBanks,
-      total: formattedBanks.length,
+      banks,
+      total: banks.length,
       userId,
     });
   } catch (error) {

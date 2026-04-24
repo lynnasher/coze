@@ -1,26 +1,5 @@
 import { PracticeRecord } from './types';
 
-// ==================== 类型定义 ====================
-
-export interface StreakStats {
-  current: number;
-  longest: number;
-  weekly: number;
-  goal: number;
-}
-
-export interface TrendData {
-  day: number;
-  count: number;
-}
-
-export interface FilteredStats {
-  totalCount: number;
-  correctCount: number;
-  wrongCount: number;
-  accuracy: number;
-}
-
 /**
  * 判断答题记录是否有有效答案
  */

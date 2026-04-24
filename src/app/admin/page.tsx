@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getLoginPath } from '@/lib/admin-config';
-import { deviceService } from '@/lib/services/device-service';
 import {
   detectQuestionType,
   processOptions,
@@ -413,18 +412,6 @@ export default function AdminPage() {
     }
   }, [router]);
 
-  // 监听登录状态变化，自动刷新页面
-  useEffect(() => {
-    const handleAuthChange = () => {
-      window.location.reload();
-    };
-
-    window.addEventListener('user-auth-change', handleAuthChange);
-    return () => {
-      window.removeEventListener('user-auth-change', handleAuthChange);
-    };
-  }, []);
-
   // 从数据库加载分类
   const loadCategories = useCallback(async () => {
     try {
@@ -498,10 +485,7 @@ export default function AdminPage() {
   }, [isAuthenticated, loadBanks, loadCategories]);
 
   // 登出
-  const handleLogout = async () => {
-    // 调用 deviceService 退出（会调用后端 API 清除 device_id）
-    await deviceService.logout();
-    // 额外清除 admin 特定的存储
+  const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push(getLoginPath());

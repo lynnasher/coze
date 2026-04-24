@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getLoginPath } from '@/lib/admin-config';
-import { deviceService } from '@/lib/services/device-service';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -145,20 +144,7 @@ export default function UsersPage() {
     }
   }, [currentUser]);
 
-  // 监听登录状态变化，自动刷新页面
-  useEffect(() => {
-    const handleAuthChange = () => {
-      window.location.reload();
-    };
-
-    window.addEventListener('user-auth-change', handleAuthChange);
-    return () => {
-      window.removeEventListener('user-auth-change', handleAuthChange);
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    await deviceService.logout();
+  const handleLogout = () => {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push(getLoginPath());

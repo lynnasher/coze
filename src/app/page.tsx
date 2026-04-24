@@ -1,196 +1,1776 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useQuiz } from '@/hooks/use-quiz';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { 
   Library, 
-  User,
+  BarChart3, 
+  ChevronLeft, 
+  ChevronRight, 
+  Check,
+  X,
+  Trophy,
+  Target,
   BookOpen,
+  Star,
+  RefreshCw,
+  FileText,
+  FileCheck,
+  Grid3X3,
+  ArrowLeft,
+  TrendingUp,
+  RotateCcw,
+  Settings,
+  Folder,
+  FolderOpen,
+  Home,
+  User,
+  History,
   Flame,
-  Loader2,
+  Calendar,
+  Clock
 } from 'lucide-react';
-import { TopNav } from '@/components/TopNav';
-import { Button } from '@/components/ui/button';
-import { AuthModal } from '@/components/AuthModal';
-import { useUserStore } from '@/lib/store';
-import { recordStore } from '@/lib/quiz-store';
-import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
-import { User as UserType } from '@/lib/types';
-import { StreakCard, TrendChart, FilterTabs, StatsGrid } from '@/components/stats';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats } from '@/lib/quiz-store';
+import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
+import { BankCard } from '@/components/BankCard';
+import { UserStatus, getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
+import { RichTextWithBreaks } from '@/lib/rich-text';
+import { useDeviceValidation } from '@/hooks/use-device-validation';
+import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
+import { calculateStreakStats, calculateTrendData, calculateFilteredStats, recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
+import { QuizCard } from '@/components/quiz/QuizCard';
+import { AnswerSheet } from '@/components/quiz/AnswerSheet';
+import { ResultModal } from '@/components/quiz/ResultModal';
+import dynamic from 'next/dynamic';
 
-type StatsFilter = 'day' | 'week' | 'month' | 'all';
+// 统计页面懒加载（首屏不需要，切换到统计 Tab 时才加载）
+const StatsView = dynamic(() => import('@/components/StatsView'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center py-20 text-sm text-slate-400">加载中...</div>,
+});
 
-// 直接从 localStorage 读取用户状态
-const getStoredUser = (): { user: UserType | null; token: string | null } => {
-  try {
-    const token = localStorage.getItem('quiz_user_token');
-    const userData = localStorage.getItem('quiz_user_data');
-    
-    if (!token || !userData) {
-      return { user: null, token: null };
-    }
-    
-    const parsedUser = JSON.parse(userData);
-    const user: UserType = {
-      ...parsedUser,
-      activatedCategories: parsedUser.activated_categories || [],
-    };
-    
-    return { user, token };
-  } catch {
-    return { user: null, token: null };
-  }
+// 从 AuthModal 获取当前用户
+const getCurrentUser = (): { id: string; phone: string; nickname?: string; role: string; activatedCategories?: string[] } | null => {
+  return getStoredUser();
 };
 
-export default function HomePage() {
-  const searchParams = useSearchParams();
-  const { login, logout } = useUserStore();
-  
-  const [mounted, setMounted] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [statsFilter, setStatsFilter] = useState<StatsFilter>('day');
+// 淡雅色调
+const COLORS = {
+  purple: 'from-slate-400 to-slate-500',
+  green: 'from-stone-400 to-stone-500',
+  blue: 'from-gray-400 to-gray-500',
+  orange: 'from-zinc-400 to-zinc-500',
+  pink: 'from-neutral-400 to-neutral-500',
+  red: 'from-slate-500 to-stone-500',
+};
 
-  // 初始化 - 检查登录状态
+export default function QuizApp() {
+  const {
+    quizState,
+    currentQuestion,
+    currentAnswer,
+    isAnswerCorrect,
+    isLoading,
+    hasStarted,
+    startQuiz,
+    selectAnswer,
+    nextQuestion,
+    prevQuestion,
+    submitAnswer,
+    finishQuiz,
+    goToQuestion,
+    restartQuiz,
+    resetQuiz,
+    stats,
+    setHasStarted,
+  } = useQuiz();
+  const [activeTab, setActiveTab] = useState('practice');
+  const [questions, setQuestions] = useState<Question[]>([]);
+  
+  // 从 URL query 参数读取 tab 设置
   useEffect(() => {
-    const stored = getStoredUser();
-    setIsLoggedIn(!!stored.user && !!stored.token);
-    setCurrentUser(stored.user);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['practice', 'library', 'stats'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, []);
+  
+  // 题库管理状态
+  const [showAnswerSheet, setShowAnswerSheet] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(7200);
+  
+  // 练习模式状态
+  const [practiceBankId, setPracticeBankId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  
+  // 客户端挂载状态（防止 hydration mismatch）
+  const [mounted, setMounted] = useState(false);
+  
+  // 跟踪组件是否已挂载
+  const isMountedRef = useRef(true);
+  
+  // 跟踪是否是登录后的首次同步（避免首次同步时推送旧数据）
+  const hasSyncedRef = useRef(false);
+  
+  // 最近练习记录状态
+  const [recentPractices, setRecentPractices] = useState<RecentPractice[]>([]);
+  
+  // 统计页面日期筛选状态
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [currentUser, setCurrentUser] = useState<{
+    id: string;
+    phone: string;
+    nickname?: string;
+    role: string;
+    activatedCategories?: string[];
+  } | null>(null);
+  
+  // 登录弹窗状态
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  
+  // 设备验证（单设备登录）
+  const { kicked, kickMessage, clearKickState } = useDeviceValidation({
+    interval: 30000, // 30秒验证一次
+    validateOnFocus: true,
+  });
+  
+  // 处理被踢下线
+  const handleKicked = () => {
+    // 清除当前用户状态
+    setCurrentUser(null);
+    // 清除被踢状态
+    clearKickState();
+    // 刷新页面以清除所有状态
+    window.location.reload();
+  };
+  
+  const [dbBanks, setDbBanks] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    question_count?: number;
+    category_id?: string;
+    created_at?: string;
+  }>>([]);
+  
+  // 错题数量状态（优先使用云端同步后的本地数据）
+  const [wrongCount, setWrongCount] = useState<number>(0);
+  
+  // 统计数据状态（直接从 recordStore 计算，避免 useQuiz hook 的缓存问题）
+  const [homeStats, setHomeStats] = useState({
+    correctCount: 0,
+    wrongCount: 0,
+    accuracy: 0,
+    totalCount: 0,
+  });
+  
+  // 重新计算错题数据（委托给公共模块）
+  const recalculateWrongData = useCallback(() => {
+    return recalculateWrongDataUtil(
+      recordStore.getAll(),
+      (records) => recordStore.save(records),
+      (streaks) => wrongStreakStore.save(streaks),
+      () => getWrongQuestionIds().length
+    );
+  }, []);
+  
+  // 刷新首页统计数据（直接从 recordStore 计算，避免 useQuiz hook 的缓存问题）
+  const refreshHomeStats = useCallback(() => {
+    const stats = calculateStats();
+    setHomeStats({
+      correctCount: stats.correctCount,
+      wrongCount: stats.wrongCount,
+      accuracy: stats.accuracy,
+      totalCount: stats.correctCount + stats.wrongCount,
+    });
+  }, []);
+  
+  // 页面加载时刷新统计数据
+  useEffect(() => {
+    refreshHomeStats();
+  }, [refreshHomeStats]);
+
+  // 从云端同步：先 push 本地数据到云端，再 pull 云端数据下来，以云端为准
+  const syncWrongCountFromCloud = useCallback(async (skipPush: boolean = false) => {
+    const user = getStoredUser();
+    if (!user) {
+      setWrongCount(0);
+      return;
+    }
+    
+    // 检查 token 是否存在（可能被设备验证清除）
+    const token = localStorage.getItem('quiz_user_token');
+    if (!token) {
+      // Token 已被清除，说明设备被踢下线或已登出
+      setCurrentUser(null);
+      setWrongCount(0);
+      return;
+    }
+    
+    try {
+      // 安全同步策略：先拉取云端数据，再按需推送
+      // 第一步：pull 云端数据（以云端为准，替换本地缓存）
+      const cloudData = await cloudSyncService.pullData(user.id);
+      if (cloudData) {
+        recordStore.save(cloudData.records);
+        wrongStreakStore.save(cloudData.streaks);
+      }
+
+      // 第二步：如果不跳过推送，将当前（已与云端合并的）数据推送回云端
+      if (!skipPush) {
+        await cloudSyncService.saveRecordsAndStreaks(
+          user.id,
+          recordStore.getAll(),
+          wrongStreakStore.getAll()
+        );
+      }
+    } catch (error) {
+      console.error('云端同步失败，使用本地数据:', error);
+    }
+    
+    // 重新计算错题数据并更新显示
+    const count = recalculateWrongData();
+    setWrongCount(count);
+    
+    // 刷新首页统计数据
+    refreshHomeStats();
+  }, [recalculateWrongData, refreshHomeStats]);
+  
+  // 只使用数据库的题库
+  const banks = useMemo(() => {
+    return dbBanks.map(b => ({
+      id: b.id,
+      name: b.name,
+      description: b.description || '',
+      questionIds: [],
+      questionCount: b.question_count || 0,
+      categoryId: b.category_id,
+      createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now()
+    }));
+  }, [dbBanks]);
+
+  // 刷新用户激活的分类（检查过期时间）
+  const refreshActivatedCategories = useCallback(async (userId: string): Promise<string[]> => {
+    try {
+      const token = localStorage.getItem('quiz_user_token');
+      const response = await fetch('/api/auth/user/activations', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const activatedCategories = data.activatedCategories || [];
+        setCurrentUser(prev => prev ? { ...prev, activatedCategories } : null);
+        const storedUser = localStorage.getItem('quiz_user_data');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            userData.activatedCategories = activatedCategories;
+            localStorage.setItem('quiz_user_data', JSON.stringify(userData));
+          } catch {
+            // 忽略解析错误
+          }
+        }
+        return activatedCategories;
+      }
+    } catch {
+      // 忽略错误
+    }
+    return [];
+  }, []);
+
+  // 统一的初始数据加载函数（使用缓存减少重复请求）
+  const loadAllData = useCallback(async () => {
+    // 加载本地数据（从 localStorage 立即获取）
+    setQuestions(questionStore.getAll());
+    setRecentPractices(recentPracticeStore.getRecent(3));
+    
+    // 获取当前用户
+    const user = getCurrentUser();
+    setCurrentUser(user);
+    
+    // 使用缓存加载分类
+    const { data: categoriesData } = await cachedFetch<{ categories: Category[] }>(
+      '/api/categories',
+      getCacheKey('categories'),
+      CACHE_TTL.CATEGORIES
+    );
+    if (categoriesData?.categories) {
+      setCategories(categoriesData.categories);
+    }
+    
+    // 使用缓存加载题库
+    const { data: banksData } = await cachedFetch<{ banks: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      question_count?: number;
+      category_id?: string;
+      created_at?: string;
+      isActivated?: boolean;
+    }> }>(
+      '/api/banks',
+      getCacheKey('banks'),
+      CACHE_TTL.BANKS,
+      false // 题库列表公开，不需要认证
+    );
+    if (banksData?.banks) {
+      setDbBanks(banksData.banks);
+    }
+    
+    // 如果用户已登录，刷新激活的分类（等待完成后再继续，确保题库浏览能正确显示）
+    if (user) {
+      await refreshActivatedCategories(user.id);
+    }
+  }, [refreshActivatedCategories]);
+
+  // 初始化加载（只在首次渲染时执行）
+  useEffect(() => {
+    isMountedRef.current = true;
+    loadAllData();
+    // 确保组件在客户端挂载
     setMounted(true);
     
-    if (stored.user && stored.token) {
-      login(stored.user, stored.token);
-    }
-  }, [login]);
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, [loadAllData]);
 
-  // 处理 URL 参数
+  // 监听 localStorage 变化，以便在用户登录/登出后刷新状态
   useEffect(() => {
-    if (!mounted) return;
-    
-    const shouldLogin = searchParams.get('login') === 'true';
-    const shouldLogout = searchParams.get('logout') === 'true';
-    
-    if (shouldLogin && !isLoggedIn) {
-      setAuthModalOpen(true);
-    }
-    
-    if (shouldLogout && isLoggedIn) {
-      logout();
-      window.location.href = '/';
-    }
-  }, [searchParams, mounted, isLoggedIn, logout]);
+    // 处理 storage 事件（跨标签页通信）
+    const handleStorageChange = (e: StorageEvent) => {
+      // 检查组件是否已挂载
+      if (!isMountedRef.current) return;
+      if (e.key === 'quiz_user_data' || e.key === 'quiz_user_token') {
+        const user = getCurrentUser();
+        setCurrentUser(user);
+        if (user) {
+          refreshActivatedCategories(user.id);
+        }
+      }
+    };
 
-  // 登录成功回调
-  const handleAuthSuccess = () => {
-    const stored = getStoredUser();
-    setIsLoggedIn(true);
-    setCurrentUser(stored.user);
-    if (stored.user && stored.token) {
-      login(stored.user, stored.token);
+    // 处理用户登录/退出事件（同一标签页内）
+    const handleUserAuthChange = () => {
+      if (!isMountedRef.current) return;
+      const user = getCurrentUser();
+      const hadUser = currentUser !== null;
+      setCurrentUser(user);
+      if (user) {
+        // 重新加载所有数据以更新题库显示
+        loadAllData();
+      } else if (hadUser) {
+        // 用户从登录状态退出，刷新页面以清除所有状态
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('user-auth-change', handleUserAuthChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-auth-change', handleUserAuthChange);
+    };
+  }, [refreshActivatedCategories, loadAllData]);
+
+  // 当用户登录时从云端同步数据并获取错题数量
+  useEffect(() => {
+    if (currentUser) {
+      // 首次同步：先推送本地数据到云端（保留未登录时的做题记录），再拉取云端数据合并
+      if (!hasSyncedRef.current) {
+        hasSyncedRef.current = true;
+        // 先推送本地数据到云端（如果有），避免数据丢失
+        const localRecords = recordStore.getAll();
+        const localStreaks = wrongStreakStore.getAll();
+        if (localRecords.length > 0 || Object.keys(localStreaks).length > 0) {
+          // 有本地数据，先推送再拉取（合并）
+          syncWrongCountFromCloud(false);
+        } else {
+          // 没有本地数据，直接拉取云端数据
+          syncWrongCountFromCloud(true);
+        }
+      } else {
+        syncWrongCountFromCloud(false);
+      }
+    } else {
+      // 未登录状态：从本地计算错题数
+      const count = recalculateWrongData();
+      setWrongCount(count);
+      hasSyncedRef.current = false;
     }
-    setAuthModalOpen(false);
+  }, [currentUser, syncWrongCountFromCloud, recalculateWrongData]);
+
+  // 获取用户激活的分类ID列表
+  // 规则：未登录用户不能做任何题库，登录用户只能做已激活分类的题库
+  const getActivatedCategoryIds = useCallback(() => {
+    if (!currentUser) {
+      // 未登录用户：不能做任何题库
+      return [];
+    }
+    // 已登录用户：只能做已激活分类的题库
+    const activated = currentUser.activatedCategories || [];
+    // 已登录用户
+    // 如果没有激活任何分类，返回空数组
+    return activated;
+  }, [currentUser]);
+
+  // 过滤出可用的分类（用于显示）
+  const getAvailableCategories = useCallback(() => {
+    const activatedIds = getActivatedCategoryIds();
+    // 计算可用分类
+    const result = categories.filter(c => !c.parentId && activatedIds.includes(c.id));
+    return result;
+  }, [categories, getActivatedCategoryIds]);
+
+  // 处理单选答案
+  const handleSingleSelect = (value: string) => {
+    if (currentQuestion && !quizState.showResult) {
+      selectAnswer(currentQuestion.id, value);
+    }
   };
 
-  // 计算统计数据
-  const allRecords = recordStore.getAll();
-  const filteredStats = calculateFilteredStats(allRecords, statsFilter);
-  const streak = calculateStreakStats(allRecords);
-  const trend = calculateTrendData(allRecords);
+  // 处理多选答案
+  const handleMultiSelect = (optionId: string, checked: boolean) => {
+    if (currentQuestion && !quizState.showResult) {
+      const current = (currentAnswer as string[]) || [];
+      if (checked) {
+        selectAnswer(currentQuestion.id, [...current, optionId]);
+      } else {
+        selectAnswer(currentQuestion.id, current.filter(id => id !== optionId));
+      }
+    }
+  };
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+  // 处理判断题答案
+  const handleTrueFalseSelect = (value: string) => {
+    if (currentQuestion && !quizState.showResult) {
+      selectAnswer(currentQuestion.id, value);
+    }
+  };
 
-  // 未登录状态
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <TopNav />
-        <main className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center max-w-sm">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-3xl flex items-center justify-center shadow-lg">
-              <BookOpen className="w-10 h-10 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">智能刷题</h2>
-            <p className="text-gray-500 text-sm mb-8">登录后可浏览题库、开始练习、记录错题</p>
-            <Button 
-              size="lg" 
-              className="rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-8 h-12 text-base"
-              onClick={() => setAuthModalOpen(true)}
-            >
-              立即登录
-            </Button>
-          </div>
-        </main>
-        <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} onAuthChange={handleAuthSuccess} />
-      </div>
-    );
-  }
+  // 处理填空题答案
+  const handleFillBlankChange = (value: string) => {
+    if (currentQuestion && !quizState.showResult) {
+      selectAnswer(currentQuestion.id, value);
+    }
+  };
 
-  // 已登录状态
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <TopNav />
-
-      <main className="max-w-[970px] mx-auto px-4 py-6">
-        {/* 欢迎卡片 */}
-        <div className="mb-6">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-xl font-bold mb-1">
-                  欢迎回来，{currentUser?.nickname || '同学'}
-                </h1>
-                <p className="text-indigo-100 text-sm">今天也要坚持学习哦！</p>
+  // 渲染选项
+  const renderOptions = () => {
+    if (!currentQuestion) return null;
+    
+    if (currentQuestion.type === 'fill-blank') {
+      return (
+        <div className="space-y-2">
+          <Textarea
+            placeholder="输入你的答案..."
+            value={(currentAnswer as string) || ''}
+            onChange={(e) => handleFillBlankChange(e.target.value)}
+            disabled={quizState.showResult}
+            className="min-h-[80px] rounded-xl border-2 border-gray-200 focus:border-blue-300 bg-white text-sm"
+          />
+        </div>
+      );
+    }
+    
+    const getOptionStyle = (isSelected: boolean, isCorrectAnswer: boolean, showResult: boolean) => {
+      if (showResult) {
+        if (isSelected && isCorrectAnswer) {
+          return 'border-emerald-500 bg-emerald-50 shadow-sm';
+        }
+        if (isSelected && !isCorrectAnswer) {
+          return 'border-red-500 bg-red-50 shadow-sm';
+        }
+        if (isCorrectAnswer) {
+          return 'border-emerald-400 bg-emerald-50/50';
+        }
+      }
+      if (isSelected) {
+        return 'border-blue-500 bg-blue-50 shadow-sm shadow-blue-500/10';
+      }
+      return 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/30';
+    };
+    
+    if (currentQuestion.type === 'true-false') {
+      const defaultOptions = currentQuestion.options?.length === 2 
+        ? currentQuestion.options 
+        : [
+            { id: 'a', text: '正确' },
+            { id: 'b', text: '错误' }
+          ];
+      
+      return (
+        <div className="grid grid-cols-2 gap-3">
+          {defaultOptions.map((option, index) => {
+            const isCorrectAnswer = currentQuestion.answer === option.id;
+            const isSelected = currentAnswer === option.id;
+            
+            return (
+              <div
+                key={`tf-${index}-${option.id}`}
+                className={`flex items-center justify-center p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                onClick={() => !quizState.showResult && handleTrueFalseSelect(option.id)}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-2 font-bold text-sm transition-colors ${
+                  isSelected 
+                    ? quizState.showResult 
+                      ? isCorrectAnswer 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-red-500 text-white'
+                      : 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {isSelected ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    option.id.toUpperCase()
+                  )}
+                </div>
+                <span className="flex-1 text-sm font-medium">{option.text}</span>
+                {quizState.showResult && isCorrectAnswer && (
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                <Flame className="w-6 h-6 text-white" />
+            );
+          })}
+        </div>
+      );
+    }
+    
+    if (currentQuestion.type === 'multiple') {
+      const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
+      return (
+        <div className="space-y-2">
+          {options.map((option: { id: string; text: string }, index: number) => {
+            const correctAnswers = Array.isArray(currentQuestion.answer) 
+              ? currentQuestion.answer 
+              : [currentQuestion.answer];
+            const isCorrectAnswer = correctAnswers.includes(option.id);
+            const isSelected = Array.isArray(currentAnswer) && currentAnswer.includes(option.id);
+            
+            return (
+              <div
+                key={`multi-${index}-${option.id}`}
+                className={`flex items-center p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+                onClick={() => !quizState.showResult && handleMultiSelect(option.id, !isSelected)}
+              >
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-2 font-bold text-xs transition-colors ${
+                  isSelected 
+                    ? quizState.showResult 
+                      ? isCorrectAnswer 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-red-500 text-white'
+                      : 'bg-blue-500 text-white'
+                    : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {option.id.toUpperCase()}
+                </div>
+                <span className="flex-1 text-sm font-medium leading-tight">{option.text}</span>
+                {quizState.showResult && isCorrectAnswer && (
+                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-1">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                )}
+                {quizState.showResult && isSelected && !isCorrectAnswer && (
+                  <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-1">
+                    <X className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          <p className="text-xs text-gray-400 mt-2">* 此题为多选题，可选择多个答案</p>
+        </div>
+      );
+    }
+    
+    // 单选题
+    const options = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
+    return (
+      <div className="space-y-2">
+        {options.map((option: { id: string; text: string }, index: number) => {
+          const isCorrectAnswer = currentQuestion.answer === option.id;
+          const isSelected = currentAnswer === option.id;
+          
+          return (
+            <div
+              key={`single-${index}-${option.id}`}
+              className={`flex items-center p-3 rounded-xl border-2 transition-all duration-200 cursor-pointer ${getOptionStyle(isSelected, isCorrectAnswer, quizState.showResult)}`}
+              onClick={() => !quizState.showResult && handleSingleSelect(option.id)}
+            >
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-2 font-bold text-xs transition-colors ${
+                isSelected 
+                  ? quizState.showResult 
+                    ? isCorrectAnswer 
+                      ? 'bg-emerald-500 text-white' 
+                      : 'bg-red-500 text-white'
+                    : 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-500'
+              }`}>
+                {isSelected ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  option.id.toUpperCase()
+                )}
+              </div>
+              <span className="flex-1 text-sm font-medium leading-tight">{option.text}</span>
+              {quizState.showResult && isCorrectAnswer && (
+                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-1">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+              )}
+              {quizState.showResult && isSelected && !isCorrectAnswer && (
+                <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-1">
+                  <X className="w-3 h-3 text-white" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* 设备被挤下线提示 */}
+      <DeviceKickedDialog 
+        open={kicked} 
+        message={kickMessage}
+        onConfirm={handleKicked}
+      />
+      
+      {/* 顶部区域 - 仅在非做题模式时显示 */}
+      {!hasStarted && (
+        <header className="bg-white sticky top-0 z-50 shadow-sm">
+          <div className="max-w-[970px] mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              {/* 产品标识 - 可点击返回首页 */}
+              <button 
+                onClick={() => {
+                  // 切换到首页标签
+                  setActiveTab('practice');
+                }}
+                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
+                  <BookOpen className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-semibold text-gray-900">智能刷题</span>
+              </button>
+              
+              {/* 用户信息 */}
+              <div className="flex items-center gap-2">
+                {currentUser?.role === 'admin' && (
+                  <Link href="/admin">
+                    <Button variant="outline" size="sm" className="rounded-xl gap-1 border-orange-200 text-orange-600 hover:bg-orange-50">
+                      <Settings className="w-4 h-4" />
+                      <span className="hidden sm:inline">管理</span>
+                    </Button>
+                  </Link>
+                )}
+                <UserStatus />
+              </div>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* 主内容 */}
+      <main className="max-w-[970px] mx-auto px-4 py-4">
+        {/* 当 hasStarted 为 true 时，隐藏 Tabs，直接显示练习页面 */}
+        {hasStarted ? (
+          <PracticeView 
+            onExit={() => {
+              // 交卷时记录所有答案
+              finishQuiz();
+              // 重置练习状态
+              resetQuiz();
+              // 返回首页
+              setHasStarted(false);
+              setPracticeBankId(null);
+              // 刷新首页统计数据
+              refreshHomeStats();
+            }} 
+            quizState={quizState}
+            currentQuestion={currentQuestion}
+            currentAnswer={currentAnswer}
+            isAnswerCorrect={isAnswerCorrect}
+            isLoading={isLoading}
+            selectAnswer={selectAnswer}
+            nextQuestion={nextQuestion}
+            prevQuestion={prevQuestion}
+            submitAnswer={submitAnswer}
+            finishQuiz={finishQuiz}
+            goToQuestion={goToQuestion}
+            restartQuiz={restartQuiz}
+            resetQuiz={resetQuiz}
+            answers={quizState.answers}
+          />
+        ) : (
+          <Tabs value={activeTab} onValueChange={(value) => {
+            setActiveTab(value);
+            // 切换标签页时重置展开状态
+            setSelectedCategoryId(null);
+            setPracticeBankId(null);
+          }} className="space-y-6">
+        {/* 功能标签导航 - 淡雅风格 */}
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-4">
+          {[
+            { key: 'practice', icon: Home, label: '首页' },
+            { key: 'library', icon: Library, label: '题库' },
+            { key: 'stats', icon: BarChart3, label: '统计' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                // 切换标签页时重置展开状态
+                setSelectedCategoryId(null);
+                setPracticeBankId(null);
+              }}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.key
+                  ? 'bg-white text-slate-700 shadow-sm'
+                  : 'text-slate-500 hover:bg-white/50'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+          {/* 练习页面 - 单栏布局 */}
+          <TabsContent value="practice">
+            <div className="space-y-4">
+              {/* 宣传图区域 */}
+              <div className="rounded-2xl overflow-hidden shadow-sm">
+                <img 
+                  src="https://coze-coding-project.tos.coze.site/coze_storage_7627388534718103615/image/generate_image_1d4f58e3-afe1-4357-9ac8-92a08a77cc5c.jpeg?sign=1807788692-32b74fe686-0-8b149b77cd7c9a0b904429699ef25a0dd3578dfd4ebce3d49afc914c91250132" 
+                  alt="智能刷题助手"
+                  className="w-full object-cover"
+                  style={{ maxHeight: '160px' }}
+                />
+              </div>
+
+              {/* 学习数据概览 */}
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                  </div>
+                  学习数据
+                </h3>
+                
+                {/* 连续学习天数卡片 - 带周目标进度 */}
+                {mounted && (() => {
+                  const records = recordStore.getAll();
+                  const streak = calculateStreakStats(records);
+                  const isActive = streak.current > 0;
+                  
+                  return (
+                    <Card className={`border-0 shadow-sm rounded-xl overflow-hidden mb-3 ${isActive ? 'bg-gradient-to-r from-orange-500 to-amber-500' : 'bg-slate-100'}`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                              <Flame className={`w-5 h-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                            </div>
+                            <div>
+                              <div className={`text-2xl font-bold leading-none ${isActive ? 'text-white' : 'text-slate-700'}`}>
+                                {streak.current}
+                              </div>
+                              <div className={`text-[10px] mt-0.5 ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                                连续天数
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`text-[10px] ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                              最长 {streak.longest}天
+                            </div>
+                            {isActive && (
+                              <span className="text-[10px] text-white font-medium">🔥 继续保持</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* 周目标进度 */}
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-[10px] ${isActive ? 'text-orange-100' : 'text-slate-400'}`}>
+                              本周 {streak.weekly}/{streak.goal}天
+                            </span>
+                            <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-slate-500'}`}>
+                              {Math.round((streak.weekly / streak.goal) * 100)}%
+                            </span>
+                          </div>
+                          <div className={`h-1.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-slate-200'}`}>
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${isActive ? 'bg-white' : 'bg-slate-400'}`}
+                              style={{ width: `${Math.min((streak.weekly / streak.goal) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+                
+                {/* 数据统计网格 */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="bg-slate-100 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-700">{mounted ? wrongCount : '-'}</p>
+                    <p className="text-xs text-slate-500">错题</p>
+                  </div>
+                  <div className="bg-slate-100 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-700">{mounted ? homeStats.correctCount : '-'}</p>
+                    <p className="text-xs text-slate-500">已掌握</p>
+                  </div>
+                  <div className="bg-slate-100 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-slate-700">{mounted ? homeStats.accuracy : 0}%</p>
+                    <p className="text-xs text-slate-500">正确率</p>
+                  </div>
+                </div>
+                
+                {/* 错题本入口 */}
+                <Link href="/wrongbook">
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all">
+                    <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-slate-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-slate-700">错题本</p>
+                      <p className="text-xs text-slate-500">{mounted ? wrongCount : '-'} 道待复习</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </div>
+                </Link>
+              </div>
+
+              {/* 登录解锁提示 - 无按钮 */}
+              <div className="bg-slate-50 rounded-2xl p-4 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                    <User className="w-6 h-6 text-slate-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-800">登录解锁全部功能</h4>
+                    <p className="text-xs text-gray-500 mt-0.5">激活码激活 · 错题本 · 学习统计</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* 题库浏览页面 */}
+          <TabsContent value="library">
+            {/* 页面标题区块 */}
+            <div className="mb-5 relative overflow-hidden">
+              {/* 背景卡片 - 淡雅色调 */}
+              <div className="bg-gradient-to-br from-slate-100 via-slate-200 to-slate-300 rounded-2xl p-4 shadow-sm">
+                {/* 装饰圆形 */}
+                <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/30 rounded-full"></div>
+                <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-white/30 rounded-full"></div>
+                
+                {/* 内容 */}
+                <div className="relative flex items-center gap-3">
+                  {/* 图标区域 */}
+                  <div className="w-10 h-10 bg-white/60 backdrop-blur rounded-xl flex items-center justify-center shadow-sm">
+                    <Library className="w-5 h-5 text-slate-600" />
+                  </div>
+                  
+                  {/* 文字区域 */}
+                  <div className="flex-1">
+                    <h1 className="text-lg font-semibold text-slate-700 tracking-tight">题库浏览</h1>
+                    <p className="text-slate-500 text-xs mt-0.5">选择分类开始练习</p>
+                  </div>
+                  
+                  {/* 装饰徽章 */}
+                  {currentUser && (
+                    <div className="px-2.5 py-1 bg-white/50 backdrop-blur rounded-full">
+                      <span className="text-slate-600 text-xs font-medium">
+                        {currentUser.activatedCategories?.length || 0} 个分类
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
-            <div className="flex gap-3 mt-5">
-              <Link href="/library" className="flex-1">
-                <Button className="w-full bg-white text-indigo-600 hover:bg-indigo-50 rounded-xl">
-                  <Library className="w-4 h-4 mr-2" />
-                  浏览题库
-                </Button>
-              </Link>
-              <Link href="/wrongbook" className="flex-1">
-                <Button variant="outline" className="w-full bg-transparent border-white text-white hover:bg-white/10 rounded-xl">
-                  <BookOpen className="w-4 h-4 mr-2" />
-                  错题本
-                </Button>
-              </Link>
+            {/* 未登录提示 */}
+            {!currentUser && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-200 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-900">登录后查看已激活的题库</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">请先登录以查看和练习题库</p>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700"
+                    onClick={() => setAuthModalOpen(true)}
+                  >
+                    登录
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* 已登录但无激活分类提示 */}
+            {currentUser && (currentUser.activatedCategories?.length === 0) && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-orange-200 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-900">暂无激活的题库分类</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">请联系管理员获取激活码来解锁题库</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 题库列表 - 按分类分组 - 清新卡片风格 */}
+            <div className="space-y-3">
+              {banks.length === 0 ? (
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center">
+                  <div className="w-14 h-14 mx-auto mb-3 bg-gray-50 rounded-2xl flex items-center justify-center">
+                    <Library className="w-7 h-7 text-gray-300" />
+                  </div>
+                  <p className="text-sm text-gray-500 font-medium">暂无题库</p>
+                  <p className="text-xs text-gray-400 mt-1">请联系管理员导入</p>
+                </div>
+              ) : (
+                <>
+                  {/* 未分类题库 */}
+                  {banks.filter(b => !b.categoryId).length > 0 && (
+                    <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
+                      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                        <FolderOpen className="w-4 h-4 text-slate-400" />
+                        <h3 className="text-sm font-semibold text-slate-700">未分类</h3>
+                        <span className="text-xs text-slate-400 ml-auto">({banks.filter(b => !b.categoryId).length} 题库)</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {banks.filter(b => !b.categoryId).map((bank) => (
+                          <BankCard 
+                            key={bank.id} 
+                            bank={bank} 
+                            onStartPractice={(bankId) => {
+                              // 检查是否需要登录
+                              if (!currentUser) {
+                                setAuthModalOpen(true);
+                                return;
+                              }
+                              setPracticeBankId(bankId);
+                              setActiveTab('practice');
+                              startQuiz('sequential', bankId);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 按分类显示题库 - 直接显示激活的分类 */}
+                  {(() => {
+                    // 非登录用户不显示任何题库
+                    if (!currentUser) return null;
+                    
+                    // 获取用户激活的分类ID列表
+                    const activatedCategoryIds = currentUser.activatedCategories || [];
+                    
+                    // 获取用户激活的所有分类
+                    const activatedCategories = categories.filter(c => 
+                      activatedCategoryIds.includes(c.id)
+                    );
+                    
+                    if (activatedCategories.length === 0) return null;
+                    
+                    // 分离顶级分类和子分类
+                    const topCategories = activatedCategories.filter(c => !c.parentId);
+                    const childCategories = activatedCategories.filter(c => c.parentId);
+                    
+                    // 将子分类按父分类分组
+                    const childCategoriesByParent = new Map<string, typeof childCategories>();
+                    childCategories.forEach(cat => {
+                      const parentId = cat.parentId!;
+                      if (!childCategoriesByParent.has(parentId)) {
+                        childCategoriesByParent.set(parentId, []);
+                      }
+                      childCategoriesByParent.get(parentId)!.push(cat);
+                    });
+                    
+                    return (
+                      <>
+                        {/* 先显示激活的子分类（带父分类标题） */}
+                        {Array.from(childCategoriesByParent.entries()).map(([parentId, children]) => {
+                          const parentCategory = categories.find(c => c.id === parentId);
+                          return (
+                            <div key={`parent-${parentId}`} className="mb-4">
+                              {/* 父分类标题 */}
+                              {parentCategory && (
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                                  <Folder className="w-4 h-4 text-slate-400" />
+                                  <span className="text-sm font-semibold text-slate-700">
+                                    {parentCategory.name}
+                                  </span>
+                                </div>
+                              )}
+                              {/* 子分类卡片列表 */}
+                              <div className="space-y-2">
+                                {children.map(category => {
+                                  // 获取该分类的题库
+                                  const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                                  if (categoryBanks.length === 0) return null;
+                                  
+                                  return (
+                                    <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm">
+                                      {/* 子分类 - 可点击展开 */}
+                                      <div 
+                                        className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-3 -m-2 rounded-xl transition-all duration-200"
+                                        onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                                      >
+                                        {selectedCategoryId === category.id ? (
+                                          <FolderOpen className="w-4 h-4 text-slate-500" />
+                                        ) : (
+                                          <Folder className="w-4 h-4 text-slate-400" />
+                                        )}
+                                        <span className="text-sm font-medium text-slate-700 flex-1">
+                                          {category.name}
+                                        </span>
+                                        <span className="text-xs text-slate-400">
+                                          {categoryBanks.length} 个题库
+                                        </span>
+                                        <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
+                                      </div>
+                                    
+                                      {/* 展开时显示题库 */}
+                                      {selectedCategoryId === category.id && (
+                                        <div className="mt-3 space-y-3 pl-2">
+                                          {categoryBanks.map(bank => (
+                                            <BankCard
+                                              key={bank.id}
+                                              bank={bank}
+                                              onStartPractice={(bankId) => {
+                                                if (!currentUser) {
+                                                  setAuthModalOpen(true);
+                                                  return;
+                                                }
+                                                setPracticeBankId(bankId);
+                                                setActiveTab('practice');
+                                                startQuiz('sequential', bankId);
+                                              }}
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {/* 显示激活的顶级分类 */}
+                        {topCategories.map(category => {
+                          // 获取该分类的直接题库
+                          const categoryBanks = banks.filter(b => b.categoryId === category.id);
+                          
+                          // 获取激活的子分类
+                          const activatedChildCategories = childCategoriesByParent.get(category.id) || [];
+                          const childCategoryIds = activatedChildCategories.map(c => c.id);
+                          const childCategoryBanks = banks.filter(b => childCategoryIds.includes(b.categoryId || ''));
+                          
+                          // 如果该分类和子分类都没有题库，则不显示
+                          if (categoryBanks.length === 0 && childCategoryBanks.length === 0) return null;
+                          
+                          return (
+                            <div key={category.id} className="bg-white rounded-2xl p-3.5 border border-gray-100 shadow-sm mb-4">
+                              {/* 顶级分类 - 可点击展开 */}
+                              <div 
+                                className="flex items-center gap-2.5 cursor-pointer hover:bg-gray-50/80 p-2 -m-2 rounded-xl transition-all duration-200"
+                                onClick={() => setSelectedCategoryId(selectedCategoryId === category.id ? null : category.id)}
+                              >
+                                {selectedCategoryId === category.id ? (
+                                  <FolderOpen className="w-4 h-4 text-slate-500" />
+                                ) : (
+                                  <Folder className="w-4 h-4 text-slate-400" />
+                                )}
+                                <span className={`text-xs font-bold px-2.5 py-1 rounded-lg tracking-wide ${
+                                  category.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                  category.color === 'green' ? 'bg-green-100 text-green-700' :
+                                  category.color === 'red' ? 'bg-red-100 text-red-700' :
+                                  category.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                  category.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                  category.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                  category.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                  'bg-cyan-100 text-cyan-700'
+                                }`}>
+                                  {category.name}
+                                </span>
+                                <span className="text-xs text-gray-500 ml-auto pr-1 font-medium">
+                                  {categoryBanks.length + childCategoryBanks.length} 个题库
+                                </span>
+                                <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
+                              </div>
+                            
+                              {/* 展开时显示题库 */}
+                              {selectedCategoryId === category.id && (
+                                <div className="mt-3 space-y-3">
+                                  {/* 该分类的直接题库 */}
+                                  {categoryBanks.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-1.5 mb-2">
+                                        <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                                        <span className="text-xs text-gray-400 font-medium">直接题库</span>
+                                      </div>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {categoryBanks.map((bank) => (
+                                          <BankCard 
+                                            key={bank.id} 
+                                            bank={bank} 
+                                            onStartPractice={(bankId) => {
+                                              if (!currentUser) {
+                                                setAuthModalOpen(true);
+                                                return;
+                                              }
+                                              setPracticeBankId(bankId);
+                                              setActiveTab('practice');
+                                              startQuiz('sequential', bankId);
+                                            }}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* 该顶级分类下的激活子分类 */}
+                                  {activatedChildCategories.map(child => {
+                                    const childBanks = banks.filter(b => b.categoryId === child.id);
+                                    if (childBanks.length === 0) return null;
+                                    
+                                    return (
+                                      <div key={child.id}>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <FolderOpen className="w-3 h-3 text-gray-500" />
+                                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-lg ${
+                                            child.color === 'blue' ? 'bg-blue-100 text-blue-700' :
+                                            child.color === 'green' ? 'bg-green-100 text-green-700' :
+                                            child.color === 'red' ? 'bg-red-100 text-red-700' :
+                                            child.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                            child.color === 'purple' ? 'bg-purple-100 text-purple-700' :
+                                            child.color === 'pink' ? 'bg-pink-100 text-pink-700' :
+                                            child.color === 'indigo' ? 'bg-indigo-100 text-indigo-700' :
+                                            'bg-cyan-100 text-cyan-700'
+                                          }`}>
+                                            {child.name}
+                                          </span>
+                                          <span className="text-xs text-gray-500 font-medium">({childBanks.length} 题库)</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                          {childBanks.map((bank) => (
+                                            <BankCard 
+                                              key={bank.id} 
+                                              bank={bank} 
+                                              onStartPractice={(bankId) => {
+                                                if (!currentUser) {
+                                                  setAuthModalOpen(true);
+                                                  return;
+                                                }
+                                                setPracticeBankId(bankId);
+                                                setActiveTab('practice');
+                                                startQuiz('sequential', bankId);
+                                              }}
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </>
+                    );
+                  })()}
+                </>
+              )}
             </div>
+            
+            {/* 底部安全间距 */}
+            <div className="h-8"></div>
+          </TabsContent>
+
+          {/* 统计页面 - 懒加载 */}
+          <TabsContent value="stats">
+            <StatsView mounted={mounted} wrongCount={wrongCount} />
+          </TabsContent>
+        </Tabs>
+      )}
+    </main>
+    
+    {/* 登录弹窗 */}
+    <AuthModal
+      open={authModalOpen}
+      onOpenChange={setAuthModalOpen}
+      onAuthChange={() => {
+        // 刷新用户状态
+        const user = getStoredUser();
+        if (user) {
+          setCurrentUser({
+            id: user.id,
+            phone: user.phone,
+            nickname: user.nickname,
+            role: user.role,
+            activatedCategories: user.activated_categories || [],
+          });
+        }
+      }}
+    />
+    </div>
+  );
+}
+
+// 练习页面组件 - 无 Tabs，简洁设计
+interface PracticeViewProps {
+  onExit: () => void;
+  quizState: ReturnType<typeof useQuiz>['quizState'];
+  currentQuestion: ReturnType<typeof useQuiz>['currentQuestion'];
+  currentAnswer: ReturnType<typeof useQuiz>['currentAnswer'];
+  isAnswerCorrect: ReturnType<typeof useQuiz>['isAnswerCorrect'];
+  isLoading: ReturnType<typeof useQuiz>['isLoading'];
+  selectAnswer: ReturnType<typeof useQuiz>['selectAnswer'];
+  nextQuestion: ReturnType<typeof useQuiz>['nextQuestion'];
+  prevQuestion: ReturnType<typeof useQuiz>['prevQuestion'];
+  submitAnswer: ReturnType<typeof useQuiz>['submitAnswer'];
+  finishQuiz: ReturnType<typeof useQuiz>['finishQuiz'];
+  goToQuestion: ReturnType<typeof useQuiz>['goToQuestion'];
+  restartQuiz: ReturnType<typeof useQuiz>['restartQuiz'];
+  resetQuiz: ReturnType<typeof useQuiz>['resetQuiz'];
+  answers: Record<string, string | string[]>;
+}
+
+function PracticeView({ 
+  onExit, 
+  quizState, 
+  currentQuestion, 
+  currentAnswer,
+  isAnswerCorrect,
+  isLoading,
+  selectAnswer,
+  nextQuestion,
+  prevQuestion,
+  submitAnswer,
+  finishQuiz,
+  goToQuestion,
+  restartQuiz,
+  resetQuiz,
+  answers,
+}: PracticeViewProps) {
+  const [showAnswerSheet, setShowAnswerSheet] = useState(false);
+  // 结果弹窗状态（交卷后显示）
+  const [showResultSheet, setShowResultSheet] = useState(false);
+  // 答案与解析显示状态（不自动显示，需手动点击按钮）
+  const [showExplanation, setShowExplanation] = useState(false);
+  // 当前综合题的子题目索引
+  const [currentChildIndex, setCurrentChildIndex] = useState(0);
+  // 题目内容区域的 ref，用于滚动聚焦
+  const questionContentRef = useRef<HTMLDivElement>(null);
+  // 触摸滑动相关 ref
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartTimeRef = useRef<number | null>(null);
+  // 滑动阈值（像素）
+  const SWIPE_THRESHOLD = 50;
+  // 最大滑动时间（毫秒），超过则不算快速滑动
+  const MAX_SWIPE_TIME = 500;
+  // 垂直滑动阈值，用于区分水平和垂直滑动
+  const VERTICAL_THRESHOLD = 100;
+  
+  // 计算答题结果统计
+  const resultStats = useMemo(() => {
+    let correct = 0;
+    let wrong = 0;
+    let unanswered = 0;
+    
+    // 获取所有需要统计的题目（包括子题目）
+    const allQuestions: Question[] = [];
+    quizState.questions.forEach(q => {
+      if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
+        // 综合题：添加父题和所有子题
+        allQuestions.push(q);
+        allQuestions.push(...q.children);
+      } else if (!q.parentId) {
+        // 普通题目（不是子题）：添加
+        allQuestions.push(q);
+      }
+    });
+    
+    allQuestions.forEach(q => {
+      const answer = quizState.answers[q.id];
+      
+      // 判断是否未答
+      const isUnanswered = 
+        answer === undefined || 
+        answer === '' || 
+        answer === null ||
+        (Array.isArray(answer) && answer.length === 0);
+      
+      if (isUnanswered) {
+        unanswered++;
+      } else {
+        // 检查是否正确
+        const qAnswer = q.answer;
+        
+        // 填空题比较（精确匹配，区分大小写）
+        if (q.type === 'fill-blank') {
+          if (String(answer) === String(qAnswer)) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        } else if (Array.isArray(qAnswer)) {
+          // 多选题
+          const userAnswer = Array.isArray(answer) ? answer.sort() : [String(answer).toLowerCase()];
+          const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();
+          // 确保两个数组长度相同且所有元素相同
+          const isCorrect = userAnswer.length === correctAnswer.length && 
+            userAnswer.every((a, i) => a === correctAnswer[i]);
+          if (isCorrect) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        } else {
+          // 单选/判断题
+          if (String(answer).toLowerCase() === String(qAnswer).toLowerCase()) {
+            correct++;
+          } else {
+            wrong++;
+          }
+        }
+      }
+    });
+    
+    const total = allQuestions.length;
+    const accuracy = total > 0 && (correct + wrong) > 0 ? Math.round((correct / (correct + wrong + unanswered)) * 100) : (total > 0 ? Math.round((correct / total) * 100) : 0);
+    
+    return { correct, wrong, unanswered, total, accuracy };
+  }, [quizState.questions, quizState.answers]);
+  
+  // 切换题目时重置答案与解析显示状态
+  useEffect(() => {
+    setShowExplanation(false);
+    setCurrentChildIndex(0);
+  }, [quizState.currentIndex]);
+  
+  // 获取当前要显示的题目（综合题显示子题目）
+  const displayQuestion = useMemo(() => {
+    if (!currentQuestion) return null;
+    // 如果是综合题且有子题目，返回当前子题目
+    if (currentQuestion.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0) {
+      const child = currentQuestion.children[currentChildIndex];
+      if (child) return child;
+    }
+    return currentQuestion;
+  }, [currentQuestion, currentChildIndex]);
+  
+  // 计算当前显示题目的答案（综合题的子题目使用子题目ID，普通题目使用父题目ID）
+  const displayQuestionAnswer = useMemo(() => {
+    if (!displayQuestion) return undefined;
+    // 子题目使用自己的ID获取答案
+    if (displayQuestion.id !== currentQuestion?.id) {
+      return answers[displayQuestion.id];
+    }
+    // 父题目使用传入的 currentAnswer
+    return currentAnswer;
+  }, [displayQuestion, currentQuestion, currentAnswer, answers]);
+  
+  const isCurrentCorrect = useMemo(() => {
+    if (!displayQuestion || !displayQuestionAnswer) return false;
+    const answer = displayQuestionAnswer;
+    if (Array.isArray(displayQuestion.answer)) {
+      return Array.isArray(answer) && 
+        displayQuestion.answer.every(a => answer.includes(a));
+    }
+    return answer === displayQuestion.answer;
+  }, [displayQuestion, displayQuestionAnswer]);
+  
+  // 计算进度 - 使用 useMemo 避免重复计算
+  const { answeredCount, progressPercent } = useMemo(() => {
+    const count = quizState.questions.filter(q => quizState.answers[q.id] !== undefined).length;
+    const percent = quizState.questions.length > 0 
+      ? Math.round((count / quizState.questions.length) * 100) 
+      : 0;
+    return { answeredCount: count, progressPercent: percent };
+  }, [quizState.questions, quizState.answers]);
+  
+  // 交卷并显示结果（显示答题卡反馈）
+  const handleFinishAndExit = useCallback(() => {
+    if (confirm('确定要交卷吗？')) {
+      // 先完成答题，记录答案
+      finishQuiz();
+      // 显示结果弹窗
+      setShowResultSheet(true);
+    }
+  }, [finishQuiz]);
+  
+  // 处理返回首页
+  const handleReturnHome = useCallback(() => {
+    // 重置练习状态
+    resetQuiz();
+    // 返回首页
+    onExit();
+  }, [resetQuiz, onExit]);
+  
+  // 滚动到题目内容区域
+  const scrollToQuestion = useCallback(() => {
+    if (questionContentRef.current) {
+      questionContentRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }, []);
+
+  // 处理触摸开始
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartXRef.current = touch.clientX;
+    touchStartYRef.current = touch.clientY;
+    touchStartTimeRef.current = Date.now();
+  }, []);
+
+  // 处理触摸结束，判断滑动方向
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null || touchStartTimeRef.current === null) {
+      return;
+    }
+
+    const touch = e.changedTouches[0];
+    const endX = touch.clientX;
+    const endY = touch.clientY;
+    const endTime = Date.now();
+
+    const deltaX = endX - touchStartXRef.current;
+    const deltaY = endY - touchStartYRef.current;
+    const deltaTime = endTime - touchStartTimeRef.current;
+
+    // 重置触摸状态
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+    touchStartTimeRef.current = null;
+
+    // 如果滑动时间过长，不算快速滑动
+    if (deltaTime > MAX_SWIPE_TIME) {
+      return;
+    }
+
+    // 如果垂直滑动距离过大，认为是垂直滚动，不处理
+    if (Math.abs(deltaY) > VERTICAL_THRESHOLD) {
+      return;
+    }
+
+    // 水平滑动距离必须大于阈值
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) {
+      return;
+    }
+
+    // 判断滑动方向
+    if (deltaX > 0) {
+      // 从左向右滑动 -> 上一题
+      if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+        setCurrentChildIndex(prev => prev - 1);
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      } else if (quizState.currentIndex > 0) {
+        prevQuestion();
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      }
+    } else {
+      // 从右向左滑动 -> 下一题
+      const isComprehensive = currentQuestion?.type === 'comprehensive';
+      const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
+      const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
+
+      if (isLastQuestion && !hasMoreChildren) {
+        // 最后一题，不做任何操作（或可以触发交卷）
+        return;
+      } else if (hasMoreChildren) {
+        setCurrentChildIndex(prev => prev + 1);
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      } else {
+        nextQuestion();
+        setShowExplanation(false);
+        setTimeout(scrollToQuestion, 50);
+      }
+    }
+  }, [currentQuestion, currentChildIndex, quizState.currentIndex, quizState.questions.length, prevQuestion, nextQuestion, scrollToQuestion]);
+  
+  // 如果正在加载，显示加载状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
+        <div className="text-center">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center animate-pulse shadow-lg">
+            <BookOpen className="w-10 h-10 text-white" />
+          </div>
+          <p className="text-slate-600 font-medium">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果没有当前题目，显示加载状态
+  if (!currentQuestion && !showResultSheet) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-500">正在加载题目...</p>
+      </div>
+    );
+  }
+
+  // 交卷后只显示结果弹窗，不显示练习页面内容
+  // 弹窗会在 resultStats 中使用 quizState.questions，所以需要保留 quizState
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* 固定顶部栏 - 横向铺满 */}
+      <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 py-3 z-30">
+        <div className="max-w-[970px] mx-auto flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (confirm('确定要退出练习吗？')) {
+                onExit();
+              }
+            }}
+            className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-9 px-3"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            <span className="text-sm">退出</span>
+          </Button>
+          
+          <span className="text-sm font-medium text-slate-600">
+            {quizState.currentIndex + 1} / {quizState.questions.length}
+          </span>
+          
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => handleFinishAndExit()}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg h-9 w-9 p-0"
+              title="交卷"
+            >
+              <FileCheck className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowAnswerSheet(true)}
+              className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg h-9 w-9 p-0"
+              title="答题卡"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* 连续学习天数 */}
-        <StreakCard streak={streak} />
+      {/* 占位高度，防止内容被固定导航遮挡 */}
+      <div className="h-14" />
 
-        {/* 近7天学习趋势 */}
-        <div className="mt-4">
-          <TrendChart trend={trend} />
+      {/* 进度条 */}
+      <div className="bg-white border-b border-slate-100 px-4 py-2">
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-xs font-medium text-slate-500 min-w-[3rem] text-right">
+              {progressPercent}%
+            </span>
+          </div>
         </div>
+      </div>
 
-        {/* 日期筛选 */}
-        <div className="mt-4">
-          <FilterTabs value={statsFilter} onChange={setStatsFilter} />
+      {/* 题目内容区域 - 使用 QuizCard 组件 */}
+      <QuizCard
+        question={currentQuestion}
+        displayQuestion={displayQuestion}
+        currentIndex={quizState.currentIndex}
+        currentChildIndex={currentChildIndex}
+        showExplanation={showExplanation}
+        answer={displayQuestionAnswer}
+        onAnswerSelect={selectAnswer}
+        onViewAnswer={() => {
+          submitAnswer();
+          setShowExplanation(true);
+        }}
+        questionContentRef={questionContentRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      />
+
+      {/* 底部固定操作栏 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
+        <div className="max-w-[970px] mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            {/* 上一题 */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                // 如果是综合题的子题目，切换到上一个子题目
+                if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+                  setCurrentChildIndex(prev => prev - 1);
+                  setShowExplanation(false);
+                  setTimeout(scrollToQuestion, 50);
+                } else if (quizState.currentIndex > 0) {
+                  prevQuestion();
+                  setShowExplanation(false);
+                  setTimeout(scrollToQuestion, 50);
+                }
+              }}
+              disabled={
+                currentQuestion?.type === 'comprehensive' 
+                  ? currentChildIndex === 0 && quizState.currentIndex === 0
+                  : quizState.currentIndex === 0
+              }
+              className="h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="ml-1 text-sm font-medium">
+                {currentQuestion?.type === 'comprehensive' && currentChildIndex > 0 ? '上一题' : '上一题'}
+              </span>
+            </Button>
+
+            {/* 答案与解析按钮 */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                submitAnswer();
+                setShowExplanation(true);
+                setTimeout(scrollToQuestion, 100);
+              }}
+              className="h-11 px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="ml-1.5 text-sm">查看答案</span>
+            </Button>
+
+            {/* 下一题 / 下一题 / 交卷 */}
+            {(() => {
+              const isComprehensive = currentQuestion?.type === 'comprehensive';
+              const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
+              const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
+              
+              if (isLastQuestion && !hasMoreChildren) {
+                // 最后一题且没有更多子题目，显示交卷
+                return (
+                  <Button
+                    size="sm"
+                    onClick={() => handleFinishAndExit()}
+                    className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    <span className="ml-1.5 text-sm">交卷</span>
+                  </Button>
+                );
+              } else if (hasMoreChildren) {
+                // 还有更多子题目，切换到下一个子题目
+                return (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCurrentChildIndex(prev => prev + 1);
+                      setShowExplanation(false);
+                      setTimeout(scrollToQuestion, 50);
+                    }}
+                    className="h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
+                  >
+                    <span className="text-sm">下一题</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                );
+              } else {
+                // 切换到下一大题
+                return (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      nextQuestion();
+                      setShowExplanation(false);
+                      setTimeout(scrollToQuestion, 50);
+                    }}
+                    className="h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
+                  >
+                    <span className="text-sm">下一题</span>
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                );
+              }
+            })()}
+          </div>
         </div>
+      </div>
 
-        {/* 统计卡片网格 */}
-        <div className="mt-4">
-          <StatsGrid stats={filteredStats} />
-        </div>
-      </main>
+      {/* 答题卡弹窗 - 使用 AnswerSheet 组件 */}
+      <AnswerSheet
+        open={showAnswerSheet}
+        onOpenChange={setShowAnswerSheet}
+        questions={quizState.questions}
+        answers={quizState.answers}
+        currentIndex={quizState.currentIndex}
+        onGoToQuestion={(idx) => {
+          goToQuestion(idx);
+        }}
+        getRecordByQuestionId={(id) => recordStore.getByQuestionId(id)}
+        onSubmit={handleFinishAndExit}
+      />
 
-      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} onAuthChange={handleAuthSuccess} />
+      {/* 交卷结果弹窗 - 使用 ResultModal 组件 */}
+      <ResultModal
+        open={showResultSheet}
+        onOpenChange={setShowResultSheet}
+        stats={resultStats}
+        questions={quizState.questions}
+        answers={quizState.answers}
+        onClose={handleReturnHome}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 export type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
 export type Difficulty = 'easy' | 'medium' | 'hard';
-export type PracticeMode = 'sequential' | 'random' | 'wrong' | 'wrongbook';
+export type PracticeMode = 'sequential' | 'random' | 'wrong';
 
 export interface QuizOption {
   id: string;

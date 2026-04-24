@@ -5,7 +5,6 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { deviceService } from '@/lib/services/device-service';
 
 // ==================== 类型定义 ====================
 
@@ -29,15 +28,12 @@ interface UserStoreState {
   // 设备验证状态
   isDeviceValid: boolean;
   lastValidationTime: number;
-  
-  // 持久化恢复状态
-  hasHydrated: boolean;
 }
 
 interface UserStoreActions {
   // 登录/登出
   login: (user: User, token: string) => void;
-  logout: () => Promise<void>;
+  logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   
   // 激活分类
@@ -68,7 +64,6 @@ const initialState: Omit<UserStoreState, keyof UserStoreActions> = {
   isLoading: false,
   isDeviceValid: true,
   lastValidationTime: 0,
-  hasHydrated: false,
 };
 
 // ==================== Store 创建 ====================
@@ -89,14 +84,7 @@ export const useUserStore = create<UserStore>()(
         });
       },
 
-      logout: async () => {
-        // 先调用后端 API 清除数据库中的 device_id
-        await deviceService.logout();
-        // 清除 localStorage 中的 user-store
-        localStorage.removeItem('user-store-v2');
-        localStorage.removeItem('quiz_user_token');
-        localStorage.removeItem('quiz_user_data');
-        // 然后清除本地状态
+      logout: () => {
         set({
           ...initialState,
           isLoading: false,
@@ -174,7 +162,7 @@ export const useUserStore = create<UserStore>()(
       isLoggedIn: () => !!get().user && !!get().token,
     }),
     {
-      name: 'user-store-v2', // 使用独立的 key，避免与 AuthModal 冲突
+      name: 'user-store',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
@@ -182,15 +170,6 @@ export const useUserStore = create<UserStore>()(
         isDeviceValid: state.isDeviceValid,
         lastValidationTime: state.lastValidationTime,
       }),
-      // 处理从 localStorage 恢复时的数据格式转换
-      merge: (persistedState: any, currentState) => {
-        // 转换 snake_case 到 camelCase
-        if (persistedState?.user?.activated_categories) {
-          persistedState.user.activatedCategories = persistedState.user.activated_categories;
-          delete persistedState.user.activated_categories;
-        }
-        return { ...currentState, ...persistedState, hasHydrated: true };
-      },
     }
   )
 );

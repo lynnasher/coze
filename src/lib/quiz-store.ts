@@ -1520,7 +1520,7 @@ export interface RecentPractice {
   bankName: string;         // 题库名称
   categoryId?: string;      // 分类ID
   categoryName?: string;     // 分类名称
-  mode: 'sequential' | 'random' | 'wrong' | 'wrongbook';
+  mode: 'sequential' | 'random' | 'wrong';
   totalCount: number;       // 总题数
   currentIndex: number;     // 当前进度
   answeredCount: number;    // 已答题数
