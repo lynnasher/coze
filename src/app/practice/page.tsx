@@ -176,14 +176,30 @@ export default function PracticePage() {
     }
   }, [bankId, mode, isWrongBook, wrongQuestionIds, router, startQuiz]);
 
+  const hasLoadedRef = useRef(false);
+  
   useEffect(() => {
     setMounted(true);
-    loadQuestions();
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadQuestions();
+    }
     
     return () => {
       resetQuiz();
     };
-  }, [loadQuestions, resetQuiz]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在组件挂载时执行一次，避免循环依赖问题
+
+  // 当 bankId/mode/wrongbook 参数变化时重新加载
+  useEffect(() => {
+    if (hasLoadedRef.current && mounted) {
+      hasLoadedRef.current = true;
+      loadQuestions();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankId, mode, isWrongBook, wrongQuestionIds.join(',')]); // 只在参数变化时重新加载
+}
 
   // 计时器
   useEffect(() => {
