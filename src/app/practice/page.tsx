@@ -318,12 +318,11 @@ export default function PracticePage() {
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => router.push('/library')}
-                className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 transition-colors"
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                title="返回"
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="text-sm font-medium">返回</span>
+                <ArrowLeft className="w-5 h-5" />
               </button>
-              <div className="h-4 w-px bg-slate-200" />
               <span className="text-sm text-slate-600">
                 {currentIndex + 1}/{questions.length}
               </span>
@@ -337,14 +336,23 @@ export default function PracticePage() {
               </span>
             </div>
 
-            {/* 右侧：答题卡按钮 */}
-            <button 
-              onClick={() => setShowAnswerSheet(true)}
-              className="flex items-center gap-1.5 text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              <Grid3X3 className="w-4 h-4" />
-              <span className="text-sm font-medium">答题卡</span>
-            </button>
+            {/* 右侧：交卷和答题卡 */}
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleFinishAndExit}
+                className="p-2 text-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                title="交卷"
+              >
+                <CheckCircle className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setShowAnswerSheet(true)}
+                className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                title="答题卡"
+              >
+                <Grid3X3 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -357,26 +365,8 @@ export default function PracticePage() {
         />
       </div>
 
-      {/* 进度信息和交卷按钮 */}
-      <div className="fixed top-[60px] left-0 right-0 bg-white border-b border-slate-100 z-30">
-        <div className="max-w-[970px] mx-auto px-4">
-          <div className="flex items-center justify-between h-10">
-            <span className="text-xs text-slate-500">
-              已答 {Object.keys(answers).length} / {questions.length} 题
-            </span>
-            <button
-              onClick={handleFinishAndExit}
-              className="flex items-center gap-1 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium rounded-lg transition-colors"
-            >
-              <CheckCircle className="w-3.5 h-3.5" />
-              交卷
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* 主内容区 */}
-      <main className="pt-[104px]">
+      <main className="pt-16">
         {currentQuestion && (
           <QuizCard
             question={currentQuestion}
