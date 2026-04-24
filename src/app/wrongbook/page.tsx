@@ -242,9 +242,9 @@ export default function WrongBookPage() {
                           {getBankName(question.bankId)}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-700 line-clamp-2">
+                      <div className="text-sm text-slate-700 line-clamp-2">
                         <RichTextWithBreaks content={question.content} />
-                      </p>
+                      </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
                   </div>
