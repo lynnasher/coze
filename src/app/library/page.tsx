@@ -65,6 +65,28 @@ export default function LibraryPage() {
     loadData();
   }, [loadData]);
 
+  // 页面加载时同步 localStorage 用户数据到 Zustand
+  useEffect(() => {
+    if (!currentUser) {
+      const token = localStorage.getItem('quiz_user_token');
+      const userData = localStorage.getItem('quiz_user_data');
+      
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          // 转换 snake_case 到 camelCase
+          const user: UserType = {
+            ...parsedUser,
+            activatedCategories: parsedUser.activated_categories || [],
+          };
+          login(user, token);
+        } catch (e) {
+          console.error('同步用户数据失败:', e);
+        }
+      }
+    }
+  }, [currentUser, login]);
+
   // 开始练习
   const handleStartPractice = (bankId: string) => {
     if (!isLoggedIn()) {
@@ -86,10 +108,29 @@ export default function LibraryPage() {
     router.push(`/practice?bankId=${bankId}&mode=random`);
   };
 
-  // 登录成功回调
-  const handleAuthSuccess = (user: UserType, token: string) => {
-    login(user, token);
+  // 登录成功回调 - 从 localStorage 读取用户数据并同步到 Zustand
+  const handleAuthSuccess = () => {
+    // 从 localStorage 读取 AuthModal 保存的用户数据
+    const token = localStorage.getItem('quiz_user_token');
+    const userData = localStorage.getItem('quiz_user_data');
+    
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        // 转换 snake_case 到 camelCase
+        const user: UserType = {
+          ...parsedUser,
+          activatedCategories: parsedUser.activated_categories || [],
+        };
+        login(user, token);
+      } catch (e) {
+        console.error('解析用户数据失败:', e);
+      }
+    }
+    
     setAuthModalOpen(false);
+    // 刷新页面以确保状态同步
+    window.location.reload();
   };
 
   // 辅助函数：获取题库的 categoryId（处理 camelCase 和 snake_case）

@@ -25,7 +25,7 @@ import { StreakCard, TrendChart, FilterTabs, StatsGrid, WrongBookCard } from '@/
 type StatsFilter = 'day' | 'week' | 'month' | 'all';
 
 export default function HomePage() {
-  const { user: currentUser, isLoggedIn, logout, hasHydrated } = useUserStore();
+  const { user: currentUser, isLoggedIn, login, logout, hasHydrated } = useUserStore();
   
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -64,6 +64,28 @@ export default function HomePage() {
     setMounted(true);
     loadData();
   }, [loadData]);
+
+  // 页面加载时同步 localStorage 用户数据到 Zustand
+  useEffect(() => {
+    if (!currentUser) {
+      const token = localStorage.getItem('quiz_user_token');
+      const userData = localStorage.getItem('quiz_user_data');
+      
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          // 转换 snake_case 到 camelCase
+          const user = {
+            ...parsedUser,
+            activatedCategories: parsedUser.activated_categories || [],
+          };
+          login(user, token);
+        } catch (e) {
+          console.error('同步用户数据失败:', e);
+        }
+      }
+    }
+  }, [currentUser, login]);
 
   // 计算统计数据
   const allRecords = recordStore.getAll();

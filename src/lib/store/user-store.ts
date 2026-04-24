@@ -166,7 +166,7 @@ export const useUserStore = create<UserStore>()(
       isLoggedIn: () => !!get().user && !!get().token,
     }),
     {
-      name: 'quiz_user_data', // 与 AuthModal 使用相同的 key
+      name: 'user-store-v2', // 使用独立的 key，避免与 AuthModal 冲突
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
