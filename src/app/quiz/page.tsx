@@ -286,7 +286,11 @@ function QuizPageContent() {
                       {q.children.map((child, childIdx) => (
                         <button
                           key={child.id}
-                          onClick={() => { goToQuestion(idx); setShowAnswerSheet(false); }}
+                          onClick={() => { 
+                            goToQuestion(idx); 
+                            setCurrentChildIndex(childIdx); // 设置正确的子题索引
+                            setShowAnswerSheet(false); 
+                          }}
                           className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
                             !!quizState.answers[child.id]
                               ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
@@ -444,6 +448,7 @@ function QuizPageContent() {
                                 onClick={() => {
                                   setShowResultSheet(false);
                                   goToQuestion(idx);
+                                  setCurrentChildIndex(childIdx); // 设置正确的子题索引
                                   setShowExplanation(true);
                                 }}
                                 className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
