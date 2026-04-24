@@ -361,6 +361,24 @@ export const userService = {
       expires_at: string | null;
     }>;
   },
+
+  // 用户退出登录 - 清除数据库中的 device_id
+  async logout(userId: string): Promise<void> {
+    const adminClient = getSupabaseAdminClient();
+    console.log(`[Logout] 清除用户设备ID: userId=${userId}`);
+    
+    const { error } = await adminClient
+      .from('users')
+      .update({ device_id: null })
+      .eq('id', userId);
+    
+    if (error) {
+      console.error('[Logout] 清除设备ID失败:', error);
+      throw new Error(`退出失败: ${error.message}`);
+    }
+    
+    console.log('[Logout] 设备ID清除成功');
+  },
 };
 
 // 初始化默认管理员

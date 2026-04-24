@@ -80,9 +80,12 @@ export default function HomePage() {
     }
     
     if (shouldLogout && isLoggedIn()) {
-      // 清除登录状态并刷新页面
-      logout();
-      window.location.href = '/';
+      // 异步执行退出（调用后端 API 清除 device_id）
+      const doLogout = async () => {
+        await logout();
+        window.location.href = '/';
+      };
+      doLogout();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, hasHydrated]);

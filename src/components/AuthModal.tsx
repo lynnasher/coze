@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { User as UserIcon, LogOut, UserCircle } from 'lucide-react';
 import type { User as UserType } from '@/lib/types';
 import { cloudSyncService } from '@/lib/quiz-store';
+import { deviceService } from '@/lib/services/device-service';
 
 // Token 存储
 const TOKEN_KEY = 'quiz_user_token';
@@ -368,16 +369,10 @@ export function UserStatus({ className }: UserStatusProps) {
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
-    localStorage.removeItem('quiz_records');
-    localStorage.removeItem('quiz_wrong_streak');
-    localStorage.removeItem('quiz_recent_practice');
+  const handleLogout = async () => {
+    // 调用 deviceService 退出（会调用后端 API 清除 device_id）
+    await deviceService.logout();
     setUser(null);
-    // 触发认证状态变化事件
-    window.dispatchEvent(new Event('user-auth-change'));
     // 刷新页面以清除所有状态
     window.location.reload();
   };

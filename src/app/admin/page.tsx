@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getLoginPath } from '@/lib/admin-config';
+import { deviceService } from '@/lib/services/device-service';
 import {
   detectQuestionType,
   processOptions,
@@ -485,7 +486,10 @@ export default function AdminPage() {
   }, [isAuthenticated, loadBanks, loadCategories]);
 
   // 登出
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // 调用 deviceService 退出（会调用后端 API 清除 device_id）
+    await deviceService.logout();
+    // 额外清除 admin 特定的存储
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
     router.push(getLoginPath());

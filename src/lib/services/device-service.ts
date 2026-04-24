@@ -94,8 +94,40 @@ export const deviceService = {
     window.dispatchEvent(new Event('user-auth-change'));
   },
 
-  // 执行登出
-  logout(): void {
+  // 执行登出（调用后端 API 清除数据库中的 device_id）
+  async logout(): Promise<void> {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('quiz_user_token') : null;
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+    
+    // 优先使用用户 token，如果没有则使用 admin token
+    const authToken = token || adminToken;
+    
+    if (authToken) {
+      try {
+        console.log('[DeviceService] 调用后端退出 API');
+        // 调用后端 API 清除数据库中的 device_id
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        
+        const data = await response.json();
+        console.log(`[DeviceService] 后端退出响应: success=${data.success}`);
+      } catch (error) {
+        console.error('[DeviceService] 后端退出调用失败:', error);
+        // 即使后端调用失败，也继续清除本地数据
+      }
+    }
+    
+    // 清除本地存储的认证数据
+    this.clearAuthData();
+  },
+
+  // 同步登出（仅清除本地数据，不调用后端 - 用于被踢下线等场景）
+  logoutLocal(): void {
     this.clearAuthData();
   },
 };

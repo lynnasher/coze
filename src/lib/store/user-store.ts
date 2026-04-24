@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { deviceService } from '@/lib/services/device-service';
 
 // ==================== 类型定义 ====================
 
@@ -36,7 +37,7 @@ interface UserStoreState {
 interface UserStoreActions {
   // 登录/登出
   login: (user: User, token: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   
   // 激活分类
@@ -88,7 +89,10 @@ export const useUserStore = create<UserStore>()(
         });
       },
 
-      logout: () => {
+      logout: async () => {
+        // 先调用后端 API 清除数据库中的 device_id
+        await deviceService.logout();
+        // 然后清除本地状态
         set({
           ...initialState,
           isLoading: false,
