@@ -263,6 +263,7 @@ export default function WrongBookPage() {
           {selectedQuestion && (
             <>
               <DialogHeader className="p-4 border-b border-slate-100">
+                <DialogTitle className="sr-only">错题详情</DialogTitle>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge className={`

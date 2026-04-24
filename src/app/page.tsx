@@ -221,42 +221,7 @@ export default function HomePage() {
           <WrongBookCard wrongCount={filteredStats.wrongCount} />
         </div>
 
-        {/* 推荐题库 */}
-        {activatedBanks.length > 0 && (
-          <div className="mt-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-700">推荐练习</h2>
-              <Link href="/library" className="text-xs text-indigo-600 flex items-center hover:underline">
-                查看全部
-                <ChevronRight className="w-3 h-3 ml-0.5" />
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {activatedBanks.slice(0, 3).map((bank) => (
-                <Link key={bank.id} href={`/practice?bankId=${bank.id}&mode=sequential`}>
-                  <Card className="border-0 shadow-sm rounded-xl hover:shadow-md transition-shadow cursor-pointer bg-white">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                          <BookOpen className="w-5 h-5 text-indigo-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-medium text-slate-700 truncate">{bank.name}</h3>
-                          <p className="text-xs text-slate-400">
-                            {bank.questionIds?.length || 0} 题
-                          </p>
-                        </div>
-                        <Button size="sm" className="bg-indigo-500 hover:bg-indigo-600 rounded-lg">
-                          练习
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+     
 
         {/* 未登录提示 */}
         {!isLoggedIn() && (
