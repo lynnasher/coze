@@ -372,32 +372,27 @@ function QuizPageContent() {
     return (
       <>
         {/* 统计卡片 */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.accuracy}%</p>
-            <p className="text-xs opacity-80">正确率</p>
+        <div className="grid grid-cols-4 gap-1.5 mb-3">
+          <div className="bg-emerald-500 rounded-lg p-2 text-white text-center">
+            <p className="text-lg font-bold">{resultStats.accuracy}%</p>
+            <p className="text-[10px] opacity-80">正确率</p>
           </div>
-          <div className="bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.total}</p>
-            <p className="text-xs opacity-80">总题数</p>
+          <div className="bg-blue-500 rounded-lg p-2 text-white text-center">
+            <p className="text-lg font-bold">{resultStats.total}</p>
+            <p className="text-[10px] opacity-80">总题数</p>
           </div>
-          <div className="bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.correct}</p>
-            <p className="text-xs opacity-80">做对</p>
+          <div className="bg-emerald-400 rounded-lg p-2 text-white text-center">
+            <p className="text-lg font-bold">{resultStats.correct}</p>
+            <p className="text-[10px] opacity-80">做对</p>
           </div>
-          <div className="bg-gradient-to-br from-red-500 to-rose-500 rounded-xl p-3 text-white text-center">
-            <p className="text-2xl font-bold">{resultStats.wrong + resultStats.unanswered}</p>
-            <p className="text-xs opacity-80">错误</p>
+          <div className="bg-red-500 rounded-lg p-2 text-white text-center">
+            <p className="text-lg font-bold">{resultStats.wrong + resultStats.unanswered}</p>
+            <p className="text-[10px] opacity-80">做错</p>
           </div>
-        </div>
-        
-        {/* 详细说明 */}
-        <div className="text-center text-sm text-slate-500 mb-4">
-          <p>做对 {resultStats.correct} 题，做错 {resultStats.wrong} 题，未答 {resultStats.unanswered} 题</p>
         </div>
         
         {/* 答题卡 */}
-        <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-0.5">
           {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
             const typeQuestions = quizState.questions
               .map((q, idx) => ({ q, idx }))
@@ -406,22 +401,22 @@ function QuizPageContent() {
             const config = QUESTION_TYPE_CONFIG[type as QuestionTypeKey];
             return (
               <div key={type}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`w-2 h-2 rounded-full ${config.color}`}></span>
-                  <span className="text-sm font-medium text-slate-700">{config.label}</span>
-                  <span className="text-xs text-slate-400">({typeQuestions.length}题)</span>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${config.color}`}></span>
+                  <span className="text-xs font-medium text-slate-700">{config.label}</span>
+                  <span className="text-[10px] text-slate-400">({typeQuestions.length}题)</span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1">
                   {typeQuestions.map(({ q, idx }) => {
                     const parentStatus = getQuestionStatus(q);
                     
                     // 综合题显示
                     if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
                       return (
-                        <div key={q.id} className="flex flex-wrap gap-2">
+                        <div key={q.id} className="flex flex-wrap gap-1">
                           <div
                             onClick={() => goToQuestion(idx)}
-                            className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                            className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center cursor-pointer ${
                               parentStatus.isCorrect
                                 ? 'bg-emerald-500 text-white'
                                 : parentStatus.isWrong
@@ -437,12 +432,12 @@ function QuizPageContent() {
                               <div
                                 key={child.id}
                                 onClick={() => goToQuestion(idx)}
-                                className={`w-9 h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
+                                className={`w-7 h-7 rounded-lg text-[10px] font-bold flex items-center justify-center cursor-pointer ${
                                   childStatus.isCorrect
                                     ? 'bg-emerald-400 text-white'
                                     : childStatus.isWrong
                                       ? 'bg-red-400 text-white'
-                                      : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                      : 'bg-slate-100 text-slate-500'
                                 }`}
                               >
                                 {idx + 1}({childIdx + 1})
@@ -457,7 +452,7 @@ function QuizPageContent() {
                       <div
                         key={q.id}
                         onClick={() => goToQuestion(idx)}
-                        className={`w-9 h-9 rounded-xl text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
+                        className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center cursor-pointer ${
                           parentStatus.isCorrect
                             ? 'bg-emerald-500 text-white'
                             : parentStatus.isWrong
@@ -476,27 +471,27 @@ function QuizPageContent() {
         </div>
         
         {/* 图例 */}
-        <div className="flex items-center justify-center gap-6 text-xs text-slate-500 pt-3 border-t border-slate-100 mt-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded bg-emerald-500"></div>
-            <span>做对</span>
+        <div className="flex items-center justify-center gap-4 text-[10px] text-slate-500 pt-2 border-t border-slate-100 mt-3">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-emerald-500"></div>
+            <span>正确</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded bg-red-500"></div>
-            <span>做错</span>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-red-500"></div>
+            <span>错误</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded bg-slate-200"></div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-slate-200"></div>
             <span>未答</span>
           </div>
         </div>
         
         {/* 底部操作区域 */}
-        <div className="sticky bottom-0 bg-white pt-4 border-t border-slate-100 mt-4">
+        <div className="pt-3 space-y-2">
           {/* 查看错题按钮 */}
           {resultStats.wrong > 0 && (
-            <Link href="/wrongbook" className="block mb-3" onClick={() => handleReturnHome()}>
-              <Button className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 rounded-xl text-base font-medium shadow-lg shadow-red-500/20">
+            <Link href="/wrongbook" className="block" onClick={() => handleReturnHome()}>
+              <Button className="w-full h-10 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium">
                 查看错题 ({resultStats.wrong}题)
               </Button>
             </Link>
@@ -504,7 +499,7 @@ function QuizPageContent() {
           {/* 返回首页按钮 */}
           <Button
             variant="outline"
-            className="w-full h-11 rounded-xl border-slate-200 text-slate-600"
+            className="w-full h-10 rounded-lg border-slate-200 text-slate-600 text-sm"
             onClick={() => { setShowResultSheet(false); handleReturnHome(); }}
           >
             返回首页
@@ -925,12 +920,12 @@ function QuizPageContent() {
           handleReturnHome();
         }
       }}>
-        <DialogContent className="max-w-[90vw] sm:max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5">
-          <DialogHeader className="pb-3 text-center">
-            <div className="w-16 h-16 mx-auto mb-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <FileCheck className="w-8 h-8 text-white" />
+        <DialogContent className="max-w-sm mx-auto rounded-xl p-4">
+          <DialogHeader className="text-center space-y-2">
+            <div className="w-12 h-12 mx-auto bg-emerald-500 rounded-xl flex items-center justify-center">
+              <FileCheck className="w-6 h-6 text-white" />
             </div>
-            <DialogTitle className="text-xl font-bold text-slate-800">答题完成</DialogTitle>
+            <DialogTitle className="text-lg font-semibold text-slate-800">答题完成</DialogTitle>
           </DialogHeader>
           <ResultSheetContent />
         </DialogContent>
