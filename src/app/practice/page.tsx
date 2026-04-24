@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useQuizStore } from '@/lib/store/quiz-store';
-import { recordStore } from '@/lib/quiz-store';
+import { recordStore, questionStore, getWrongQuestionIds, wrongStreakStore, queueRecordForSync, queueStreakForSync, getCurrentUserId } from '@/lib/quiz-store';
 import { Question, PracticeMode, PracticeRecord } from '@/lib/types';
 import { QuizCard } from '@/components/quiz/QuizCard';
 import { AnswerSheet } from '@/components/quiz/AnswerSheet';
@@ -36,6 +36,8 @@ export default function PracticePage() {
   const searchParams = useSearchParams();
   const bankId = searchParams.get('bankId');
   const mode = (searchParams.get('mode') as PracticeMode) || 'sequential';
+  const isWrongBook = searchParams.get('wrongbook') === 'true';
+  const wrongQuestionIds = searchParams.get('questions')?.split(',').filter(Boolean) || [];
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,6 +87,65 @@ export default function PracticePage() {
 
   // 加载题目
   const loadQuestions = useCallback(async () => {
+    // 错题模式：从本地加载错题
+    if (isWrongBook) {
+      try {
+        setIsLoading(true);
+        
+        // 获取错题ID列表（优先使用URL参数，否则获取所有错题）
+        const wrongIds = wrongQuestionIds.length > 0 
+          ? wrongQuestionIds 
+          : getWrongQuestionIds();
+        
+        if (wrongIds.length === 0) {
+          router.push('/wrongbook');
+          return;
+        }
+        
+        // 从本地存储获取题目
+        const allQuestions = questionStore.getAll();
+        const loadedQuestions = wrongIds
+          .map(id => allQuestions.find(q => q.id === id))
+          .filter((q): q is Question => q !== undefined);
+        
+        if (loadedQuestions.length === 0) {
+          // 尝试从云端获取题目
+          const token = localStorage.getItem('quiz_user_token');
+          if (token) {
+            const response = await fetch('/api/questions/batch', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ ids: wrongIds.slice(0, 50) }), // 最多50题
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              const cloudQuestions = data.questions || [];
+              setQuestions(cloudQuestions);
+              startQuiz(cloudQuestions, 'wrongbook');
+              setIsLoading(false);
+              return;
+            }
+          }
+          
+          router.push('/wrongbook');
+          return;
+        }
+        
+        setQuestions(loadedQuestions);
+        startQuiz(loadedQuestions, 'wrongbook');
+      } catch (error) {
+        console.error('加载错题失败:', error);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    // 题库模式：从API加载
     if (!bankId) {
       router.push('/library');
       return;
@@ -113,7 +174,7 @@ export default function PracticePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [bankId, mode, router, startQuiz]);
+  }, [bankId, mode, isWrongBook, wrongQuestionIds, router, startQuiz]);
 
   useEffect(() => {
     setMounted(true);
@@ -172,6 +233,53 @@ export default function PracticePage() {
   const handleSubmitAnswer = () => {
     submitAnswer();
     setShowExplanation(true);
+    
+    // 错题模式：处理连续答对次数
+    if (isWrongBook && currentQuestion) {
+      const currentAnswer = useQuizStore.getState().answers[currentQuestion.id];
+      const isCorrect = checkAnswer(currentQuestion, currentAnswer);
+      const userId = getCurrentUserId();
+      
+      if (isCorrect) {
+        // 答对：增加连续答对次数
+        wrongStreakStore.increment(currentQuestion.id);
+        const newStreak = wrongStreakStore.get(currentQuestion.id);
+        
+        // 同步到云端
+        if (userId) {
+          queueStreakForSync(currentQuestion.id, newStreak);
+        }
+        
+        // 连续答对3次：从错题本移除
+        if (newStreak >= 3) {
+          // 移除该题的所有错误记录
+          const allRecords = recordStore.getAll();
+          recordStore.save(allRecords.filter(r => !(r.questionId === currentQuestion.id && !r.isCorrect)));
+          wrongStreakStore.remove(currentQuestion.id);
+          
+          if (userId) {
+            queueStreakForSync(currentQuestion.id, 0);
+          }
+          console.log('[错题模式] 题目已掌握，从错题本移除:', currentQuestion.id);
+        }
+      } else {
+        // 答错：重置连续答对次数
+        wrongStreakStore.reset(currentQuestion.id);
+        if (userId) {
+          queueStreakForSync(currentQuestion.id, 0);
+        }
+      }
+    }
+  };
+  
+  // 检查答案是否正确
+  const checkAnswer = (question: Question, answer: string | string[] | undefined): boolean => {
+    if (!answer) return false;
+    if (Array.isArray(question.answer)) {
+      const userAnswers = Array.isArray(answer) ? answer : [answer];
+      return userAnswers.length === question.answer.length && userAnswers.every(a => question.answer.includes(a));
+    }
+    return answer === question.answer;
   };
 
   // 下一题
