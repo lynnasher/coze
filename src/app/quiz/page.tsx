@@ -551,19 +551,19 @@ function QuizPageContent() {
       <DeviceKickedDialog open={isKicked} onConfirm={() => router.push('/')} />
       
       {/* 顶部导航 */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3">
+      <div className="bg-white border-b border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="max-w-[970px] mx-auto flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleReturnHome}
-            className="gap-1.5 text-slate-600 hover:text-slate-800"
+            className="gap-1.5 text-slate-600 hover:text-slate-800 -ml-2 px-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>退出</span>
+            <span className="hidden sm:inline">退出</span>
           </Button>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -818,7 +818,7 @@ function QuizPageContent() {
       {/* 底部固定操作栏 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
         <div className="max-w-[970px] mx-auto">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
             <Button
               variant="outline"
               size="sm"
@@ -838,16 +838,16 @@ function QuizPageContent() {
                   ? currentChildIndex === 0 && quizState.currentIndex === 0
                   : quizState.currentIndex === 0
               }
-              className="h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+              className="h-9 px-2 sm:px-3 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="ml-1 text-sm font-medium">上一题</span>
+              <span className="hidden sm:inline ml-1 text-sm font-medium">上一题</span>
             </Button>
             
             <Button
               variant="outline"
               onClick={handleSubmitAnswer}
-              className="h-11 px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
+              className="h-11 px-4 sm:px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
             >
               <BookOpen className="w-4 h-4" />
               <span className="ml-1.5 text-sm">查看答案</span>
@@ -863,10 +863,10 @@ function QuizPageContent() {
                   <Button
                     size="sm"
                     onClick={handleFinishAndExit}
-                    className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
+                    className="h-9 px-2 sm:px-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
                   >
                     <FileCheck className="w-4 h-4" />
-                    <span className="ml-1.5 text-sm">交卷</span>
+                    <span className="hidden sm:inline ml-1.5 text-sm">交卷</span>
                   </Button>
                 );
               } else if (hasMoreChildren) {
@@ -878,9 +878,9 @@ function QuizPageContent() {
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
+                    className="h-9 px-2 sm:px-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
                   >
-                    <span className="text-sm">下一题</span>
+                    <span className="sm:text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 );
@@ -893,9 +893,9 @@ function QuizPageContent() {
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
+                    className="h-9 px-2 sm:px-3 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
                   >
-                    <span className="text-sm">下一题</span>
+                    <span className="hidden sm:inline text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 );
