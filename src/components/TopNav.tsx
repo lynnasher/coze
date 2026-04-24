@@ -43,6 +43,7 @@ export function TopNav({
             {/* 用户区域 */}
             <div className="flex items-center gap-2">
               {isLoggedIn() ? (
+                // 已登录：显示个人中心入口（紫色背景）
                 <Link href="/profile">
                   <button
                     className="w-9 h-9 flex items-center justify-center rounded-xl bg-indigo-100 hover:bg-indigo-200 text-indigo-600 transition-colors"
@@ -52,7 +53,8 @@ export function TopNav({
                   </button>
                 </Link>
               ) : (
-                <Link href="/profile">
+                // 未登录：显示登录入口（深色背景），点击带回登录参数
+                <Link href="/?login=true">
                   <button
                     className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors"
                     title="登录"

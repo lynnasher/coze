@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { 
   Library, 
   User,
@@ -26,6 +27,7 @@ type StatsFilter = 'day' | 'week' | 'month' | 'all';
 
 export default function HomePage() {
   const { user: currentUser, isLoggedIn, login, logout, hasHydrated } = useUserStore();
+  const searchParams = useSearchParams();
   
   const [banks, setBanks] = useState<QuestionBank[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -63,7 +65,13 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     loadData();
-  }, [loadData]);
+    
+    // 检查 URL 参数，如果需要登录则自动打开登录弹窗
+    const shouldLogin = searchParams.get('login') === 'true';
+    if (shouldLogin && !isLoggedIn()) {
+      setAuthModalOpen(true);
+    }
+  }, [loadData, searchParams, isLoggedIn]);
 
   // 页面加载时同步 localStorage 用户数据到 Zustand
   useEffect(() => {
