@@ -6,9 +6,9 @@ import {
   ArrowLeft, 
   User, 
   LogOut, 
-  Clock,
+  Library,
   BookOpen,
-  Target,
+  Settings,
   ChevronRight,
   Loader2,
 } from 'lucide-react';
@@ -16,24 +16,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useUserStore } from '@/lib/store';
 import { recordStore } from '@/lib/quiz-store';
-import { calculateFilteredStats } from '@/lib/stats-utils';
+import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from '@/lib/stats-utils';
+import { StreakCard, TrendChart, FilterTabs, StatsGrid } from '@/components/stats';
+
+type StatsFilter = 'day' | 'week' | 'month' | 'all';
 
 export default function ProfilePage() {
   const { user: currentUser, isLoggedIn, logout } = useUserStore();
-  const [stats, setStats] = useState({
-    totalCount: 0,
-    correctCount: 0,
-    wrongCount: 0,
-    accuracy: 0,
-  });
+  const [statsFilter, setStatsFilter] = useState<StatsFilter>('day');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const allRecords = recordStore.getAll();
-    const filteredStats = calculateFilteredStats(allRecords, 'all');
-    setStats(filteredStats);
   }, []);
+
+  // 计算统计数据
+  const allRecords = recordStore.getAll();
+  const filteredStats = calculateFilteredStats(allRecords, statsFilter);
+  const streak = calculateStreakStats(allRecords);
+  const trend = calculateTrendData(allRecords);
 
   const handleLogout = () => {
     logout();
@@ -108,64 +109,66 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* 用户信息卡片 */}
-      <div className="max-w-[970px] mx-auto px-4 py-6">
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-              <User className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">
-                {currentUser?.nickname || currentUser?.phone}
-              </h2>
-              <p className="text-indigo-100 text-sm mt-1">
-                {currentUser?.phone}
-              </p>
+      {/* 主内容 */}
+      <main className="max-w-[970px] mx-auto px-4 py-6">
+        {/* 用户信息卡片 */}
+        <div className="mb-6">
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                <User className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold">
+                  {currentUser?.nickname || currentUser?.phone}
+                </h2>
+                <p className="text-indigo-100 text-sm mt-1">
+                  {currentUser?.phone}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 学习统计 */}
-        <div className="mt-6">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">学习统计</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="border-0 shadow-sm rounded-xl bg-white">
-              <CardContent className="p-4 text-center">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-2">
-                  <BookOpen className="w-5 h-5 text-indigo-500" />
-                </div>
-                <div className="text-xl font-bold text-slate-700">{stats.totalCount}</div>
-                <div className="text-xs text-slate-400">做题总数</div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-0 shadow-sm rounded-xl bg-white">
-              <CardContent className="p-4 text-center">
-                <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mx-auto mb-2">
-                  <Target className="w-5 h-5 text-green-500" />
-                </div>
-                <div className="text-xl font-bold text-slate-700">{stats.accuracy}%</div>
-                <div className="text-xs text-slate-400">正确率</div>
-              </CardContent>
-            </Card>
-            
-            <Card className="border-0 shadow-sm rounded-xl bg-white">
-              <CardContent className="p-4 text-center">
-                <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-2">
-                  <Clock className="w-5 h-5 text-amber-500" />
-                </div>
-                <div className="text-xl font-bold text-slate-700">{stats.wrongCount}</div>
-                <div className="text-xs text-slate-400">错题数</div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* 连续学习天数 */}
+        <StreakCard streak={streak} />
+
+        {/* 近7天学习趋势 */}
+        <div className="mt-4">
+          <TrendChart trend={trend} />
+        </div>
+
+        {/* 日期筛选 */}
+        <div className="mt-4">
+          <FilterTabs value={statsFilter} onChange={setStatsFilter} />
+        </div>
+
+        {/* 统计卡片网格 */}
+        <div className="mt-4">
+          <StatsGrid stats={filteredStats} />
         </div>
 
         {/* 功能入口 */}
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-slate-700 mb-3">功能</h3>
           <div className="space-y-2">
+            <Link href="/library">
+              <Card className="border-0 shadow-sm rounded-xl bg-white cursor-pointer hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+                      <Library className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-slate-700">题库浏览</h4>
+                      <p className="text-xs text-slate-400">浏览所有题库</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-300" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+            
             <Link href="/wrongbook">
               <Card className="border-0 shadow-sm rounded-xl bg-white cursor-pointer hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
@@ -182,26 +185,9 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
             </Link>
-            
-            <Link href="/library">
-              <Card className="border-0 shadow-sm rounded-xl bg-white cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-5 h-5 text-indigo-500" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-slate-700">题库浏览</h4>
-                      <p className="text-xs text-slate-400">浏览所有题库</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-300" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
