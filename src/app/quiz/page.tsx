@@ -104,19 +104,24 @@ function QuizPageContent() {
     return answer !== undefined && answer !== '' && !(Array.isArray(answer) && answer.length === 0);
   }).length;
   
-  // 判断当前题目是否正确
-  const isCurrentCorrect = displayQuestion ? (() => {
-    const userAnswer = displayQuestionAnswer;
-    if (!userAnswer) return false;
-    if (Array.isArray(displayQuestion.answer)) {
-      if (Array.isArray(userAnswer)) {
-        return userAnswer.length === displayQuestion.answer.length && 
-               userAnswer.every(a => displayQuestion.answer.includes(a));
+  // 计算未答题数
+  const unansweredCount = quizState.questions.length - answeredCount;
+  
+  // 通用答案判断函数
+  const isAnswerCorrect = useCallback((question: Question, answer: unknown): boolean => {
+    if (!answer) return false;
+    if (Array.isArray(question.answer)) {
+      if (Array.isArray(answer)) {
+        return answer.length === question.answer.length && 
+               answer.every(a => question.answer.includes(a));
       }
       return false;
     }
-    return String(userAnswer).toLowerCase() === String(displayQuestion.answer).toLowerCase();
-  })() : false;
+    return String(answer).toLowerCase() === String(question.answer).toLowerCase();
+  }, []);
+  
+  // 判断当前题目是否正确
+  const isCurrentCorrect = displayQuestion ? isAnswerCorrect(displayQuestion, displayQuestionAnswer) : false;
   
   // 滚动到题目区域
   const scrollToQuestion = useCallback(() => {
@@ -131,6 +136,53 @@ function QuizPageContent() {
       setTimeout(scrollToQuestion, 100);
     }
   }, [displayQuestion, submitAnswer, scrollToQuestion]);
+  
+  // 键盘快捷键支持
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 忽略当焦点在输入框时
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        return;
+      }
+      
+      // Enter - 提交答案
+      if (e.key === 'Enter' && !showExplanation && displayQuestion) {
+        e.preventDefault();
+        handleSubmitAnswer();
+      }
+      
+      // ArrowLeft - 上一题
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (currentQuestion?.type === 'comprehensive' && currentChildIndex > 0) {
+          setCurrentChildIndex(prev => prev - 1);
+          setShowExplanation(false);
+          scrollToQuestion();
+        } else if (quizState.currentIndex > 0) {
+          prevQuestion();
+          setShowExplanation(false);
+          scrollToQuestion();
+        }
+      }
+      
+      // ArrowRight - 下一题
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (currentQuestion?.type === 'comprehensive' && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1) {
+          setCurrentChildIndex(prev => prev + 1);
+          setShowExplanation(false);
+          scrollToQuestion();
+        } else if (quizState.currentIndex < quizState.questions.length - 1) {
+          nextQuestion();
+          setShowExplanation(false);
+          scrollToQuestion();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [displayQuestion, showExplanation, currentQuestion, currentChildIndex, quizState.currentIndex, quizState.questions.length, handleSubmitAnswer, prevQuestion, nextQuestion, scrollToQuestion]);
   
   // 交卷
   const handleFinishAndExit = useCallback(async () => {
@@ -518,8 +570,14 @@ function QuizPageContent() {
               <AlertDialogContent className="rounded-2xl">
                 <AlertDialogHeader>
                   <AlertDialogTitle>确认交卷</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    确定要提交所有答案吗？提交后将无法修改答案。
+                  <AlertDialogDescription className="space-y-2">
+                    <p>确定要提交所有答案吗？提交后将无法修改答案。</p>
+                    {unansweredCount > 0 && (
+                      <p className="text-amber-600 font-medium flex items-center gap-1.5">
+                        <span className="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
+                        还有 {unansweredCount} 题未作答
+                      </p>
+                    )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -651,8 +709,19 @@ function QuizPageContent() {
                   return (
                     <div
                       key={option.id}
-                      className={`flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer ${optionStyle}`}
+                      role="button"
+                      tabIndex={showExplanation ? -1 : 0}
+                      aria-pressed={isSelected}
+                      aria-disabled={showExplanation}
+                      aria-label={`选项${String.fromCharCode(65 + index)}: ${option.text}${isSelected ? '，已选择' : ''}${showExplanation && isCorrectAnswer ? '，正确答案' : ''}${showExplanation && isSelected && !isCorrectAnswer ? '，错误答案' : ''}`}
+                      className={`flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${showExplanation ? 'cursor-default' : 'cursor-pointer'} ${optionStyle}`}
                       onClick={handleOptionClick}
+                      onKeyDown={(e) => {
+                        if ((e.key === 'Enter' || e.key === ' ') && !showExplanation) {
+                          e.preventDefault();
+                          handleOptionClick();
+                        }
+                      }}
                     >
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold text-xs transition-colors flex-shrink-0 ${
                         isSelected && showExplanation
