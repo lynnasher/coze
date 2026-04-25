@@ -1,0 +1,38 @@
+name: Build WebView APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: # 支持手动点击打包
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 配置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 安装 Android SDK 依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y android-sdk-platform-tools
+
+      - name: 初始化安卓项目 & 打包
+        run: |
+          git clone https://github.com/redleafsoft/WebView-APK-Template.git temp-apk
+          cp -r ./ temp-apk/app/src/main/assets/
+          cd temp-apk
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: 上传 APK 成品
+        uses: actions/upload-artifact@v4
+        with:
+          name: 你的做题APP安装包
+          path: temp-apk/app/build/outputs/apk/release/*.apk
