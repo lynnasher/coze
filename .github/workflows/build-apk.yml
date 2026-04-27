@@ -8,15 +8,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
 
@@ -33,7 +31,16 @@ jobs:
         run: pnpm next build
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk wget unzip
+          export ANDROID_HOME=$HOME/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          cd $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip && mv cmdline-tools latest && rm cmdline-tools.zip
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Initialize Capacitor
         run: |
@@ -45,11 +52,12 @@ jobs:
           mkdir -p out
           cp -r .next/static out/ 2>/dev/null || true
           cp -r public/* out/ 2>/dev/null || true
-          npx cap add android
-          npx cap sync android
+          npx cap add android && npx cap sync android
 
       - name: Build Debug APK
         working-directory: ./android
+        env:
+          ANDROID_HOME: $HOME/android-sdk
         run: ./gradlew assembleDebug
 
       - name: Upload APK
@@ -57,4 +65,3 @@ jobs:
         with:
           name: quiz-app-apk
           path: android/app/build/outputs/apk/debug/*.apk
-          retention-days: 7
