@@ -1,0 +1,55 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Next.js app
+        run: pnpm next build
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Initialize Capacitor
+        run: |
+          pnpm add @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "QuizApp" "com.quiz.app" --web-dir=.next
+
+      - name: Sync and build Android
+        run: |
+          mkdir -p out
+          cp -r .next/static out/ 2>/dev/null || true
+          cp -r public/* out/ 2>/dev/null || true
+          npx cap add android
+          npx cap sync android
+
+      - name: Build Debug APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: quiz-app-apk
+          path: android/app/build/outputs/apk/debug/*.apk
