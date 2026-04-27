@@ -1,4 +1,4 @@
-name: 打包TI100刷题APP
+name: 打包 TI100 刷题 APK
 on:
   workflow_dispatch:
 
@@ -6,15 +6,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 生成WebView APK
-        uses: lzh325/webview-action@v1.0.0
-        with:
-          url: "https://ti100.coze.site/"
-          app_name: "TI100刷题"
-          package_name: "com.ti100.app"
+      - name: 下载工具并打包
+        run: |
+          # 创建文件夹
+          mkdir apk
+          cd apk
           
-      - name: 下载APK
+          # 下载基础空APK + 打包工具
+          wget -O base.apk https://raw.githubusercontent.com/Inspired001/apk-template/main/base.apk
+          wget -O apktool.jar https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool.jar
+          
+          # 替换网址为你的刷题网站
+          echo 'https://ti100.coze.site/' > url.txt
+          
+          # 自动打包生成新APK
+          java -jar apktool.jar d base.apk -o temp
+          sed -i "s|https://.*|https://ti100.coze.site/|g" temp/assets/index.html
+          java -jar apktool.jar b temp -o ti100-shuati.apk
+
+      - name: 上传最终APK
         uses: actions/upload-artifact@v4
         with:
-          name: ti100-final-apk
-          path: "*.apk"
+          name: ti100-shuati
+          path: apk/ti100-shuati.apk
