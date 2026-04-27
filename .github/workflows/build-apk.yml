@@ -1,8 +1,10 @@
-name: 打包 TI100 刷题 APK
+name: 打包TI100刷题APK
 on:
-  workflow_dispatch:  # 允许手动点击打包
   push:
-    branches: [ main, master ]
+    branches:
+      - main
+      - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -10,19 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 设置 JDK 17
+      - name: 设置JDK17
         uses: actions/setup-java@v4
         with:
           java-version: 17
           distribution: temurin
 
-      - name: 自动创建安卓项目
+      - name: 生成Android项目
         run: |
           mkdir -p app/src/main/java/com/ti100
           mkdir -p app/src/main/res/layout
           
-          # 主界面代码
-          cat > app/src/main/java/com/ti100/MainActivity.java << EOF
+          cat > app/src/main/java/com/ti100/MainActivity.java <<'EOF'
 package com.ti100;
 import android.os.Bundle;
 import android.webkit.WebSettings;
@@ -45,8 +46,7 @@ public class MainActivity extends AppCompatActivity {
 }
 EOF
 
-          # 布局文件
-          cat > app/src/main/res/layout/activity_main.xml << EOF
+          cat > app/src/main/res/layout/activity_main.xml <<'EOF'
 <?xml version="1.0" encoding="utf-8"?>
 <WebView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/webview"
@@ -54,8 +54,7 @@ EOF
     android:layout_height="match_parent"/>
 EOF
 
-          # 构建配置
-          cat > app/build.gradle << EOF
+          cat > app/build.gradle <<'EOF'
 plugins { id 'com.android.application' }
 android {
     namespace "com.ti100"
@@ -73,17 +72,15 @@ dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
 EOF
 
           echo 'include ":app"' > settings.gradle
-          
-          wget -q https://gradle.org/install.sh -O gradle.sh
-          chmod +x gradle.sh
-          ./gradle.sh
-          source ~/.bashrc
 
-      - name: 打包 APK
+      - name: 打包APK
         run: |
+          wget https://services.gradle.org/distributions/gradle-8.5-bin.zip -q -P /tmp
+          unzip -q /tmp/gradle-8.5-bin.zip -d /opt
+          export PATH=$PATH:/opt/gradle-8.5/bin
           gradle assembleRelease
-          
-      - name: 上传 APK
+
+      - name: 上传APK文件
         uses: actions/upload-artifact@v4
         with:
           name: ti100-apk
