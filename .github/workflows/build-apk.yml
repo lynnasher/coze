@@ -1,10 +1,10 @@
-name: 智能刷题 APK
+name: Build APK
 
 on:
   push:
     branches:
-      - main  # 仅在推送到 main 分支时触发
-  workflow_dispatch:  # 允许手动触发
+      - main
+  workflow_dispatch:
     inputs:
       branch:
         description: 'Branch to build'
@@ -20,15 +20,15 @@ jobs:
 
       - name: Set Up Execution Permissions
         run: |
-          chmod +x web2apk  # 确保脚本可执行
-          ls -l web2apk      # 验证权限
+          chmod +x web2apk
+          ls -l web2apk
 
       - name: Run Web2APK Script
         run: |
           ./web2apk
 
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # 关键：使用v4版本替代v3
         with:
           name: generated-apk
           path: |
