@@ -1,0 +1,90 @@
+name: 打包 TI100 刷题 APK
+on:
+  workflow_dispatch:  # 允许手动点击打包
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: 自动创建安卓项目
+        run: |
+          mkdir -p app/src/main/java/com/ti100
+          mkdir -p app/src/main/res/layout
+          
+          # 主界面代码
+          cat > app/src/main/java/com/ti100/MainActivity.java << EOF
+package com.ti100;
+import android.os.Bundle;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        WebView webView = findViewById(R.id.webview);
+        WebSettings ws = webView.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        webView.setWebViewClient(new WebViewClient());
+        webView.loadUrl("https://ti100.coze.site/");
+    }
+}
+EOF
+
+          # 布局文件
+          cat > app/src/main/res/layout/activity_main.xml << EOF
+<?xml version="1.0" encoding="utf-8"?>
+<WebView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/webview"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"/>
+EOF
+
+          # 构建配置
+          cat > app/build.gradle << EOF
+plugins { id 'com.android.application' }
+android {
+    namespace "com.ti100"
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.ti100.app"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes { release { minifyEnabled false } }
+}
+dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }
+EOF
+
+          echo 'include ":app"' > settings.gradle
+          
+          wget -q https://gradle.org/install.sh -O gradle.sh
+          chmod +x gradle.sh
+          ./gradle.sh
+          source ~/.bashrc
+
+      - name: 打包 APK
+        run: |
+          gradle assembleRelease
+          
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ti100-apk
+          path: app/build/outputs/apk/release/*.apk
