@@ -28,7 +28,7 @@ import {
   Grid3X3,
   ArrowLeft,
 } from 'lucide-react';
-import { recordStore } from '@/lib/quiz-store';
+import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
@@ -71,7 +71,6 @@ function QuizPageContent() {
     startQuiz,
     selectAnswer,
     submitAnswer,
-    finishQuiz,
     prevQuestion,
     nextQuestion,
     goToQuestion,
@@ -159,7 +158,6 @@ function QuizPageContent() {
           setShowExplanation(false);
           scrollToQuestion();
         } else if (quizState.currentIndex > 0) {
-          setCurrentChildIndex(0); // 切换到其他题目时重置子题索引
           prevQuestion();
           setShowExplanation(false);
           scrollToQuestion();
@@ -174,7 +172,7 @@ function QuizPageContent() {
           setShowExplanation(false);
           scrollToQuestion();
         } else if (quizState.currentIndex < quizState.questions.length - 1) {
-          setCurrentChildIndex(0); nextQuestion();
+          nextQuestion();
           setShowExplanation(false);
           scrollToQuestion();
         }
@@ -187,7 +185,7 @@ function QuizPageContent() {
   
   // 交卷
   const handleFinishAndExit = useCallback(async () => {
-    // 先计算结果（用于显示）
+    // 计算结果
     let correct = 0;
     let wrong = 0;
     let unanswered = 0;
@@ -223,13 +221,19 @@ function QuizPageContent() {
     const total = allQuestions.length;
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
     
-    // 调用 finishQuiz 保存练习记录（包含云端同步）
-    await finishQuiz();
-    
-    // 显示结果
     setResultStats({ accuracy, total, correct, wrong, unanswered });
     setShowResultSheet(true);
-  }, [quizState, finishQuiz]);
+    
+    // 保存练习记录
+    const userId = getCurrentUserId();
+    if (userId) {
+      await cloudSyncService.saveRecordsAndStreaks(
+        userId,
+        recordStore.getAll(),
+        wrongStreakStore.getAll()
+      );
+    }
+  }, [quizState]);
   
   // 返回首页
   const handleReturnHome = useCallback(() => {
@@ -602,12 +606,12 @@ function QuizPageContent() {
                   <AlertDialogDescription className="space-y-2.5 text-sm">
                     <span className="block">确定要提交所有答案吗？提交后将无法修改答案。</span>
                     {unansweredCount > 0 && (
-                      <span className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                        <span className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></span>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></div>
                         <span className="text-amber-700 font-medium">
                           还有 {unansweredCount} 题未作答
                         </span>
-                      </span>
+                      </div>
                     )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -842,7 +846,6 @@ function QuizPageContent() {
                   setShowExplanation(false);
                   setTimeout(scrollToQuestion, 50);
                 } else if (quizState.currentIndex > 0) {
-                  setCurrentChildIndex(0); // 切换到其他题目时重置子题索引
                   prevQuestion();
                   setShowExplanation(false);
                   setTimeout(scrollToQuestion, 50);
@@ -904,7 +907,7 @@ function QuizPageContent() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      setCurrentChildIndex(0); nextQuestion();
+                      nextQuestion();
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
