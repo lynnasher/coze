@@ -1,24 +1,36 @@
-name: TI100打包
+name: 智能刷题 APK
+
 on:
-  workflow_dispatch:
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  push:
+    branches:
+      - main  # 仅在推送到 main 分支时触发
+  workflow_dispatch:  # 允许手动触发
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'main'
 
 jobs:
-  build:
+  build-apk:
     runs-on: ubuntu-latest
     steps:
-      - name: 安装依赖
-        run: sudo apt update && sudo apt install -y curl unzip
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: 网页转APK
+      - name: Set Up Execution Permissions
         run: |
-          curl -Ls https://github.com/kiibk/web2apk-linux/releases/download/v1.0/web2apk-linux -o web2apk
-          chmod +x web2apk
-          ./web2apk --url https://ti100.coze.site --name TI100刷题
+          chmod +x web2apk  # 确保脚本可执行
+          ls -l web2apk      # 验证权限
 
-      - name: 上传APK
-        uses: actions/upload-artifact@v4
+      - name: Run Web2APK Script
+        run: |
+          ./web2apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: TI100-App
-          path: app.apk
+          name: generated-apk
+          path: |
+            *.apk
+            !node_modules/**/*.apk
