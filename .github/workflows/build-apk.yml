@@ -1,4 +1,4 @@
-name: 打包 TI100 刷题 APK
+name: TI100 刷题 APK 打包
 on:
   workflow_dispatch:
 
@@ -6,26 +6,69 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 下载工具并打包
-        run: |
-          # 创建文件夹
-          mkdir apk
-          cd apk
-          
-          # 下载基础空APK + 打包工具
-          wget -O base.apk https://raw.githubusercontent.com/Inspired001/apk-template/main/base.apk
-          wget -O apktool.jar https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool.jar
-          
-          # 替换网址为你的刷题网站
-          echo 'https://ti100.coze.site/' > url.txt
-          
-          # 自动打包生成新APK
-          java -jar apktool.jar d base.apk -o temp
-          sed -i "s|https://.*|https://ti100.coze.site/|g" temp/assets/index.html
-          java -jar apktool.jar b temp -o ti100-shuati.apk
+      - uses: actions/checkout@v4
 
-      - name: 上传最终APK
+      - name: 安装 Android SDK 环境
+        run: |
+          sudo apt update
+          sudo apt install -y android-sdk
+
+      - name: 生成极简 WebView 项目
+        run: |
+          # 创建项目结构
+          mkdir -p app/src/main/java/com/ti100
+          mkdir -p app/src/main/res/layout
+          
+          # 生成代码
+          cat > app/src/main/java/com/ti100/MainActivity.kt << EOF
+          package com.ti100
+          import android.os.Bundle
+          import android.webkit.WebView
+          import androidx.appcompat.app.AppCompatActivity
+          class MainActivity : AppCompatActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContentView(R.layout.activity_main)
+                  val web = findViewById<WebView>(R.id.webview)
+                  web.settings.javaScriptEnabled = true
+                  web.settings.domStorageEnabled = true
+                  web.loadUrl("https://ti100.coze.site/")
+              }
+          }
+          EOF
+
+          cat > app/src/main/res/layout/activity_main.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <WebView xmlns:android="http://schemas.android.com/apk/res/android"
+              android:id="@+id/webview"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"/>
+          EOF
+
+          cat > app/build.gradle << EOF
+          plugins {
+              id 'com.android.application' version '8.5.0' apply false
+          }
+          android {
+              namespace "com.ti100"
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.ti100.app"
+                  minSdk 21
+                  targetSdk 34
+              }
+          }
+          EOF
+
+      - name: 打包 APK
+        run: |
+          echo "include ':app'" > settings.gradle
+          curl -sSL https://get.gradle.org | bash
+          gradle wrapper
+          ./gradlew assembleRelease
+
+      - name: 上传 APK
         uses: actions/upload-artifact@v4
         with:
-          name: ti100-shuati
-          path: apk/ti100-shuati.apk
+          name: ti100-apk
+          path: app/build/outputs/apk/release/*.apk
