@@ -1,75 +1,20 @@
-name: Build APK
+name: 打包TI100刷题APP
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - name: 生成WebView APK
+        uses: lzh325/webview-action@v1.0.0
         with:
-          java-version: 17
-          distribution: temurin
-
-      - name: Create Project
-        run: |
-          mkdir -p app/src/main/java/com/ti100
-          mkdir -p app/src/main/res/layout
-          echo "package com.ti100;
-          import android.os.Bundle;
-          import android.webkit.WebSettings;
-          import android.webkit.WebView;
-          import android.webkit.WebViewClient;
-          import androidx.appcompat.app.AppCompatActivity;
-          public class MainActivity extends AppCompatActivity {
-              @Override protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  setContentView(R.layout.activity_main);
-                  WebView wv = findViewById(R.id.webview);
-                  WebSettings ws = wv.getSettings();
-                  ws.setJavaScriptEnabled(true);
-                  ws.setDomStorageEnabled(true);
-                  wv.setWebViewClient(new WebViewClient());
-                  wv.loadUrl(\"https://ti100.coze.site/\");
-              }
-          }" > app/src/main/java/com/ti100/MainActivity.java
-
-          echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>
-          <WebView xmlns:android=\"http://schemas.android.com/apk/res/android\"
-              android:id=\"@+id/webview\"
-              android:layout_width=\"match_parent\"
-              android:layout_height=\"match_parent\"/>" > app/src/main/res/layout/activity_main.xml
-
-          echo "plugins { id 'com.android.application' }
-          android {
-              namespace \"com.ti100\"
-              compileSdk 34
-              defaultConfig {
-                  applicationId \"com.ti100.app\"
-                  minSdk 21
-                  targetSdk 34
-                  versionCode 1
-                  versionName \"1.0\"
-              }
-              buildTypes { release { minifyEnabled false } }
-          }
-          dependencies { implementation 'androidx.appcompat:appcompat:1.6.1' }" > app/build.gradle
-
-          echo "include \":app\"" > settings.gradle
-
-      - name: Build
-        run: |
-          wget https://services.gradle.org/distributions/gradle-8.5-bin.zip -q
-          unzip -q gradle-8.5-bin.zip
-          export PATH=$PATH:gradle-8.5/bin
-          gradle assembleRelease
-
-      - uses: actions/upload-artifact@v4
+          url: "https://ti100.coze.site/"
+          app_name: "TI100刷题"
+          package_name: "com.ti100.app"
+          
+      - name: 下载APK
+        uses: actions/upload-artifact@v4
         with:
-          name: ti100-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: ti100-final-apk
+          path: "*.apk"
