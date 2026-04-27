@@ -18,11 +18,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install pnpm
-        run: npm install -g pnpm@latest
-
-      - name: Verify pnpm
-        run: pnpm --version
+            - name: Install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+          pnpm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
