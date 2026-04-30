@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { userService } from '@/lib/services/user-service';
 import { requireAdminAuth } from '@/lib/api-auth';
-import * as scrypt from 'scrypt-js';
 
 // 更新用户状态
 export async function PUT(request: Request) {
@@ -34,31 +33,13 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: false, error: '分类必须是数组' }, { status: 400 });
       }
       await userService.updateActivatedCategories(userId, value);
-    } else if (action === 'reset_password') {
-      // 获取管理员自定义的密码
-      const { password: newPassword } = body;
-
-      if (!newPassword || typeof newPassword !== 'string') {
-        return NextResponse.json({ success: false, error: '密码不能为空' }, { status: 400 });
+    } else if (action === 'password') {
+      // 修改用户密码
+      const { password } = body;
+      if (!password || typeof password !== 'string' || password.length < 6) {
+        return NextResponse.json({ success: false, error: '密码至少6位' }, { status: 400 });
       }
-
-      if (newPassword.length < 6) {
-        return NextResponse.json({ success: false, error: '密码长度至少6位' }, { status: 400 });
-      }
-
-      // 使用管理员提供的密码
-      const passwordBuffer = Buffer.from(newPassword);
-      const saltBuffer = Buffer.from(userId.slice(0, 16).padEnd(16, '0'));
-      const hashBuffer = await scrypt.scrypt(passwordBuffer, saltBuffer, 16384, 8, 1, 64);
-      const hashedPassword = Buffer.from(hashBuffer).toString('hex');
-
-      await userService.updateUserPassword(userId, hashedPassword);
-      await userService.updateForcePasswordChange(userId, true);
-
-      return NextResponse.json({
-        success: true,
-        message: '密码已重置，用户下次登录时需要设置新密码'
-      });
+      await userService.updateUserPassword(userId, password);
     } else {
       return NextResponse.json({ success: false, error: '未知的操作' }, { status: 400 });
     }

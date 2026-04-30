@@ -43,7 +43,6 @@ import {
   Trash2,
   RefreshCw,
   Key,
-  KeyRound,
   Clock,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -76,11 +75,10 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<{ userId: string; phone: string } | null>(null);
-  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
-  const [resetPasswordValue, setResetPasswordValue] = useState('');
 
   // 检查管理员登录状态
   useEffect(() => {
@@ -212,50 +210,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleResetPassword = async (userId: string, phone: string) => {
-    setResetPasswordConfirm({ userId, phone });
-  };
-
-  const confirmResetPassword = async () => {
-    if (!resetPasswordConfirm) return;
-    
-    // 验证密码
-    if (!resetPasswordValue || resetPasswordValue.length < 6) {
-      alert('密码不能为空且至少6位');
-      return;
-    }
-    
-    setResetPasswordLoading(true);
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/users/${resetPasswordConfirm.userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-          userId: resetPasswordConfirm.userId, 
-          action: 'reset_password',
-          newPassword: resetPasswordValue 
-        }),
-      });
-      if (response.ok) {
-        alert(`密码已重置成功！\n用户手机号：${resetPasswordConfirm.phone}\n新密码：${resetPasswordValue}\n用户下次登录时需要修改密码。`);
-        setResetPasswordConfirm(null);
-        setResetPasswordValue('');
-      } else {
-        const data = await response.json();
-        alert(`重置密码失败：${data.error || '未知错误'}`);
-      }
-    } catch (error) {
-      console.error('重置密码失败:', error);
-      alert('重置密码失败，请重试');
-    } finally {
-      setResetPasswordLoading(false);
-    }
-  };
-
   const handleDelete = async (userId: string) => {
     if (userId === currentUser?.id) {
       alert('不能删除当前登录的管理员账号');
@@ -297,6 +251,35 @@ export default function UsersPage() {
     } catch (error) {
       console.error('添加用户失败:', error);
       alert('添加用户失败');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser || !newPassword || newPassword.length < 6) {
+      alert('密码至少6位');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${resetPasswordUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId: resetPasswordUser.id, action: 'password', password: newPassword }),
+      });
+      if (response.ok) {
+        setResetPasswordUser(null);
+        setNewPassword('');
+        alert('密码重置成功');
+      } else {
+        const data = await response.json();
+        alert(data.error || '重置密码失败');
+      }
+    } catch (error) {
+      console.error('重置密码失败:', error);
+      alert('重置密码失败');
     }
   };
 
@@ -538,8 +521,8 @@ export default function UsersPage() {
                               <DropdownMenuItem onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')}>
                                 {user.role === 'admin' ? '设为普通用户' : '设为管理员'}
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleResetPassword(user.id, user.phone)}>
-                                <KeyRound className="w-4 h-4 mr-1" />
+                              <DropdownMenuItem onClick={() => setResetPasswordUser(user)}>
+                                <Key className="w-4 h-4 mr-1" />
                                 重置密码
                               </DropdownMenuItem>
                               <DropdownMenuItem 
@@ -656,46 +639,33 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 重置密码确认对话框 */}
-      <Dialog open={!!resetPasswordConfirm} onOpenChange={() => { setResetPasswordConfirm(null); setResetPasswordValue(''); }}>
+      {/* 重置密码对话框 */}
+      <Dialog open={!!resetPasswordUser} onOpenChange={() => setResetPasswordUser(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>重置用户密码</DialogTitle>
+            <DialogTitle>重置密码</DialogTitle>
             <DialogDescription>
-              <span className="block">
-                请设置该用户的新密码。
-              </span>
-              <span className="block mt-2 text-amber-600 font-medium">
-                用户：{resetPasswordConfirm?.phone}
-              </span>
+              为用户 <span className="font-medium">{resetPasswordUser?.phone}</span> 设置新密码
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="reset-password">新密码</Label>
+              <Label htmlFor="new-password">新密码</Label>
               <Input
-                id="reset-password"
+                id="new-password"
                 type="password"
-                placeholder="请输入新密码（至少6位）"
-                value={resetPasswordValue}
-                onChange={(e) => setResetPasswordValue(e.target.value)}
-                minLength={6}
+                placeholder="请输入新密码"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                用户下次登录时需要使用此密码，并会被要求修改密码。
-              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setResetPasswordConfirm(null); setResetPasswordValue(''); }}>
+            <Button variant="outline" onClick={() => setResetPasswordUser(null)}>
               取消
             </Button>
-            <Button 
-              variant="default" 
-              onClick={confirmResetPassword}
-              disabled={resetPasswordLoading || !resetPasswordValue || resetPasswordValue.length < 6}
-            >
-              {resetPasswordLoading ? '重置中...' : '确认重置'}
+            <Button onClick={handleResetPassword} disabled={!newPassword.trim()}>
+              确认重置
             </Button>
           </DialogFooter>
         </DialogContent>

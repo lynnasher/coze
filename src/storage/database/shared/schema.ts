@@ -19,7 +19,6 @@ export const users = pgTable(
     status: varchar("status", { length: 20 }).notNull().default("active"),
     activated_categories: varchar("activated_categories", { length: 1000 }), // JSON array of category IDs
     device_id: varchar("device_id", { length: 100 }), // 当前登录设备ID，用于单设备登录控制
-    force_password_change: boolean("force_password_change").notNull().default(false), // 是否需要强制修改密码（管理员重置密码后）
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     last_login_at: timestamp("last_login_at", { withTimezone: true }),
   },
