@@ -401,6 +401,9 @@ export const bankService = {
         if (parent) {
           parent.children = parent.children || [];
           parent.children.push(question);
+        } else {
+          // 父题不在查询结果中，直接将子题放入 result
+          result.push(question);
         }
       } else {
         result.push(question);

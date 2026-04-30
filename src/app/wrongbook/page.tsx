@@ -22,6 +22,7 @@ import {
   Brain,
   TrendingUp,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
@@ -204,27 +205,96 @@ export default function WrongBookPage() {
     }
   }, []);
 
+  // 记录缺失的题目ID用于调试
+  const [missingQuestionIds, setMissingQuestionIds] = useState<string[]>([]);
+  
   const wrongQuestions = useMemo(() => {
     const wrongIds = getWrongQuestionIds();
     const allQuestions = questionStore.getAll();
     
-    return wrongIds.map(id => {
+    const foundQuestions: Question[] = [];
+    const missingIds: string[] = [];
+    
+    wrongIds.forEach(id => {
       // 优先从本地顶层列表查找
       const localQuestion = allQuestions.find(q => q.id === id);
-      if (localQuestion) return localQuestion;
+      if (localQuestion) {
+        foundQuestions.push(localQuestion);
+        return;
+      }
       
       // 搜索综合题的子题
+      let foundChild: Question | undefined;
       for (const parent of allQuestions) {
         if (parent.children) {
           const child = parent.children.find(c => c.id === id);
-          if (child) return child;
+          if (child) {
+            foundChild = child;
+            break;
+          }
         }
+      }
+      if (foundChild) {
+        foundQuestions.push(foundChild);
+        return;
       }
       
       // 本地没有则从云端缓存查找
-      return cloudQuestions[id];
-    }).filter((q): q is Question => q !== undefined);
-  }, [refreshKey, cloudQuestions]);
+      const cloudQuestion = cloudQuestions[id];
+      if (cloudQuestion) {
+        foundQuestions.push(cloudQuestion);
+        return;
+      }
+      
+      // 记录缺失的题目
+      missingIds.push(id);
+    });
+    
+    // 异步更新缺失题目ID状态（避免在useMemo中直接调用setState）
+    if (missingIds.length > 0 && JSON.stringify(missingIds) !== JSON.stringify(missingQuestionIds)) {
+      setTimeout(() => setMissingQuestionIds(missingIds), 0);
+    } else if (missingIds.length === 0 && missingQuestionIds.length > 0) {
+      setTimeout(() => setMissingQuestionIds([]), 0);
+    }
+    
+    return foundQuestions;
+  }, [refreshKey, cloudQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // 计算预期错题数量（来自getWrongQuestionIds）
+  const expectedWrongCount = useMemo(() => getWrongQuestionIds().length, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const actualWrongCount = wrongQuestions.length; 
+  const hasMissingQuestions = expectedWrongCount > actualWrongCount; 
+  const missingCount = expectedWrongCount - actualWrongCount; 
+  
+  // 检测缺失的题目并从云端获取
+  useEffect(() => {
+    const wrongIds = getWrongQuestionIds();
+    const allQuestions = questionStore.getAll();
+    const localIds = new Set(allQuestions.map(q => q.id));
+    // 同时收集所有子题ID
+    allQuestions.forEach(q => {
+      if (q.children) {
+        q.children.forEach(c => localIds.add(c.id));
+      }
+    });
+    const missingIds = wrongIds.filter(id => !localIds.has(id) && !cloudQuestions[id]);
+    
+    if (missingIds.length > 0) {
+      fetchQuestionsFromCloud(missingIds);
+    }
+  }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps  
+  useEffect(() => {  
+    const wrongIds = getWrongQuestionIds();  
+    if (wrongIds.length > 0) {  
+      console.log('[错题本] 预期错题数量:', wrongIds.length, 'IDs:', wrongIds);  
+      console.log('[错题本] 实际找到数量:', wrongQuestions.length);  
+      if (missingQuestionIds.length > 0) {  
+        console.log('[错题本] 缺失题目ID:', missingQuestionIds);  
+      }  
+    }  
+  }, [wrongQuestions.length, missingQuestionIds]);  
+  
   
   // 检测缺失的题目并从云端获取
   useEffect(() => {
@@ -743,6 +813,41 @@ export default function WrongBookPage() {
               // ===== 方案一：数据仪表盘风格 =====
               const Scheme1 = () => (
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
+                  {/* 数据不一致警告 */}
+                  {hasMissingQuestions && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm text-amber-800">
+                            数据同步中：预期 {expectedWrongCount} 道错题，当前显示 {actualWrongCount} 道
+                            {missingCount > 0 && `（${missingCount} 道题目数据加载中）`}
+                          </p>
+                          <button 
+                            onClick={() => {
+                              // 强制重新同步
+                              const wrongIds = getWrongQuestionIds();
+                              const allQuestions = questionStore.getAll();
+                              const localIds = new Set(allQuestions.map(q => q.id));
+                              allQuestions.forEach(q => {
+                                if (q.children) {
+                                  q.children.forEach(c => localIds.add(c.id));
+                                }
+                              });
+                              const missingIds = wrongIds.filter(id => !localIds.has(id) && !cloudQuestions[id]);
+                              if (missingIds.length > 0) {
+                                fetchQuestionsFromCloud(missingIds);
+                              }
+                              refreshData();
+                            }}
+                            className="text-xs text-amber-700 underline mt-1 hover:text-amber-900"
+                          >
+                            点击刷新
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-4">
                     {/* 左侧：错题总数 */}
                     <div className="flex-1">
