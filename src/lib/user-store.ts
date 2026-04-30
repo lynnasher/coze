@@ -1,3 +1,4 @@
+import { generateToken, hashPassword } from './services/user-service';
 import { User, UserSession } from './types';
 
 // 用户存储 Keys
@@ -9,22 +10,6 @@ const USER_STORAGE_KEYS = {
 // 生成随机 ID
 export const generateUserId = (): string => {
   return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-};
-
-// 生成 Token
-export const generateToken = (): string => {
-  return `token_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
-};
-
-// 简单密码加密（实际生产应使用更安全的方式）
-export const hashPassword = (password: string): string => {
-  // 简单 Base64 编码，实际生产应使用 bcrypt 或类似加密
-  return btoa(password + '_salt_key_2024');
-};
-
-// 验证密码
-export const verifyPassword = (password: string, hashed: string): boolean => {
-  return hashPassword(password) === hashed;
 };
 
 // 用户管理
@@ -172,7 +157,7 @@ export const sessionStore = {
   create: (userId: string): UserSession => {
     const session: UserSession = {
       userId,
-      token: generateToken(),
+      token: generateToken(userId),
       expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 天过期
     };
     sessionStore.save(session);
