@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { userService, hashPassword } from '@/lib/services/user-service';
+import { userService } from '@/lib/services/user-service';
 import { requireAdminAuth } from '@/lib/api-auth';
+import * as scrypt from 'scrypt-js';
 
 // 更新用户状态
 export async function PUT(request: Request) {
@@ -36,9 +37,10 @@ export async function PUT(request: Request) {
     } else if (action === 'reset_password') {
       // 生成一个随机临时密码
       const tempPassword = 'Reset@' + Math.random().toString(36).slice(2, 10);
-      
-      // 使用与登录验证一致的 hashPassword 函数
-      const hashedPassword = hashPassword(tempPassword);
+      const passwordBuffer = Buffer.from(tempPassword);
+      const saltBuffer = Buffer.from(userId.slice(0, 16).padEnd(16, '0'));
+      const hashBuffer = await scrypt.scrypt(passwordBuffer, saltBuffer, 16384, 8, 1, 64);
+      const hashedPassword = Buffer.from(hashBuffer).toString('hex');
 
       await userService.updateUserPassword(userId, hashedPassword);
       await userService.updateForcePasswordChange(userId, true);
