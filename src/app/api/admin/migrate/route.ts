@@ -50,6 +50,38 @@ export async function POST(request: Request) {
       });
     }
 
+    if (operation === 'add_force_password_change') {
+      // 添加 force_password_change 字段到 users 表
+      const client = getSupabaseAdminClient();
+      
+      // 使用 SQL 添加字段
+      const { error } = await client.rpc('exec_sql', {
+        sql: `
+          ALTER TABLE users 
+          ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT FALSE;
+        `
+      });
+
+      if (error) {
+        // 如果 RPC 不存在，尝试直接执行
+        const { error: alterError } = await client.from('users').select('force_password_change').limit(1);
+        
+        if (alterError && alterError.message.includes('force_password_change')) {
+          // 字段不存在，需要添加
+          return NextResponse.json({
+            success: false,
+            error: '请手动在 Supabase 控制台执行以下 SQL：',
+            sql: `ALTER TABLE users ADD COLUMN force_password_change BOOLEAN DEFAULT FALSE;`
+          }, { status: 400 });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'force_password_change 字段添加成功'
+      });
+    }
+
     return NextResponse.json({ 
       success: false, 
       error: '未知的迁移操作' 
@@ -70,14 +102,18 @@ export async function GET() {
     const client = getSupabaseAdminClient();
     
     // 检查 device_id 字段是否存在
-    const { error } = await client.from('users').select('device_id').limit(1);
+    const { error: deviceError } = await client.from('users').select('device_id').limit(1);
+    const deviceIdColumnExists = !deviceError || !deviceError.message.includes('device_id');
     
-    const deviceIdColumnExists = !error || !error.message.includes('device_id');
+    // 检查 force_password_change 字段是否存在
+    const { error: forceError } = await client.from('users').select('force_password_change').limit(1);
+    const forcePasswordChangeExists = !forceError || !forceError.message.includes('force_password_change');
 
     return NextResponse.json({
       success: true,
       migrations: {
-        device_id_column: deviceIdColumnExists
+        device_id_column: deviceIdColumnExists,
+        force_password_change_column: forcePasswordChangeExists
       }
     });
 
