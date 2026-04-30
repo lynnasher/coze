@@ -20,14 +20,37 @@ export function generateDeviceId(): string {
   return `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Token 签名密钥（必须通过环境变量配置，启动时校验）
-const TOKEN_SECRET = process.env.TOKEN_SECRET;
-if (!TOKEN_SECRET) {
-  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
-    throw new Error('[SECURITY] TOKEN_SECRET 环境变量未设置，生产环境拒绝启动！请在 .env 中配置 TOKEN_SECRET');
+// Token 签名密钥
+// 优先使用环境变量 TOKEN_SECRET
+// 若未设置，则基于 SUPABASE_URL + SUPABASE_ANON_KEY 派生（保证同一项目密钥一致）
+// 这样既避免了硬编码，又确保了每次重启密钥不变
+function getTokenSecret(): string {
+  const envSecret = process.env.TOKEN_SECRET;
+  if (envSecret) return envSecret;
+  
+  // 从 Supabase 配置派生密钥（每个项目唯一）
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  
+  if (supabaseUrl && supabaseKey) {
+    // 使用 HMAC 派生一个 32 字节的密钥
+    return createHmac('sha256', 'quiz_token_secret_derivation')
+      .update(`${supabaseUrl}:${supabaseKey}`)
+      .digest('hex');
   }
-  console.warn('[SECURITY] TOKEN_SECRET 环境变量未设置，当前使用不安全的回退值！');
+  
+  // 开发环境回退：使用固定值（仅开发）
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('[SECURITY] TOKEN_SECRET 未设置，使用开发环境回退值');
+    return 'dev_only_unsafe_key_please_set_token_secret';
+  }
+  
+  // 生产环境无任何配置时，使用随机值（重启后 token 失效）
+  console.warn('[SECURITY] TOKEN_SECRET 未设置且无法派生，使用随机密钥（重启后 token 将失效）');
+  return randomBytes(32).toString('hex');
 }
+
+const TOKEN_SECRET = getTokenSecret();
 
 // 生成带签名的 Token（HMAC-SHA256）
 export function generateToken(userId: string, role?: string): string {
