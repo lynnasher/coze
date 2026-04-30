@@ -20,6 +20,7 @@ interface StoredUser {
   nickname?: string;
   role: string;
   activated_categories: string[];
+  force_password_change?: boolean;
 }
 
 export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) {
@@ -31,6 +32,10 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // 强制修改密码状态
+  const [forceChangePassword, setForceChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   // 跟踪组件是否已挂载
   const isMountedRef = useRef(true);
@@ -109,6 +114,14 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           if (data.deviceId) {
             localStorage.setItem(DEVICE_KEY, data.deviceId);
           }
+          
+          // 检查是否需要强制修改密码
+          if (data.user.force_password_change) {
+            setForceChangePassword(true);
+            setLoading(false);
+            return;
+          }
+          
           onOpenChange(false);
           onAuthChange?.();
           // 通知其他组件用户状态变化
@@ -197,15 +210,109 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
     setCountdown(0);
   };
 
+  // 处理强制修改密码
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (newPassword.length < 6) {
+      setError('新密码长度不能少于6位');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('两次输入的密码不一致');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          oldPassword: password,
+          newPassword 
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        // 更新本地用户信息
+        const userStr = localStorage.getItem(USER_KEY);
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          user.force_password_change = false;
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
+        }
+        setForceChangePassword(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        onOpenChange(false);
+        onAuthChange?.();
+        window.dispatchEvent(new Event('user-auth-change'));
+      } else {
+        setError(data.error || '修改密码失败');
+      }
+    } catch {
+      setError('网络错误，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-center">
-            {mode === 'login' ? '登录账号' : '注册账号'}
+            {forceChangePassword ? '修改密码' : (mode === 'login' ? '登录账号' : '注册账号')}
           </DialogTitle>
         </DialogHeader>
-
+        
+        {/* 强制修改密码界面 */}
+        {forceChangePassword ? (
+          <form onSubmit={handleChangePassword} className="space-y-4 mt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+              <p>管理员已重置您的密码，请先设置新密码</p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">新密码</label>
+              <Input
+                type="password"
+                placeholder="请输入新密码"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                minLength={6}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">确认密码</label>
+              <Input
+                type="password"
+                placeholder="请再次输入新密码"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                minLength={6}
+                required
+                className="rounded-xl"
+              />
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <Button 
+              type="submit" 
+              className="w-full rounded-xl"
+              disabled={loading}
+            >
+              {loading ? '提交中...' : '确认修改'}
+            </Button>
+          </form>
+        ) : (
         <Tabs value={mode} onValueChange={(v) => { setMode(v as 'login' | 'register'); resetForm(); }} className="w-full">
           <TabsList className="grid w-full grid-cols-2 rounded-xl">
             <TabsTrigger value="login">登录</TabsTrigger>
@@ -317,6 +424,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
             </form>
           </TabsContent>
         </Tabs>
+        )}
       </DialogContent>
     </Dialog>
   );

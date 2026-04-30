@@ -43,6 +43,7 @@ import {
   Trash2,
   RefreshCw,
   Key,
+  KeyRound,
   Clock,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -77,6 +78,8 @@ export default function UsersPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<{ userId: string; phone: string } | null>(null);
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
 
   // 检查管理员登录状态
   useEffect(() => {
@@ -205,6 +208,38 @@ export default function UsersPage() {
       }
     } catch (error) {
       console.error('更新分类失败:', error);
+    }
+  };
+
+  const handleResetPassword = async (userId: string, phone: string) => {
+    setResetPasswordConfirm({ userId, phone });
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetPasswordConfirm) return;
+    setResetPasswordLoading(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${resetPasswordConfirm.userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId: resetPasswordConfirm.userId, action: 'reset_password' }),
+      });
+      if (response.ok) {
+        alert(`密码已重置成功！\n用户手机号：${resetPasswordConfirm.phone}\n临时密码：123456\n用户下次登录时需要修改密码。`);
+        setResetPasswordConfirm(null);
+      } else {
+        const data = await response.json();
+        alert(`重置密码失败：${data.error || '未知错误'}`);
+      }
+    } catch (error) {
+      console.error('重置密码失败:', error);
+      alert('重置密码失败，请重试');
+    } finally {
+      setResetPasswordLoading(false);
     }
   };
 
@@ -490,6 +525,10 @@ export default function UsersPage() {
                               <DropdownMenuItem onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')}>
                                 {user.role === 'admin' ? '设为普通用户' : '设为管理员'}
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleResetPassword(user.id, user.phone)}>
+                                <KeyRound className="w-4 h-4 mr-1" />
+                                重置密码
+                              </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => setDeleteConfirm(user.id)}
                                 className="text-red-600"
@@ -599,6 +638,38 @@ export default function UsersPage() {
             </Button>
             <Button variant="destructive" onClick={() => handleDelete(deleteConfirm!)}>
               删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 重置密码确认对话框 */}
+      <Dialog open={!!resetPasswordConfirm} onOpenChange={() => setResetPasswordConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>确认重置密码</DialogTitle>
+            <DialogDescription>
+              <span className="block">
+                确定要重置该用户的密码吗？
+              </span>
+              <span className="block mt-2 text-amber-600 font-medium">
+                用户：{resetPasswordConfirm?.phone}
+              </span>
+              <span className="block mt-1 text-muted-foreground text-sm">
+                重置后临时密码为 <strong>123456</strong>，用户下次登录时需要修改密码。
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPasswordConfirm(null)}>
+              取消
+            </Button>
+            <Button 
+              variant="default" 
+              onClick={confirmResetPassword}
+              disabled={resetPasswordLoading}
+            >
+              {resetPasswordLoading ? '重置中...' : '确认重置'}
             </Button>
           </DialogFooter>
         </DialogContent>

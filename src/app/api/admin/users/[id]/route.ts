@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { userService } from '@/lib/services/user-service';
 import { requireAdminAuth } from '@/lib/api-auth';
+import * as scrypt from 'scrypt-js';
 
 // 更新用户状态
 export async function PUT(request: Request) {
@@ -33,6 +34,22 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: false, error: '分类必须是数组' }, { status: 400 });
       }
       await userService.updateActivatedCategories(userId, value);
+    } else if (action === 'reset_password') {
+      // 生成一个随机临时密码
+      const tempPassword = 'Reset@' + Math.random().toString(36).slice(2, 10);
+      const passwordBuffer = Buffer.from(tempPassword);
+      const saltBuffer = Buffer.from(userId.slice(0, 16).padEnd(16, '0'));
+      const hashBuffer = await scrypt.scrypt(passwordBuffer, saltBuffer, 16384, 8, 1, 64);
+      const hashedPassword = Buffer.from(hashBuffer).toString('hex');
+
+      await userService.updateUserPassword(userId, hashedPassword);
+      await userService.updateForcePasswordChange(userId, true);
+
+      return NextResponse.json({
+        success: true,
+        tempPassword,
+        message: '密码已重置，用户下次登录时需要设置新密码'
+      });
     } else {
       return NextResponse.json({ success: false, error: '未知的操作' }, { status: 400 });
     }

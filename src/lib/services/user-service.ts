@@ -11,6 +11,7 @@ export interface DbUser {
   status: string;
   activated_categories: string | null;
   device_id: string | null;
+  force_password_change: boolean | null;
   created_at: string;
   last_login_at: string | null;
 }
@@ -360,6 +361,26 @@ export const userService = {
       activated_at: string;
       expires_at: string | null;
     }>;
+  },
+
+  // 更新用户密码
+  async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
+    const client = getSupabaseAdminClient();
+    const { error } = await client
+      .from('users')
+      .update({ password: hashedPassword })
+      .eq('id', userId);
+    if (error) throw new Error(`更新密码失败: ${error.message}`);
+  },
+
+  // 更新是否需要强制修改密码
+  async updateForcePasswordChange(userId: string, forceChange: boolean): Promise<void> {
+    const client = getSupabaseAdminClient();
+    const { error } = await client
+      .from('users')
+      .update({ force_password_change: forceChange })
+      .eq('id', userId);
+    if (error) throw new Error(`更新强制修改密码状态失败: ${error.message}`);
   },
 };
 
