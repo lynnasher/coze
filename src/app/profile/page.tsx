@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Copy } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Copy, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { getCurrentUser } from '@/components/AuthModal';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
@@ -62,6 +65,15 @@ export default function ProfilePage() {
   const [activationLoading, setActivationLoading] = useState(false);
   const [activationError, setActivationError] = useState('');
   const [activationSuccess, setActivationSuccess] = useState('');
+
+  // 修改密码相关状态
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -258,6 +270,60 @@ export default function ProfilePage() {
     return expireDate.toLocaleDateString();
   };
 
+  // 修改密码
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordError('请填写所有密码字段');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的新密码不一致');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('新密码长度至少6位');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const token = localStorage.getItem('quiz_user_token');
+      const response = await fetch('/api/auth/user/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPasswordError(data.error || '修改密码失败');
+        return;
+      }
+
+      setPasswordSuccess('密码修改成功');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setPasswordSuccess('');
+      }, 2000);
+    } catch {
+      setPasswordError('网络错误，请重试');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   // 获取分类对应的激活码信息
   const getActivationForCategory = (categoryId: string): UserActivation | undefined => {
     return userActivations.find(a => a.category_id === categoryId);
@@ -332,13 +398,82 @@ export default function ProfilePage() {
                   <Badge variant="secondary" className="mt-0.5 text-xs">管理员</Badge>
                 )}
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-xl font-bold text-orange-500">{userActivations.length}</div>
-                <p className="text-xs text-gray-400">已激活</p>
+              <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
+                <div>
+                  <div className="text-xl font-bold text-orange-500">{userActivations.length}</div>
+                  <p className="text-xs text-gray-400">已激活</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowChangePassword(true)}
+                  className="text-xs h-7 px-2"
+                >
+                  <Key className="w-3 h-3 mr-1" />
+                  修改密码
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* 修改密码对话框 */}
+        <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>修改密码</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label className="text-sm">原密码</Label>
+                <Input
+                  type="password"
+                  placeholder="请输入原密码"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">新密码</Label>
+                <Input
+                  type="password"
+                  placeholder="请输入新密码（至少6位）"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">确认新密码</Label>
+                <Input
+                  type="password"
+                  placeholder="请再次输入新密码"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              {passwordError && (
+                <Alert variant="destructive" className="py-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="text-xs">{passwordError}</AlertDescription>
+                </Alert>
+              )}
+              {passwordSuccess && (
+                <Alert className="py-2 border-green-500 text-green-700">
+                  <Check className="h-4 w-4" />
+                  <AlertDescription className="text-xs">{passwordSuccess}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowChangePassword(false)} size="sm">
+                取消
+              </Button>
+              <Button onClick={handleChangePassword} disabled={passwordLoading} size="sm">
+                {passwordLoading ? '修改中...' : '确认修改'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* 激活码激活 - 紧凑卡片 */}
         <Card className="mb-4">

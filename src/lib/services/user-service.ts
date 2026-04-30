@@ -347,6 +347,14 @@ export const userService = {
     if (error) throw new Error(`删除用户失败: ${error.message}`);
   },
 
+  // 用户修改自己的密码
+  async changePassword(userId: string, newPassword: string): Promise<void> {
+    const client = getSupabaseClient();
+    const hashedPassword = hashPassword(newPassword);
+    const { error } = await client.from('users').update({ password: hashedPassword }).eq('id', userId);
+    if (error) throw new Error(`修改密码失败: ${error.message}`);
+  },
+
   // 获取用户的激活记录
   async getUserActivationCodes(userId: string): Promise<Array<{
     id: string;
