@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken, userService } from '@/lib/services/user-service';
-import scrypt from 'scrypt-js';
+import { verifyToken, userService, hashPassword } from '@/lib/services/user-service';
 
 export async function POST(request: Request) {
   try {
@@ -28,11 +27,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '无权修改他人密码' }, { status: 403 });
     }
 
-    // 加密新密码
-    const passwordBuffer = Buffer.from(newPassword, 'utf8');
-    const saltBuffer = Buffer.from('salt', 'utf8');
-    const hashBuffer = await scrypt.scrypt(passwordBuffer, saltBuffer, 16384, 8, 1, 64);
-    const hashedPassword = Buffer.from(hashBuffer).toString('hex');
+    // 使用与登录验证一致的 hashPassword 函数加密新密码
+    const hashedPassword = hashPassword(newPassword);
 
     // 更新密码并重置 force_password_change
     await userService.updateUserPassword(targetUserId, hashedPassword);
