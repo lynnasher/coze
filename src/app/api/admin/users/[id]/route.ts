@@ -35,9 +35,19 @@ export async function PUT(request: Request) {
       }
       await userService.updateActivatedCategories(userId, value);
     } else if (action === 'reset_password') {
-      // 生成一个随机临时密码
-      const tempPassword = 'Reset@' + Math.random().toString(36).slice(2, 10);
-      const passwordBuffer = Buffer.from(tempPassword);
+      // 获取管理员自定义的密码
+      const { password: newPassword } = body;
+
+      if (!newPassword || typeof newPassword !== 'string') {
+        return NextResponse.json({ success: false, error: '密码不能为空' }, { status: 400 });
+      }
+
+      if (newPassword.length < 6) {
+        return NextResponse.json({ success: false, error: '密码长度至少6位' }, { status: 400 });
+      }
+
+      // 使用管理员提供的密码
+      const passwordBuffer = Buffer.from(newPassword);
       const saltBuffer = Buffer.from(userId.slice(0, 16).padEnd(16, '0'));
       const hashBuffer = await scrypt.scrypt(passwordBuffer, saltBuffer, 16384, 8, 1, 64);
       const hashedPassword = Buffer.from(hashBuffer).toString('hex');
@@ -47,7 +57,6 @@ export async function PUT(request: Request) {
 
       return NextResponse.json({
         success: true,
-        tempPassword,
         message: '密码已重置，用户下次登录时需要设置新密码'
       });
     } else {
