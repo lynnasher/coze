@@ -599,7 +599,7 @@ function QuizPageContent() {
           <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
             <BookOpen className="w-8 h-8 text-slate-400" />
           </div>
-          <p className="text-slate-500 mb-4">暂无题目</p>
+          <p className="text-slate-500 mb-4">题目加载中^_^</p>
           <Button onClick={() => router.push('/')} variant="outline" className="rounded-xl">
             返回首页
           </Button>

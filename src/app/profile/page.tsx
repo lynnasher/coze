@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LogOut, BookOpen, Settings, ChevronRight, UserCircle, Key, Check, Copy, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { getCurrentUser } from '@/components/AuthModal';
+import { getCurrentUser, clearUserCache } from '@/components/AuthModal';
+import { STORAGE_KEYS } from '@/lib/constants';
 interface StoredUser {
   id: string;
   phone: string;
@@ -213,13 +214,22 @@ export default function ProfilePage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('quiz_user_token');
-    localStorage.removeItem('quiz_user_data');
-    // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
-    localStorage.removeItem('quiz_records');
-    localStorage.removeItem('quiz_wrong_streak');
-    localStorage.removeItem('quiz_recent_practice');
-    window.location.href = '/';
+    // 清除 Token
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    // 清除用户数据
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    // 清除用户缓存
+    clearUserCache();
+    // 清除答题记录和错题数据（避免切换账号时看到之前用户的数据）
+    localStorage.removeItem(STORAGE_KEYS.RECORDS);
+    localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);
+    localStorage.removeItem(STORAGE_KEYS.RECENT_PRACTICE);
+    
+    // 触发事件通知其他组件
+    window.dispatchEvent(new Event('user-auth-change'));
+    
+    // 刷新页面
+    window.location.reload();
   };
 
   const getCategoryQuestionCount = (categoryId: string) => {
