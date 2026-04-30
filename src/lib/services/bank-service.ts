@@ -9,7 +9,7 @@ export interface DbQuestionBank {
   source_file: string | null;
   question_count: number;
   category_id: string | null;
-  status: string; // active=正常, disabled=隐藏
+  status: string;
   created_at: string;
   updated_at: string;
 }
@@ -90,25 +90,13 @@ export const bankService = {
     return data as DbQuestionBank;
   },
 
-  // 获取所有题库（后台用，包括隐藏的）
+  // 获取所有题库
   async getAllBanks(): Promise<DbQuestionBank[]> {
     const client = getSupabaseClient();
     const { data, error } = await client
       .from('question_banks')
       .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw new Error(`获取题库列表失败: ${error.message}`);
-    return (data || []) as DbQuestionBank[];
-  },
-
-  // 获取前台可见题库（排除隐藏的）
-  async getVisibleBanks(): Promise<DbQuestionBank[]> {
-    const client = getSupabaseClient();
-    const { data, error } = await client
-      .from('question_banks')
-      .select('*')
-      .neq('status', 'disabled') // 排除已禁用的（隐藏）题库
+      .neq('status', 'disabled') // 排除已禁用的题库
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`获取题库列表失败: ${error.message}`);
@@ -165,7 +153,7 @@ export const bankService = {
   // 更新题库（名称、分类等）
   async updateBank(
     id: string,
-    updates: { name?: string; categoryId?: string | null; description?: string; status?: string }
+    updates: { name?: string; categoryId?: string | null; description?: string }
   ): Promise<DbQuestionBank> {
     const client = getSupabaseClient();
     
@@ -181,9 +169,6 @@ export const bankService = {
     }
     if (updates.description !== undefined) {
       updateData.description = updates.description;
-    }
-    if (updates.status !== undefined) {
-      updateData.status = updates.status;
     }
 
     const { data, error } = await client

@@ -58,7 +58,6 @@ export interface QuestionBank {
   createdAt: number;
   updatedAt: number;
   totalQuestions?: number; // 缓存的题目数量
-  hidden?: boolean; // 是否隐藏（后台控制，隐藏后前台不显示）
 }
 
 export interface Category {
