@@ -250,19 +250,23 @@ export default function WrongBookPage() {
       missingIds.push(id);
     });
     
-    // 异步更新缺失题目ID状态（避免在useMemo中直接调用setState）
-    if (missingIds.length > 0 && JSON.stringify(missingIds) !== JSON.stringify(missingQuestionIds)) {
-      setTimeout(() => setMissingQuestionIds(missingIds), 0);
-    } else if (missingIds.length === 0 && missingQuestionIds.length > 0) {
-      setTimeout(() => setMissingQuestionIds([]), 0);
-    }
-    
-    return foundQuestions;
+    // 返回找到的题目和缺失ID列表（通过ref传递，避免useMemo中的副作用）
+    return { questions: foundQuestions, missingIds };
   }, [refreshKey, cloudQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
+  
+  // 更新缺失题目ID状态（在useEffect中执行）
+  useEffect(() => {
+    if (wrongQuestions.missingIds.length > 0 || missingQuestionIds.length > 0) {
+      const newMissing = wrongQuestions.missingIds;
+      if (JSON.stringify(newMissing) !== JSON.stringify(missingQuestionIds)) {
+        setMissingQuestionIds(newMissing);
+      }
+    }
+  }, [wrongQuestions.missingIds, missingQuestionIds]);
   
   // 计算预期错题数量（来自getWrongQuestionIds）
   const expectedWrongCount = useMemo(() => getWrongQuestionIds().length, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const actualWrongCount = wrongQuestions.length; 
+  const actualWrongCount = wrongQuestions.questions.length; 
   const hasMissingQuestions = expectedWrongCount > actualWrongCount; 
   const missingCount = expectedWrongCount - actualWrongCount; 
   
@@ -283,17 +287,17 @@ export default function WrongBookPage() {
       fetchQuestionsFromCloud(missingIds);
     }
   }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]); 
-  // eslint-disable-next-line react-hooks/exhaustive-deps  
+  // eslint-disable-line react-hooks/exhaustive-deps  
   useEffect(() => {  
     const wrongIds = getWrongQuestionIds();  
     if (wrongIds.length > 0) {  
       console.log('[错题本] 预期错题数量:', wrongIds.length, 'IDs:', wrongIds);  
-      console.log('[错题本] 实际找到数量:', wrongQuestions.length);  
+      console.log('[错题本] 实际找到数量:', wrongQuestions.questions.length);  
       if (missingQuestionIds.length > 0) {  
         console.log('[错题本] 缺失题目ID:', missingQuestionIds);  
       }  
     }  
-  }, [wrongQuestions.length, missingQuestionIds]);  
+  }, [wrongQuestions.questions.length, missingQuestionIds]);  
   
   
   // 检测缺失的题目并从云端获取
@@ -315,7 +319,7 @@ export default function WrongBookPage() {
   }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]);
 
   const filteredQuestions = useMemo(() => {
-    let result = wrongQuestions;
+    let result = wrongQuestions.questions;
     if (bankFilter !== 'all') {
       result = result.filter(q => q.bankId === bankFilter);
     }
@@ -323,7 +327,7 @@ export default function WrongBookPage() {
       result = result.filter(q => q.type === typeFilter);
     }
     return result;
-  }, [wrongQuestions, typeFilter, bankFilter]);
+  }, [wrongQuestions.questions, typeFilter, bankFilter]);
 
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
   const paginatedQuestions = useMemo(() => {
@@ -335,11 +339,11 @@ export default function WrongBookPage() {
 
   const typeCounts = useMemo(() => {
     // 根据当前题库筛选计算题型数量
-    const base = bankFilter === 'all' ? wrongQuestions : wrongQuestions.filter(q => q.bankId === bankFilter);
+    const base = bankFilter === 'all' ? wrongQuestions.questions : wrongQuestions.questions.filter(q => q.bankId === bankFilter);
     const counts: Record<string, number> = { all: base.length };
     base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
     return counts;
-  }, [wrongQuestions, bankFilter]);
+  }, [wrongQuestions.questions, bankFilter]);
 
   // 按题库分类统计
   const bankCounts = useMemo(() => {
@@ -347,7 +351,7 @@ export default function WrongBookPage() {
     
     // 先收集所有有错题的题库
     const bankMap = new Map<string, number>();
-    wrongQuestions.forEach(q => {
+    wrongQuestions.questions.forEach(q => {
       if (q.bankId) {
         bankMap.set(q.bankId, (bankMap.get(q.bankId) || 0) + 1);
       }
@@ -778,7 +782,7 @@ export default function WrongBookPage() {
         )}
 
         {/* 无错题 */}
-        {currentUser && mounted && !isSyncing && wrongQuestions.length === 0 && (
+        {currentUser && mounted && !isSyncing && wrongQuestions.questions.length === 0 && (
           <div className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
               <Check className="w-7 h-7 text-white" />
@@ -792,13 +796,13 @@ export default function WrongBookPage() {
         )}
 
         {/* 有错题 */}
-        {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
+        {currentUser && mounted && !isSyncing && wrongQuestions.questions.length > 0 && (
           <>
             {/* ========== 错题本卡片方案选择 ========== */}
             {(() => {
               // 计算统计数据
-              const totalWrong = wrongQuestions.length;
-              const masteredCount = wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
+              const totalWrong = wrongQuestions.questions.length;
+              const masteredCount = wrongQuestions.questions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
               const needReviewCount = totalWrong - masteredCount;
               const masteryRate = totalWrong > 0 ? Math.round((masteredCount / totalWrong) * 100) : 0;
               
@@ -917,7 +921,7 @@ export default function WrongBookPage() {
                       <SelectValue placeholder="全部题库" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">全部题库 ({wrongQuestions.length})</SelectItem>
+                      <SelectItem value="all">全部题库 ({wrongQuestions.questions.length})</SelectItem>
                       {bankCounts.map(bank => (
                         <SelectItem key={bank.id} value={bank.id}>
                           {bank.name} ({bank.count})
