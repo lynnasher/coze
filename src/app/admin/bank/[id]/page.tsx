@@ -989,6 +989,17 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                             className="h-7 text-sm flex-1"
                           />
                         </div>
+                        
+                        {/* 子题解析 */}
+                        <div className="mt-2">
+                          <Textarea
+                            value={child.explanation || ''}
+                            onChange={(e) => updateChildQuestion(index, { explanation: e.target.value })}
+                            placeholder="请输入子题解析（可选）..."
+                            rows={2}
+                            className="text-sm"
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
