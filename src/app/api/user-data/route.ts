@@ -42,13 +42,23 @@ export async function GET(request: Request) {
 // 保存用户数据
 export async function POST(request: Request) {
   try {
-    const { userId } = verifyApiToken(request);
+    // 先尝试从 header/URL 验证 token
+    let { userId } = verifyApiToken(request);
+    const body = await request.json();
+    
+    // sendBeacon 场景：token 在 body 中而非 header
+    if (!userId && body.token) {
+      const { verifyToken } = await import('@/lib/services/user-service');
+      const result = verifyToken(body.token);
+      if (result.userId && !result.expired) {
+        userId = result.userId;
+      }
+    }
     
     if (!userId) {
       return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });
     }
 
-    const body = await request.json();
     const { practiceHistory, wrongQuestions, recentlyPracticed, streakData } = body;
 
     // 验证数据格式

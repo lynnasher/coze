@@ -9,7 +9,7 @@ import type { NextRequest } from 'next/server';
 // - 验证请求频率
 // - 其他服务端安全检查
 
-export function middleware(request: NextRequest) {
+export function middleware(_request: NextRequest) {
   return NextResponse.next();
 }
 

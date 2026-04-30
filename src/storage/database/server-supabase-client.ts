@@ -90,35 +90,35 @@ function getSupabaseServiceRoleKey(): string | undefined {
   return process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
 }
 
-function getSupabaseClient(token?: string): SupabaseClient {
-  const { url, anonKey } = getSupabaseCredentials();
+// 模块级单例缓存，避免每次请求重建连接
+let defaultClientCache: SupabaseClient | null = null;
 
+function getSupabaseClient(token?: string): SupabaseClient {
+  // 无 token 时复用默认单例
+  if (!token && defaultClientCache) return defaultClientCache;
+
+  const { url, anonKey } = getSupabaseCredentials();
   const key = token ? (getSupabaseServiceRoleKey() ?? anonKey) : anonKey;
 
+  const options: Parameters<typeof createClient>[2] = {
+    db: { timeout: 60000 },
+    auth: { autoRefreshToken: false, persistSession: false },
+  };
+
   if (token) {
-    return createClient(url, key, {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-      db: {
-        timeout: 60000,
-      },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    options.global = {
+      headers: { Authorization: `Bearer ${token}` },
+    };
   }
 
-  return createClient(url, key, {
-    db: {
-      timeout: 60000,
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  const client = createClient(url, key, options);
+
+  // 缓存无 token 的默认客户端
+  if (!token) {
+    defaultClientCache = client;
+  }
+
+  return client;
 }
 
 export { loadEnv, getSupabaseCredentials, getSupabaseServiceRoleKey, getSupabaseClient };

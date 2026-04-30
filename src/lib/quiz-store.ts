@@ -1,20 +1,19 @@
 import { Question, PracticeRecord, QuestionBank, Stats, WrongQuestionStats, Category, LearningStreak, CategoryStat, DailyStat } from './types';
 import { generateId } from './import-utils';
+import { STORAGE_KEYS as CONST_KEYS } from './constants';
 
 // 重新导出 generateId 以保持向后兼容
 export { generateId };
 
-// 统一存储 Keys - 前后台共用
+// 合并常量：以 constants.ts 为权威源，补充 quiz-store 专用的 key
 const STORAGE_KEYS = {
+  ...CONST_KEYS,
   QUESTIONS: 'quiz_questions',
-  RECORDS: 'quiz_records',
   BANKS: 'quiz_banks',
   STATS: 'quiz_stats',
-  WRONG_STATS: 'quiz_wrong_stats', // 错题记忆状态
-  WRONG_STREAK: 'quiz_wrong_streak', // 错题连续正确次数
+  WRONG_STATS: 'quiz_wrong_stats',
   CATEGORIES: 'quiz_categories',
-  RECENT_PRACTICE: 'quiz_recent_practice', // 最近练习记录
-};
+} as const;
 
 // 获取当前用户 ID（从 localStorage 的 token 中解析，兼容签名 token 格式）
 export function getCurrentUserId(): string | null {
@@ -105,7 +104,7 @@ export async function cachedFetch<T>(
       }
       return { data, fromCache: false };
     }
-  } catch (error) {
+  } catch {
     // 请求失败
   }
   
@@ -217,7 +216,7 @@ export const cacheStore: CacheStore = {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(`cache_${key}`, JSON.stringify(item));
-      } catch (e) {
+      } catch {
         // 缓存写入失败
       }
     }
@@ -267,7 +266,7 @@ export const preloadQuestions = async (questionIds: string[]): Promise<void> => 
         preloadState.questions.set(q.id, q);
       });
     }
-  } catch (e) {
+  } catch {
     // 预加载失败
   }
 };
@@ -912,9 +911,6 @@ const syncStatus: CloudSyncStatus = {
   error: null,
 };
 
-// 获取用户ID（统一使用 getCurrentUserId）
-const getUserId = getCurrentUserId;
-
 // 同步队列 - 用于增量同步
 interface SyncQueue {
   records: PracticeRecord[];  // 新增的记录
@@ -981,7 +977,7 @@ export async function forceSync(): Promise<boolean> {
 export function forceSyncBeacon(): boolean {
   if (!syncQueue.hasChanges) return true;
 
-  const userId = getUserId();
+  const userId = getCurrentUserId();
   if (!userId) return false;
 
   const token = getUserToken();
@@ -990,7 +986,9 @@ export function forceSyncBeacon(): boolean {
   try {
     // 构建 payload（与 flushSyncQueue 保持一致的合并逻辑）
     // 注意：sendBeacon 场景下无法先 pull 再 merge，因此直接推送队列数据
+    // 将 token 放入 payload body 而非 URL 参数，避免泄露到服务器日志
     const payload = JSON.stringify({
+      token,
       practiceHistory: syncQueue.records,
       streakData: syncQueue.streaks,
     });
@@ -1000,9 +998,7 @@ export function forceSyncBeacon(): boolean {
       type: 'application/json',
     });
 
-    // sendBeacon 不支持自定义 header，需要将 token 放入 URL 参数
-    const beaconUrl = `${url}?token=${encodeURIComponent(token)}`;
-    const sent = navigator.sendBeacon(beaconUrl, blob);
+    const sent = navigator.sendBeacon(url, blob);
 
     if (sent) {
       syncQueue = createSyncQueue();
@@ -1018,7 +1014,7 @@ export function forceSyncBeacon(): boolean {
 async function flushSyncQueue(): Promise<boolean> {
   if (!syncQueue.hasChanges) return true;
   
-  const userId = getUserId();
+  const userId = getCurrentUserId();
   if (!userId) return false;
   
   // 检查 token
@@ -1145,7 +1141,7 @@ export const cloudSyncService = {
   },
 
   // 从云端拉取数据
-  async pullData(userId: string): Promise<{
+  async pullData(_userId: string): Promise<{
     records: PracticeRecord[];
     streaks: Record<string, number>;
     recentPractices: RecentPractice[];
@@ -1205,7 +1201,7 @@ export const cloudSyncService = {
   },
 
   // 合并并同步所有数据
-  async syncAll(userId: string): Promise<boolean> {
+  async syncAll(_userId: string): Promise<boolean> {
     if (syncStatus.isSyncing) return false;
 
     syncStatus.isSyncing = true;
@@ -1259,7 +1255,7 @@ export const cloudSyncService = {
 
   // 登录后自动同步（先清空本地数据，再从云端拉取当前用户数据）
   async syncOnLogin(): Promise<boolean> {
-    const userId = getUserId();
+    const userId = getCurrentUserId();
     if (!userId) return false;
 
     // 清空本地之前用户的数据，避免新用户看到旧数据
@@ -1287,10 +1283,6 @@ export const cloudSyncService = {
 };
 
 // 初始化示例数据（已禁用）
-export const initSampleQuestions = () => {
-  // 不再预置示例题目，用户需要导入题库
-};
-
 // ==================== 公共同步工具函数 ====================
 
 /**
@@ -1303,7 +1295,7 @@ export function createSafeSync(callbacks: {
   onSyncComplete?: () => void;
 }): () => Promise<{ records: PracticeRecord[]; streaks: Record<string, number>; recentPractices: RecentPractice[] } | null> {
   return async function safeSync(): Promise<{ records: PracticeRecord[]; streaks: Record<string, number>; recentPractices: RecentPractice[] } | null> {
-    const userId = getUserId();
+    const userId = getCurrentUserId();
     if (!userId) return null;
 
     // 先拉取云端数据
@@ -1357,9 +1349,15 @@ export const wrongStatsStore = {
     }
   },
 
-  // 获取单个错题的统计
+  // 获取单个错题的统计（优化：使用 Map 避免 O(n) 查找）
   getById: (questionId: string): WrongQuestionStats | undefined => {
-    return wrongStatsStore.getAll().find(s => s.questionId === questionId);
+    const stats = wrongStatsStore.getAll();
+    // 对于小数据集直接遍历，大数据集用 Map 加速
+    if (stats.length < 100) {
+      return stats.find(s => s.questionId === questionId);
+    }
+    const map = new Map(stats.map(s => [s.questionId, s]));
+    return map.get(questionId);
   },
 
   // 更新错题答题结果

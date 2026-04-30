@@ -18,42 +18,40 @@ function getSupabaseConfig(): { url: string; anonKey: string; serviceRoleKey?: s
   return { url, anonKey, serviceRoleKey };
 }
 
+// 模块级单例缓存，避免每次请求重建连接
+let adminClientCache: SupabaseClient | null = null;
+let defaultClientCache: SupabaseClient | null = null;
+
 // 获取客户端（用于管理员操作，绕过 RLS）
 function getSupabaseAdminClient(): SupabaseClient {
+  if (adminClientCache) return adminClientCache;
+
   const { url, anonKey, serviceRoleKey } = getSupabaseConfig();
-  
-  // 优先使用 service role key（绕过 RLS）
   const key = serviceRoleKey || anonKey;
 
-  return createClient(url, key, {
-    db: {
-      timeout: 60000,
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+  adminClientCache = createClient(url, key, {
+    db: { timeout: 60000 },
+    auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  return adminClientCache;
 }
 
 // 获取客户端（用于用户操作，需要 RLS）
 function getSupabaseClient(token?: string): SupabaseClient {
+  // 无 token 时复用默认单例
+  if (!token && defaultClientCache) return defaultClientCache;
+
   const { url, anonKey, serviceRoleKey } = getSupabaseConfig();
 
-  // 如果有 token 且有 service role key，使用 service role key
   let key = anonKey;
   if (token && serviceRoleKey) {
     key = serviceRoleKey;
   }
 
   const options: Parameters<typeof createClient>[2] = {
-    db: {
-      timeout: 60000,
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
+    db: { timeout: 60000 },
+    auth: { autoRefreshToken: false, persistSession: false },
   };
 
   if (token) {
@@ -62,7 +60,14 @@ function getSupabaseClient(token?: string): SupabaseClient {
     };
   }
 
-  return createClient(url, key, options);
+  const client = createClient(url, key, options);
+
+  // 缓存无 token 的默认客户端
+  if (!token) {
+    defaultClientCache = client;
+  }
+
+  return client;
 }
 
 export { getSupabaseClient, getSupabaseAdminClient, getSupabaseConfig };

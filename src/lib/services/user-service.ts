@@ -20,8 +20,14 @@ export function generateDeviceId(): string {
   return `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-// Token 签名密钥（从环境变量读取，回退到固定密钥）
-const TOKEN_SECRET = process.env.TOKEN_SECRET || 'quiz_app_token_secret_2024_secure_key';
+// Token 签名密钥（必须通过环境变量配置，启动时校验）
+const TOKEN_SECRET = process.env.TOKEN_SECRET;
+if (!TOKEN_SECRET) {
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
+    throw new Error('[SECURITY] TOKEN_SECRET 环境变量未设置，生产环境拒绝启动！请在 .env 中配置 TOKEN_SECRET');
+  }
+  console.warn('[SECURITY] TOKEN_SECRET 环境变量未设置，当前使用不安全的回退值！');
+}
 
 // 生成带签名的 Token（HMAC-SHA256）
 export function generateToken(userId: string, role?: string): string {
@@ -32,7 +38,8 @@ export function generateToken(userId: string, role?: string): string {
     iat: Date.now(),
   };
   const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64');
-  const signature = createHmac('sha256', TOKEN_SECRET).update(payloadStr).digest('hex');
+  const secret = TOKEN_SECRET || 'dev_only_unsafe_key';
+  const signature = createHmac('sha256', secret).update(payloadStr).digest('hex');
   return `${payloadStr}.${signature}`;
 }
 
@@ -43,7 +50,8 @@ export function verifyToken(token: string): { userId: string | null; role: strin
     if (parts.length !== 2) return { userId: null, role: null, expired: false };
     
     const [payloadStr, signature] = parts;
-    const expectedSig = createHmac('sha256', TOKEN_SECRET).update(payloadStr).digest('hex');
+    const secret = TOKEN_SECRET || 'dev_only_unsafe_key';
+    const expectedSig = createHmac('sha256', secret).update(payloadStr).digest('hex');
     
     if (signature !== expectedSig) {
       return { userId: null, role: null, expired: false }; // 签名不匹配 = 伪造
@@ -185,7 +193,6 @@ export const userService = {
 
     // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
     const deviceId = generateDeviceId();
-    console.log(`[Login] 生成新设备ID: ${deviceId}, 用户: ${user.id}`);
 
     // 更新最后登录时间和设备ID（使用 admin client 确保可以更新）
     const { error: updateError } = await adminClient.from('users').update({ 
@@ -194,10 +201,7 @@ export const userService = {
     }).eq('id', user.id);
 
     if (updateError) {
-      console.error('[Login] 更新设备ID失败:', updateError);
       // 继续登录流程，不因设备ID更新失败而阻止登录
-    } else {
-      console.log('[Login] 设备ID更新成功');
     }
 
     // 更新内存中的用户信息
@@ -218,28 +222,23 @@ export const userService = {
       .eq('id', userId)
       .maybeSingle();
     
-    console.log(`[ValidateDevice] DB查询结果: userId=${userId}, DB device_id=${data?.device_id}, Request deviceId=${deviceId}`);
+    console.log(`[ValidateDevice] userId=${userId}, match=${data?.device_id === deviceId}`);
     
     if (error || !data) {
-      console.error(`[ValidateDevice] 查询失败: error=${error?.message}`);
       return false;
     }
     
     // 如果数据库中没有 device_id（旧用户），允许当前设备通过验证
-    // 这样新登录的设备会自动设置 device_id
     if (!data.device_id) {
-      console.log('[ValidateDevice] 数据库中无device_id，允许通过');
       return true;
     }
     
     // 如果 device_id 匹配，验证通过
     if (data.device_id === deviceId) {
-      console.log('[ValidateDevice] device_id匹配，验证通过');
       return true;
     }
     
-    // 如果 device_id 不匹配，说明设备被挤下线
-    console.log(`[ValidateDevice] device_id不匹配: DB=${data.device_id}, Request=${deviceId}`);
+    // device_id 不匹配，说明设备被挤下线
     return false;
   },
 
