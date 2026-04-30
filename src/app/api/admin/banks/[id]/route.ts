@@ -38,7 +38,7 @@ export async function PUT(request: Request) {
     const url = new URL(request.url);
     const id = url.pathname.split('/').pop();
     const body = await request.json();
-    const { name, categoryId, description } = body;
+    const { name, categoryId, description, status } = body;
 
     const bank = await bankService.getBankById(id!);
     if (!bank) {
@@ -49,6 +49,7 @@ export async function PUT(request: Request) {
       name,
       categoryId,
       description,
+      status,
     });
 
     return NextResponse.json({ success: true, bank: updatedBank });
