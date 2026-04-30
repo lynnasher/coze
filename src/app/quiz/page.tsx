@@ -28,7 +28,7 @@ import {
   Grid3X3,
   ArrowLeft,
 } from 'lucide-react';
-import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService } from '@/lib/quiz-store';
+import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService, generateId, getWrongQuestionIds } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
@@ -186,7 +186,7 @@ function QuizPageContent() {
   
   // 交卷
   const handleFinishAndExit = useCallback(async () => {
-    // 计算结果
+    // 计算结果并保存所有尚未提交的答题记录
     let correct = 0;
     let wrong = 0;
     let unanswered = 0;
@@ -197,6 +197,9 @@ function QuizPageContent() {
       }
       return [q];
     });
+    
+    // 收集需要保存的新记录
+    const recordsToSave: { q: Question; answer: string | string[]; isCorrect: boolean }[] = [];
     
     for (const q of allQuestions) {
       const answer = quizState.answers[q.id];
@@ -217,6 +220,47 @@ function QuizPageContent() {
       
       if (isCorrect) correct++;
       else wrong++;
+      
+      // 检查是否已有最近记录（5分钟内），避免重复记录
+      const existingRecords = recordStore.getByQuestionId(q.id);
+      const hasRecentRecord = existingRecords.some(r => Date.now() - r.timestamp < 300000);
+      if (!hasRecentRecord) {
+        recordsToSave.push({ q, answer, isCorrect });
+      }
+    }
+    
+    // 获取当前错题ID集合（在添加新记录前）
+    const wrongIdsBefore = new Set(getWrongQuestionIds());
+    
+    // 保存所有新记录到 recordStore
+    for (const { q, answer, isCorrect } of recordsToSave) {
+      const record = {
+        id: generateId(),
+        questionId: q.id,
+        isCorrect,
+        selectedAnswer: answer,
+        timestamp: Date.now(),
+      };
+      recordStore.add(record);
+    }
+    
+    // 更新错题连续正确次数（streak）
+    for (const { q, isCorrect } of recordsToSave) {
+      if (isCorrect) {
+        if (wrongIdsBefore.has(q.id)) {
+          wrongStreakStore.increment(q.id);
+          const newStreak = wrongStreakStore.get(q.id);
+          if (newStreak >= 3) {
+            // 连续答对3次，从错题本中移除：删除该题目的错误记录
+            const records = recordStore.getAll().filter(r => !(r.questionId === q.id && !r.isCorrect));
+            recordStore.save(records);
+            wrongStreakStore.remove(q.id);
+          }
+        }
+      } else {
+        // 答错：重置连续正确次数
+        wrongStreakStore.reset(q.id);
+      }
     }
     
     const total = allQuestions.length;
@@ -225,7 +269,7 @@ function QuizPageContent() {
     setResultStats({ accuracy, total, correct, wrong, unanswered });
     setShowResultSheet(true);
     
-    // 保存练习记录
+    // 保存练习记录到云端
     const userId = getCurrentUserId();
     if (userId) {
       await cloudSyncService.saveRecordsAndStreaks(

@@ -349,8 +349,11 @@ export default function WrongBookPage() {
       if (user) {
         queueRecordForSync(record);
       }
+      
+      // 刷新错题列表，确保 streak 达到 3 的题目被移除
+      refreshData();
     }
-  }, [currentReviewQuestion, localAnswer]);
+  }, [currentReviewQuestion, localAnswer, refreshData]);
 
   const handleNext = useCallback(() => {
     if (reviewIndex < reviewQuestions.length - 1) {
