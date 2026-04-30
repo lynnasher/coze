@@ -9,10 +9,12 @@ import { User as UserIcon, LogOut, UserCircle } from 'lucide-react';
 import type { User as UserType } from '@/lib/types';
 import { cloudSyncService } from '@/lib/quiz-store';
 
-// Token 存储
-const TOKEN_KEY = 'quiz_user_token';
-const USER_KEY = 'quiz_user_data';
-const DEVICE_KEY = 'quiz_device_id'; // 设备ID存储key
+import { STORAGE_KEYS } from '@/lib/constants';
+
+// 使用统一的常量
+const TOKEN_KEY = STORAGE_KEYS.TOKEN;
+const USER_KEY = STORAGE_KEYS.USER;
+const DEVICE_KEY = STORAGE_KEYS.DEVICE_ID;
 
 interface StoredUser {
   id: string;

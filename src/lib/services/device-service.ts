@@ -3,6 +3,8 @@
  * 用于单设备登录功能，确保一个用户只能在一台设备上在线
  */
 
+import { STORAGE_KEYS } from '../constants';
+
 // 设备验证响应类型
 export interface DeviceValidationResult {
   valid: boolean;
@@ -15,13 +17,13 @@ export const deviceService = {
   // 获取存储的设备ID
   getDeviceId(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('quiz_device_id');
+    return localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
   },
 
   // 获取当前用户信息
   getCurrentUser(): { id: string; phone: string } | null {
     if (typeof window === 'undefined') return null;
-    const userData = localStorage.getItem('quiz_user_data');
+    const userData = localStorage.getItem(STORAGE_KEYS.USER);
     if (!userData) return null;
     try {
       return JSON.parse(userData);
@@ -83,13 +85,13 @@ export const deviceService = {
   // 清除认证数据（登出）
   clearAuthData(): void {
     if (typeof window === 'undefined') return;
-    localStorage.removeItem('quiz_user_token');
-    localStorage.removeItem('quiz_user_data');
-    localStorage.removeItem('quiz_device_id');
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.DEVICE_ID);
     // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
-    localStorage.removeItem('quiz_records');
-    localStorage.removeItem('quiz_wrong_streak');
-    localStorage.removeItem('quiz_recent_practice');
+    localStorage.removeItem(STORAGE_KEYS.RECORDS);
+    localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);
+    localStorage.removeItem(STORAGE_KEYS.RECENT_PRACTICE);
     // 触发登出事件
     window.dispatchEvent(new Event('user-auth-change'));
   },
@@ -98,12 +100,4 @@ export const deviceService = {
   logout(): void {
     this.clearAuthData();
   },
-};
-
-// 设备验证 Hook 类型
-export interface UseDeviceValidationReturn {
-  validateDevice: () => Promise<DeviceValidationResult>;
-  isValidating: boolean;
-  kicked: boolean;
-  kickMessage: string;
-}
+}; // 设备验证服务

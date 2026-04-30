@@ -30,8 +30,7 @@ import { checkAnswer as sharedCheckAnswer } from '@/lib/import-utils';
 import Link from 'next/link';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
-import { useDeviceValidation } from '@/hooks/use-device-validation';
-import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
+
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   'single': '单选',
@@ -101,19 +100,6 @@ export default function WrongBookPage() {
     };
     loadBanks();
   }, []);
-
-  // 设备验证（单设备登录）
-  const { kicked, kickMessage, clearKickState } = useDeviceValidation({
-    interval: 30000,
-    validateOnFocus: true,
-  });
-
-  // 处理被踢下线
-  const handleKicked = () => {
-    setCurrentUser(null);
-    clearKickState();
-    window.location.href = '/';
-  };
 
   const refreshData = useCallback(() => {
     setRefreshKey(k => k + 1);
@@ -655,13 +641,6 @@ export default function WrongBookPage() {
   // ============ 列表页面 ============
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
-      {/* 设备被挤下线提示 */}
-      <DeviceKickedDialog 
-        open={kicked} 
-        message={kickMessage}
-        onConfirm={handleKicked}
-      />
-      
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-xl border-b sticky top-0 z-50">
         <div className="max-w-[970px] mx-auto px-4 h-14 flex items-center justify-between">

@@ -43,8 +43,6 @@ import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
-import { useDeviceValidation } from '@/hooks/use-device-validation';
-import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 import { calculateStreakStats, calculateTrendData, calculateFilteredStats, recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import dynamic from 'next/dynamic';
 import { Header, TabNavigation, PracticeTabContent } from '@/components/home';
@@ -139,21 +137,6 @@ export default function QuizApp() {
   // 登录弹窗状态
   const [authModalOpen, setAuthModalOpen] = useState(false);
   
-  // 设备验证（单设备登录）
-  const { kicked, kickMessage, clearKickState } = useDeviceValidation({
-    interval: 30000, // 30秒验证一次
-    validateOnFocus: true,
-  });
-  
-  // 处理被踢下线
-  const handleKicked = () => {
-    // 清除当前用户状态
-    setCurrentUser(null);
-    // 清除被踢状态
-    clearKickState();
-    // 刷新页面以清除所有状态
-    window.location.reload();
-  };
   
   const [dbBanks, setDbBanks] = useState<Array<{
     id: string;
@@ -435,13 +418,6 @@ export default function QuizApp() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 设备被挤下线提示 */}
-      <DeviceKickedDialog 
-        open={kicked} 
-        message={kickMessage}
-        onConfirm={handleKicked}
-      />
-      
       {/* 顶部区域 */}
       <Header 
         currentUser={currentUser} 

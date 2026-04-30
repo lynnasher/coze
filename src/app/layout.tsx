@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import { DeviceValidationProvider } from '@/components/DeviceValidationProvider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -76,7 +77,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <DeviceValidationProvider>
+          {children}
+        </DeviceValidationProvider>
       </body>
     </html>
   );
