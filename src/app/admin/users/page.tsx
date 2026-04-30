@@ -75,6 +75,8 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
@@ -249,6 +251,35 @@ export default function UsersPage() {
     } catch (error) {
       console.error('添加用户失败:', error);
       alert('添加用户失败');
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser || !newPassword || newPassword.length < 6) {
+      alert('密码至少6位');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/users/${resetPasswordUser.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId: resetPasswordUser.id, action: 'password', password: newPassword }),
+      });
+      if (response.ok) {
+        setResetPasswordUser(null);
+        setNewPassword('');
+        alert('密码重置成功');
+      } else {
+        const data = await response.json();
+        alert(data.error || '重置密码失败');
+      }
+    } catch (error) {
+      console.error('重置密码失败:', error);
+      alert('重置密码失败');
     }
   };
 
@@ -490,6 +521,10 @@ export default function UsersPage() {
                               <DropdownMenuItem onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')}>
                                 {user.role === 'admin' ? '设为普通用户' : '设为管理员'}
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setResetPasswordUser(user)}>
+                                <Key className="w-4 h-4 mr-1" />
+                                重置密码
+                              </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => setDeleteConfirm(user.id)}
                                 className="text-red-600"
@@ -599,6 +634,38 @@ export default function UsersPage() {
             </Button>
             <Button variant="destructive" onClick={() => handleDelete(deleteConfirm!)}>
               删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 重置密码对话框 */}
+      <Dialog open={!!resetPasswordUser} onOpenChange={() => setResetPasswordUser(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>重置密码</DialogTitle>
+            <DialogDescription>
+              为用户 <span className="font-medium">{resetPasswordUser?.phone}</span> 设置新密码
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">新密码</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="请输入新密码"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPasswordUser(null)}>
+              取消
+            </Button>
+            <Button onClick={handleResetPassword} disabled={!newPassword.trim()}>
+              确认重置
             </Button>
           </DialogFooter>
         </DialogContent>
