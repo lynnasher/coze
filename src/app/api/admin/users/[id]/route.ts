@@ -33,13 +33,6 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: false, error: '分类必须是数组' }, { status: 400 });
       }
       await userService.updateActivatedCategories(userId, value);
-    } else if (action === 'password') {
-      // 修改用户密码
-      const { password } = body;
-      if (!password || typeof password !== 'string' || password.length < 6) {
-        return NextResponse.json({ success: false, error: '密码至少6位' }, { status: 400 });
-      }
-      await userService.updateUserPassword(userId, password);
     } else {
       return NextResponse.json({ success: false, error: '未知的操作' }, { status: 400 });
     }

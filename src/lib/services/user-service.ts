@@ -332,14 +332,6 @@ export const userService = {
     if (error) throw new Error(`更新用户角色失败: ${error.message}`);
   },
 
-  // 更新用户密码（管理员重置）
-  async updateUserPassword(userId: string, password: string): Promise<void> {
-    const client = getSupabaseAdminClient();
-    const hashedPassword = hashPassword(password);
-    const { error } = await client.from('users').update({ password: hashedPassword }).eq('id', userId);
-    if (error) throw new Error(`更新用户密码失败: ${error.message}`);
-  },
-
   // 删除用户
   async deleteUser(userId: string): Promise<void> {
     const client = getSupabaseAdminClient();
