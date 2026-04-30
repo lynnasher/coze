@@ -209,9 +209,18 @@ export default function WrongBookPage() {
     const allQuestions = questionStore.getAll();
     
     return wrongIds.map(id => {
-      // 优先从本地查找
+      // 优先从本地顶层列表查找
       const localQuestion = allQuestions.find(q => q.id === id);
       if (localQuestion) return localQuestion;
+      
+      // 搜索综合题的子题
+      for (const parent of allQuestions) {
+        if (parent.children) {
+          const child = parent.children.find(c => c.id === id);
+          if (child) return child;
+        }
+      }
+      
       // 本地没有则从云端缓存查找
       return cloudQuestions[id];
     }).filter((q): q is Question => q !== undefined);
@@ -222,6 +231,12 @@ export default function WrongBookPage() {
     const wrongIds = getWrongQuestionIds();
     const allQuestions = questionStore.getAll();
     const localIds = new Set(allQuestions.map(q => q.id));
+    // 同时收集所有子题ID
+    allQuestions.forEach(q => {
+      if (q.children) {
+        q.children.forEach(c => localIds.add(c.id));
+      }
+    });
     const missingIds = wrongIds.filter(id => !localIds.has(id) && !cloudQuestions[id]);
     
     if (missingIds.length > 0) {
