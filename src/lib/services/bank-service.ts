@@ -357,7 +357,36 @@ export const bankService = {
 
     if (error) throw new Error(`批量获取题目失败: ${error.message}`);
 
-    return this.convertToFrontendQuestions((data || []) as DbQuestion[]);
+    const questions = this.convertToFrontendQuestions((data || []) as DbQuestion[]);
+    
+    // 对于子题，需要获取父题的案例背景
+    const childQuestions = questions.filter(q => q.parentId);
+    if (childQuestions.length > 0) {
+      const parentIds = [...new Set(childQuestions.map(q => q.parentId!))];
+      const { data: parentData } = await client
+        .from('questions')
+        .select('id, case_background, bank_id')
+        .in('id', parentIds);
+      
+      if (parentData) {
+        const parentMap = new Map(parentData.map(p => [p.id, p]));
+        childQuestions.forEach(q => {
+          const parent = parentMap.get(q.parentId!);
+          if (parent) {
+            // 继承父题的案例背景
+            if (!q.caseBackground && parent.case_background) {
+              q.caseBackground = parent.case_background;
+            }
+            // 如果子题没有 bankId，继承父题的
+            if (!q.bankId && parent.bank_id) {
+              q.bankId = parent.bank_id;
+            }
+          }
+        });
+      }
+    }
+    
+    return questions;
   },
 
   // 转换数据库题目为前端格式

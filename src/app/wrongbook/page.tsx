@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   ChevronLeft, 
   ChevronRight, 
@@ -223,13 +224,17 @@ export default function WrongBookPage() {
         return;
       }
       
-      // 搜索综合题的子题
+      // 搜索综合题的子题，并附加父题的案例背景
       let foundChild: Question | undefined;
       for (const parent of allQuestions) {
         if (parent.children) {
           const child = parent.children.find(c => c.id === id);
           if (child) {
-            foundChild = child;
+            // 将父题的案例背景附加到子题（如果子题没有自己的案例背景）
+            foundChild = {
+              ...child,
+              caseBackground: child.caseBackground || parent.caseBackground,
+            };
             break;
           }
         }
@@ -581,63 +586,76 @@ export default function WrongBookPage() {
 
               {/* 选项区域 */}
               <div className="px-5 pb-5">
-                <div className="space-y-2">
-                  {currentReviewQuestion.options?.map((option, index) => {
-                    const isMulti = currentReviewQuestion.type === 'multiple';
-                    const isSelected = isMulti
-                      ? Array.isArray(localAnswer) && localAnswer.includes(option.id)
-                      : localAnswer === option.id;
-                    const isCorrectAnswer = Array.isArray(currentReviewQuestion.answer)
-                      ? currentReviewQuestion.answer.includes(option.id)
-                      : currentReviewQuestion.answer === option.id;
+                {/* 填空题输入框 */}
+                {currentReviewQuestion.type === 'fill-blank' ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="输入你的答案..."
+                      value={(localAnswer as string) || ''}
+                      onChange={(e) => setLocalAnswer(e.target.value)}
+                      disabled={showExplanation}
+                      className="min-h-[80px] rounded-xl border-2 border-slate-200 focus:border-blue-300 bg-white text-sm"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {currentReviewQuestion.options?.map((option, index) => {
+                      const isMulti = currentReviewQuestion.type === 'multiple';
+                      const isSelected = isMulti
+                        ? Array.isArray(localAnswer) && localAnswer.includes(option.id)
+                        : localAnswer === option.id;
+                      const isCorrectAnswer = Array.isArray(currentReviewQuestion.answer)
+                        ? currentReviewQuestion.answer.includes(option.id)
+                        : currentReviewQuestion.answer === option.id;
 
-                    let optionStyle = 'bg-slate-50/50';
-                    if (isSelected && showExplanation) {
-                      optionStyle = isCorrectAnswer ? 'bg-emerald-50' : 'bg-red-50';
-                    } else if (isSelected) {
-                      optionStyle = 'bg-indigo-50';
-                    } else if (showExplanation && isCorrectAnswer) {
-                      optionStyle = 'bg-emerald-50';
-                    }
+                      let optionStyle = 'bg-slate-50/50';
+                      if (isSelected && showExplanation) {
+                        optionStyle = isCorrectAnswer ? 'bg-emerald-50' : 'bg-red-50';
+                      } else if (isSelected) {
+                        optionStyle = 'bg-indigo-50';
+                      } else if (showExplanation && isCorrectAnswer) {
+                        optionStyle = 'bg-emerald-50';
+                      }
 
-                    return (
-                      <div
-                        key={option.id}
-                        className={`flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer ${optionStyle}`}
-                        onClick={() => {
-                          if (showExplanation) return;
-                          if (isMulti) {
-                            const cur = Array.isArray(localAnswer) ? localAnswer : [];
-                            setLocalAnswer(cur.includes(option.id) ? cur.filter(id => id !== option.id) : [...cur, option.id]);
-                          } else {
-                            setLocalAnswer(option.id);
-                          }
-                        }}
-                      >
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold text-xs transition-colors flex-shrink-0 ${
-                          isSelected && showExplanation
-                            ? isCorrectAnswer ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
-                            : isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {isSelected ? <Check className="w-3.5 h-3.5" /> : getOptionLabel(index)}
-                        </div>
-                        <div className="flex-1 text-sm font-medium text-slate-700">
-                          <RichTextWithBreaks content={option.text} textClassName="whitespace-pre-wrap" />
-                        </div>
-                        {showExplanation && isCorrectAnswer && (
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
-                            <Check className="w-3 h-3 text-white" />
+                      return (
+                        <div
+                          key={option.id}
+                          className={`flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer ${optionStyle}`}
+                          onClick={() => {
+                            if (showExplanation) return;
+                            if (isMulti) {
+                              const cur = Array.isArray(localAnswer) ? localAnswer : [];
+                              setLocalAnswer(cur.includes(option.id) ? cur.filter(id => id !== option.id) : [...cur, option.id]);
+                            } else {
+                              setLocalAnswer(option.id);
+                            }
+                          }}
+                        >
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-3 font-bold text-xs transition-colors flex-shrink-0 ${
+                            isSelected && showExplanation
+                              ? isCorrectAnswer ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                              : isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {isSelected ? <Check className="w-3.5 h-3.5" /> : getOptionLabel(index)}
                           </div>
-                        )}
-                        {showExplanation && isSelected && !isCorrectAnswer && (
-                          <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-2">
-                            <X className="w-3 h-3 text-white" />
+                          <div className="flex-1 text-sm font-medium text-slate-700">
+                            <RichTextWithBreaks content={option.text} textClassName="whitespace-pre-wrap" />
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                          {showExplanation && isCorrectAnswer && (
+                            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center ml-2">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                          {showExplanation && isSelected && !isCorrectAnswer && (
+                            <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center ml-2">
+                              <X className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* 答案与解析 */}
