@@ -115,13 +115,27 @@ function normalizeTrueFalseAnswer(
   if (/^[a-d]$/i.test(normalizedAns) && options && options.length > 0) {
     const option = options.find(opt => opt.id.toLowerCase() === normalizedAns);
     if (option) {
-      const optText = option.text.toLowerCase().trim();
-      if (optText.includes('正确') || optText.includes('对') || optText.includes('√') ||
-          optText === '是' || optText === 'yes' || optText === 'true') {
+      // 移除标点符号和空格，只保留核心文字
+      const optText = option.text.replace(/[。，、；：！？（）\s]/g, '').toLowerCase().trim();
+      
+      // 使用正则匹配，更灵活地检测关键词
+      const truePatterns = [/正确/, /对$/, /^对/, /√/, /是$/, /^是/, /yes/, /true/];
+      const falsePatterns = [/错误/, /错$/, /^错/, /×/, /否$/, /^否/, /no/, /false/];
+      
+      // 检查是否匹配"正确"相关模式
+      if (truePatterns.some(pattern => pattern.test(optText))) {
         return 'true';
       }
-      if (optText.includes('错误') || optText.includes('错') || optText.includes('×') ||
-          optText === '否' || optText === 'no' || optText === 'false') {
+      // 检查是否匹配"错误"相关模式
+      if (falsePatterns.some(pattern => pattern.test(optText))) {
+        return 'false';
+      }
+      
+      // 如果选项内容完全等于"正确"或"错误"（清理后）
+      if (optText === '正确' || optText === '对') {
+        return 'true';
+      }
+      if (optText === '错误' || optText === '错') {
         return 'false';
       }
     }
