@@ -93,56 +93,57 @@ export function processChildOptions(child: Record<string, unknown>): { id: strin
 }
 
 // 判断题答案标准化辅助函数
+// 判断题答案保持字母格式（a/b），与用户选择保持一致
 function normalizeTrueFalseAnswer(
   ans: string,
   options?: { id: string; text: string }[]
-): 'true' | 'false' {
+): string {
   const normalizedAns = ans.toLowerCase().trim();
   
-  // 直接匹配 true/false 相关关键词
-  if (normalizedAns === 'true' || normalizedAns === 't' || 
-      normalizedAns === '对' || normalizedAns === '正确' || normalizedAns === '√' ||
-      normalizedAns === '是' || normalizedAns === 'yes') {
-    return 'true';
-  }
-  if (normalizedAns === 'false' || normalizedAns === 'f' || 
-      normalizedAns === '错' || normalizedAns === '错误' || normalizedAns === '×' ||
-      normalizedAns === '否' || normalizedAns === 'no') {
-    return 'false';
+  // 如果答案已经是字母格式，直接返回
+  if (/^[a-d]$/.test(normalizedAns)) {
+    return normalizedAns;
   }
   
-  // 如果答案是字母（如 a/b），检查对应选项的文本内容
-  if (/^[a-d]$/i.test(normalizedAns) && options && options.length > 0) {
-    const option = options.find(opt => opt.id.toLowerCase() === normalizedAns);
-    if (option) {
-      // 移除标点符号和空格，只保留核心文字
-      const optText = option.text.replace(/[。，、；：！？（）\s]/g, '').toLowerCase().trim();
-      
-      // 使用正则匹配，更灵活地检测关键词
-      const truePatterns = [/正确/, /对$/, /^对/, /√/, /是$/, /^是/, /yes/, /true/];
-      const falsePatterns = [/错误/, /错$/, /^错/, /×/, /否$/, /^否/, /no/, /false/];
-      
-      // 检查是否匹配"正确"相关模式
-      if (truePatterns.some(pattern => pattern.test(optText))) {
-        return 'true';
-      }
-      // 检查是否匹配"错误"相关模式
-      if (falsePatterns.some(pattern => pattern.test(optText))) {
-        return 'false';
-      }
-      
-      // 如果选项内容完全等于"正确"或"错误"（清理后）
-      if (optText === '正确' || optText === '对') {
-        return 'true';
-      }
-      if (optText === '错误' || optText === '错') {
-        return 'false';
+  // 如果答案是 true/false 相关关键词，需要根据选项映射回字母
+  const isTrueAnswer = 
+    normalizedAns === 'true' || normalizedAns === 't' || 
+    normalizedAns === '对' || normalizedAns === '正确' || normalizedAns === '√' ||
+    normalizedAns === '是' || normalizedAns === 'yes';
+  
+  const isFalseAnswer = 
+    normalizedAns === 'false' || normalizedAns === 'f' || 
+    normalizedAns === '错' || normalizedAns === '错误' || normalizedAns === '×' ||
+    normalizedAns === '否' || normalizedAns === 'no';
+  
+  if (isTrueAnswer && options && options.length > 0) {
+    // 查找"正确"对应的选项字母
+    for (const opt of options) {
+      const optText = opt.text.replace(/[。，、；：！？（）\s]/g, '').toLowerCase().trim();
+      if (optText === '正确' || optText === '对' || optText === '√' || 
+          optText === '是' || optText === 'yes' || optText === 'true') {
+        return opt.id.toLowerCase();
       }
     }
+    // 默认返回 'a'（通常 A 是正确）
+    return 'a';
   }
   
-  // 默认返回 false（保守处理）
-  return 'false';
+  if (isFalseAnswer && options && options.length > 0) {
+    // 查找"错误"对应的选项字母
+    for (const opt of options) {
+      const optText = opt.text.replace(/[。，、；：！？（）\s]/g, '').toLowerCase().trim();
+      if (optText === '错误' || optText === '错' || optText === '×' || 
+          optText === '否' || optText === 'no' || optText === 'false') {
+        return opt.id.toLowerCase();
+      }
+    }
+    // 默认返回 'b'（通常 B 是错误）
+    return 'b';
+  }
+  
+  // 无法识别时，默认返回 'a'
+  return 'a';
 }
 
 // 处理答案（根据题目类型正确处理）
@@ -170,7 +171,7 @@ export function processAnswer(
           answer = ans;
         }
       } else if (questionType === 'true-false') {
-        // 判断题：标准化为 true/false
+        // 判断题：保持字母格式（a/b），与用户选择保持一致
         answer = normalizeTrueFalseAnswer(ans, options);
       } else {
         // 单选题：保持单字符
@@ -207,7 +208,7 @@ export function processChildAnswer(
           answer = ans;
         }
       } else if (childType === 'true-false') {
-        // 判断题：使用标准化函数
+        // 判断题：保持字母格式（a/b）
         answer = normalizeTrueFalseAnswer(ans, options);
       } else {
         // 单选题
