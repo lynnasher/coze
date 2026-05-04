@@ -92,8 +92,51 @@ export function processChildOptions(child: Record<string, unknown>): { id: strin
   return undefined;
 }
 
+// 判断题答案标准化辅助函数
+function normalizeTrueFalseAnswer(
+  ans: string,
+  options?: { id: string; text: string }[]
+): 'true' | 'false' {
+  const normalizedAns = ans.toLowerCase().trim();
+  
+  // 直接匹配 true/false 相关关键词
+  if (normalizedAns === 'true' || normalizedAns === 't' || 
+      normalizedAns === '对' || normalizedAns === '正确' || normalizedAns === '√' ||
+      normalizedAns === '是' || normalizedAns === 'yes') {
+    return 'true';
+  }
+  if (normalizedAns === 'false' || normalizedAns === 'f' || 
+      normalizedAns === '错' || normalizedAns === '错误' || normalizedAns === '×' ||
+      normalizedAns === '否' || normalizedAns === 'no') {
+    return 'false';
+  }
+  
+  // 如果答案是字母（如 a/b），检查对应选项的文本内容
+  if (/^[a-d]$/i.test(normalizedAns) && options && options.length > 0) {
+    const option = options.find(opt => opt.id.toLowerCase() === normalizedAns);
+    if (option) {
+      const optText = option.text.toLowerCase().trim();
+      if (optText.includes('正确') || optText.includes('对') || optText.includes('√') ||
+          optText === '是' || optText === 'yes' || optText === 'true') {
+        return 'true';
+      }
+      if (optText.includes('错误') || optText.includes('错') || optText.includes('×') ||
+          optText === '否' || optText === 'no' || optText === 'false') {
+        return 'false';
+      }
+    }
+  }
+  
+  // 默认返回 false（保守处理）
+  return 'false';
+}
+
 // 处理答案（根据题目类型正确处理）
-export function processAnswer(q: Record<string, unknown>, questionType: QuestionType = 'single'): string | string[] {
+export function processAnswer(
+  q: Record<string, unknown>, 
+  questionType: QuestionType = 'single',
+  options?: { id: string; text: string }[]
+): string | string[] {
   let answer: string | string[] = 'a';
   const qAnswer = q.answer || q.ans;
   if (qAnswer) {
@@ -114,11 +157,7 @@ export function processAnswer(q: Record<string, unknown>, questionType: Question
         }
       } else if (questionType === 'true-false') {
         // 判断题：标准化为 true/false
-        if (ans === 'true' || ans === 't' || ans === '对' || ans === '正确' || ans === '√') {
-          answer = 'true';
-        } else {
-          answer = 'false';
-        }
+        answer = normalizeTrueFalseAnswer(ans, options);
       } else {
         // 单选题：保持单字符
         answer = ans;
@@ -131,7 +170,11 @@ export function processAnswer(q: Record<string, unknown>, questionType: Question
 }
 
 // 处理子题目答案
-export function processChildAnswer(child: Record<string, unknown>, childType: QuestionType = 'single'): string | string[] {
+export function processChildAnswer(
+  child: Record<string, unknown>, 
+  childType: QuestionType = 'single',
+  options?: { id: string; text: string }[]
+): string | string[] {
   let answer: string | string[] = 'a';
   const childQAnswer = child.answer || child.ans;
   if (childQAnswer) {
@@ -150,12 +193,8 @@ export function processChildAnswer(child: Record<string, unknown>, childType: Qu
           answer = ans;
         }
       } else if (childType === 'true-false') {
-        // 判断题
-        if (ans === 'true' || ans === 't' || ans === '对' || ans === '正确' || ans === '√') {
-          answer = 'true';
-        } else {
-          answer = 'false';
-        }
+        // 判断题：使用标准化函数
+        answer = normalizeTrueFalseAnswer(ans, options);
       } else {
         // 单选题
         answer = ans;
@@ -178,13 +217,14 @@ export function processChildren(
     const childContent = (child.question as string) || (child.content as string) || (child.stem as string) || '';
     const childQType = child.type || child.qtype;
     const childType = detectQuestionType(childQType);
+    const childOptions = processChildOptions(child);
     return {
       id: generateIdFn(),
       parentId: parentId,
       type: childType,
       content: childContent,
-      options: processChildOptions(child),
-      answer: processChildAnswer(child, childType),
+      options: childOptions,
+      answer: processChildAnswer(child, childType, childOptions),
       explanation: ((child.explanation as string) || (child.parsetext as string)) || undefined,
       difficulty: (child.difficulty as string) || 'medium',
       tags: [],
@@ -205,7 +245,7 @@ export function processQuestion(
   const questionType = detectQuestionType(qType);
 
   const options = processOptions(q);
-  const answer = processAnswer(q, questionType);
+  const answer = processAnswer(q, questionType, options);
   const questionId = generateIdFn();
   const content = (q.question as string) || (q.content as string) || (q.stem as string) || '';
   const explanation = (q.explanation as string) || (q.parsetext as string) || '';
