@@ -119,6 +119,7 @@ function SortableBankRow({
   onClick,
   onMoveCategory,
   onEditQuestions,
+  onExportWord,
   isEditing,
   editingName,
   onEditingNameChange,
@@ -131,6 +132,7 @@ function SortableBankRow({
   onClick: () => void;
   onMoveCategory: () => void;
   onEditQuestions: () => void;
+  onExportWord: () => void;
   isEditing: boolean;
   editingName: string;
   onEditingNameChange: (name: string) => void;
@@ -247,6 +249,10 @@ function SortableBankRow({
             <DropdownMenuItem onClick={onMoveCategory}>
               <FolderOpen className="h-4 w-4 mr-2" />
               移动分类
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onExportWord}>
+              <Download className="h-4 w-4 mr-2" />
+              导出Word
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-red-600">
@@ -1361,6 +1367,7 @@ export default function AdminPage() {
                                   onClick={() => goToBankEdit(bank)}
                                   onMoveCategory={() => openMoveCategoryDialog(bank)}
                                   onEditQuestions={() => goToBankEdit(bank)}
+                                  onExportWord={() => handleExportBank(bank)}
                                   isEditing={editingBankId === bank.id}
                                   editingName={editingBankId === bank.id ? editingBankName : ''}
                                   onEditingNameChange={setEditingBankName}
