@@ -234,7 +234,12 @@ export const bankService = {
             type: child.type,
             content: child.content,
             options: child.options ? JSON.stringify(child.options) : null,
-            answer: Array.isArray(child.answer) ? JSON.stringify(child.answer) : child.answer,
+          // 答案处理：避免双重 JSON.stringify
+            answer: child.answer 
+              ? (typeof child.answer === 'string' && child.answer.startsWith('[') 
+                  ? child.answer 
+                  : (Array.isArray(child.answer) ? JSON.stringify(child.answer) : child.answer))
+              : null,
             explanation: child.explanation || null,
             difficulty: child.difficulty || 'medium',
             tags: JSON.stringify(child.tags || []),
@@ -252,7 +257,13 @@ export const bankService = {
           type: q.type,
           content: q.content,
           options: q.options ? JSON.stringify(q.options) : null,
-          answer: Array.isArray(q.answer) ? JSON.stringify(q.answer) : q.answer,
+          // 答案处理：避免双重 JSON.stringify
+          // 如果答案已经是 JSON 字符串格式（以 [ 开头），不再重复 stringify
+          answer: q.answer 
+            ? (typeof q.answer === 'string' && q.answer.startsWith('[') 
+                ? q.answer 
+                : (Array.isArray(q.answer) ? JSON.stringify(q.answer) : q.answer))
+            : null,
           explanation: q.explanation || null,
           difficulty: q.difficulty || 'medium',
           tags: JSON.stringify(q.tags || []),
@@ -401,7 +412,18 @@ export const bankService = {
         parentId: q.parent_id || undefined,
         type: q.type as Question['type'],
         content: q.content,
-        answer: q.answer ? (q.answer.startsWith('[') ? JSON.parse(q.answer) : q.answer) : '',
+        answer: q.answer ? (() => {
+          // 尝试解析多选题答案（可能是 JSON 数组字符串）
+          try {
+            if (q.answer.startsWith('[')) {
+              const parsed = JSON.parse(q.answer);
+              if (Array.isArray(parsed)) return parsed;
+            }
+          } catch {
+            // 解析失败，可能是单选/判断题的直接字符串答案
+          }
+          return q.answer;
+        })() : '',
         explanation: q.explanation || undefined,
         difficulty: q.difficulty,
         tags: q.tags ? JSON.parse(q.tags) : [],

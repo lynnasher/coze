@@ -84,6 +84,13 @@ export async function POST(request: NextRequest) {
     const questionId = `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // 准备题目数据
+    // 答案处理：数组格式（多选题）需要 JSON.stringify 后存储
+    const answerStr = question.answer 
+      ? (typeof question.answer === 'string' 
+          ? (question.answer.startsWith('[') ? question.answer : question.answer)
+          : JSON.stringify(question.answer))
+      : null;
+    
     const questionData = [{
       id: questionId,
       bank_id: bankId,
@@ -91,7 +98,7 @@ export async function POST(request: NextRequest) {
       type: question.type || 'single',
       content: question.content,
       options: question.options ? JSON.stringify(question.options) : null,
-      answer: question.answer ? (Array.isArray(question.answer) ? JSON.stringify(question.answer) : question.answer) : null,
+      answer: answerStr,
       explanation: question.explanation || null,
       difficulty: question.difficulty || 'medium',
       tags: question.tags ? JSON.stringify(question.tags) : '[]',
