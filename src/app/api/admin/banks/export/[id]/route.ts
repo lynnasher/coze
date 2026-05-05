@@ -2,6 +2,30 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, conv
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
 import { requireAdminAuth } from '@/lib/api-auth';
 
+// 1.27cm 转换为 twip (1cm ≈ 567.05 twip)
+const MARGIN_TWIP = Math.round(1.27 * 567.05);
+
+// 创建黑体文本的辅助函数
+function createText(text: string, options?: { bold?: boolean; color?: string; size?: number }): TextRun {
+  return new TextRun({
+    text,
+    font: 'SimHei', // 黑体
+    bold: options?.bold || false,
+    color: options?.color || '000000',
+    size: options?.size || 24, // 默认五号字
+  });
+}
+
+// 创建带答案高亮的选项文本（答案选项加粗）
+function createOptionWithAnswer(optionId: string, optionText: string, isAnswer: boolean): TextRun {
+  return new TextRun({
+    text: `${optionId}. ${optionText}`,
+    font: 'SimHei',
+    bold: isAnswer, // 正确答案加粗
+    color: isAnswer ? '008000' : '333333', // 正确答案绿色
+  });
+}
+
 // Word导出API - 按银行题库标准格式导出
 export async function GET(request: Request) {
   // 验证管理员认证
@@ -51,10 +75,12 @@ export async function GET(request: Request) {
     // 添加标题
     paragraphs.push(
       new Paragraph({
-        text: bank.name,
-        heading: HeadingLevel.TITLE,
+        children: [
+          createText(bank.name, { bold: true, size: 32 }),
+        ],
         alignment: AlignmentType.CENTER,
         spacing: { after: 400 },
+        indent: { left: 0 },
       })
     );
 
@@ -62,13 +88,10 @@ export async function GET(request: Request) {
     paragraphs.push(
       new Paragraph({
         children: [
-          new TextRun({
-            text: '【说明】本试卷包含以下题型：单选题、多选题、判断题、填空题、综合题。',
-            bold: false,
-            color: '666666',
-          }),
+          createText('【说明】本试卷包含以下题型：单选题、多选题、判断题、填空题、综合题。', { color: '666666' }),
         ],
         spacing: { after: 200 },
+        indent: { left: 0 },
       })
     );
 
@@ -100,12 +123,10 @@ export async function GET(request: Request) {
         paragraphs.push(
           new Paragraph({
             children: [
-              new TextRun({
-                text: `${questionIndex}. ${typeLabel[type]}`,
-                bold: true,
-              }),
+              createText(`${questionIndex}. ${typeLabel[type]}`, { bold: true }),
             ],
             spacing: { before: 300, after: 100 },
+            indent: { left: 0 },
           })
         );
 
@@ -113,12 +134,10 @@ export async function GET(request: Request) {
         paragraphs.push(
           new Paragraph({
             children: [
-              new TextRun({
-                text: `【案例背景】${question.case_background}`,
-                color: '333333',
-              }),
+              createText(`【案例背景】${question.case_background}`, { color: '333333' }),
             ],
             spacing: { after: 200 },
+            indent: { left: 0 },
           })
         );
 
@@ -132,41 +151,68 @@ export async function GET(request: Request) {
         if (children && children.length > 0) {
           let childIndex = 1;
           for (const child of children) {
+            // 解析子题目答案
+            let childAnswerIds: string[] = [];
+            if (child.answer) {
+              try {
+                if (typeof child.answer === 'string' && child.answer.startsWith('[')) {
+                  childAnswerIds = JSON.parse(child.answer);
+                } else if (Array.isArray(child.answer)) {
+                  childAnswerIds = child.answer;
+                } else {
+                  childAnswerIds = [String(child.answer)];
+                }
+                childAnswerIds = childAnswerIds.map((a: string) => a.toUpperCase());
+              } catch {
+                childAnswerIds = [];
+              }
+            }
+
             // 子题目内容
             paragraphs.push(
               new Paragraph({
                 children: [
-                  new TextRun({
-                    text: `(${childIndex}) ${child.content}`,
-                    bold: false,
-                  }),
+                  createText(`(${childIndex}) ${child.content}`),
                 ],
                 spacing: { after: 100 },
-                indent: { left: convertInchesToTwip(0.3) },
+                indent: { left: 0 },
               })
             );
 
-            // 子题目选项
+            // 子题目选项（答案选项加粗显示）
             if (child.options && child.options.length > 0) {
               for (const option of child.options) {
-                // 安全检查：确保 option 存在且有有效属性
                 const optionId = option?.id ? String(option.id).toUpperCase() : '';
                 const optionText = option?.text || '';
                 if (optionId && optionText) {
+                  const isAnswer = childAnswerIds.includes(optionId);
                   paragraphs.push(
                     new Paragraph({
                       children: [
-                        new TextRun({
-                          text: `    ${optionId}. ${optionText}`,
-                          color: '333333',
-                        }),
+                        createOptionWithAnswer(optionId, optionText, isAnswer),
                       ],
                       spacing: { after: 50 },
-                      indent: { left: convertInchesToTwip(0.3) },
+                      indent: { left: 0 },
                     })
                   );
                 }
               }
+            }
+
+            // 判断题子题目选项
+            if (child.type === 'true-false' && (!child.options || child.options.length === 0)) {
+              const isCorrectAnswerA = childAnswerIds.includes('A');
+              paragraphs.push(
+                new Paragraph({
+                  children: [
+                    createOptionWithAnswer('A', '正确', isCorrectAnswerA),
+                    createText('    ', { color: '000000' }),
+                    createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
+                  ],
+                  spacing: { after: 100 },
+                  indent: { left: 0 },
+                })
+              );
             }
 
             // 子题目答案
@@ -178,14 +224,10 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    new TextRun({
-                      text: `正确答案：${childAnswer}`,
-                      bold: true,
-                      color: '008000',
-                    }),
+                    createText(`正确答案：${childAnswer}`, { bold: true, color: '008000' }),
                   ],
                   spacing: { after: 50 },
-                  indent: { left: convertInchesToTwip(0.3) },
+                  indent: { left: 0 },
                 })
               );
             }
@@ -195,13 +237,10 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    new TextRun({
-                      text: `名师解析：${child.explanation}`,
-                      color: '996600',
-                    }),
+                    createText(`名师解析：${child.explanation}`, { color: '996600' }),
                   ],
                   spacing: { after: 200 },
-                  indent: { left: convertInchesToTwip(0.3) },
+                  indent: { left: 0 },
                 })
               );
             } else {
@@ -222,32 +261,45 @@ export async function GET(request: Request) {
         paragraphs.push(
           new Paragraph({
             children: [
-              new TextRun({
-                text: `${questionIndex}. ${typeLabel[type] || ''} ${question.content}`,
-                bold: false,
-              }),
+              createText(`${questionIndex}. ${typeLabel[type] || ''} ${question.content}`),
             ],
             spacing: { before: 300, after: 100 },
+            indent: { left: 0 },
           })
         );
 
-        // 题目选项
+        // 题目选项（答案选项加粗显示）
         if (question.options && question.options.length > 0) {
+          // 解析答案
+          let answerIds: string[] = [];
+          if (question.answer) {
+            try {
+              if (typeof question.answer === 'string' && question.answer.startsWith('[')) {
+                answerIds = JSON.parse(question.answer);
+              } else if (Array.isArray(question.answer)) {
+                answerIds = question.answer;
+              } else {
+                answerIds = [String(question.answer)];
+              }
+            } catch {
+              answerIds = [String(question.answer)];
+            }
+            // 统一转为大写用于比较
+            answerIds = answerIds.map((a: string) => a.toUpperCase());
+          }
+
           for (const option of question.options) {
-            // 安全检查：确保 option 存在且有有效属性
             const optionId = option?.id ? String(option.id).toUpperCase() : '';
             const optionText = option?.text || '';
             if (optionId && optionText) {
+              const isAnswer = answerIds.includes(optionId);
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    new TextRun({
-                      text: `    ${optionId}. ${optionText}`,
-                      color: '333333',
-                    }),
+                    createOptionWithAnswer(optionId, optionText, isAnswer),
                   ],
                   spacing: { after: 50 },
-                  indent: { left: convertInchesToTwip(0.3) },
+                  indent: { left: 0 }, // 左缩进为0
                 })
               );
             }
@@ -256,16 +308,30 @@ export async function GET(request: Request) {
 
         // 判断题的选项简化
         if (type === 'true-false' && (!question.options || question.options.length === 0)) {
+          // 判断题答案判断
+          let isCorrectAnswerA = false;
+          if (question.answer) {
+            try {
+              const answer = typeof question.answer === 'string' 
+                ? (question.answer.startsWith('[') ? JSON.parse(question.answer)[0] : question.answer)
+                : question.answer;
+              const normalizedAnswer = String(answer).toLowerCase();
+              isCorrectAnswerA = normalizedAnswer === 'a' || normalizedAnswer === 'true' || 
+                normalizedAnswer === '正确' || normalizedAnswer === '对';
+            } catch {
+              isCorrectAnswerA = false;
+            }
+          }
+
           paragraphs.push(
             new Paragraph({
               children: [
-                new TextRun({
-                  text: '    A. 正确    B. 错误',
-                  color: '333333',
-                }),
+                createOptionWithAnswer('A', '正确', isCorrectAnswerA),
+                createText('    ', { color: '000000' }),
+                createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
               ],
               spacing: { after: 100 },
-              indent: { left: convertInchesToTwip(0.3) },
+              indent: { left: 0 },
             })
           );
         }
@@ -275,18 +341,15 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                new TextRun({
-                  text: '    _______________',
-                  color: '333333',
-                }),
+                createText('_______________', { color: '333333' }),
               ],
               spacing: { after: 100 },
-              indent: { left: convertInchesToTwip(0.3) },
+              indent: { left: 0 },
             })
           );
         }
 
-        // 答案
+        // 答案（黑体显示）
         const answer = Array.isArray(question.answer) 
           ? question.answer.map((a: string) => a.toUpperCase()).join(', ')
           : question.answer?.toUpperCase() || '';
@@ -295,30 +358,23 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                new TextRun({
-                  text: `正确答案：${answer}`,
-                  bold: true,
-                  color: '008000',
-                }),
+                createText(`正确答案：${answer}`, { bold: true, color: '008000' }),
               ],
               spacing: { after: 50 },
-              indent: { left: convertInchesToTwip(0.3) },
+              indent: { left: 0 },
             })
           );
         }
 
-        // 解析
+        // 解析（黑体显示）
         if (question.explanation) {
           paragraphs.push(
             new Paragraph({
               children: [
-                new TextRun({
-                  text: `名师解析：${question.explanation}`,
-                  color: '996600',
-                }),
+                createText(`名师解析：${question.explanation}`, { color: '996600' }),
               ],
               spacing: { after: 200 },
-              indent: { left: convertInchesToTwip(0.3) },
+              indent: { left: 0 },
             })
           );
         } else {
@@ -332,11 +388,20 @@ export async function GET(request: Request) {
       }
     }
 
-    // 创建文档
+    // 创建文档（设置页面边距为1.27cm）
     const doc = new Document({
       sections: [
         {
-          properties: {},
+          properties: {
+            page: {
+              margin: {
+                top: MARGIN_TWIP,
+                right: MARGIN_TWIP,
+                bottom: MARGIN_TWIP,
+                left: MARGIN_TWIP,
+              },
+            },
+          },
           children: paragraphs,
         },
       ],
