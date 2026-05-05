@@ -180,8 +180,22 @@ export async function GET(request: Request) {
             );
 
             // 子题目选项（答案选项加粗显示）
-            if (child.options && child.options.length > 0) {
-              for (const option of child.options) {
+            // 解析子题目 options（可能是 JSON 字符串或数组）
+            let childOptions: Array<{id: string; text: string}> = [];
+            if (child.options) {
+              try {
+                if (typeof child.options === 'string') {
+                  childOptions = JSON.parse(child.options);
+                } else if (Array.isArray(child.options)) {
+                  childOptions = child.options;
+                }
+              } catch {
+                childOptions = [];
+              }
+            }
+            
+            if (childOptions.length > 0) {
+              for (const option of childOptions) {
                 const optionId = option?.id ? String(option.id).toUpperCase() : '';
                 const optionText = option?.text || '';
                 if (optionId && optionText) {
@@ -269,7 +283,21 @@ export async function GET(request: Request) {
         );
 
         // 题目选项（答案选项加粗显示）
-        if (question.options && question.options.length > 0) {
+        // 解析 options（可能是 JSON 字符串或数组）
+        let questionOptions: Array<{id: string; text: string}> = [];
+        if (question.options) {
+          try {
+            if (typeof question.options === 'string') {
+              questionOptions = JSON.parse(question.options);
+            } else if (Array.isArray(question.options)) {
+              questionOptions = question.options;
+            }
+          } catch {
+            questionOptions = [];
+          }
+        }
+        
+        if (questionOptions.length > 0) {
           // 解析答案
           let answerIds: string[] = [];
           if (question.answer) {
@@ -288,7 +316,7 @@ export async function GET(request: Request) {
             answerIds = answerIds.map((a: string) => a.toUpperCase());
           }
 
-          for (const option of question.options) {
+          for (const option of questionOptions) {
             const optionId = option?.id ? String(option.id).toUpperCase() : '';
             const optionText = option?.text || '';
             if (optionId && optionText) {
