@@ -11,18 +11,19 @@ function createText(text: string, options?: { bold?: boolean; color?: string; si
     text,
     font: 'SimHei', // 黑体
     bold: options?.bold || false,
-    color: options?.color || '000000',
+    color: options?.color || '000000', // 统一黑色
     size: options?.size || 24, // 默认五号字
   });
 }
 
 // 创建带答案高亮的选项文本（答案选项加粗）
-function createOptionWithAnswer(optionId: string, optionText: string, isAnswer: boolean): TextRun {
+function createOptionWithAnswer(optionId: string, optionText: string, isAnswer: boolean, size: number = 26): TextRun {
   return new TextRun({
     text: `${optionId}. ${optionText}`,
     font: 'SimHei',
     bold: isAnswer, // 正确答案加粗
-    color: isAnswer ? '008000' : '333333', // 正确答案绿色
+    color: '000000', // 统一黑色
+    size: size, // 题目选项字体大一号
   });
 }
 
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
     paragraphs.push(
       new Paragraph({
         children: [
-          createText('【说明】本试卷包含以下题型：单选题、多选题、判断题、填空题、综合题。', { color: '666666' }),
+          createText('[说明]本试卷包含以下题型：单选题、多选题、判断题、填空题、综合题。'),
         ],
         spacing: { after: 200 },
         indent: { left: 0 },
@@ -108,13 +109,13 @@ export async function GET(request: Request) {
       // 判断题型
       const type = question.type;
 
-      // 添加题型标签
+      // 添加题型标签（半角符号减少空间）
       const typeLabel: Record<string, string> = {
-        'single': '【单选题】',
-        'multiple': '【多选题】',
-        'true-false': '【判断题】',
-        'fill-blank': '【填空题】',
-        'comprehensive': '【综合题】',
+        'single': '[单选题]',
+        'multiple': '[多选题]',
+        'true-false': '[判断题]',
+        'fill-blank': '[填空题]',
+        'comprehensive': '[综合题]',
       };
 
       // 如果是综合题
@@ -134,7 +135,7 @@ export async function GET(request: Request) {
         paragraphs.push(
           new Paragraph({
             children: [
-              createText(`【案例背景】${question.case_background}`, { color: '333333' }),
+              createText(`[案例背景]${question.case_background}`),
             ],
             spacing: { after: 200 },
             indent: { left: 0 },
@@ -220,7 +221,7 @@ export async function GET(request: Request) {
                 new Paragraph({
                   children: [
                     createOptionWithAnswer('A', '正确', isCorrectAnswerA),
-                    createText('    ', { color: '000000' }),
+                    createText('    '),
                     createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
                   ],
                   spacing: { after: 100 },
@@ -228,6 +229,17 @@ export async function GET(request: Request) {
                 })
               );
             }
+
+            // 子题目答案前添加空行
+            paragraphs.push(
+              new Paragraph({
+                children: [
+                  createText(''), // 空行
+                ],
+                spacing: { after: 50 },
+                indent: { left: 0 },
+              })
+            );
 
             // 子题目答案
             const childAnswer = Array.isArray(child.answer) 
@@ -238,7 +250,7 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createText(`正确答案：${childAnswer}`, { bold: true, color: '008000' }),
+                    createText(`正确答案：${childAnswer}`, { bold: true }),
                   ],
                   spacing: { after: 50 },
                   indent: { left: 0 },
@@ -251,7 +263,7 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createText(`名师解析：${child.explanation}`, { color: '996600' }),
+                    createText(`名师解析：${child.explanation}`),
                   ],
                   spacing: { after: 200 },
                   indent: { left: 0 },
@@ -355,7 +367,7 @@ export async function GET(request: Request) {
             new Paragraph({
               children: [
                 createOptionWithAnswer('A', '正确', isCorrectAnswerA),
-                createText('    ', { color: '000000' }),
+                createText('    '),
                 createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
               ],
               spacing: { after: 100 },
@@ -369,7 +381,7 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createText('_______________', { color: '333333' }),
+                createText('_______________'),
               ],
               spacing: { after: 100 },
               indent: { left: 0 },
@@ -377,7 +389,18 @@ export async function GET(request: Request) {
           );
         }
 
-        // 答案（黑体显示）
+        // 答案前添加空行（黑体显示）
+        paragraphs.push(
+          new Paragraph({
+            children: [
+              createText(''), // 空行
+            ],
+            spacing: { after: 50 },
+            indent: { left: 0 },
+          })
+        );
+
+        // 答案（黑体显示，黑色）
         const answer = Array.isArray(question.answer) 
           ? question.answer.map((a: string) => a.toUpperCase()).join(', ')
           : question.answer?.toUpperCase() || '';
@@ -386,7 +409,7 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createText(`正确答案：${answer}`, { bold: true, color: '008000' }),
+                createText(`正确答案：${answer}`, { bold: true }),
               ],
               spacing: { after: 50 },
               indent: { left: 0 },
@@ -399,7 +422,7 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createText(`名师解析：${question.explanation}`, { color: '996600' }),
+                createText(`名师解析：${question.explanation}`),
               ],
               spacing: { after: 200 },
               indent: { left: 0 },
