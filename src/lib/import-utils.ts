@@ -164,11 +164,25 @@ export function processAnswer(
         answer = ans;
       } else if (questionType === 'multiple') {
         // 多选题：可能是 "AB" 或 ["A", "B"] 格式
-        if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
-          // 纯字母字符串如 "AB" 拆分为数组
-          answer = ans.split('').map(c => c.toLowerCase());
+        // 保持答案大小写与选项 id 一致，检查选项 id 的大小写
+        if (options && options.length > 0) {
+          const firstOptionId = options[0]?.id || '';
+          const useUpperCase = firstOptionId === firstOptionId.toUpperCase();
+          if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
+            // 纯字母字符串如 "AB" 拆分为数组，保持与选项 id 一致的大小写
+            answer = useUpperCase 
+              ? ans.split('').map(c => c.toUpperCase()) 
+              : ans.split('').map(c => c.toLowerCase());
+          } else {
+            answer = useUpperCase ? ans.toUpperCase() : ans;
+          }
         } else {
-          answer = ans;
+          // 没有选项信息时，保持大写
+          if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
+            answer = ans.split('').map(c => c.toUpperCase());
+          } else {
+            answer = ans;
+          }
         }
       } else if (questionType === 'true-false') {
         // 判断题：保持字母格式（a/b），与用户选择保持一致
@@ -202,10 +216,24 @@ export function processChildAnswer(
         answer = ans;
       } else if (childType === 'multiple') {
         // 多选题
-        if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
-          answer = ans.split('').map(c => c.toLowerCase());
+        // 保持答案大小写与选项 id 一致
+        if (options && options.length > 0) {
+          const firstOptionId = options[0]?.id || '';
+          const useUpperCase = firstOptionId === firstOptionId.toUpperCase();
+          if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
+            answer = useUpperCase 
+              ? ans.split('').map(c => c.toUpperCase()) 
+              : ans.split('').map(c => c.toLowerCase());
+          } else {
+            answer = useUpperCase ? ans.toUpperCase() : ans;
+          }
         } else {
-          answer = ans;
+          // 没有选项信息时，保持大写
+          if (ans.length > 1 && /^[a-z]+$/i.test(ans)) {
+            answer = ans.split('').map(c => c.toUpperCase());
+          } else {
+            answer = ans;
+          }
         }
       } else if (childType === 'true-false') {
         // 判断题：保持字母格式（a/b）

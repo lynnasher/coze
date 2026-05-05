@@ -407,6 +407,21 @@ export const bankService = {
 
     // 第一遍：创建所有题目
     for (const q of dbQuestions) {
+      // 先解析选项，用于后续答案大小写处理
+      let options: { id: string; text: string }[] = [];
+      if (q.options) {
+        try {
+          options = JSON.parse(q.options);
+        } catch {
+          options = [];
+        }
+      }
+
+      // 获取选项 id 的大小写（用于多选题答案大小写统一）
+      const useUpperCase = options.length > 0 
+        ? options[0].id === options[0].id.toUpperCase()
+        : false;
+
       const question: Question = {
         id: q.id,
         parentId: q.parent_id || undefined,
@@ -417,7 +432,14 @@ export const bankService = {
           try {
             if (q.answer.startsWith('[')) {
               const parsed = JSON.parse(q.answer);
-              if (Array.isArray(parsed)) return parsed;
+              if (Array.isArray(parsed)) {
+                // 标准化答案大小写与选项 id 保持一致
+                if (useUpperCase) {
+                  return parsed.map((a: string) => a.toUpperCase());
+                } else {
+                  return parsed.map((a: string) => a.toLowerCase());
+                }
+              }
             }
           } catch {
             // 解析失败，可能是单选/判断题的直接字符串答案
@@ -433,12 +455,8 @@ export const bankService = {
         children: [],
       };
 
-      if (q.options) {
-        try {
-          question.options = JSON.parse(q.options);
-        } catch {
-          question.options = [];
-        }
+      if (options.length > 0) {
+        question.options = options;
       }
 
       questionMap.set(q.id, question);
