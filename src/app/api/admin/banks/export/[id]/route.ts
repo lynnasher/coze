@@ -16,13 +16,13 @@ function createText(text: string, options?: { bold?: boolean; color?: string; si
   });
 }
 
-// 创建带答案高亮的选项文本（答案选项加粗）
+// 创建带答案高亮的选项文本（答案选项加粗，黑色）
 function createOptionWithAnswer(optionId: string, optionText: string, isAnswer: boolean): TextRun {
   return new TextRun({
     text: `${optionId}. ${optionText}`,
     font: 'SimHei',
     bold: isAnswer, // 正确答案加粗
-    color: isAnswer ? '008000' : '333333', // 正确答案绿色
+    color: '000000', // 统一黑色
   });
 }
 
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     paragraphs.push(
       new Paragraph({
         children: [
-          createText('【说明】本试卷包含以下题型：单选题、多选题、判断题、填空题、综合题。', { color: '666666' }),
+          createText('[ ] This exam contains: single choice, multiple choice, true/false, fill-in-blank, comprehensive questions.', { color: '000000' }),
         ],
         spacing: { after: 200 },
         indent: { left: 0 },
@@ -110,11 +110,11 @@ export async function GET(request: Request) {
 
       // 添加题型标签
       const typeLabel: Record<string, string> = {
-        'single': '【单选题】',
-        'multiple': '【多选题】',
-        'true-false': '【判断题】',
-        'fill-blank': '【填空题】',
-        'comprehensive': '【综合题】',
+        'single': '[Single Choice]',
+        'multiple': '[Multiple Choice]',
+        'true-false': '[True/False]',
+        'fill-blank': '[Fill in Blank]',
+        'comprehensive': '[Comprehensive]',
       };
 
       // 如果是综合题
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
         paragraphs.push(
           new Paragraph({
             children: [
-              createText(`【案例背景】${question.case_background}`, { color: '333333' }),
+              createText(`[Case Background] ${question.case_background}`, { color: '000000' }),
             ],
             spacing: { after: 200 },
             indent: { left: 0 },
@@ -219,9 +219,9 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createOptionWithAnswer('A', '正确', isCorrectAnswerA),
+                    createOptionWithAnswer('A', 'True', isCorrectAnswerA),
                     createText('    ', { color: '000000' }),
-                    createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
+                    createOptionWithAnswer('B', 'False', !isCorrectAnswerA),
                   ],
                   spacing: { after: 100 },
                   indent: { left: 0 },
@@ -238,7 +238,7 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createText(`正确答案：${childAnswer}`, { bold: true, color: '008000' }),
+                    createText(`Correct Answer: ${childAnswer}`, { bold: true, color: '000000' }),
                   ],
                   spacing: { after: 50 },
                   indent: { left: 0 },
@@ -251,7 +251,7 @@ export async function GET(request: Request) {
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createText(`名师解析：${child.explanation}`, { color: '996600' }),
+                    createText(`Explanation: ${child.explanation}`, { color: '000000' }),
                   ],
                   spacing: { after: 200 },
                   indent: { left: 0 },
@@ -345,7 +345,7 @@ export async function GET(request: Request) {
                 : question.answer;
               const normalizedAnswer = String(answer).toLowerCase();
               isCorrectAnswerA = normalizedAnswer === 'a' || normalizedAnswer === 'true' || 
-                normalizedAnswer === '正确' || normalizedAnswer === '对';
+                normalizedAnswer === 'correct' || normalizedAnswer === 'right' || normalizedAnswer === 'yes';
             } catch {
               isCorrectAnswerA = false;
             }
@@ -354,9 +354,9 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createOptionWithAnswer('A', '正确', isCorrectAnswerA),
+                createOptionWithAnswer('A', 'True', isCorrectAnswerA),
                 createText('    ', { color: '000000' }),
-                createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
+                createOptionWithAnswer('B', 'False', !isCorrectAnswerA),
               ],
               spacing: { after: 100 },
               indent: { left: 0 },
@@ -369,7 +369,7 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createText('_______________', { color: '333333' }),
+                createText('_______________', { color: '000000' }),
               ],
               spacing: { after: 100 },
               indent: { left: 0 },
@@ -386,7 +386,7 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createText(`正确答案：${answer}`, { bold: true, color: '008000' }),
+                createText(`Correct Answer: ${answer}`, { bold: true, color: '000000' }),
               ],
               spacing: { after: 50 },
               indent: { left: 0 },
@@ -399,7 +399,7 @@ export async function GET(request: Request) {
           paragraphs.push(
             new Paragraph({
               children: [
-                createText(`名师解析：${question.explanation}`, { color: '996600' }),
+                createText(`Explanation: ${question.explanation}`, { color: '000000' }),
               ],
               spacing: { after: 200 },
               indent: { left: 0 },
