@@ -125,8 +125,26 @@ export default function WrongBookPage() {
       // 先 pull 云端数据
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
-        recordStore.save(cloudData.records);
-        wrongStreakStore.save(cloudData.streaks);
+        // 合并本地和云端数据（而不是直接覆盖）
+        const localRecords = recordStore.getAll();
+        const localStreaks = wrongStreakStore.getAll();
+        
+        // 合并练习记录（去重，以 ID 为准）
+        const recordMap = new Map<string, typeof localRecords[0]>();
+        // 先添加云端记录
+        cloudData.records.forEach(r => recordMap.set(r.id, r));
+        // 再添加本地记录（会覆盖同 ID 的云端记录，保留本地最新状态）
+        localRecords.forEach(r => recordMap.set(r.id, r));
+        const mergedRecords = Array.from(recordMap.values());
+        
+        // 合并 streaks（本地优先，因为本地可能有最新做题状态）
+        const mergedStreaks = {
+          ...cloudData.streaks,
+          ...localStreaks,
+        };
+        
+        recordStore.save(mergedRecords);
+        wrongStreakStore.save(mergedStreaks);
       }
       // 再按需 push 本地数据
       if (!skipPush) {
