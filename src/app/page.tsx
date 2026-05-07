@@ -693,7 +693,7 @@ export default function QuizApp() {
                                         <span className="text-sm font-medium text-slate-700 flex-1">
                                           {category.name}
                                         </span>
-                                        <span className="text-[11px] text-slate-400 tabular-nums">
+                                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-slate-100 text-[11px] text-slate-400 tabular-nums px-1">
                                           {categoryBanks.length}
                                         </span>
                                         <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
@@ -770,7 +770,7 @@ export default function QuizApp() {
                                 }`}>
                                   {category.name}
                                 </span>
-                                <span className="text-[11px] text-gray-500 ml-auto pr-1 font-medium tabular-nums">
+                                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-indigo-100 text-[11px] text-indigo-500 ml-auto font-medium tabular-nums px-1">
                                   {categoryBanks.length + childCategoryBanks.length}
                                 </span>
                                 <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
