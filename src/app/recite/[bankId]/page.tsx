@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, BookOpen, CheckCircle2, Lightbulb, ChevronRight } from 'lucide-react';
 import { Question } from '@/lib/types';
+import { questionStore, bankStore } from '@/lib/quiz-store';
 
 // 题型标签映射
 const TYPE_LABELS: Record<string, { text: string; color: string }> = {
@@ -27,28 +28,26 @@ export default function RecitePage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 从 localStorage 获取题库信息
-        const banksStr = localStorage.getItem('questionBanks');
-        const allQuestionsStr = localStorage.getItem('questions');
-        
         let bankQuestions: Question[] = [];
         
-        if (banksStr && allQuestionsStr) {
-          const banks = JSON.parse(banksStr);
-          const bank = banks.find((b: { id: string }) => b.id === bankId);
-          if (bank) {
-            setBankName(bank.name || '');
-            
-            // 从所有题目中筛选属于该题库的题目
-            const allQuestions: Question[] = JSON.parse(allQuestionsStr);
-            bankQuestions = allQuestions.filter((q: Question) => {
-              // 直接匹配 bankId
-              if (q.bankId === bankId) return true;
-              // 通过 questionIds 匹配
-              if (bank.questionIds && bank.questionIds.includes(q.id)) return true;
-              return false;
-            });
-          }
+        // 使用正确的 store 方法获取数据
+        const banks = bankStore.getAll();
+        const bank = banks.find(b => b.id === bankId);
+        if (bank) {
+          setBankName(bank.name || '');
+        }
+        
+        const allQuestions = questionStore.getAll();
+        
+        if (allQuestions.length > 0) {
+          // 从所有题目中筛选属于该题库的题目
+          bankQuestions = allQuestions.filter((q: Question) => {
+            // 直接匹配 bankId
+            if (q.bankId === bankId) return true;
+            // 通过题库的 questionIds 匹配
+            if (bank?.questionIds && bank.questionIds.includes(q.id)) return true;
+            return false;
+          });
         }
 
         // 如果 localStorage 没有数据，尝试从后端获取
