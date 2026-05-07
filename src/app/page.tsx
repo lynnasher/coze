@@ -244,17 +244,51 @@ export default function QuizApp() {
   }, [recalculateWrongData, refreshHomeStats]);
   
   // 只使用数据库的题库
-  const banks = useMemo(() => {
-    return dbBanks.map(b => ({
-      id: b.id,
-      name: b.name,
-      description: b.description || '',
-      questionIds: [],
-      questionCount: b.question_count || 0,
-      categoryId: b.category_id,
-      createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now()
-    }));
-  }, [dbBanks]);
+  const { banks, bankAccuracies } = useMemo(() => {
+    // 计算每个题库的正确率
+    const allQuestions = questionStore.getAll();
+    const allRecords = recordStore.getAll();
+    
+    // 对每个题目，取最新的一条记录
+    const questionBestRecord: Record<string, { timestamp: number; isCorrect: boolean }> = {};
+    allRecords.forEach(r => {
+      const existing = questionBestRecord[r.questionId];
+      if (!existing || r.timestamp > existing.timestamp) {
+        questionBestRecord[r.questionId] = { timestamp: r.timestamp, isCorrect: r.isCorrect };
+      }
+    });
+    
+    const accuracies: Record<string, number | undefined> = {};
+    
+    const mappedBanks = dbBanks.map(b => {
+      // 获取该题库下的题目
+      const bankQuestions = allQuestions.filter(q => q.bankId === b.id);
+      const questionIds = bankQuestions.map(q => q.id);
+      
+      // 计算正确率
+      let accuracy: number | undefined = undefined;
+      if (questionIds.length > 0) {
+        const doneQuestions = questionIds.filter(qid => questionBestRecord[qid]);
+        if (doneQuestions.length > 0) {
+          const correctCount = doneQuestions.filter(qid => questionBestRecord[qid].isCorrect).length;
+          accuracy = Math.round((correctCount / doneQuestions.length) * 100);
+        }
+      }
+      accuracies[b.id] = accuracy;
+      
+      return {
+        id: b.id,
+        name: b.name,
+        description: b.description || '',
+        questionIds: [],
+        questionCount: b.question_count || 0,
+        categoryId: b.category_id,
+        createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now(),
+      };
+    });
+    
+    return { banks: mappedBanks, bankAccuracies: accuracies };
+  }, [dbBanks, homeStats, questions]);
 
   // 刷新用户激活的分类（检查过期时间）
   const refreshActivatedCategories = useCallback(async (userId: string): Promise<string[]> => {
@@ -564,7 +598,8 @@ export default function QuizApp() {
                         {banks.filter(b => !b.categoryId).map((bank) => (
                           <BankCard 
                             key={bank.id} 
-                            bank={bank} 
+                            bank={bank}
+                            accuracy={bankAccuracies[bank.id]}
                             onStartPractice={(bankId) => {
                               // 检查是否需要登录
                               if (!currentUser) {
@@ -659,6 +694,7 @@ export default function QuizApp() {
                                             <BankCard
                                               key={bank.id}
                                               bank={bank}
+                                              accuracy={bankAccuracies[bank.id]}
                                               onStartPractice={(bankId) => {
                                                 if (!currentUser) {
                                                   setAuthModalOpen(true);
@@ -735,7 +771,8 @@ export default function QuizApp() {
                                         {categoryBanks.map((bank) => (
                                           <BankCard 
                                             key={bank.id} 
-                                            bank={bank} 
+                                            bank={bank}
+                                            accuracy={bankAccuracies[bank.id]}
                                             onStartPractice={(bankId) => {
                                               if (!currentUser) {
                                                 setAuthModalOpen(true);
@@ -776,7 +813,8 @@ export default function QuizApp() {
                                           {childBanks.map((bank) => (
                                             <BankCard 
                                               key={bank.id} 
-                                              bank={bank} 
+                                              bank={bank}
+                                              accuracy={bankAccuracies[bank.id]}
                                               onStartPractice={(bankId) => {
                                                 if (!currentUser) {
                                                   setAuthModalOpen(true);

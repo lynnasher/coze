@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { BookOpen, Play, Folder } from 'lucide-react';
+import { BookOpen, Play, Folder, Target } from 'lucide-react';
 
 interface BankCardProps {
   bank: {
@@ -11,6 +11,7 @@ interface BankCardProps {
     createdAt: number;
   };
   onStartPractice: (bankId: string) => void;
+  accuracy?: number; // 正确率 0-100，undefined 表示还没有练习记录
 }
 
 // 主题色配置
@@ -23,7 +24,7 @@ const THEME_CONFIG = [
   { bg: 'bg-violet-500', lightBg: 'bg-violet-50', text: 'text-violet-600' },
 ];
 
-export const BankCard = memo(function BankCard({ bank, onStartPractice }: BankCardProps) {
+export const BankCard = memo(function BankCard({ bank, onStartPractice, accuracy }: BankCardProps) {
   const questionCount = bank.questionCount ?? 0;
   
   // 根据名称生成稳定的主题色
@@ -68,11 +69,26 @@ export const BankCard = memo(function BankCard({ bank, onStartPractice }: BankCa
             `}>
               {bank.name}
             </h4>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <BookOpen className={`w-3 h-3 ${colorConfig.text}`} />
-              <span className="text-xs text-gray-500">
-                {questionCount > 0 ? `${questionCount} 道题` : '暂无题目'}
-              </span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-1.5">
+                <BookOpen className={`w-3 h-3 ${colorConfig.text}`} />
+                <span className="text-xs text-gray-500">
+                  {questionCount > 0 ? `${questionCount} 道题` : '暂无题目'}
+                </span>
+              </div>
+              {accuracy !== undefined && accuracy >= 0 && questionCount > 0 && (
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-300">|</span>
+                  <Target className="w-3 h-3 text-gray-400" />
+                  <span className={`text-xs font-medium ${
+                    accuracy >= 80 ? 'text-emerald-600' : 
+                    accuracy >= 60 ? 'text-amber-600' : 
+                    accuracy > 0 ? 'text-red-500' : 'text-gray-400'
+                  }`}>
+                    {accuracy}% 正确
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           
