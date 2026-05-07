@@ -760,8 +760,8 @@ function QuizPageContent() {
                     ? Array.isArray(displayQuestionAnswer) && displayQuestionAnswer.includes(option.id)
                     : displayQuestionAnswer === option.id;
                   const isCorrectAnswer = Array.isArray(displayQuestion.answer)
-                    ? displayQuestion.answer.includes(option.id)
-                    : displayQuestion.answer === option.id;
+                    ? displayQuestion.answer.some(a => String(a).toLowerCase() === option.id.toLowerCase())
+                    : String(displayQuestion.answer).toLowerCase() === option.id.toLowerCase();
                   
                   let optionStyle = 'bg-slate-50/50';
                   if (isSelected && showExplanation) {
