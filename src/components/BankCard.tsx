@@ -46,84 +46,84 @@ export const BankCard = memo(function BankCard({ bank, onStartPractice, onStartR
       `}
       onClick={() => !isDisabled && onStartPractice(bank.id)}
     >
-      <div className="p-3">
-        <div className="flex items-center gap-2.5">
-          {/* 左侧图标 - 小而精致 */}
+      <div className="p-2.5 sm:p-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* 左侧图标 */}
           <div className={`
-            flex-shrink-0 w-9 h-9
+            flex-shrink-0 w-7 h-7 sm:w-9 sm:h-9
             ${colorConfig.bg}
             rounded-lg
             flex items-center justify-center
             shadow-sm
           `}>
-            <Folder className="w-4 h-4 text-white" />
+            <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
           </div>
           
-          {/* 中间内容 - 标题优先 */}
+          {/* 中间内容 */}
           <div className="flex-1 min-w-0">
             <h4 className={`
               font-medium text-gray-800
               leading-snug line-clamp-2
               group-hover:text-gray-900
               transition-colors
-              ${isDisabled ? 'text-xs' : 'text-sm'}
+              ${isDisabled ? 'text-xs' : 'text-xs sm:text-sm'}
             `}>
               {bank.name}
             </h4>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <BookOpen className={`w-3 h-3 ${colorConfig.text}`} />
-                <span className="text-xs text-gray-500">
-                  {questionCount > 0 ? `${questionCount} 道题` : '暂无题目'}
+                <span className="text-[10px] sm:text-xs text-gray-500">
+                  {questionCount > 0 ? `${questionCount} 题` : '暂无'}
                 </span>
               </div>
               {accuracy !== undefined && accuracy >= 0 && questionCount > 0 && (
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-0.5 sm:gap-1">
+                  <span className="hidden sm:inline text-gray-300">|</span>
                   <Target className="w-3 h-3 text-gray-400" />
-                  <span className={`text-xs font-medium ${
+                  <span className={`text-[10px] sm:text-xs font-medium ${
                     accuracy >= 80 ? 'text-emerald-600' : 
                     accuracy >= 60 ? 'text-amber-600' : 
                     accuracy > 0 ? 'text-red-500' : 'text-gray-400'
                   }`}>
-                    {accuracy}% 正确
+                    {accuracy}%
                   </span>
                 </div>
               )}
             </div>
           </div>
           
-          {/* 右侧按钮组 */}
+          {/* 右侧按钮组 - 手机纯图标，桌面图标+文字 */}
           {questionCount > 0 && (
-            <div className="flex-shrink-0 flex items-center gap-1.5">
+            <div className="flex-shrink-0 flex items-center gap-1 sm:gap-1.5">
               <button 
                 className={`
                   ${colorConfig.lightBg} ${colorConfig.text}
                   rounded-lg
-                  px-2.5 py-1.5
+                  p-1.5 sm:px-2.5 sm:py-1.5
                   text-xs font-medium
                   transition-all duration-200
-                  group-hover:scale-105
-                  flex items-center gap-1
+                  active:scale-95 sm:group-hover:scale-105
+                  flex items-center gap-0 sm:gap-1
                 `}
                 onClick={(e) => {
                   e.stopPropagation();
                   !isDisabled && onStartPractice(bank.id);
                 }}
               >
-                <Play className="w-3 h-3" fill="currentColor" />
-                <span>练习</span>
+                <Play className="w-3.5 h-3.5 sm:w-3 sm:h-3" fill="currentColor" />
+                <span className="hidden sm:inline">练习</span>
               </button>
               {onStartRecite && (
                 <button 
                   className={`
                     bg-gray-50 text-gray-600
                     rounded-lg
-                    px-2.5 py-1.5
+                    p-1.5 sm:px-2.5 sm:py-1.5
                     text-xs font-medium
                     transition-all duration-200
-                    group-hover:scale-105 hover:bg-gray-100
-                    flex items-center gap-1
+                    active:scale-95 sm:group-hover:scale-105 sm:hover:bg-gray-100
+                    flex items-center gap-0 sm:gap-1
                     border border-gray-200
                   `}
                   onClick={(e) => {
@@ -131,8 +131,8 @@ export const BankCard = memo(function BankCard({ bank, onStartPractice, onStartR
                     onStartRecite(bank.id);
                   }}
                 >
-                  <Eye className="w-3 h-3" />
-                  <span>背题</span>
+                  <Eye className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                  <span className="hidden sm:inline">背题</span>
                 </button>
               )}
             </div>
