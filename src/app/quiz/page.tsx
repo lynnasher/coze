@@ -914,7 +914,7 @@ function QuizPageContent() {
               className="h-11 px-3 sm:px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
             >
               <BookOpen className="w-4 h-4" />
-              <span className="ml-1 text-sm">查看答案</span>
+              <span>答案</span>
             </Button>
             
             {(() => {
