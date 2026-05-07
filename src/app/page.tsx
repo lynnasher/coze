@@ -693,8 +693,8 @@ export default function QuizApp() {
                                         <span className="text-sm font-medium text-slate-700 flex-1">
                                           {category.name}
                                         </span>
-                                        <span className="text-xs text-slate-400">
-                                          {categoryBanks.length} 个题库
+                                        <span className="text-[11px] text-slate-400 tabular-nums">
+                                          {categoryBanks.length}
                                         </span>
                                         <ChevronRight className={`w-4 h-4 text-slate-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
                                       </div>
@@ -770,8 +770,8 @@ export default function QuizApp() {
                                 }`}>
                                   {category.name}
                                 </span>
-                                <span className="text-xs text-gray-500 ml-auto pr-1 font-medium">
-                                  {categoryBanks.length + childCategoryBanks.length} 个题库
+                                <span className="text-[11px] text-gray-500 ml-auto pr-1 font-medium tabular-nums">
+                                  {categoryBanks.length + childCategoryBanks.length}
                                 </span>
                                 <ChevronRight className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${selectedCategoryId === category.id ? 'rotate-90' : ''}`} />
                               </div>
