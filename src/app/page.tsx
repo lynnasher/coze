@@ -88,6 +88,11 @@ export default function QuizApp() {
     router.push(`/quiz?${params.toString()}`);
   }, [router]);
   
+  // 跳转到背题页面
+  const navigateToRecite = useCallback((bankId: string) => {
+    router.push(`/recite/${bankId}`);
+  }, [router]);
+  
 
   const [activeTab, setActiveTab] = useState('practice');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -608,6 +613,13 @@ export default function QuizApp() {
                               }
                               navigateToQuiz(bankId);
                             }}
+                            onStartRecite={(bankId) => {
+                              if (!currentUser) {
+                                setAuthModalOpen(true);
+                                return;
+                              }
+                              navigateToRecite(bankId);
+                            }}
                           />
                         ))}
                       </div>
@@ -702,6 +714,13 @@ export default function QuizApp() {
                                                 }
                                                 navigateToQuiz(bankId);
                                               }}
+                                              onStartRecite={(bankId) => {
+                                                if (!currentUser) {
+                                                  setAuthModalOpen(true);
+                                                  return;
+                                                }
+                                                navigateToRecite(bankId);
+                                              }}
                                             />
                                           ))}
                                         </div>
@@ -780,6 +799,13 @@ export default function QuizApp() {
                                               }
                                               navigateToQuiz(bankId);
                                             }}
+                                            onStartRecite={(bankId) => {
+                                              if (!currentUser) {
+                                                setAuthModalOpen(true);
+                                                return;
+                                              }
+                                              navigateToRecite(bankId);
+                                            }}
                                           />
                                         ))}
                                       </div>
@@ -821,6 +847,13 @@ export default function QuizApp() {
                                                   return;
                                                 }
                                                   navigateToQuiz(bankId);
+                                              }}
+                                              onStartRecite={(bankId) => {
+                                                if (!currentUser) {
+                                                  setAuthModalOpen(true);
+                                                  return;
+                                                }
+                                                navigateToRecite(bankId);
                                               }}
                                             />
                                           ))}

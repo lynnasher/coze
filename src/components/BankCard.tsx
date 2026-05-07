@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { BookOpen, Play, Folder, Target } from 'lucide-react';
+import { BookOpen, Play, Folder, Target, Eye } from 'lucide-react';
 
 interface BankCardProps {
   bank: {
@@ -11,6 +11,7 @@ interface BankCardProps {
     createdAt: number;
   };
   onStartPractice: (bankId: string) => void;
+  onStartRecite?: (bankId: string) => void;
   accuracy?: number; // 正确率 0-100，undefined 表示还没有练习记录
 }
 
@@ -24,7 +25,7 @@ const THEME_CONFIG = [
   { bg: 'bg-violet-500', lightBg: 'bg-violet-50', text: 'text-violet-600' },
 ];
 
-export const BankCard = memo(function BankCard({ bank, onStartPractice, accuracy }: BankCardProps) {
+export const BankCard = memo(function BankCard({ bank, onStartPractice, onStartRecite, accuracy }: BankCardProps) {
   const questionCount = bank.questionCount ?? 0;
   
   // 根据名称生成稳定的主题色
@@ -92,27 +93,49 @@ export const BankCard = memo(function BankCard({ bank, onStartPractice, accuracy
             </div>
           </div>
           
-          {/* 右侧开始按钮 - 紧凑设计 */}
+          {/* 右侧按钮组 */}
           {questionCount > 0 && (
-            <button 
-              className={`
-                flex-shrink-0
-                ${colorConfig.lightBg} ${colorConfig.text}
-                rounded-lg
-                px-2.5 py-1.5
-                text-xs font-medium
-                transition-all duration-200
-                group-hover:scale-105
-                flex items-center gap-1
-              `}
-              onClick={(e) => {
-                e.stopPropagation();
-                !isDisabled && onStartPractice(bank.id);
-              }}
-            >
-              <Play className="w-3 h-3" fill="currentColor" />
-              <span>练习</span>
-            </button>
+            <div className="flex-shrink-0 flex items-center gap-1.5">
+              <button 
+                className={`
+                  ${colorConfig.lightBg} ${colorConfig.text}
+                  rounded-lg
+                  px-2.5 py-1.5
+                  text-xs font-medium
+                  transition-all duration-200
+                  group-hover:scale-105
+                  flex items-center gap-1
+                `}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  !isDisabled && onStartPractice(bank.id);
+                }}
+              >
+                <Play className="w-3 h-3" fill="currentColor" />
+                <span>练习</span>
+              </button>
+              {onStartRecite && (
+                <button 
+                  className={`
+                    bg-gray-50 text-gray-600
+                    rounded-lg
+                    px-2.5 py-1.5
+                    text-xs font-medium
+                    transition-all duration-200
+                    group-hover:scale-105 hover:bg-gray-100
+                    flex items-center gap-1
+                    border border-gray-200
+                  `}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartRecite(bank.id);
+                  }}
+                >
+                  <Eye className="w-3 h-3" />
+                  <span>背题</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
