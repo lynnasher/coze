@@ -88,6 +88,41 @@ export default function RecitePage() {
     loadData();
   }, [bankId]);
 
+  // 防复制功能
+  useEffect(() => {
+    // 禁用右键菜单
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+
+    // 禁用复制快捷键
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 禁用 Ctrl+C, Ctrl+A, Ctrl+X, Ctrl+S, Ctrl+P
+      if ((e.ctrlKey || e.metaKey) && ['c', 'a', 'x', 's', 'p'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+      }
+      // 禁用 F12 (开发者工具)
+      if (e.key === 'F12') {
+        e.preventDefault();
+      }
+    };
+
+    // 禁用选择开始
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('selectstart', handleSelectStart);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('selectstart', handleSelectStart);
+    };
+  }, []);
+
   // 获取答案显示文本
   const getAnswerDisplay = useCallback((question: Question) => {
     const answer = question.answer;
@@ -154,7 +189,7 @@ export default function RecitePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 select-none" style={{ userSelect: 'none', WebkitUserSelect: 'none' }}>
       {/* 顶部导航 */}
       <header className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-[900px] mx-auto px-4 h-14 flex items-center justify-between">
