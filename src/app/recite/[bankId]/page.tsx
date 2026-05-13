@@ -449,7 +449,7 @@ function ReciteCard({
               <div>
                 <span className="text-sm font-medium text-amber-700">名师解析：</span>
                 <p className="text-sm text-amber-700 leading-relaxed mt-0.5">
-                  {question.explanation}
+                  {renderTextWithImages(question.explanation)}
                 </p>
               </div>
             </div>
