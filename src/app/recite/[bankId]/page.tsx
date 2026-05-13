@@ -224,6 +224,82 @@ export default function RecitePage() {
   );
 }
 
+// 将文本中的图片 URL 转为 <img> 标签
+function renderTextWithImages(text: string) {
+  if (!text) return text;
+
+  // 匹配 markdown 图片语法 ![alt](url)
+  const mdImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  // 匹配直接嵌入的图片 URL
+  const urlRegex = /(https?:\/\/[^\s"'<>]+?\.(?:png|jpg|jpeg|gif|webp|svg|bmp)(?:\?[^\s"'<>]*)?)/gi;
+
+  const parts: (string | React.ReactNode)[] = [];
+  let lastIndex = 0;
+
+  // 先处理 markdown 图片
+  let match: RegExpExecArray | null;
+  const mdMatches: { index: number; alt: string; url: string }[] = [];
+
+  const mdRegex = new RegExp(mdImageRegex.source, 'g');
+  while ((match = mdRegex.exec(text)) !== null) {
+    mdMatches.push({ index: match.index, alt: match[1], url: match[2] });
+  }
+
+  // 合并所有匹配点（md图片 + 直接url）
+  interface MatchItem {
+    index: number;
+    length: number;
+    alt: string;
+    url: string;
+  }
+  const allMatches: MatchItem[] = [];
+
+  for (const m of mdMatches) {
+    allMatches.push({ index: m.index, length: `![${m.alt}](${m.url})`.length, alt: m.alt, url: m.url });
+  }
+
+  const urlRegex2 = new RegExp(urlRegex.source, 'gi');
+  while ((match = urlRegex2.exec(text)) !== null) {
+    // 检查是否已被 md 图片匹配覆盖
+    const isOverlapped = allMatches.some(
+      (m) => match!.index >= m.index && match!.index < m.index + m.length
+    );
+    if (!isOverlapped) {
+      allMatches.push({ index: match.index, length: match[0].length, alt: '', url: match[0] });
+    }
+  }
+
+  // 排序
+  allMatches.sort((a, b) => a.index - b.index);
+
+  // 构建输出
+  let result: (string | React.ReactNode)[] = [];
+  let ptr = 0;
+  for (const m of allMatches) {
+    if (m.index > ptr) {
+      result.push(text.slice(ptr, m.index));
+    }
+    result.push(
+      <img
+        key={m.index}
+        src={m.url}
+        alt={m.alt || ''}
+        className="max-w-full h-auto rounded-lg my-2 inline-block"
+        loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = 'none';
+        }}
+      />
+    );
+    ptr = m.index + m.length;
+  }
+  if (ptr < text.length) {
+    result.push(text.slice(ptr));
+  }
+
+  return result.length > 0 ? result : text;
+}
+
 // 单个题目卡片组件
 function ReciteCard({
   question,
@@ -260,7 +336,7 @@ function ReciteCard({
               {index}
             </span>
             <p className="text-base text-gray-900 leading-relaxed pt-0.5">
-              {question.content}
+              {renderTextWithImages(question.content)}
             </p>
           </div>
         </div>
@@ -302,7 +378,7 @@ function ReciteCard({
                       ${isCorrect ? 'text-emerald-800 font-medium' : 'text-gray-600'}
                     `}
                   >
-                    {option.text}
+                    {renderTextWithImages(option.text)}
                   </span>
                   {/* 正确标记 */}
                   {isCorrect && (
