@@ -230,6 +230,8 @@ function renderTextWithImages(text: string) {
 
   // 匹配 markdown 图片语法 ![alt](url)
   const mdImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+  // 匹配 HTML <img> 标签
+  const htmlImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*\/?>/gi;
   // 匹配直接嵌入的图片 URL
   const urlRegex = /(https?:\/\/[^\s"'<>]+?\.(?:png|jpg|jpeg|gif|webp|svg|bmp)(?:\?[^\s"'<>]*)?)/gi;
 
@@ -245,7 +247,7 @@ function renderTextWithImages(text: string) {
     mdMatches.push({ index: match.index, alt: match[1], url: match[2] });
   }
 
-  // 合并所有匹配点（md图片 + 直接url）
+  // 合并所有匹配点（md图片 + html img + 直接url）
   interface MatchItem {
     index: number;
     length: number;
@@ -256,6 +258,17 @@ function renderTextWithImages(text: string) {
 
   for (const m of mdMatches) {
     allMatches.push({ index: m.index, length: `![${m.alt}](${m.url})`.length, alt: m.alt, url: m.url });
+  }
+
+  // 处理 HTML <img> 标签
+  const htmlImgRegex2 = new RegExp(htmlImgRegex.source, 'gi');
+  while ((match = htmlImgRegex2.exec(text)) !== null) {
+    const isOverlapped = allMatches.some(
+      (m) => match!.index >= m.index && match!.index < m.index + m.length
+    );
+    if (!isOverlapped) {
+      allMatches.push({ index: match.index, length: match[0].length, alt: '', url: match[1] });
+    }
   }
 
   const urlRegex2 = new RegExp(urlRegex.source, 'gi');
