@@ -413,7 +413,7 @@ export default function AdminPage() {
       // Token 格式: base64payload.signature (HMAC-SHA256)
       const payloadStr = token.split('.')[0];
       const payload = JSON.parse(atob(payloadStr));
-      if (payload.exp < Date.now() / 1000) {
+      if (payload.exp < Date.now()) {
         localStorage.removeItem('admin_token');
         localStorage.removeItem('admin_user');
         router.push(getLoginPath());
