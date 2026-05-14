@@ -11,9 +11,37 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
+  // 解析分页参数
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+  const validPageSize = Math.min(Math.max(pageSize, 10), 100); // 限制 10-100
+  const offset = (page - 1) * validPageSize;
+
   try {
-    const users = await userService.getAllUsers();
     const client = getSupabaseAdminClient();
+    
+    // 先获取总数
+    const { count: totalCount, error: countError } = await client
+      .from('users')
+      .select('*', { count: 'exact', head: true });
+    
+    if (countError) {
+      console.error('获取用户总数失败:', countError);
+    }
+    
+    // 分页获取用户
+    const { data: usersData, error: usersError } = await client
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(offset, offset + validPageSize - 1);
+    
+    if (usersError) {
+      throw new Error(`查询用户失败: ${usersError.message}`);
+    }
+    
+    const users = usersData || [];
     
     // 获取所有分类信息（用于显示分类名称）
     const { data: categoriesData, error: categoriesError } = await client.from('categories').select('id, name');
@@ -92,7 +120,13 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ success: true, users: safeUsers });
+    return NextResponse.json({ 
+      success: true, 
+      users: safeUsers,
+      total: totalCount || 0,
+      page,
+      pageSize: validPageSize
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : '服务器错误';
     console.error('获取用户列表失败:', error);

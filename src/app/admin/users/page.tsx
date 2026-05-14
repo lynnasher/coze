@@ -44,6 +44,8 @@ import {
   RefreshCw,
   Key,
   Clock,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -79,6 +81,11 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState('');
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  
+  // 分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalCount, setTotalCount] = useState(0);
 
   // 检查管理员登录状态
   useEffect(() => {
@@ -122,16 +129,17 @@ export default function UsersPage() {
     }
   };
 
-  const loadUsers = async () => {
+  const loadUsers = async (page = currentPage, size = pageSize) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch(`/api/admin/users?page=${page}&pageSize=${size}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
+        setTotalCount(data.total || 0);
       }
     } catch (error) {
       console.error('加载用户失败:', error);
@@ -142,9 +150,9 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (currentUser) {
-      loadUsers();
+      loadUsers(currentPage, pageSize);
     }
-  }, [currentUser]);
+  }, [currentUser, currentPage, pageSize]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -542,6 +550,36 @@ export default function UsersPage() {
                 </TableBody>
               </Table>
             </div>
+            
+            {/* 分页 */}
+            {!loading && filteredUsers.length > 0 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <div className="text-sm text-gray-500">
+                  共 {totalCount} 条记录，每页 {pageSize} 条
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm text-gray-600">
+                    第 {currentPage} / {Math.ceil(totalCount / pageSize)} 页
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalCount / pageSize), p + 1))}
+                    disabled={currentPage >= Math.ceil(totalCount / pageSize)}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>
