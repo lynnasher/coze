@@ -577,9 +577,21 @@ export default function WrongBookPage() {
                         ? Array.isArray(localAnswer) && localAnswer.map(a => a.toLowerCase()).includes(optionIdLower)
                         : typeof localAnswer === 'string' && localAnswer.toLowerCase() === optionIdLower;
                       const correctAnswer = currentReviewQuestion.answer;
-                      const isCorrectAnswer = Array.isArray(correctAnswer)
-                        ? correctAnswer.map(a => a.toLowerCase()).includes(optionIdLower)
-                        : typeof correctAnswer === 'string' && correctAnswer.toLowerCase() === optionIdLower;
+                      // 处理答案格式：数组、字符串（单选）、多选字符串（如"CD"）
+                      const isCorrectAnswer = (() => {
+                        if (Array.isArray(correctAnswer)) {
+                          return correctAnswer.map(a => a.toLowerCase()).includes(optionIdLower);
+                        }
+                        if (typeof correctAnswer === 'string') {
+                          const answerLower = correctAnswer.toLowerCase();
+                          // 多选题答案可能是"CD"这种格式，需要按字符拆分匹配
+                          if (isMulti && answerLower.length > 1) {
+                            return answerLower.includes(optionIdLower);
+                          }
+                          return answerLower === optionIdLower;
+                        }
+                        return false;
+                      })();
 
                       let optionStyle = 'bg-slate-50/50';
                       if (isSelected && showExplanation) {
