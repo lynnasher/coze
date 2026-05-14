@@ -442,6 +442,8 @@ export default function WrongBookPage() {
       // 使用增量同步队列（标记 streak 为 0 表示移除）
       queueStreakForSync(questionId, 0);
     }
+    // 立即刷新错题列表，移除已掌握的题目
+    refreshData();
     // 自动跳到下一题，如果没有下一题则返回错题本
     if (reviewIndex < reviewQuestions.length - 1) {
       setReviewIndex(reviewIndex + 1);
@@ -450,7 +452,6 @@ export default function WrongBookPage() {
       setIsAnswerCorrect(false);
     } else {
       setIsReviewing(false);
-      refreshData();
     }
   }, [reviewIndex, reviewQuestions.length, refreshData]);
 
