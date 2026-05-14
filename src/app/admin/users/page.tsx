@@ -140,11 +140,6 @@ export default function UsersPage() {
         const data = await response.json();
         setUsers(data.users || []);
         setTotalCount(data.total || 0);
-      } else if (response.status === 401) {
-        // Token 过期或无效，清除登录状态并跳转
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_user');
-        router.push(getLoginPath());
       }
     } catch (error) {
       console.error('加载用户失败:', error);
