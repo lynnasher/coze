@@ -321,7 +321,7 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={loadUsers} className="gap-1">
+              <Button variant="outline" size="sm" onClick={() => loadUsers()} className="gap-1">
                 <RefreshCw className="w-4 h-4" />
                 刷新
               </Button>
