@@ -210,16 +210,23 @@ function SortableBankRow({
             </button>
           </div>
         ) : (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left truncate block w-full"
-            title="点击修改名称"
-          >
-            {bank.name}
-          </button>
+          <div className="flex flex-col gap-0.5">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-left truncate block w-full"
+              title="点击修改名称"
+            >
+              {bank.name}
+            </button>
+            {bank.description && (
+              <span className="text-xs text-slate-400 truncate" title={bank.description}>
+                {bank.description}
+              </span>
+            )}
+          </div>
         )}
       </TableCell>
       <TableCell onClick={onClick} className="cursor-pointer">
