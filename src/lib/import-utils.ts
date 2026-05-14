@@ -321,27 +321,34 @@ export function processQuestion(
  */
 export function checkAnswer(question: Question, selectedAnswer: string | string[] | undefined): boolean {
   if (!selectedAnswer) return false;
-  
-  if (Array.isArray(question.answer)) {
+
+  // 标准化答案为小写（处理大小写不一致问题）
+  const normalize = (val: string | string[]) =>
+    Array.isArray(val) ? val.map(v => v.toLowerCase()) : val.toLowerCase();
+
+  const correctAnswer = normalize(question.answer);
+  const userAnswer = normalize(selectedAnswer);
+
+  if (Array.isArray(correctAnswer)) {
     // 正确答案本身是多选项
-    if (Array.isArray(selectedAnswer)) {
+    if (Array.isArray(userAnswer)) {
       // 用户答案也是数组
       return (
-        question.answer.length === selectedAnswer.length &&
-        question.answer.every(a => selectedAnswer.includes(a))
+        correctAnswer.length === userAnswer.length &&
+        correctAnswer.every(a => userAnswer.includes(a))
       );
     }
     // 用户只选了一个但标准答案多选 → 错
     return false;
   }
-  
+
   // 正确答案不是数组（单选/判断/填空）
-  if (Array.isArray(selectedAnswer)) {
+  if (Array.isArray(userAnswer)) {
     // 用户选了多个但标准答案单选 → 错
-    return selectedAnswer.length === 1 && selectedAnswer[0] === question.answer;
+    return userAnswer.length === 1 && userAnswer[0] === correctAnswer;
   }
-  
-  return selectedAnswer === question.answer;
+
+  return userAnswer === correctAnswer;
 }
 
 /**

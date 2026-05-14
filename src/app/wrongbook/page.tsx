@@ -565,12 +565,20 @@ export default function WrongBookPage() {
                   <div className="space-y-2">
                     {currentReviewQuestion.options?.map((option, index) => {
                       const isMulti = currentReviewQuestion.type === 'multiple';
+                      // 标准化为小写比较（处理大小写不一致）
+                      const optionIdLower = option.id.toLowerCase();
+                      const normalizeAnswer = (ans: string | string[] | undefined): string[] => {
+                        if (!ans) return [];
+                        if (Array.isArray(ans)) return ans.map(a => a.toLowerCase());
+                        return [ans.toLowerCase()];
+                      };
                       const isSelected = isMulti
-                        ? Array.isArray(localAnswer) && localAnswer.includes(option.id)
-                        : localAnswer === option.id;
-                      const isCorrectAnswer = Array.isArray(currentReviewQuestion.answer)
-                        ? currentReviewQuestion.answer.includes(option.id)
-                        : currentReviewQuestion.answer === option.id;
+                        ? Array.isArray(localAnswer) && localAnswer.map(a => a.toLowerCase()).includes(optionIdLower)
+                        : typeof localAnswer === 'string' && localAnswer.toLowerCase() === optionIdLower;
+                      const correctAnswer = currentReviewQuestion.answer;
+                      const isCorrectAnswer = Array.isArray(correctAnswer)
+                        ? correctAnswer.map(a => a.toLowerCase()).includes(optionIdLower)
+                        : typeof correctAnswer === 'string' && correctAnswer.toLowerCase() === optionIdLower;
 
                       let optionStyle = 'bg-slate-50/50';
                       if (isSelected && showExplanation) {
