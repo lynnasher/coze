@@ -147,6 +147,42 @@ export default function RecitePage() {
     return questions.length;
   }, [questions]);
 
+  // 按题型分组题目
+  const groupedQuestions = useMemo(() => {
+    const groups: Record<string, Question[]> = {};
+    
+    questions.forEach(q => {
+      const typeKey = q.type;
+      if (!groups[typeKey]) {
+        groups[typeKey] = [];
+      }
+      groups[typeKey].push(q);
+    });
+    
+    // 按题型顺序排序
+    const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
+    const sortedGroups: { type: string; typeName: string; questions: Question[] }[] = [];
+    
+    typeOrder.forEach(type => {
+      if (groups[type] && groups[type].length > 0) {
+        const typeNames: Record<string, string> = {
+          'single': '单选题',
+          'multiple': '多选题', 
+          'true-false': '判断题',
+          'fill-blank': '填空题',
+          'comprehensive': '综合题'
+        };
+        sortedGroups.push({
+          type,
+          typeName: typeNames[type] || type,
+          questions: groups[type]
+        });
+      }
+    });
+    
+    return sortedGroups;
+  }, [questions]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -192,15 +228,63 @@ export default function RecitePage() {
             <p className="mt-4 text-gray-500">该题库暂无题目</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {questions.map((question, index) => (
-              <ReciteItem
-                key={question.id}
-                question={question}
-                index={index + 1}
-                correctOptionIds={getCorrectOptionIds(question)}
-                answerDisplay={getAnswerDisplay(question)}
-              />
+          <div className="space-y-8">
+            {groupedQuestions.map((group, groupIndex) => (
+              <div key={group.type} className="space-y-4">
+                {/* 题型分组标题 */}
+                <div className="sticky top-14 z-10 bg-gray-50/95 backdrop-blur py-2 border-b border-gray-200">
+                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                      group.type === 'single' ? 'bg-indigo-100 text-indigo-700' :
+                      group.type === 'multiple' ? 'bg-purple-100 text-purple-700' :
+                      group.type === 'true-false' ? 'bg-cyan-100 text-cyan-700' :
+                      group.type === 'fill-blank' ? 'bg-teal-100 text-teal-700' :
+                      'bg-rose-100 text-rose-700'
+                    }`}>
+                      {group.typeName}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      {group.questions.length} 题
+                    </span>
+                  </h2>
+                </div>
+                
+                {/* 该题型下的题目 */}
+                <div className="space-y-6">
+                  {(() => {
+                    // 计算全局序号
+                    let globalIndex = 1;
+                    for (let i = 0; i < groupIndex; i++) {
+                      globalIndex += groupedQuestions[i].questions.reduce((acc, q) => {
+                        if (q.type === 'comprehensive' && q.children) {
+                          return acc + 1 + q.children.length;
+                        }
+                        return acc + 1;
+                      }, 0);
+                    }
+                    
+                    return group.questions.map((question, index) => {
+                      const currentIndex = globalIndex;
+                      // 更新全局序号
+                      if (question.type === 'comprehensive' && question.children) {
+                        globalIndex += 1 + question.children.length;
+                      } else {
+                        globalIndex += 1;
+                      }
+                      
+                      return (
+                        <ReciteItem
+                          key={question.id}
+                          question={question}
+                          index={currentIndex}
+                          correctOptionIds={getCorrectOptionIds(question)}
+                          answerDisplay={getAnswerDisplay(question)}
+                        />
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
             ))}
           </div>
         )}
