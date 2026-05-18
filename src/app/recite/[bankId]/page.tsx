@@ -472,40 +472,103 @@ function ReciteItem({
           </div>
         </div>
 
-        {/* 子题列表 */}
-        <div className="p-5 space-y-4">
-          {question.children.map((child, childIndex) => (
-            <ReciteCard
-              key={child.id}
-              question={child}
-              index={childIndex + 1}
-              correctOptionIds={new Set(
-                Array.isArray(child.answer)
-                  ? child.answer.map(a => a.toString().toUpperCase())
-                  : [child.answer?.toString().toUpperCase() || '']
-              )}
-              answerDisplay={(() => {
-                const answer = child.answer;
-                if (child.type === 'true-false') {
-                  const answerKey = (Array.isArray(answer) ? answer[0] : answer)?.toString().toUpperCase();
-                  const option = child.options?.find(o => o.id.toUpperCase() === answerKey);
-                  if (option) {
-                    const text = option.text.replace(/[。，、；：！？（）\.\,\;\:\!\?\(\)]/g, '').trim();
-                    return text === '正确' || text === '对' || text === '√' || text === '是' ? '正确' : '错误';
-                  }
-                  return answerKey;
+        {/* 子题列表 - 简洁显示，与案例背景同层 */}
+        <div className="divide-y divide-gray-100">
+          {question.children.map((child, childIndex) => {
+            const childAnswerDisplay = (() => {
+              const answer = child.answer;
+              if (child.type === 'true-false') {
+                const answerKey = (Array.isArray(answer) ? answer[0] : answer)?.toString().toUpperCase();
+                const option = child.options?.find(o => o.id.toUpperCase() === answerKey);
+                if (option) {
+                  const text = option.text.replace(/[。，、；：！？（）\.\,\;\:\!\?\(\)]/g, '').trim();
+                  return text === '正确' || text === '对' || text === '√' || text === '是' ? '正确' : '错误';
                 }
-                if (child.type === 'fill-blank') {
-                  return Array.isArray(answer) ? answer.join('；') : answer;
-                }
-                if (Array.isArray(answer)) {
-                  return answer.map(a => a.toUpperCase()).join('、');
-                }
-                return answer?.toString().toUpperCase() || '';
-              })()}
-              isChild={true}
-            />
-          ))}
+                return answerKey;
+              }
+              if (child.type === 'fill-blank') {
+                return Array.isArray(answer) ? answer.join('；') : answer;
+              }
+              if (Array.isArray(answer)) {
+                return answer.map(a => a.toUpperCase()).join('、');
+              }
+              return answer?.toString().toUpperCase() || '';
+            })();
+            const childCorrectIds = new Set(
+              Array.isArray(child.answer)
+                ? child.answer.map(a => a.toString().toUpperCase())
+                : [child.answer?.toString().toUpperCase() || '']
+            );
+
+            return (
+              <div key={child.id} className="p-5">
+                {/* 子题头部 */}
+                <div className="flex items-start gap-3 mb-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center">
+                    {childIndex + 1}
+                  </span>
+                  <span className="flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                    {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
+                  </span>
+                </div>
+
+                {/* 子题内容 */}
+                <div className="ml-9">
+                  <div className="text-gray-800 leading-relaxed mb-3">
+                    {renderTextWithImages(child.content)}
+                  </div>
+
+                  {/* 选项 */}
+                  {child.options && child.options.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      {child.options.map((option) => {
+                        const isCorrect = childCorrectIds.has(option.id.toUpperCase());
+                        return (
+                          <div
+                            key={option.id}
+                            className={`flex items-start gap-3 p-2.5 rounded-lg ${
+                              isCorrect
+                                ? 'bg-green-50 border border-green-200'
+                                : 'bg-gray-50 border border-gray-100'
+                            }`}
+                          >
+                            <span
+                              className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center ${
+                                isCorrect
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-200 text-gray-600'
+                              }`}
+                            >
+                              {option.id}
+                            </span>
+                            <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-600'}`}>
+                              {renderTextWithImages(option.text)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* 答案和解析 */}
+                  <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-medium text-amber-700">正确答案：</span>
+                      <span className="text-sm font-semibold text-amber-800">{childAnswerDisplay}</span>
+                    </div>
+                    {child.explanation && (
+                      <div className="mt-2 pt-2 border-t border-amber-100">
+                        <div className="text-xs text-gray-500 mb-1">解析：</div>
+                        <div className="text-sm text-gray-700 leading-relaxed">
+                          {renderTextWithImages(child.explanation)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
