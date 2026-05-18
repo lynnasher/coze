@@ -404,18 +404,13 @@ function ReciteCard({
   return (
     <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${isChild ? 'ml-4' : ''}`}>
       <div className="p-5">
-        {/* 题号 + 题型标签 + 题干（同一行显示） */}
+        {/* 题号 + 题干（同一行显示） */}
         <div className="flex items-start gap-2 mb-4">
           <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center mt-0.5">
             {index}
           </span>
           <div className="flex-1">
             <p className="text-base text-gray-900 leading-relaxed">
-              {!isChild && (
-                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-2 align-middle ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
-                  {TYPE_LABELS[question.type]?.text || question.type}
-                </span>
-              )}
               {renderTextWithImages(question.content)}
             </p>
           </div>
@@ -513,7 +508,7 @@ function ReciteCard({
           <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
             <div className="flex items-start gap-2">
               <Lightbulb className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium text-amber-700">名师解析：</span>
                 <p className="text-sm text-amber-700 leading-relaxed mt-0.5">
                   {renderTextWithImages(question.explanation)}
