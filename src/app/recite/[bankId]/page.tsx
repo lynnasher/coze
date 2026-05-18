@@ -327,9 +327,11 @@ function ReciteCard({
           </span>
           <div className="flex-1">
             <p className="text-base text-gray-900 leading-relaxed">
-              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-2 align-middle ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
-                {TYPE_LABELS[question.type]?.text || question.type}
-              </span>
+              {!isChild && (
+                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-2 align-middle ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
+                  {TYPE_LABELS[question.type]?.text || question.type}
+                </span>
+              )}
               {renderTextWithImages(question.content)}
             </p>
           </div>
