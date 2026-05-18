@@ -239,37 +239,25 @@ export default function BankEditPage() {
           throw new Error('保存父题失败');
         }
 
-        // 获取现有子题（从 children 数组中获取）
-        const existingChildren = question.children || [];
+        // 获取当前编辑中的子题
+        const currentChildren = question.children || [];
         
-        // 获取当前题库中的所有题目（用于比对）
-        const currentAllQuestions = questions;
+        // 获取数据库中真正存在的子题（从完整题库中筛选）
+        const existingChildren = questions.filter(q => q.parentId === question.id);
         
-        // 删除被移除的子题（原来有但现在没有的）
-        for (const existingChild of currentAllQuestions) {
-          if (existingChild.parentId === question.id) {
-            const stillExists = existingChildren.some(c => c.id === existingChild.id);
-            if (!stillExists) {
-              await fetch(`/api/admin/questions/${existingChild.id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-            }
+        // 删除被移除的子题（数据库中有但现在编辑中没有的）
+        const currentChildIds = currentChildren.map(c => c.id);
+        for (const existingChild of existingChildren) {
+          if (!currentChildIds.includes(existingChild.id)) {
+            await fetch(`/api/admin/questions/${existingChild.id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
           }
         }
         
         // 处理子题：更新或新增
-        const currentChildIds = question.children?.map(c => c.id) || [];
         const existingChildIds = existingChildren.map(c => c.id);
-        
-        // 删除被移除的子题
-        const toDelete = existingChildren.filter(c => !currentChildIds.includes(c.id));
-        for (const child of toDelete) {
-          await fetch(`/api/admin/questions/${child.id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-        }
 
         // 保存/更新子题
         if (question.children) {
