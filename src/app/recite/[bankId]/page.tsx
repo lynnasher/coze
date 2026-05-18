@@ -50,9 +50,9 @@ export default function RecitePage() {
           });
         }
 
-        // 如果 localStorage 没有数据，尝试从后端获取（公开接口，无需登录）
+        // 如果 localStorage 没有数据，尝试从后端获取
         if (bankQuestions.length === 0) {
-          const response = await fetch(`/api/banks/${bankId}/recite`);
+          const response = await fetch(`/api/admin/banks/${bankId}/questions`);
           if (response.ok) {
             const data = await response.json();
             bankQuestions = data.questions || [];
