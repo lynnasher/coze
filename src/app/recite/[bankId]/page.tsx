@@ -320,20 +320,22 @@ function ReciteCard({
   return (
     <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${isChild ? 'ml-4' : ''}`}>
       <div className="p-5">
-        {/* 题型标签 + 题号 + 题目内容 */}
+        {/* 题型标签 + 题号 + 题目内容 - 分开两行显示 */}
         <div className="mb-4">
-          <div className="flex items-start gap-2">
+          {/* 第一行：题号 + 题型标签 */}
+          <div className="flex items-center gap-2 mb-2">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center">
               {index}
             </span>
-            <div className="flex-1">
-              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mb-1 ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
-                {TYPE_LABELS[question.type]?.text || question.type}
-              </span>
-              <p className="text-base text-gray-900 leading-relaxed">
-                {renderTextWithImages(question.content)}
-              </p>
-            </div>
+            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
+              {TYPE_LABELS[question.type]?.text || question.type}
+            </span>
+          </div>
+          {/* 第二行：题干（与题号对齐） */}
+          <div className="pl-8">
+            <p className="text-base text-gray-900 leading-relaxed">
+              {renderTextWithImages(question.content)}
+            </p>
           </div>
         </div>
 
@@ -502,8 +504,8 @@ function ReciteItem({
 
             return (
               <div key={child.id} className="p-5">
-                {/* 子题头部 */}
-                <div className="flex items-start gap-3 mb-3">
+                {/* 子题头部：题号 + 题型标签（第一行） */}
+                <div className="flex items-center gap-2 mb-2">
                   <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center">
                     {childIndex + 1}
                   </span>
@@ -512,8 +514,8 @@ function ReciteItem({
                   </span>
                 </div>
 
-                {/* 子题内容 */}
-                <div className="ml-9">
+                {/* 子题内容：题干（与题号对齐） */}
+                <div className="pl-8">
                   <div className="text-gray-800 leading-relaxed mb-3">
                     {renderTextWithImages(child.content)}
                   </div>
