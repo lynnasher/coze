@@ -91,10 +91,13 @@ export async function POST(request: NextRequest) {
           : JSON.stringify(question.answer))
       : null;
     
+    // 支持子题创建（综合题的子题）
+    const parentId = (question as { parent_id?: string }).parent_id || (question as { parentId?: string }).parentId || null;
+    
     const questionData = [{
       id: questionId,
       bank_id: bankId,
-      parent_id: null,
+      parent_id: parentId,
       type: question.type || 'single',
       content: question.content,
       options: question.options ? JSON.stringify(question.options) : null,
