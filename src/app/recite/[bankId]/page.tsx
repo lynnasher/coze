@@ -60,24 +60,8 @@ export default function RecitePage() {
           }
         }
 
-        // 对综合题特殊处理：把子题目展开
-        const flattenedQuestions: Question[] = [];
-        for (const q of bankQuestions) {
-          if (q.type === 'comprehensive' && q.children && q.children.length > 0) {
-            // 综合题：先放父题（案例背景），再放子题目
-            flattenedQuestions.push({ ...q, children: undefined }); // 只保留背景
-            for (const child of q.children) {
-              flattenedQuestions.push({
-                ...child,
-                caseBackground: q.caseBackground || q.content,
-              });
-            }
-          } else {
-            flattenedQuestions.push(q);
-          }
-        }
-
-        setQuestions(flattenedQuestions);
+        // 保留原始顺序，综合题保持完整结构
+        setQuestions(bankQuestions);
       } catch (error) {
         console.error('加载背题数据失败:', error);
       } finally {
@@ -158,23 +142,9 @@ export default function RecitePage() {
     return new Set([answer?.toString().toUpperCase() || '']);
   }, []);
 
-  // 按题型分组
-  const groupedQuestions = useMemo(() => {
-    const groups: { type: string; label: string; color: string; questions: Question[] }[] = [];
-    const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
-    
-    for (const type of typeOrder) {
-      const typeQuestions = questions.filter(q => q.type === type);
-      if (typeQuestions.length > 0) {
-        groups.push({
-          type,
-          label: TYPE_LABELS[type]?.text || type,
-          color: TYPE_LABELS[type]?.color || 'bg-gray-100 text-gray-700',
-          questions: typeQuestions,
-        });
-      }
-    }
-    return groups;
+  // 计算题目总数（综合题只算父题）
+  const totalQuestionCount = useMemo(() => {
+    return questions.length;
   }, [questions]);
 
   if (loading) {
@@ -203,7 +173,7 @@ export default function RecitePage() {
             <div>
               <h1 className="text-base font-semibold text-gray-900">{bankName || '背题模式'}</h1>
               <p className="text-xs text-gray-500">
-                {questions.length} 道题 · 含答案与解析
+                {totalQuestionCount} 道题 · 含答案与解析
               </p>
             </div>
           </div>
@@ -222,30 +192,15 @@ export default function RecitePage() {
             <p className="mt-4 text-gray-500">该题库暂无题目</p>
           </div>
         ) : (
-          <div className="space-y-8">
-            {groupedQuestions.map((group) => (
-              <section key={group.type}>
-                {/* 题型标题 */}
-                <div className="flex items-center gap-2 mb-4">
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${group.color}`}>
-                    {group.label}
-                  </span>
-                  <span className="text-xs text-gray-400">{group.questions.length} 题</span>
-                </div>
-
-                {/* 题目列表 */}
-                <div className="space-y-4">
-                  {group.questions.map((question, index) => (
-                    <ReciteCard
-                      key={question.id}
-                      question={question}
-                      index={index + 1}
-                      correctOptionIds={getCorrectOptionIds(question)}
-                      answerDisplay={getAnswerDisplay(question)}
-                    />
-                  ))}
-                </div>
-              </section>
+          <div className="space-y-6">
+            {questions.map((question, index) => (
+              <ReciteItem
+                key={question.id}
+                question={question}
+                index={index + 1}
+                correctOptionIds={getCorrectOptionIds(question)}
+                answerDisplay={getAnswerDisplay(question)}
+              />
             ))}
           </div>
         )}
@@ -354,38 +309,31 @@ function ReciteCard({
   index,
   correctOptionIds,
   answerDisplay,
+  isChild = false,
 }: {
   question: Question;
   index: number;
   correctOptionIds: Set<string>;
   answerDisplay: string;
+  isChild?: boolean;
 }) {
-  const isComprehensiveChild = !!question.caseBackground;
-
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* 案例背景（综合题子题目） */}
-      {isComprehensiveChild && (
-        <div className="px-5 pt-4 pb-2 border-b border-dashed border-gray-100">
-          <div className="flex items-start gap-2">
-            <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-600">
-              案例
-            </span>
-            <p className="text-sm text-gray-500 leading-relaxed">{question.caseBackground}</p>
-          </div>
-        </div>
-      )}
-
+    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${isChild ? 'ml-4' : ''}`}>
       <div className="p-5">
-        {/* 题号 + 题目内容 */}
+        {/* 题型标签 + 题号 + 题目内容 */}
         <div className="mb-4">
           <div className="flex items-start gap-2">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center">
               {index}
             </span>
-            <p className="text-base text-gray-900 leading-relaxed pt-0.5">
-              {renderTextWithImages(question.content)}
-            </p>
+            <div className="flex-1">
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mb-1 ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
+                {TYPE_LABELS[question.type]?.text || question.type}
+              </span>
+              <p className="text-base text-gray-900 leading-relaxed">
+                {renderTextWithImages(question.content)}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -492,5 +440,84 @@ function ReciteCard({
         )}
       </div>
     </div>
+  );
+}
+
+// 题目项组件（处理综合题和普通题）
+function ReciteItem({
+  question,
+  index,
+  correctOptionIds,
+  answerDisplay,
+}: {
+  question: Question;
+  index: number;
+  correctOptionIds: Set<string>;
+  answerDisplay: string;
+}) {
+  // 综合题：显示案例背景 + 子题列表
+  if (question.type === 'comprehensive' && question.children && question.children.length > 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        {/* 综合题案例背景 */}
+        <div className="p-5 border-b border-gray-200 bg-rose-50/50">
+          <div className="flex items-start gap-2">
+            <span className="flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-600">
+              综合案例
+            </span>
+            <span className="text-xs text-gray-400">{question.children.length} 道子题</span>
+          </div>
+          <div className="mt-3 text-gray-700 leading-relaxed">
+            {renderTextWithImages(question.caseBackground || question.content)}
+          </div>
+        </div>
+
+        {/* 子题列表 */}
+        <div className="p-5 space-y-4">
+          {question.children.map((child, childIndex) => (
+            <ReciteCard
+              key={child.id}
+              question={child}
+              index={childIndex + 1}
+              correctOptionIds={new Set(
+                Array.isArray(child.answer)
+                  ? child.answer.map(a => a.toString().toUpperCase())
+                  : [child.answer?.toString().toUpperCase() || '']
+              )}
+              answerDisplay={(() => {
+                const answer = child.answer;
+                if (child.type === 'true-false') {
+                  const answerKey = (Array.isArray(answer) ? answer[0] : answer)?.toString().toUpperCase();
+                  const option = child.options?.find(o => o.id.toUpperCase() === answerKey);
+                  if (option) {
+                    const text = option.text.replace(/[。，、；：！？（）\.\,\;\:\!\?\(\)]/g, '').trim();
+                    return text === '正确' || text === '对' || text === '√' || text === '是' ? '正确' : '错误';
+                  }
+                  return answerKey;
+                }
+                if (child.type === 'fill-blank') {
+                  return Array.isArray(answer) ? answer.join('；') : answer;
+                }
+                if (Array.isArray(answer)) {
+                  return answer.map(a => a.toUpperCase()).join('、');
+                }
+                return answer?.toString().toUpperCase() || '';
+              })()}
+              isChild={true}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 普通题：直接显示
+  return (
+    <ReciteCard
+      question={question}
+      index={index}
+      correctOptionIds={correctOptionIds}
+      answerDisplay={answerDisplay}
+    />
   );
 }
