@@ -12,8 +12,6 @@ interface QuestionUpdate {
   tags?: string[];
   case_background?: string;
   case_context?: string;
-  parent_id?: string;
-  bank_id?: string;
 }
 
 // 更新题目（需要管理员认证）
@@ -42,8 +40,6 @@ export async function PUT(request: NextRequest) {
     if (body.tags !== undefined) updateData.tags = JSON.stringify(body.tags);
     if (body.case_background !== undefined) updateData.case_background = body.case_background;
     if (body.case_context !== undefined) updateData.case_context = body.case_context;
-    if (body.parent_id !== undefined) updateData.parent_id = body.parent_id;
-    if (body.bank_id !== undefined) updateData.bank_id = body.bank_id;
     
     const { error } = await supabase
       .from('questions')
