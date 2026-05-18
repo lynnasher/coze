@@ -443,6 +443,101 @@ function ReciteCard({
   );
 }
 
+// 子题卡片组件（更紧凑的样式）
+function ReciteChildCard({
+  question,
+  index,
+}: {
+  question: Question;
+  index: number;
+}) {
+  const answer = question.answer;
+
+  // 获取正确答案显示文本
+  const getAnswerDisplay = () => {
+    if (question.type === 'true-false') {
+      const answerKey = (Array.isArray(answer) ? answer[0] : answer)?.toString().toUpperCase();
+      const option = question.options?.find(o => o.id.toUpperCase() === answerKey);
+      if (option) {
+        const text = option.text.replace(/[。，、；：！？（）\.\,\;\:\!\?\(\)]/g, '').trim();
+        return text === '正确' || text === '对' || text === '√' || text === '是' ? '正确' : '错误';
+      }
+      return answerKey;
+    }
+    if (question.type === 'fill-blank') {
+      return Array.isArray(answer) ? answer.join('；') : answer;
+    }
+    if (Array.isArray(answer)) {
+      return answer.map(a => a.toUpperCase()).join('、');
+    }
+    return answer?.toString().toUpperCase() || '';
+  };
+
+  const correctOptionIds = new Set(
+    Array.isArray(answer)
+      ? answer.map(a => a.toString().toUpperCase())
+      : [answer?.toString().toUpperCase() || '']
+  );
+
+  return (
+    <div className="bg-gray-50/70 rounded-lg border border-gray-100 p-3 sm:p-4">
+      {/* 题号 + 题型 + 题目 */}
+      <div className="flex items-start gap-2 mb-2">
+        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-xs font-medium flex items-center justify-center">
+          {index}
+        </span>
+        <span className={`flex-shrink-0 px-1.5 py-0 rounded text-[10px] ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
+          {TYPE_LABELS[question.type]?.text || question.type}
+        </span>
+        <p className="text-sm text-gray-900 leading-relaxed flex-1">
+          {renderTextWithImages(question.content)}
+        </p>
+      </div>
+
+      {/* 选项 - 紧凑布局 */}
+      {question.options && question.options.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2 ml-7">
+          {question.options.map((option) => {
+            const isCorrect = correctOptionIds.has(option.id.toUpperCase());
+            return (
+              <div
+                key={option.id}
+                className={`
+                  flex items-center gap-2 px-2 py-1.5 rounded text-sm
+                  ${isCorrect ? 'bg-emerald-100/70 text-emerald-800' : 'text-gray-600'}
+                `}
+              >
+                <span className={`w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${isCorrect ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                  {option.id}
+                </span>
+                <span className="text-xs sm:text-sm">{renderTextWithImages(option.text)}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 答案区域 - 紧凑 */}
+      <div className="ml-7 flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-gray-500">答案：</span>
+        <span className="text-sm font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+          {getAnswerDisplay()}
+        </span>
+      </div>
+
+      {/* 解析 */}
+      {question.explanation && (
+        <div className="mt-2 ml-7 pt-2 border-t border-gray-200">
+          <p className="text-xs text-gray-600 leading-relaxed">
+            <span className="text-amber-600 font-medium">解析：</span>
+            {renderTextWithImages(question.explanation)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // 题目项组件（处理综合题和普通题）
 function ReciteItem({
   question,
@@ -459,51 +554,26 @@ function ReciteItem({
   if (question.type === 'comprehensive' && question.children && question.children.length > 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {/* 综合题案例背景 */}
-        <div className="p-5 border-b border-gray-200 bg-rose-50/50">
-          <div className="flex items-start gap-2">
+        {/* 综合题案例背景 - 小屏减少padding */}
+        <div className="p-3 sm:p-5 border-b border-gray-200 bg-rose-50/50">
+          <div className="flex items-start gap-2 flex-wrap">
             <span className="flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-600">
               综合案例
             </span>
             <span className="text-xs text-gray-400">{question.children.length} 道子题</span>
           </div>
-          <div className="mt-3 text-gray-700 leading-relaxed">
+          <div className="mt-2 sm:mt-3 text-gray-700 leading-relaxed text-sm sm:text-base">
             {renderTextWithImages(question.caseBackground || question.content)}
           </div>
         </div>
 
-        {/* 子题列表 */}
-        <div className="p-5 space-y-4">
+        {/* 子题列表 - 小屏减少padding和空间 */}
+        <div className="p-2 sm:p-4 space-y-2 sm:space-y-3">
           {question.children.map((child, childIndex) => (
-            <ReciteCard
+            <ReciteChildCard
               key={child.id}
               question={child}
               index={childIndex + 1}
-              correctOptionIds={new Set(
-                Array.isArray(child.answer)
-                  ? child.answer.map(a => a.toString().toUpperCase())
-                  : [child.answer?.toString().toUpperCase() || '']
-              )}
-              answerDisplay={(() => {
-                const answer = child.answer;
-                if (child.type === 'true-false') {
-                  const answerKey = (Array.isArray(answer) ? answer[0] : answer)?.toString().toUpperCase();
-                  const option = child.options?.find(o => o.id.toUpperCase() === answerKey);
-                  if (option) {
-                    const text = option.text.replace(/[。，、；：！？（）\.\,\;\:\!\?\(\)]/g, '').trim();
-                    return text === '正确' || text === '对' || text === '√' || text === '是' ? '正确' : '错误';
-                  }
-                  return answerKey;
-                }
-                if (child.type === 'fill-blank') {
-                  return Array.isArray(answer) ? answer.join('；') : answer;
-                }
-                if (Array.isArray(answer)) {
-                  return answer.map(a => a.toUpperCase()).join('、');
-                }
-                return answer?.toString().toUpperCase() || '';
-              })()}
-              isChild={true}
             />
           ))}
         </div>
