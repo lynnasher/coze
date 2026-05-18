@@ -320,20 +320,16 @@ function ReciteCard({
   return (
     <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${isChild ? 'ml-4' : ''}`}>
       <div className="p-5">
-        {/* 题型标签 + 题号 + 题目内容 - 分开两行显示 */}
-        <div className="mb-4">
-          {/* 第一行：题号 + 题型标签 */}
-          <div className="flex items-center gap-2 mb-2">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center">
-              {index}
-            </span>
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
-              {TYPE_LABELS[question.type]?.text || question.type}
-            </span>
-          </div>
-          {/* 第二行：题干（与题号对齐） */}
-          <div className="pl-8">
+        {/* 题号 + 题型标签 + 题干（同一行显示） */}
+        <div className="flex items-start gap-2 mb-4">
+          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center mt-0.5">
+            {index}
+          </span>
+          <div className="flex-1">
             <p className="text-base text-gray-900 leading-relaxed">
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium mr-2 align-middle ${TYPE_LABELS[question.type]?.color || 'bg-gray-100 text-gray-700'}`}>
+                {TYPE_LABELS[question.type]?.text || question.type}
+              </span>
               {renderTextWithImages(question.content)}
             </p>
           </div>
@@ -504,69 +500,67 @@ function ReciteItem({
 
             return (
               <div key={child.id} className="p-5">
-                {/* 子题头部：题号 + 题型标签（第一行） */}
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center">
+                {/* 子题：题号 + 题型标签 + 题干（同一行） */}
+                <div className="flex items-start gap-2 mb-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center mt-0.5">
                     {childIndex + 1}
                   </span>
-                  <span className="flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                    {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
-                  </span>
+                  <div className="flex-1">
+                    <p className="text-gray-800 leading-relaxed">
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle">
+                        {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
+                      </span>
+                      {renderTextWithImages(child.content)}
+                    </p>
+                  </div>
                 </div>
 
-                {/* 子题内容：题干（与题号对齐） */}
-                <div className="pl-8">
-                  <div className="text-gray-800 leading-relaxed mb-3">
-                    {renderTextWithImages(child.content)}
-                  </div>
-
-                  {/* 选项 */}
-                  {child.options && child.options.length > 0 && (
-                    <div className="space-y-2 mb-4">
-                      {child.options.map((option) => {
-                        const isCorrect = childCorrectIds.has(option.id.toUpperCase());
-                        return (
-                          <div
-                            key={option.id}
-                            className={`flex items-start gap-3 p-2.5 rounded-lg ${
+                {/* 选项 */}
+                {child.options && child.options.length > 0 && (
+                  <div className="space-y-2 mb-4 ml-8">
+                    {child.options.map((option) => {
+                      const isCorrect = childCorrectIds.has(option.id.toUpperCase());
+                      return (
+                        <div
+                          key={option.id}
+                          className={`flex items-start gap-3 p-2.5 rounded-lg ${
+                            isCorrect
+                              ? 'bg-green-50 border border-green-200'
+                              : 'bg-gray-50 border border-gray-100'
+                          }`}
+                        >
+                          <span
+                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center ${
                               isCorrect
-                                ? 'bg-green-50 border border-green-200'
-                                : 'bg-gray-50 border border-gray-100'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-gray-200 text-gray-600'
                             }`}
                           >
-                            <span
-                              className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center ${
-                                isCorrect
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-gray-200 text-gray-600'
-                              }`}
-                            >
-                              {option.id}
-                            </span>
-                            <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-600'}`}>
-                              {renderTextWithImages(option.text)}
-                            </span>
-                          </div>
-                        );
-                      })}
+                            {option.id}
+                          </span>
+                          <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-600'}`}>
+                            {renderTextWithImages(option.text)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 答案和解析 */}
+                <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 ml-8">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-amber-700">正确答案：</span>
+                    <span className="text-sm font-semibold text-amber-800">{childAnswerDisplay}</span>
+                  </div>
+                  {child.explanation && (
+                    <div className="mt-2 pt-2 border-t border-amber-100">
+                      <div className="text-xs text-gray-500 mb-1">解析：</div>
+                      <div className="text-sm text-gray-700 leading-relaxed">
+                        {renderTextWithImages(child.explanation)}
+                      </div>
                     </div>
                   )}
-
-                  {/* 答案和解析 */}
-                  <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-amber-700">正确答案：</span>
-                      <span className="text-sm font-semibold text-amber-800">{childAnswerDisplay}</span>
-                    </div>
-                    {child.explanation && (
-                      <div className="mt-2 pt-2 border-t border-amber-100">
-                        <div className="text-xs text-gray-500 mb-1">解析：</div>
-                        <div className="text-sm text-gray-700 leading-relaxed">
-                          {renderTextWithImages(child.explanation)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             );
