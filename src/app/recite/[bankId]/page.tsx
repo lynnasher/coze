@@ -2,9 +2,11 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, BookOpen, CheckCircle2, Lightbulb, ChevronRight } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, Lightbulb, ChevronRight, Lock, AlertCircle } from 'lucide-react';
 import { Question } from '@/lib/types';
 import { questionStore, bankStore } from '@/lib/quiz-store';
+import { getCurrentUser } from '@/components/AuthModal';
+import { Button } from '@/components/ui/button';
 
 // 题型标签映射
 const TYPE_LABELS: Record<string, { text: string; color: string }> = {
@@ -22,10 +24,52 @@ export default function RecitePage() {
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [bankName, setBankName] = useState('');
+  const [bankCategoryId, setBankCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{
+    id: string;
+    phone: string;
+    nickname?: string;
+    role: string;
+    activatedCategories?: string[];
+  } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // 检查用户登录状态和激活权限
+  useEffect(() => {
+    const checkAuth = async () => {
+      const currentUser = getCurrentUser();
+      setUser(currentUser);
+      
+      // 获取题库的分类信息
+      const banks = bankStore.getAll();
+      const bank = banks.find(b => b.id === bankId);
+      if (bank?.categoryId) {
+        setBankCategoryId(bank.categoryId);
+      }
+      
+      setAuthChecked(true);
+    };
+    
+    checkAuth();
+  }, [bankId]);
 
   // 加载题库和题目数据
   useEffect(() => {
+    // 只有完成权限检查后才加载数据
+    if (!authChecked) return;
+    
+    // 未登录用户不能访问
+    if (!user) return;
+    
+    // 检查是否激活了该分类
+    const activatedCategories = user.activatedCategories || [];
+    if (bankCategoryId && !activatedCategories.includes(bankCategoryId)) {
+      // 未激活该分类，不加载数据
+      setLoading(false);
+      return;
+    }
+    
     const loadData = async () => {
       try {
         let bankQuestions: Question[] = [];
@@ -70,7 +114,7 @@ export default function RecitePage() {
     };
 
     loadData();
-  }, [bankId]);
+  }, [bankId, authChecked, user, bankCategoryId]);
 
   // 防复制功能
   useEffect(() => {
@@ -182,6 +226,52 @@ export default function RecitePage() {
     
     return sortedGroups;
   }, [questions]);
+
+  // 未登录提示
+  if (authChecked && !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-sm mx-auto px-6">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-orange-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">请先登录</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            背题模式需要登录后才能访问
+          </p>
+          <Button 
+            onClick={() => router.push('/')}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            返回首页
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 未激活该科目提示
+  if (authChecked && user && bankCategoryId !== null && !user.activatedCategories?.includes(bankCategoryId)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-sm mx-auto px-6">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-8 h-8 text-orange-500" />
+          </div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">未激活该科目</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            您需要先激活该科目才能使用背题模式
+          </p>
+          <Button 
+            onClick={() => router.push('/profile')}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            前往激活
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
