@@ -6,26 +6,41 @@
 
 ```bash
 # 在你的电脑上将项目压缩并上传到服务器
-scp -r quiz-app root@你的服务器IP:/root/
+scp quiz-app-deploy.tar.gz root@你的服务器IP:/root/
 
-# 或者使用 Git 克隆（推荐）
+# 连接到服务器
 ssh root@你的服务器IP
-git clone https://github.com/你的仓库.git /var/www/quiz-app
+
+# 解压
+tar -xzf quiz-app-deploy.tar.gz
+cd deploy-package
 ```
 
 ### 第 2 步：配置环境变量
 
 ```bash
-# 进入项目目录
-cd /var/www/quiz-app
-
 # 运行配置向导（交互式）
 ./setup-env.sh
 ```
 
-按提示输入：
-- Supabase URL 和 Anon Key（从 Supabase 控制台获取）
-- JWT 密钥（自动生成或自定义）
+选择数据库类型：
+
+**选项 1：PostgreSQL（推荐，国内服务器）**
+```
+请选择数据库类型：
+1) Supabase (免费，国外服务器)
+2) PostgreSQL (如火山引擎、阿里云RDS，国内服务器)
+请输入选项 (1/2): 2
+
+PostgreSQL URL: postgresql://用户名:密码@主机:端口/数据库名?sslmode=require
+```
+
+**选项 2：Supabase（免费）**
+```
+请输入选项 (1/2): 1
+Supabase URL: https://xxx.supabase.co
+Supabase Anon Key: eyJhbGciOiJIUzI1NiIs...
+```
 
 ### 第 3 步：一键部署
 
@@ -34,7 +49,7 @@ cd /var/www/quiz-app
 sudo ./deploy.sh
 ```
 
-等待 3-5 分钟，部署完成后会显示访问地址。
+等待 5-8 分钟，部署完成后会显示访问地址。
 
 ---
 

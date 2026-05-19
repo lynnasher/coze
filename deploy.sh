@@ -54,17 +54,89 @@ echo -e "检测到系统: $OS"
 if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
     # Debian/Ubuntu 系统
     apt-get update -qq
-    apt-get install -y -qq curl git nginx certbot python3-certbot-nginx ufw
+    apt-get install -y -qq curl git nginx certbot python3-certbot-nginx ufw postgresql-client
 elif [ "$OS" = "centos" ] || [ "$OS" = "rhel" ] || [ "$OS" = "fedora" ]; then
     # CentOS/RHEL/Fedora 系统
     yum install -y epel-release
-    yum install -y curl git nginx certbot python3-certbot-nginx firewalld
+    yum install -y curl git nginx certbot python3-certbot-nginx firewalld postgresql
     systemctl start firewalld
     systemctl enable firewalld
 else
     echo -e "${RED}不支持的操作系统: $OS${NC}"
     exit 1
 fi
+
+# 安装 pg 模块（Node.js PostgreSQL 驱动）
+echo -e "${YELLOW}安装 PostgreSQL Node.js 驱动...${NC}"
+npm install -g pg@8 types/pg@8 || true  # 全局安装，防止构建时找不到
+
+# 检查环境变量文件
+if [ ! -f ".env" ]; then
+    echo -e "${RED}错误：未找到 .env 文件，请先运行 ./setup-env.sh 配置环境变量${NC}"
+    exit 1
+fi
+
+# 检查数据库类型
+if grep -q "POSTGRES_URL" .env 2>/dev/null; then
+    echo -e "${GREEN}✓ 检测到 PostgreSQL 数据库配置${NC}"
+    DB_TYPE="postgresql"
+else
+    echo -e "${GREEN}✓ 检测到 Supabase 数据库配置${NC}"
+    DB_TYPE="supabase"
+fi
+
+# 使用 PostgreSQL 服务文件
+if [ "$DB_TYPE" = "postgresql" ]; then
+    echo -e "${YELLOW}使用 PostgreSQL 数据库适配...${NC}"
+    # 备份原始服务文件
+    if [ -f "src/lib/services/user-service.ts" ] && [ ! -f "src/lib/services/user-service-supabase.ts" ]; then
+        mv src/lib/services/user-service.ts src/lib/services/user-service-supabase.ts
+    fi
+    if [ -f "src/lib/services/activation-service.ts" ] && [ ! -f "src/lib/services/activation-service-supabase.ts" ]; then
+        mv src/lib/services/activation-service.ts src/lib/services/activation-service-supabase.ts
+    fi
+    # 使用 PostgreSQL 版本
+    if [ -f "src/lib/services/user-service-pg.ts" ]; then
+        cp src/lib/services/user-service-pg.ts src/lib/services/user-service.ts
+    fi
+    if [ -f "src/lib/services/activation-service-pg.ts" ]; then
+        cp src/lib/services/activation-service-pg.ts src/lib/services/activation-service.ts
+    fi
+fi
+
+# 测试数据库连接
+if [ "$DB_TYPE" = "postgresql" ]; then
+    echo -e "${YELLOW}测试 PostgreSQL 数据库连接...${NC}"
+    source .env
+    if ! psql "$POSTGRES_URL" -c "SELECT 1" > /dev/null 2>&1; then
+        echo -e "${RED}错误：无法连接到 PostgreSQL 数据库，请检查连接字符串${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ 数据库连接成功${NC}"
+fi
+
+# 执行数据库迁移
+if [ "$DB_TYPE" = "postgresql" ] && [ -f "database-migration.sql" ]; then
+    echo -e "${YELLOW}执行数据库迁移...${NC}"
+    source .env
+    if psql "$POSTGRES_URL" -f database-migration.sql > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ 数据库表创建成功${NC}"
+    else
+        echo -e "${YELLOW}警告：数据库迁移失败，可能表已存在${NC}"
+    fi
+fi
+
+# 安装 pg 模块到项目
+if [ "$DB_TYPE" = "postgresql" ]; then
+    echo -e "${YELLOW}安装项目依赖 pg...${NC}"
+    # 创建 package.json 依赖
+    if ! grep -q '"pg"' package.json 2>/dev/null; then
+        npm install pg@8.17.2 --save
+        npm install @types/pg@8.17.2 --save-dev
+    fi
+fi
+
+echo -e "${GREEN}✓ 依赖安装完成${NC}"
 
 # Node.js 安装函数
 install_node() {
