@@ -21,7 +21,6 @@ NC='\033[0m' # No Color
 APP_NAME="quiz-app"
 APP_DIR="/var/www/quiz-app"
 LOG_DIR="/var/log/quiz-app"
-NGINX_CONF="/etc/nginx/sites-available/quiz-app"
 DOMAIN=""  # 用户填写
 
 # 检查是否以 root 运行
@@ -30,16 +29,59 @@ if [ "$EUID" -ne 0 ]; then
    exit 1
 fi
 
+# 检测系统类型
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$ID
+else
+    echo -e "${RED}无法检测操作系统类型${NC}"
+    exit 1
+fi
+
+# 根据系统类型设置 Nginx 配置路径
+if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+    NGINX_CONF="/etc/nginx/sites-available/quiz-app"
+    NGINX_ENABLED="/etc/nginx/sites-enabled/quiz-app"
+else
+    NGINX_CONF="/etc/nginx/conf.d/quiz-app.conf"
+    NGINX_ENABLED=""
+fi
+
 # 步骤 1: 安装依赖
 echo -e "\n${YELLOW}[1/8] 安装系统依赖...${NC}"
-apt-get update -qq
-apt-get install -y -qq curl git nginx certbot python3-certbot-nginx ufw
+echo -e "检测到系统: $OS"
+
+if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+    # Debian/Ubuntu 系统
+    apt-get update -qq
+    apt-get install -y -qq curl git nginx certbot python3-certbot-nginx ufw
+elif [ "$OS" = "centos" ] || [ "$OS" = "rhel" ] || [ "$OS" = "fedora" ]; then
+    # CentOS/RHEL/Fedora 系统
+    yum install -y epel-release
+    yum install -y curl git nginx certbot python3-certbot-nginx firewalld
+    systemctl start firewalld
+    systemctl enable firewalld
+else
+    echo -e "${RED}不支持的操作系统: $OS${NC}"
+    exit 1
+fi
+
+# Node.js 安装函数
+install_node() {
+    if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y -qq nodejs
+    else
+        # CentOS/RHEL 使用 Nodesource
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+        yum install -y nodejs
+    fi
+}
 
 # 安装 Node.js 20（如果未安装）
 if ! command -v node &> /dev/null || [ "$(node -v | cut -d'v' -f2 | cut -d'.' -f1)" != "20" ]; then
     echo -e "${YELLOW}安装 Node.js 20...${NC}"
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y -qq nodejs
+    install_node
 fi
 
 # 安装 PM2（如果未安装）
@@ -231,8 +273,10 @@ EOF
 fi
 
 # 启用配置
-rm -f /etc/nginx/sites-enabled/default
-ln -sf $NGINX_CONF /etc/nginx/sites-enabled/
+if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+    rm -f /etc/nginx/sites-enabled/default
+    ln -sf $NGINX_CONF $NGINX_ENABLED
+fi
 
 # 测试并重载 Nginx
 nginx -t && systemctl reload nginx
@@ -242,12 +286,22 @@ echo -e "${GREEN}✓ Nginx 配置完成${NC}"
 
 # 步骤 7: 配置防火墙
 echo -e "\n${YELLOW}[7/8] 配置防火墙...${NC}"
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp comment 'SSH'
-ufw allow 80/tcp comment 'HTTP'
-ufw allow 443/tcp comment 'HTTPS'
-ufw --force enable
+
+if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
+    # Debian/Ubuntu 使用 ufw
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow 22/tcp comment 'SSH'
+    ufw allow 80/tcp comment 'HTTP'
+    ufw allow 443/tcp comment 'HTTPS'
+    ufw --force enable
+else
+    # CentOS/RHEL 使用 firewalld
+    firewall-cmd --permanent --add-service=ssh
+    firewall-cmd --permanent --add-service=http
+    firewall-cmd --permanent --add-service=https
+    firewall-cmd --reload
+fi
 
 echo -e "${GREEN}✓ 防火墙配置完成${NC}"
 
