@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
+import { getSupabaseAdminClient } from '../../../../storage/database/supabase-client';
 
 /**
  * 导出数据库结构和数据
