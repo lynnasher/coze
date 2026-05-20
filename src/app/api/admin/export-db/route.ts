@@ -16,10 +16,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 解析请求体获取要导出的表
+    let tables: string[] = ['users', 'activation_codes', 'user_activations', 'categories', 'banks', 'questions'];
+    try {
+      const body = await request.json();
+      if (body.tables && Array.isArray(body.tables) && body.tables.length > 0) {
+        tables = body.tables;
+      }
+    } catch {
+      // 如果没有请求体或解析失败，使用默认全部表
+    }
+
     const client = getSupabaseAdminClient();
     let sql = '';
+    const stats: Record<string, number> = {};
 
     // 1. 导出 users 表
+    if (tables.includes('users')) {
     sql += `-- 创建 users 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS users (\n`;
     sql += `  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n`;
@@ -61,8 +74,11 @@ export async function POST(request: NextRequest) {
       }
       sql += `\n`;
     }
+    stats['users'] = users?.length || 0;
+    } // end if (tables.includes('users'))
 
     // 2. 导出 activation_codes 表
+    if (tables.includes('activation_codes')) {
     sql += `-- 创建 activation_codes 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS activation_codes (\n`;
     sql += `  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n`;
@@ -103,8 +119,11 @@ export async function POST(request: NextRequest) {
       }
       sql += `\n`;
     }
+    stats['activationCodes'] = codes?.length || 0;
+    } // end if (tables.includes('activation_codes'))
 
     // 3. 导出 user_activations 表
+    if (tables.includes('user_activations')) {
     sql += `-- 创建 user_activations 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS user_activations (\n`;
     sql += `  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n`;
@@ -137,8 +156,11 @@ export async function POST(request: NextRequest) {
       }
       sql += `\n`;
     }
+    stats['userActivations'] = activations?.length || 0;
+    } // end if (tables.includes('user_activations'))
 
     // 4. 导出 categories 表
+    if (tables.includes('categories')) {
     sql += `-- 创建 categories 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS categories (\n`;
     sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
@@ -171,8 +193,11 @@ export async function POST(request: NextRequest) {
       }
       sql += `\n`;
     }
+    stats['categories'] = categories?.length || 0;
+    } // end if (tables.includes('categories'))
 
     // 5. 导出 banks 表
+    if (tables.includes('banks')) {
     sql += `-- 创建 banks 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS banks (\n`;
     sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
@@ -211,8 +236,11 @@ export async function POST(request: NextRequest) {
       }
       sql += `\n`;
     }
+    stats['banks'] = banks?.length || 0;
+    } // end if (tables.includes('banks'))
 
     // 6. 导出 questions 表
+    if (tables.includes('questions')) {
     sql += `-- 创建 questions 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS questions (\n`;
     sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
@@ -261,22 +289,17 @@ export async function POST(request: NextRequest) {
       }
       sql += `\n`;
     }
+    stats['questions'] = questions?.length || 0;
+    } // end if (tables.includes('questions'))
 
     // 添加注释
     sql += `-- 导出完成\n`;
-    sql += `-- 总数据: ${users?.length || 0} 用户, ${codes?.length || 0} 激活码, ${activations?.length || 0} 激活记录, ${categories?.length || 0} 分类, ${banks?.length || 0} 题库, ${questions?.length || 0} 题目\n`;
+    sql += `-- 导出表: ${tables.join(', ')}\n`;
 
     return NextResponse.json({
       success: true,
       sql,
-      stats: {
-        users: users?.length || 0,
-        activationCodes: codes?.length || 0,
-        userActivations: activations?.length || 0,
-        categories: categories?.length || 0,
-        banks: banks?.length || 0,
-        questions: questions?.length || 0
-      }
+      stats
     });
 
   } catch (error) {

@@ -400,6 +400,10 @@ export default function AdminPage() {
   const [bankToMove, setBankToMove] = useState<QuestionBank | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('uncategorized');
 
+  // 数据库导出对话框状态
+  const [isExportDbDialogOpen, setIsExportDbDialogOpen] = useState(false);
+  const [selectedTables, setSelectedTables] = useState<string[]>(['users', 'activation_codes', 'user_activations', 'categories', 'banks', 'questions']);
+
   // 验证登录状态
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
@@ -986,7 +990,8 @@ export default function AdminPage() {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ tables: selectedTables })
       });
       
       if (!response.ok) {
@@ -1012,7 +1017,15 @@ export default function AdminPage() {
       document.body.removeChild(a);
       
       // 显示成功信息
-      setError(`导出成功！共导出 ${result.stats.users} 用户、${result.stats.activationCodes} 激活码、${result.stats.userActivations} 激活记录`);
+      const stats = result.stats;
+      const parts = [];
+      if (stats.users !== undefined) parts.push(`${stats.users} 用户`);
+      if (stats.activationCodes !== undefined) parts.push(`${stats.activationCodes} 激活码`);
+      if (stats.userActivations !== undefined) parts.push(`${stats.userActivations} 激活记录`);
+      if (stats.categories !== undefined) parts.push(`${stats.categories} 分类`);
+      if (stats.banks !== undefined) parts.push(`${stats.banks} 题库`);
+      if (stats.questions !== undefined) parts.push(`${stats.questions} 题目`);
+      setError(`导出成功！共导出 ${parts.join('、')}`);
     } catch (err) {
       console.error('[Export DB] Exception:', err);
       setError(err instanceof Error ? err.message : '导出失败，请重试');
@@ -1238,7 +1251,7 @@ export default function AdminPage() {
           {/* 数据库导出 */}
           <Card 
             className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={handleExportDatabase}
+            onClick={() => setIsExportDbDialogOpen(true)}
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-slate-500">数据库导出</CardTitle>
@@ -1690,6 +1703,73 @@ export default function AdminPage() {
             </Button>
             <Button onClick={saveBankInfo} disabled={!editingBankName.trim()}>
               保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 数据库导出对话框 */}
+      <Dialog open={isExportDbDialogOpen} onOpenChange={setIsExportDbDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>导出数据库</DialogTitle>
+            <DialogDescription>选择要导出的数据表</DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-3">
+            {[
+              { id: 'users', label: 'users（用户账号）', color: 'bg-blue-100 text-blue-700' },
+              { id: 'activation_codes', label: 'activation_codes（激活码）', color: 'bg-green-100 text-green-700' },
+              { id: 'user_activations', label: 'user_activations（激活记录）', color: 'bg-purple-100 text-purple-700' },
+              { id: 'categories', label: 'categories（分类）', color: 'bg-orange-100 text-orange-700' },
+              { id: 'banks', label: 'banks（题库）', color: 'bg-cyan-100 text-cyan-700' },
+              { id: 'questions', label: 'questions（题目）', color: 'bg-rose-100 text-rose-700' },
+            ].map((table) => (
+              <div
+                key={table.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  selectedTables.includes(table.id)
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  if (selectedTables.includes(table.id)) {
+                    setSelectedTables(selectedTables.filter(t => t !== table.id));
+                  } else {
+                    setSelectedTables([...selectedTables, table.id]);
+                  }
+                }}
+              >
+                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                  selectedTables.includes(table.id)
+                    ? 'bg-indigo-500 border-indigo-500'
+                    : 'border-gray-300'
+                }`}>
+                  {selectedTables.includes(table.id) && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded ${table.color}`}>
+                  {table.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportDbDialogOpen(false)}>
+              取消
+            </Button>
+            <Button 
+              onClick={() => {
+                handleExportDatabase();
+                setIsExportDbDialogOpen(false);
+              }}
+              disabled={selectedTables.length === 0}
+            >
+              导出 {selectedTables.length > 0 && `(${selectedTables.length}个表)`}
             </Button>
           </DialogFooter>
         </DialogContent>
