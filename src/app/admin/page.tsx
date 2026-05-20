@@ -90,6 +90,7 @@ import {
   User,
   Key,
   GripVertical,
+  Database,
 } from 'lucide-react';
 
 // 存储 Keys - 与前台统一
@@ -969,6 +970,55 @@ export default function AdminPage() {
     }
   };
 
+  // 导出数据库到 SQL
+  const handleExportDatabase = async () => {
+    try {
+      setError(null);
+      const adminToken = localStorage.getItem('admin_token');
+      
+      if (!adminToken) {
+        setError('请先登录');
+        return;
+      }
+      
+      const response = await fetch('/api/admin/export-db', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '导出失败');
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || '导出失败');
+      }
+      
+      // 创建并下载 SQL 文件
+      const blob = new Blob([result.sql], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `database_export_${new Date().toISOString().split('T')[0]}.sql`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      // 显示成功信息
+      setError(`导出成功！共导出 ${result.stats.users} 用户、${result.stats.activationCodes} 激活码、${result.stats.userActivations} 激活记录`);
+    } catch (err) {
+      console.error('[Export DB] Exception:', err);
+      setError(err instanceof Error ? err.message : '导出失败，请重试');
+    }
+  };
+
   // 移动题库到指定分类
   const handleMoveCategory = async () => {
     if (!bankToMove) return;
@@ -1184,6 +1234,21 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </Link>
+
+          {/* 数据库导出 */}
+          <Card 
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={handleExportDatabase}
+          >
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">数据库导出</CardTitle>
+              <Database className="h-5 w-5 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">导出</div>
+              <p className="text-xs text-slate-500 mt-1">导出SQL到Supabase</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 导入区域 */}
