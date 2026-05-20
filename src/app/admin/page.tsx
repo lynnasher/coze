@@ -371,7 +371,7 @@ export default function AdminPage() {
     totalBanks: 0,
     totalQuestions: 0,
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
