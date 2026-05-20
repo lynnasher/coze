@@ -138,9 +138,133 @@ export async function POST(request: NextRequest) {
       sql += `\n`;
     }
 
+    // 4. 导出 categories 表
+    sql += `-- 创建 categories 表\n`;
+    sql += `CREATE TABLE IF NOT EXISTS categories (\n`;
+    sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
+    sql += `  name VARCHAR(100) NOT NULL,\n`;
+    sql += `  color VARCHAR(20) DEFAULT 'blue',\n`;
+    sql += `  order_num INTEGER DEFAULT 0,\n`;
+    sql += `  parent_id VARCHAR(100),\n`;
+    sql += `  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n`;
+    sql += `);\n\n`;
+
+    // 导出 categories 数据
+    const { data: categories, error: categoriesError } = await client
+      .from('categories')
+      .select('*')
+      .order('order', { ascending: true });
+
+    if (categoriesError) {
+      console.error('导出 categories 失败:', categoriesError);
+    } else if (categories && categories.length > 0) {
+      sql += `-- categories 表数据 (${categories.length} 条)\n`;
+      for (const cat of categories) {
+        sql += `INSERT INTO categories (id, name, color, order_num, parent_id, created_at) VALUES (`;
+        sql += `'${cat.id}', `;
+        sql += `'${cat.name.replace(/'/g, "''")}', `;
+        sql += `'${cat.color || 'blue'}', `;
+        sql += `${cat.order || 0}, `;
+        sql += `${cat.parent_id ? `'${cat.parent_id}'` : 'NULL'}, `;
+        sql += `${cat.created_at ? `'${cat.created_at}'` : 'NOW()'});
+`;
+      }
+      sql += `\n`;
+    }
+
+    // 5. 导出 banks 表
+    sql += `-- 创建 banks 表\n`;
+    sql += `CREATE TABLE IF NOT EXISTS banks (\n`;
+    sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
+    sql += `  name VARCHAR(200) NOT NULL,\n`;
+    sql += `  description TEXT,\n`;
+    sql += `  source_file VARCHAR(200),\n`;
+    sql += `  question_count INTEGER DEFAULT 0,\n`;
+    sql += `  category_id VARCHAR(100),\n`;
+    sql += `  status VARCHAR(20) DEFAULT 'active',\n`;
+    sql += `  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n`;
+    sql += `  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n`;
+    sql += `);\n\n`;
+
+    // 导出 banks 数据
+    const { data: banks, error: banksError } = await client
+      .from('banks')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (banksError) {
+      console.error('导出 banks 失败:', banksError);
+    } else if (banks && banks.length > 0) {
+      sql += `-- banks 表数据 (${banks.length} 条)\n`;
+      for (const bank of banks) {
+        sql += `INSERT INTO banks (id, name, description, source_file, question_count, category_id, status, created_at, updated_at) VALUES (`;
+        sql += `'${bank.id}', `;
+        sql += `'${bank.name.replace(/'/g, "''")}', `;
+        sql += `${bank.description ? `'${bank.description.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `${bank.source_file ? `'${bank.source_file.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `${bank.question_count || 0}, `;
+        sql += `${bank.category_id ? `'${bank.category_id}'` : 'NULL'}, `;
+        sql += `'${bank.status || 'active'}', `;
+        sql += `${bank.created_at ? `'${bank.created_at}'` : 'NOW()'}, `;
+        sql += `${bank.updated_at ? `'${bank.updated_at}'` : 'NOW()'});
+`;
+      }
+      sql += `\n`;
+    }
+
+    // 6. 导出 questions 表
+    sql += `-- 创建 questions 表\n`;
+    sql += `CREATE TABLE IF NOT EXISTS questions (\n`;
+    sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
+    sql += `  bank_id VARCHAR(100) NOT NULL,\n`;
+    sql += `  parent_id VARCHAR(100),\n`;
+    sql += `  type VARCHAR(50) NOT NULL,\n`;
+    sql += `  content TEXT NOT NULL,\n`;
+    sql += `  options TEXT,\n`;
+    sql += `  answer TEXT,\n`;
+    sql += `  explanation TEXT,\n`;
+    sql += `  difficulty VARCHAR(20) DEFAULT 'medium',\n`;
+    sql += `  tags TEXT,\n`;
+    sql += `  case_background TEXT,\n`;
+    sql += `  case_context TEXT,\n`;
+    sql += `  status VARCHAR(20) DEFAULT 'active',\n`;
+    sql += `  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n`;
+    sql += `);\n\n`;
+
+    // 导出 questions 数据
+    const { data: questions, error: questionsError } = await client
+      .from('questions')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (questionsError) {
+      console.error('导出 questions 失败:', questionsError);
+    } else if (questions && questions.length > 0) {
+      sql += `-- questions 表数据 (${questions.length} 条)\n`;
+      for (const q of questions) {
+        sql += `INSERT INTO questions (id, bank_id, parent_id, type, content, options, answer, explanation, difficulty, tags, case_background, case_context, status, created_at) VALUES (`;
+        sql += `'${q.id}', `;
+        sql += `'${q.bank_id}', `;
+        sql += `${q.parent_id ? `'${q.parent_id}'` : 'NULL'}, `;
+        sql += `'${q.type}', `;
+        sql += `'${q.content.replace(/'/g, "''")}', `;
+        sql += `${q.options ? `'${q.options.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `${q.answer ? `'${q.answer.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `${q.explanation ? `'${q.explanation.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `'${q.difficulty || 'medium'}', `;
+        sql += `${q.tags ? `'${q.tags.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `${q.case_background ? `'${q.case_background.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `${q.case_context ? `'${q.case_context.replace(/'/g, "''")}'` : 'NULL'}, `;
+        sql += `'${q.status || 'active'}', `;
+        sql += `${q.created_at ? `'${q.created_at}'` : 'NOW()'});
+`;
+      }
+      sql += `\n`;
+    }
+
     // 添加注释
     sql += `-- 导出完成\n`;
-    sql += `-- 总数据: ${users?.length || 0} 用户, ${codes?.length || 0} 激活码, ${activations?.length || 0} 激活记录\n`;
+    sql += `-- 总数据: ${users?.length || 0} 用户, ${codes?.length || 0} 激活码, ${activations?.length || 0} 激活记录, ${categories?.length || 0} 分类, ${banks?.length || 0} 题库, ${questions?.length || 0} 题目\n`;
 
     return NextResponse.json({
       success: true,
@@ -148,7 +272,10 @@ export async function POST(request: NextRequest) {
       stats: {
         users: users?.length || 0,
         activationCodes: codes?.length || 0,
-        userActivations: activations?.length || 0
+        userActivations: activations?.length || 0,
+        categories: categories?.length || 0,
+        banks: banks?.length || 0,
+        questions: questions?.length || 0
       }
     });
 
