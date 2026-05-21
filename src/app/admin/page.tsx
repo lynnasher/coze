@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getLoginPath } from '@/lib/admin-config';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -344,18 +344,6 @@ export default function AdminPage() {
             <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">分类数量</div>
             <div className="text-base sm:text-xl font-bold leading-none">{categories.length}</div>
           </Card>
-          <Card className="col-span-1 p-2">
-            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">平均正确率</div>
-            <div className="text-base sm:text-xl font-bold leading-none">
-              {stats.totalQuestions > 0
-                ? Math.round((banks.reduce((s, b) => s + (b.correctRate || 0) * (b.questionCount || 0), 0) / stats.totalQuestions) * 100)
-                : 0}%
-            </div>
-          </Card>
-        </div>
-
-        {/* 功能入口 - 第二行 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           {/* 用户管理入口 */}
           <Link href="/admin/users" className="col-span-1">
             <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
@@ -366,40 +354,67 @@ export default function AdminPage() {
               </div>
             </Card>
           </Link>
-
-          {/* 激活码管理入口 */}
-          <Link href="/admin/codes" className="col-span-1">
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
-              <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
-              <div>
-                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">激活码管理</div>
-                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">生成</div>
-              </div>
-            </Card>
-          </Link>
-
-          {/* 分类管理卡片 */}
-          <div className="col-span-1" onClick={() => setIsCategoryModalOpen(true)}>
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
-              <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500 shrink-0" />
-              <div>
-                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">分类管理</div>
-                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">管理</div>
-              </div>
-            </Card>
-          </div>
-
-          {/* 导出数据库卡片 */}
-          <div className="col-span-1" onClick={openExportDbDialog}>
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
-              <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
-              <div>
-                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">导出数据库</div>
-                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">导出</div>
-              </div>
-            </Card>
-          </div>
         </div>
+
+        {/* 导入区域 */}
+        <Card className="mb-4 sm:mb-6">
+          <CardHeader className="flex flex-row items-center justify-between py-3 sm:py-4">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <FileJson className="h-4 w-4 sm:h-5 sm:w-5" />
+                导入题库
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                导入 JSON 格式题库到指定分类
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setIsCategoryModalOpen(true)}>
+                <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+                <span className="hidden sm:inline">管理分类</span>
+                <span className="sm:hidden">分类</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={openExportDbDialog}>
+                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+                <span className="hidden sm:inline">导出数据库</span>
+                <span className="sm:hidden">导出</span>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <select
+                value={importCategory}
+                onChange={(e) => setImportCategory(e.target.value)}
+                className="h-9 sm:h-10 rounded-md border border-input bg-white px-2 sm:px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1"
+              >
+                <option value="">选择导入分类</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {(cat.depth || 0) > 0
+                      ? `${'  '.repeat(cat.depth || 0)}└ ${cat.name}`
+                      : cat.name}
+                  </option>
+                ))}
+              </select>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleJsonImport}
+                  className="hidden"
+                  disabled={isImporting}
+                />
+                <Button variant="outline" className="w-full sm:w-auto" disabled={isImporting} asChild>
+                  <span>
+                    <FileJson className="h-4 w-4 mr-1.5" />
+                    {isImporting ? '导入中...' : '导入 JSON'}
+                  </span>
+                </Button>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 操作栏 */}
         <div className="flex flex-col gap-3 sm:gap-4 mb-6">
@@ -431,38 +446,6 @@ export default function AdminPage() {
           </div>
           {/* 操作按钮 */}
           <div className="flex flex-wrap gap-2">
-            <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
-              <select
-                value={importCategory}
-                onChange={(e) => setImportCategory(e.target.value)}
-                className="h-8 sm:h-9 rounded-md border border-input bg-transparent px-2 sm:px-3 py-1 text-xs sm:text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 sm:w-auto"
-              >
-                <option value="">选择导入分类</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {(cat.depth || 0) > 0
-                      ? `${'  '.repeat(cat.depth || 0)}└ ${cat.name}`
-                      : cat.name}
-                  </option>
-                ))}
-              </select>
-              <label className="cursor-pointer flex-shrink-0">
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleJsonImport}
-                  className="hidden"
-                  disabled={isImporting}
-                />
-                <Button variant="outline" size="sm" asChild>
-                  <span>
-                    <FileJson className="h-4 w-4 mr-1.5" />
-                    <span className="hidden sm:inline">{isImporting ? '导入中...' : '导入JSON'}</span>
-                    <span className="sm:hidden">导入</span>
-                  </span>
-                </Button>
-              </label>
-            </div>
             <Link href="/admin/create" className="flex-shrink-0">
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-1.5" />
