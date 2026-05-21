@@ -355,7 +355,7 @@ export default function AdminPage() {
         </div>
 
         {/* 功能入口 - 第二行 */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           {/* 用户管理入口 */}
           <Link href="/admin/users" className="col-span-1">
             <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
@@ -377,6 +377,28 @@ export default function AdminPage() {
               </div>
             </Card>
           </Link>
+
+          {/* 分类管理卡片 */}
+          <div className="col-span-1" onClick={() => setIsCategoryModalOpen(true)}>
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
+              <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500 shrink-0" />
+              <div>
+                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">分类管理</div>
+                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">管理</div>
+              </div>
+            </Card>
+          </div>
+
+          {/* 导出数据库卡片 */}
+          <div className="col-span-1" onClick={openExportDbDialog}>
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
+              <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500 shrink-0" />
+              <div>
+                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">导出数据库</div>
+                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">导出</div>
+              </div>
+            </Card>
+          </div>
         </div>
 
         {/* 操作栏 */}
@@ -409,16 +431,6 @@ export default function AdminPage() {
           </div>
           {/* 操作按钮 */}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsCategoryModalOpen(true)}>
-              <Folder className="h-4 w-4 mr-1.5" />
-              <span className="hidden sm:inline">分类管理</span>
-              <span className="sm:hidden">分类</span>
-            </Button>
-            <Button variant="outline" size="sm" onClick={openExportDbDialog}>
-              <Database className="h-4 w-4 mr-1.5" />
-              <span className="hidden sm:inline">导出数据库</span>
-              <span className="sm:hidden">导出</span>
-            </Button>
             <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
               <select
                 value={importCategory}
