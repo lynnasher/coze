@@ -24,6 +24,7 @@ export interface Category {
   order: number;
   parentId?: string;
   createdAt?: number;
+  depth?: number;
 }
 
 // 统计
