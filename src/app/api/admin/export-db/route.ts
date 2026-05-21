@@ -404,9 +404,25 @@ export async function POST(request: NextRequest) {
 
     // 添加注释
     sql += `-- 导出完成\n`;
-    sql += `-- 导出表: ${tables.join(', ')}\n`;`,
-    sql += `-- 导出完成\n`;
-    sql += `-- 导出表: ${tables.join(', ')}\n`;
+    sql += `-- 导出表: ${tables.join(', ')}\n`;  // 添加换行
+    sql += `-- 导出时间: ${new Date().toISOString()}\n`;  // 添加导出时间注释
+    sql += `-- ================================\n`;  // 添加分隔线注释
+    
+    return NextResponse.json({  // 返回JSON响应
+      success: true,  // 标记成功
+      sql,  // SQL内容
+      stats  // 统计信息
+    });  // 结束JSON响应对象
+  } catch (error) {  // 捕获错误
+    console.error('导出数据库失败:', error);  // 打印错误日志
+    return NextResponse.json(  // 返回错误响应
+      { error: '导出失败: ' + (error as Error).message },  // 错误信息
+      { status: 500 }  // HTTP 500状态码
+    );  // 结束错误响应
+  }  // 结束try-catch
+}  // 结束POST函数
+
+// GET函数保持不变
 
     return NextResponse.json({
       success: true,
