@@ -379,7 +379,9 @@ export default function AdminPage() {
               <option value="all">所有分类</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.parentId ? `  ├ ${cat.name}` : cat.name}
+                  {(cat.depth || 0) > 0
+                    ? `${'  '.repeat(cat.depth || 0)}└ ${cat.name}`
+                    : cat.name}
                 </option>
               ))}
             </select>

@@ -4,6 +4,56 @@ import { useState, useCallback, useEffect } from 'react';
 import type { Category } from '../types';
 import { STORAGE_KEYS } from '../types';
 
+// 按层级排序分类：父分类在前，子分类紧跟父分类，同级按 order 排序
+function sortCategoriesByHierarchy(categories: Category[]): Category[] {
+  const categoryMap = new Map<string, Category>();
+  const childrenMap = new Map<string, Category[]>();
+
+  // 构建映射
+  categories.forEach((cat) => {
+    categoryMap.set(cat.id, cat);
+    if (cat.parentId) {
+      const siblings = childrenMap.get(cat.parentId) || [];
+      siblings.push(cat);
+      childrenMap.set(cat.parentId, siblings);
+    }
+  });
+
+  const result: Category[] = [];
+  const processed = new Set<string>();
+
+  // 递归添加分类及其子分类
+  const addCategoryWithChildren = (cat: Category, depth: number) => {
+    if (processed.has(cat.id)) return;
+    processed.add(cat.id);
+
+    // 添加当前分类（带深度信息用于缩进）
+    result.push({ ...cat, depth });
+
+    // 添加子分类（按 order 排序）
+    const children = childrenMap.get(cat.id) || [];
+    children
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+      .forEach((child) => addCategoryWithChildren(child, depth + 1));
+  };
+
+  // 先处理所有顶层分类（按 order 排序）
+  const topLevelCategories = categories
+    .filter((cat) => !cat.parentId)
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  topLevelCategories.forEach((cat) => addCategoryWithChildren(cat, 0));
+
+  // 处理循环引用或未挂载的分类
+  categories.forEach((cat) => {
+    if (!processed.has(cat.id)) {
+      result.push(cat);
+    }
+  });
+
+  return result;
+}
+
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -18,8 +68,10 @@ export function useCategories() {
       if (response.ok) {
         const data = await response.json();
         if (data.categories) {
-          setCategories(data.categories);
-          localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(data.categories));
+          // 按层级排序：父分类在前，子分类在后，同级按 order 排序
+          const sortedCategories = sortCategoriesByHierarchy(data.categories);
+          setCategories(sortedCategories);
+          localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(sortedCategories));
           return;
         }
       }
