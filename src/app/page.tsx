@@ -36,9 +36,7 @@ import {
   History,
   Flame,
   Calendar,
-  Clock,
-  Key,
-  Sparkles
+  Clock
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats, createSafeSync } from '@/lib/quiz-store';
 import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
@@ -544,94 +542,24 @@ export default function QuizApp() {
               </div>
             </div>
             
-            {/* 未登录提示 - 可点击卡片 */}
+            {/* 未登录提示 */}
             {!currentUser && (
-              <div 
-                className="group bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 shadow-sm border border-blue-200 mb-5 cursor-pointer hover:shadow-md transition-all duration-300"
-                onClick={() => setAuthModalOpen(true)}
-              >
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-200 mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
-                    <Sparkles className="w-6 h-6 text-white" />
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <User className="w-5 h-5 text-blue-600" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                      登录解锁全部功能
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
-                    </h4>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-white/70 px-2 py-1 rounded-full">
-                        <Key className="w-3 h-3 text-amber-500" />
-                        激活码激活
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-white/70 px-2 py-1 rounded-full">
-                        <BookOpen className="w-3 h-3 text-rose-500" />
-                        错题本
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-white/70 px-2 py-1 rounded-full">
-                        <BarChart3 className="w-3 h-3 text-emerald-500" />
-                        学习统计
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 个人中心卡片 - 已登录 */}
-            {currentUser && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-gray-900 truncate">
-                      {currentUser.nickname || currentUser.phone}
-                    </h4>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      已激活 {currentUser.activatedCategories?.length || 0} 个分类
-                    </p>
+                    <h4 className="text-sm font-semibold text-gray-900">登录后查看已激活的题库</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">请先登录以查看和练习题库</p>
                   </div>
                   <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="rounded-xl text-gray-500 hover:text-gray-900"
-                    onClick={() => router.push('/profile')}
+                    size="sm" 
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700"
+                    onClick={() => setAuthModalOpen(true)}
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    登录
                   </Button>
-                </div>
-                
-                {/* 快捷功能入口 */}
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-100">
-                  <button 
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 transition-colors"
-                    onClick={() => router.push('/profile')}
-                  >
-                    <div className="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center">
-                      <Key className="w-4 h-4 text-amber-500" />
-                    </div>
-                    <span className="text-xs text-gray-600">激活码</span>
-                  </button>
-                  <button 
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 transition-colors"
-                    onClick={() => router.push('/wrongbook')}
-                  >
-                    <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center">
-                      <BookOpen className="w-4 h-4 text-rose-500" />
-                    </div>
-                    <span className="text-xs text-gray-600">错题本</span>
-                  </button>
-                  <button 
-                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl hover:bg-gray-50 transition-colors"
-                    onClick={() => router.push('/stats')}
-                  >
-                    <div className="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center">
-                      <BarChart3 className="w-4 h-4 text-emerald-500" />
-                    </div>
-                    <span className="text-xs text-gray-600">学习统计</span>
-                  </button>
                 </div>
               </div>
             )}
