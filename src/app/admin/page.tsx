@@ -330,8 +330,8 @@ export default function AdminPage() {
           </Alert>
         )}
 
-        {/* 统计卡片 */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        {/* 统计卡片 - 第一行 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
           <Card className="col-span-1">
             <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
               <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">题库总数</CardTitle>
@@ -368,7 +368,10 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
 
+        {/* 功能入口 - 第二行 */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {/* 用户管理入口 */}
           <Link href="/admin/users" className="col-span-1">
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
