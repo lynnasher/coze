@@ -507,7 +507,7 @@ export default function AdminPage() {
                                   <SortableBankRow
                                     key={bank.id}
                                     bank={bank}
-                                    onEdit={() => handleInlineEditStart(bank)}
+                                    onEdit={() => openEditBankDialog(bank)}
                                     onDelete={() => openDeleteDialog(bank)}
                                     onClick={() => goToBankEdit(bank)}
                                     onMoveCategory={() => openMoveCategoryDialog(bank)}
