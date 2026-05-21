@@ -213,10 +213,198 @@ export async function POST(request: NextRequest) {
     stats['categories'] = categories?.length || 0;
     } // end if (tables.includes('categories'))
 
-    // 注意：banks 和 questions 表存储在 localStorage，不在数据库中
-    // 如需导出题库数据，请使用浏览器的 localStorage 导出功能
+    // 导出 admin_users 表
+    if (tables.includes('admin_users')) {
+      sql += `-- 导出 admin_users 表\n`;
+      const { data: adminUsers, error: adminUsersError } = await client.from('admin_users').select('*');
+      if (adminUsersError) {
+        sql += `-- 导出 admin_users 失败: ${adminUsersError.message}\n`;
+      } else if (adminUsers && adminUsers.length > 0) {
+        sql += `TRUNCATE TABLE admin_users CASCADE;\n`;
+        for (const user of adminUsers) {
+          sql += `INSERT INTO admin_users (id, username, password, created_at, updated_at) VALUES (`;
+          sql += `'${escapeSql(user.id)}', `;
+          sql += `'${escapeSql(user.username)}', `;
+          sql += `'${escapeSql(user.password)}', `;
+          sql += `'${user.created_at}', `;
+          sql += `'${user.updated_at}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['admin_users'] = adminUsers?.length || 0;
+    }
+
+    // 导出 user_data 表
+    if (tables.includes('user_data')) {
+      sql += `-- 导出 user_data 表\n`;
+      const { data: userData, error: userDataError } = await client.from('user_data').select('*');
+      if (userDataError) {
+        sql += `-- 导出 user_data 失败: ${userDataError.message}\n`;
+      } else if (userData && userData.length > 0) {
+        sql += `TRUNCATE TABLE user_data CASCADE;\n`;
+        for (const data of userData) {
+          sql += `INSERT INTO user_data (id, user_id, data_key, data_value, created_at, updated_at) VALUES (`;
+          sql += `'${escapeSql(data.id)}', `;
+          sql += `'${escapeSql(data.user_id)}', `;
+          sql += `'${escapeSql(data.data_key)}', `;
+          sql += `'${escapeSql(JSON.stringify(data.data_value))}', `;
+          sql += `'${data.created_at}', `;
+          sql += `'${data.updated_at}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['user_data'] = userData?.length || 0;
+    }
+
+    // 导出 health_check 表
+    if (tables.includes('health_check')) {
+      sql += `-- 导出 health_check 表\n`;
+      const { data: healthChecks, error: healthCheckError } = await client.from('health_check').select('*');
+      if (healthCheckError) {
+        sql += `-- 导出 health_check 失败: ${healthCheckError.message}\n`;
+      } else if (healthChecks && healthChecks.length > 0) {
+        sql += `TRUNCATE TABLE health_check CASCADE;\n`;
+        for (const check of healthChecks) {
+          sql += `INSERT INTO health_check (id, status, checked_at, details) VALUES (`;
+          sql += `'${escapeSql(check.id)}', `;
+          sql += `'${escapeSql(check.status)}', `;
+          sql += `'${check.checked_at}', `;
+          sql += `'${escapeSql(check.details || '')}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['health_check'] = healthChecks?.length || 0;
+    }
+
+    // 导出 question_banks 表
+    if (tables.includes('question_banks')) {
+      sql += `-- 导出 question_banks 表\n`;
+      const { data: banks, error: banksError } = await client.from('question_banks').select('*');
+      if (banksError) {
+        sql += `-- 导出 question_banks 失败: ${banksError.message}\n`;
+      } else if (banks && banks.length > 0) {
+        sql += `TRUNCATE TABLE question_banks CASCADE;\n`;
+        for (const bank of banks) {
+          sql += `INSERT INTO question_banks (id, name, description, source_file, question_count, category_id, status, created_at, updated_at) VALUES (`;
+          sql += `'${escapeSql(bank.id)}', `;
+          sql += `'${escapeSql(bank.name)}', `;
+          sql += `${bank.description ? `'${escapeSql(bank.description)}'` : 'NULL'}, `;
+          sql += `${bank.source_file ? `'${escapeSql(bank.source_file)}'` : 'NULL'}, `;
+          sql += `${bank.question_count || 0}, `;
+          sql += `${bank.category_id ? `'${escapeSql(bank.category_id)}'` : 'NULL'}, `;
+          sql += `'${escapeSql(bank.status || 'active')}', `;
+          sql += `'${bank.created_at || new Date().toISOString()}', `;
+          sql += `'${bank.updated_at || new Date().toISOString()}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['question_banks'] = banks?.length || 0;
+    }
+
+    // 导出 questions 表
+    if (tables.includes('questions')) {
+      sql += `-- 导出 questions 表\n`;
+      const { data: questions, error: questionsError } = await client.from('questions').select('*');
+      if (questionsError) {
+        sql += `-- 导出 questions 失败: ${questionsError.message}\n`;
+      } else if (questions && questions.length > 0) {
+        sql += `TRUNCATE TABLE questions CASCADE;\n`;
+        for (const q of questions) {
+          sql += `INSERT INTO questions (id, bank_id, parent_id, type, content, options, answer, explanation, difficulty, tags, case_background, case_context, status, created_at) VALUES (`;
+          sql += `'${escapeSql(q.id)}', `;
+          sql += `'${escapeSql(q.bank_id)}', `;
+          sql += `${q.parent_id ? `'${escapeSql(q.parent_id)}'` : 'NULL'}, `;
+          sql += `'${escapeSql(q.type)}', `;
+          sql += `'${escapeSql(q.content)}', `;
+          sql += `${q.options ? `'${escapeSql(JSON.stringify(q.options))}'` : 'NULL'}, `;
+          sql += `'${escapeSql(q.answer)}', `;
+          sql += `${q.explanation ? `'${escapeSql(q.explanation)}'` : 'NULL'}, `;
+          sql += `'${escapeSql(q.difficulty || 'medium')}', `;
+          sql += `${q.tags ? `'${escapeSql(JSON.stringify(q.tags))}'` : `'[]'`}, `;
+          sql += `${q.case_background ? `'${escapeSql(q.case_background)}'` : 'NULL'}, `;
+          sql += `${q.case_context ? `'${escapeSql(q.case_context)}'` : 'NULL'}, `;
+          sql += `'${escapeSql(q.status || 'active')}', `;
+          sql += `'${q.created_at || new Date().toISOString()}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['questions'] = questions?.length || 0;
+    }
+
+    // 导出 admin_users 表
+    if (tables.includes('admin_users')) {
+      sql += `-- 导出 admin_users 表\n`;
+      const { data: adminUsers, error: adminUsersError } = await client.from('admin_users').select('*');
+      if (adminUsersError) {
+        sql += `-- 导出 admin_users 失败: ${adminUsersError.message}\n`;
+      } else if (adminUsers && adminUsers.length > 0) {
+        sql += `TRUNCATE TABLE admin_users CASCADE;\n`;
+        for (const admin of adminUsers) {
+          sql += `INSERT INTO admin_users (id, username, password, is_first_login, created_at, updated_at) VALUES (`;
+          sql += `'${escapeSql(admin.id)}', `;
+          sql += `'${escapeSql(admin.username)}', `;
+          sql += `'${escapeSql(admin.password)}', `;
+          sql += `${admin.is_first_login !== undefined ? admin.is_first_login : 'true'}, `;
+          sql += `'${admin.created_at || new Date().toISOString()}', `;
+          sql += `'${admin.updated_at || new Date().toISOString()}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['admin_users'] = adminUsers?.length || 0;
+    }
+
+    // 导出 user_data 表
+    if (tables.includes('user_data')) {
+      sql += `-- 导出 user_data 表\n`;
+      const { data: userDataList, error: userDataError } = await client.from('user_data').select('*');
+      if (userDataError) {
+        sql += `-- 导出 user_data 失败: ${userDataError.message}\n`;
+      } else if (userDataList && userDataList.length > 0) {
+        sql += `TRUNCATE TABLE user_data CASCADE;\n`;
+        for (const ud of userDataList) {
+          sql += `INSERT INTO user_data (id, user_id, data_type, data_value, created_at, updated_at) VALUES (`;
+          sql += `'${escapeSql(ud.id)}', `;
+          sql += `'${escapeSql(ud.user_id)}', `;
+          sql += `'${escapeSql(ud.data_type)}', `;
+          sql += `'${escapeSql(JSON.stringify(ud.data_value))}', `;
+          sql += `'${ud.created_at || new Date().toISOString()}', `;
+          sql += `'${ud.updated_at || new Date().toISOString()}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['user_data'] = userDataList?.length || 0;
+    }
+
+    // 导出 health_check 表
+    if (tables.includes('health_check')) {
+      sql += `-- 导出 health_check 表\n`;
+      const { data: healthChecks, error: healthError } = await client.from('health_check').select('*');
+      if (healthError) {
+        sql += `-- 导出 health_check 失败: ${healthError.message}\n`;
+      } else if (healthChecks && healthChecks.length > 0) {
+        sql += `TRUNCATE TABLE health_check CASCADE;\n`;
+        for (const hc of healthChecks) {
+          sql += `INSERT INTO health_check (id, status, checked_at) VALUES (`;
+          sql += `'${escapeSql(hc.id)}', `;
+          sql += `'${escapeSql(hc.status)}', `;
+          sql += `'${hc.checked_at || new Date().toISOString()}'`;
+          sql += `);\n`;
+        }
+      }
+      sql += `\n`;
+      stats['health_check'] = healthChecks?.length || 0;
+    }
 
     // 添加注释
+    sql += `-- 导出完成\n`;
+    sql += `-- 导出表: ${tables.join(', ')}\n`;`,
     sql += `-- 导出完成\n`;
     sql += `-- 导出表: ${tables.join(', ')}\n`;
 
@@ -259,7 +447,10 @@ export async function GET(request: NextRequest) {
       user_activations: { name: '激活记录', color: 'bg-purple-100 text-purple-600' },
       categories: { name: '分类', color: 'bg-orange-100 text-orange-600' },
       question_banks: { name: '题库', color: 'bg-cyan-100 text-cyan-600' },
-      questions: { name: '题目', color: 'bg-rose-100 text-rose-600' }
+      questions: { name: '题目', color: 'bg-rose-100 text-rose-600' },
+      admin_users: { name: '管理员', color: 'bg-red-100 text-red-600' },
+      user_data: { name: '用户数据', color: 'bg-indigo-100 text-indigo-600' },
+      health_check: { name: '健康检查', color: 'bg-gray-100 text-gray-600' }
     };
 
     // 检查每个表是否存在（通过尝试查询）

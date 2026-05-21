@@ -88,7 +88,47 @@ COMMENT ON COLUMN public.users.activated_categories IS '已激活的分类ID数�
 COMMENT ON COLUMN public.users.device_id IS '当前登录设备ID（单设备登录控制）';
 
 -- ----------------------------------------
--- 5. 激活码表 (activation_codes)
+-- 5. 管理员用户表 (admin_users)
+-- ----------------------------------------
+CREATE TABLE IF NOT EXISTS public.admin_users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+COMMENT ON TABLE public.admin_users IS '后台管理员表';
+
+-- ----------------------------------------
+-- 6. 用户数据表 (user_data)
+-- ----------------------------------------
+CREATE TABLE IF NOT EXISTS public.user_data (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    data_key VARCHAR(100) NOT NULL,
+    data_value JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, data_key)
+);
+
+COMMENT ON TABLE public.user_data IS '用户扩展数据表';
+
+-- ----------------------------------------
+-- 7. 健康检查表 (health_check)
+-- ----------------------------------------
+CREATE TABLE IF NOT EXISTS public.health_check (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    status VARCHAR(20) NOT NULL,
+    checked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    details TEXT
+);
+
+COMMENT ON TABLE public.health_check IS '健康检查表';
+
+-- ----------------------------------------
+-- 8. 激活码表 (activation_codes)
 -- ----------------------------------------
 CREATE TABLE IF NOT EXISTS public.activation_codes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -133,6 +173,9 @@ CREATE INDEX IF NOT EXISTS idx_users_phone ON public.users(phone);
 CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON public.activation_codes(code);
 CREATE INDEX IF NOT EXISTS idx_user_activations_user_id ON public.user_activations(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_activations_category_id ON public.user_activations(category_id);
+CREATE INDEX IF NOT EXISTS idx_admin_users_username ON public.admin_users(username);
+CREATE INDEX IF NOT EXISTS idx_user_data_user_id ON public.user_data(user_id);
+CREATE INDEX IF NOT EXISTS idx_health_check_status ON public.health_check(status);
 
 -- ----------------------------------------
 -- 启用 Row Level Security (RLS)
@@ -161,4 +204,13 @@ CREATE POLICY "Allow admin full access" ON public.question_banks
     FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Allow admin full access" ON public.questions
+    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+
+CREATE POLICY "Allow admin full access" ON public.admin_users
+    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+
+CREATE POLICY "Allow admin full access" ON public.user_data
+    FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
+
+CREATE POLICY "Allow admin full access" ON public.health_check
     FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
