@@ -478,13 +478,7 @@ export default function AdminPage() {
           </div>
           {/* 操作按钮 */}
           <div className="flex flex-wrap gap-2">
-            <Link href="/admin/create" className="flex-shrink-0">
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1.5" />
-                <span className="hidden sm:inline">新建题库</span>
-                <span className="sm:hidden">新建</span>
-              </Button>
-            </Link>
+            {/* 新建题库功能已移除 */}
           </div>
         </div>
 
