@@ -404,7 +404,9 @@ export default function AdminPage() {
   const [isExportDbDialogOpen, setIsExportDbDialogOpen] = useState(false);
   const [availableTables, setAvailableTables] = useState<Array<{id: string; name: string; color: string}>>([]);
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
-  const [loadingTables, setLoadingTables] = useState(false);  // 从 API 动态获取可用表列表，包含数据库中实际存在的所有表
+  const [loadingTables, setLoadingTables] = useState(false);
+
+  // 从 API 动态获取可用表列表，包含数据库中实际存在的所有表
   useEffect(() => {
     if (isExportDbDialogOpen) {
       fetchAvailableTables();
