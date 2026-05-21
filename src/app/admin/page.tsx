@@ -49,6 +49,7 @@ import {
   GripVertical,
   User,
   Key,
+  Layers,
 } from 'lucide-react';
 
 import { useAdminAuth, useBanks, useCategories, useExportDb, useImport } from './hooks';
@@ -330,30 +331,61 @@ export default function AdminPage() {
           </Alert>
         )}
 
-        {/* 统计卡片 - 第一行 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-          <Card className="col-span-1 p-2">
-            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">题库总数</div>
-            <div className="text-base sm:text-xl font-bold leading-none">{stats.totalBanks}</div>
+        {/* 统计卡片 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <Card className="p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-slate-500">题库总数</span>
+              <Folder className="h-4 w-4 text-blue-500" />
+            </div>
+            <div className="text-xl font-bold">{stats.totalBanks}</div>
           </Card>
-          <Card className="col-span-1 p-2">
-            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">题目总数</div>
-            <div className="text-base sm:text-xl font-bold leading-none">{stats.totalQuestions}</div>
+          <Card className="p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-slate-500">题目总数</span>
+              <FileText className="h-4 w-4 text-green-500" />
+            </div>
+            <div className="text-xl font-bold">{stats.totalQuestions}</div>
           </Card>
-          <Card className="col-span-1 p-2">
-            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">分类数量</div>
-            <div className="text-base sm:text-xl font-bold leading-none">{categories.length}</div>
+          <Card className="p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-slate-500">分类数量</span>
+              <Layers className="h-4 w-4 text-orange-500" />
+            </div>
+            <div className="text-xl font-bold">{categories.length}</div>
           </Card>
-          {/* 用户管理入口 */}
-          <Link href="/admin/users" className="col-span-1">
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
-              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
-              <div>
-                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">用户管理</div>
-                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">管理</div>
+          <Link href="/admin/users">
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500">用户管理</span>
+                <User className="h-4 w-4 text-purple-500" />
               </div>
+              <div className="text-xl font-bold">管理</div>
             </Card>
           </Link>
+        </div>
+
+        {/* 功能入口 */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Link href="/admin/codes">
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500">激活码管理</span>
+                <Key className="h-4 w-4 text-green-500" />
+              </div>
+              <div className="text-xl font-bold">生成</div>
+            </Card>
+          </Link>
+          <Card 
+            className="hover:shadow-sm transition-shadow cursor-pointer p-3"
+            onClick={openExportDbDialog}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-slate-500">数据库导出</span>
+              <Database className="h-4 w-4 text-orange-500" />
+            </div>
+            <div className="text-xl font-bold">导出</div>
+          </Card>
         </div>
 
         {/* 导入区域 */}
