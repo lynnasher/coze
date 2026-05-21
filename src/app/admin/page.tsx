@@ -291,25 +291,27 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b shadow-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BookOpen className="h-6 w-6 text-blue-600" />
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-lg">
+                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold">题库管理后台</h1>
+                <p className="text-xs sm:text-sm text-slate-500">管理您的题库资源</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold">题库管理后台</h1>
-              <p className="text-sm text-slate-500">管理您的题库资源</p>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button variant="outline" size="sm" onClick={loadBanks} disabled={banksLoading}>
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${banksLoading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">刷新</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">退出登录</span>
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={loadBanks} disabled={banksLoading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${banksLoading ? 'animate-spin' : ''}`} />
-              刷新
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              退出登录
-            </Button>
           </div>
         </div>
       </header>
@@ -329,37 +331,37 @@ export default function AdminPage() {
         )}
 
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">题库总数</CardTitle>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card className="col-span-1">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">题库总数</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.totalBanks}</div>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-3xl font-bold">{stats.totalBanks}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">题目总数</CardTitle>
+          <Card className="col-span-1">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">题目总数</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.totalQuestions}</div>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-3xl font-bold">{stats.totalQuestions}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">分类数量</CardTitle>
+          <Card className="col-span-1">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">分类数量</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{categories.length}</div>
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-3xl font-bold">{categories.length}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-500">平均正确率</CardTitle>
+          <Card className="col-span-1">
+            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">平均正确率</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
+            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+              <div className="text-xl sm:text-3xl font-bold">
                 {stats.totalQuestions > 0
                   ? Math.round((banks.reduce((s, b) => s + (b.correctRate || 0) * (b.questionCount || 0), 0) / stats.totalQuestions) * 100)
                   : 0}%
@@ -368,40 +370,43 @@ export default function AdminPage() {
           </Card>
 
           {/* 用户管理入口 */}
-          <Link href="/admin/users">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <User className="h-4 w-4 text-purple-500" />
-                  用户管理
+          <Link href="/admin/users" className="col-span-1">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-slate-500 flex items-center gap-1.5 sm:gap-2">
+                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
+                  <span className="hidden sm:inline">用户管理</span>
+                  <span className="sm:hidden">用户</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">管理</div>
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold">管理</div>
               </CardContent>
             </Card>
           </Link>
 
           {/* 激活码管理入口 */}
-          <Link href="/admin/codes">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                  <Key className="h-4 w-4 text-green-500" />
-                  激活码管理
+          <Link href="/admin/codes" className="col-span-1">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-slate-500 flex items-center gap-1.5 sm:gap-2">
+                  <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
+                  <span className="hidden sm:inline">激活码管理</span>
+                  <span className="sm:hidden">激活码</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">生成</div>
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                <div className="text-lg sm:text-2xl font-bold">生成</div>
               </CardContent>
             </Card>
           </Link>
         </div>
 
         {/* 操作栏 */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1 flex gap-4">
-            <div className="relative flex-1 max-w-md">
+        <div className="flex flex-col gap-3 sm:gap-4 mb-6">
+          {/* 搜索和筛选 */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="搜索题库..."
@@ -413,7 +418,7 @@ export default function AdminPage() {
             <select
               value={filterCategory}
               onChange={(e) => { setFilterCategory(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 border rounded-md bg-white text-sm"
+              className="px-3 py-2 border rounded-md bg-white text-sm w-full sm:w-auto"
             >
               <option value="all">所有分类</option>
               {categories.map((cat) => (
@@ -425,20 +430,23 @@ export default function AdminPage() {
               ))}
             </select>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsCategoryModalOpen(true)}>
-              <Folder className="h-4 w-4 mr-2" />
-              分类管理
+          {/* 操作按钮 */}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setIsCategoryModalOpen(true)}>
+              <Folder className="h-4 w-4 mr-1.5" />
+              <span className="hidden sm:inline">分类管理</span>
+              <span className="sm:hidden">分类</span>
             </Button>
-            <Button variant="outline" onClick={openExportDbDialog}>
-              <Database className="h-4 w-4 mr-2" />
-              导出数据库
+            <Button variant="outline" size="sm" onClick={openExportDbDialog}>
+              <Database className="h-4 w-4 mr-1.5" />
+              <span className="hidden sm:inline">导出数据库</span>
+              <span className="sm:hidden">导出</span>
             </Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
               <select
                 value={importCategory}
                 onChange={(e) => setImportCategory(e.target.value)}
-                className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-8 sm:h-9 rounded-md border border-input bg-transparent px-2 sm:px-3 py-1 text-xs sm:text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring flex-1 sm:w-auto"
               >
                 <option value="">选择导入分类</option>
                 {categories.map((cat) => (
@@ -449,7 +457,7 @@ export default function AdminPage() {
                   </option>
                 ))}
               </select>
-              <label className="cursor-pointer">
+              <label className="cursor-pointer flex-shrink-0">
                 <input
                   type="file"
                   accept=".json"
@@ -457,18 +465,20 @@ export default function AdminPage() {
                   className="hidden"
                   disabled={isImporting}
                 />
-                <Button variant="outline" asChild>
+                <Button variant="outline" size="sm" asChild>
                   <span>
-                    <FileJson className="h-4 w-4 mr-2" />
-                    {isImporting ? '导入中...' : '导入JSON'}
+                    <FileJson className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">{isImporting ? '导入中...' : '导入JSON'}</span>
+                    <span className="sm:hidden">导入</span>
                   </span>
                 </Button>
               </label>
             </div>
-            <Link href="/admin/create">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                新建题库
+            <Link href="/admin/create" className="flex-shrink-0">
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">新建题库</span>
+                <span className="sm:hidden">新建</span>
               </Button>
             </Link>
           </div>
@@ -509,36 +519,38 @@ export default function AdminPage() {
                       </h3>
                       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                         <SortableContext items={categoryBanks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-10 text-center"></TableHead>
-                                <TableHead className="w-[40%]">题库名称</TableHead>
-                                <TableHead className="w-[120px] text-center">题目数量</TableHead>
-                                <TableHead className="w-[120px] text-center">创建时间</TableHead>
-                                <TableHead className="w-[100px] text-right">操作</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {categoryBanks.map((bank) => (
-                                <SortableBankRow
-                                  key={bank.id}
-                                  bank={bank}
-                                  onEdit={() => handleInlineEditStart(bank)}
-                                  onDelete={() => openDeleteDialog(bank)}
-                                  onClick={() => goToBankEdit(bank)}
-                                  onMoveCategory={() => openMoveCategoryDialog(bank)}
-                                  onEditQuestions={() => goToBankEdit(bank)}
-                                  onExportWord={() => handleExportBank(bank)}
-                                  isEditing={inlineEditingId === bank.id}
-                                  editingName={inlineEditingName}
-                                  onEditingNameChange={setInlineEditingName}
-                                  onSave={handleInlineEditSave}
-                                  onCancel={handleInlineEditCancel}
-                                />
-                              ))}
-                            </TableBody>
-                          </Table>
+                          <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+                            <Table className="min-w-[600px]">
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-10 text-center"></TableHead>
+                                  <TableHead className="w-[40%]">题库名称</TableHead>
+                                  <TableHead className="w-[120px] text-center">题目数量</TableHead>
+                                  <TableHead className="w-[120px] text-center">创建时间</TableHead>
+                                  <TableHead className="w-[100px] text-right">操作</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {categoryBanks.map((bank) => (
+                                  <SortableBankRow
+                                    key={bank.id}
+                                    bank={bank}
+                                    onEdit={() => handleInlineEditStart(bank)}
+                                    onDelete={() => openDeleteDialog(bank)}
+                                    onClick={() => goToBankEdit(bank)}
+                                    onMoveCategory={() => openMoveCategoryDialog(bank)}
+                                    onEditQuestions={() => goToBankEdit(bank)}
+                                    onExportWord={() => handleExportBank(bank)}
+                                    isEditing={inlineEditingId === bank.id}
+                                    editingName={inlineEditingName}
+                                    onEditingNameChange={setInlineEditingName}
+                                    onSave={handleInlineEditSave}
+                                    onCancel={handleInlineEditCancel}
+                                  />
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         </SortableContext>
                       </DndContext>
                     </div>
@@ -551,44 +563,53 @@ export default function AdminPage() {
 
         {/* 分页 */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <Button variant="outline" size="sm" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
-              首页
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-              上一页
-            </Button>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum: number;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => handlePageChange(pageNum)}
-                    className="w-10"
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+            {/* 页码信息 */}
+            <div className="text-sm text-slate-500 order-2 sm:order-1">
+              第 {currentPage} / {totalPages} 页
             </div>
-            <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-              下一页
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages}>
-              末页
-            </Button>
+            {/* 分页按钮 */}
+            <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
+              <Button variant="outline" size="sm" onClick={() => handlePageChange(1)} disabled={currentPage === 1} className="hidden sm:flex px-2 sm:px-3">
+                首页
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-2 sm:px-3">
+                <span className="hidden sm:inline">上一页</span>
+                <span className="sm:hidden">←</span>
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className="w-8 h-8 sm:w-10 sm:h-9 p-0 text-xs sm:text-sm"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-2 sm:px-3">
+                <span className="hidden sm:inline">下一页</span>
+                <span className="sm:hidden">→</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} className="hidden sm:flex px-2 sm:px-3">
+                末页
+              </Button>
+            </div>
           </div>
         )}
       </main>
