@@ -512,11 +512,11 @@ export default function AdminPage() {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="w-10"></TableHead>
-                                <TableHead>题库名称</TableHead>
-                                <TableHead>题目数量</TableHead>
-                                <TableHead>创建时间</TableHead>
-                                <TableHead className="text-right">操作</TableHead>
+                                <TableHead className="w-10 text-center"></TableHead>
+                                <TableHead className="w-[40%]">题库名称</TableHead>
+                                <TableHead className="w-[120px] text-center">题目数量</TableHead>
+                                <TableHead className="w-[120px] text-center">创建时间</TableHead>
+                                <TableHead className="w-[100px] text-right">操作</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>

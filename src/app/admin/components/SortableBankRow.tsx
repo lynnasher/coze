@@ -77,17 +77,17 @@ export function SortableBankRow({
 
   return (
     <TableRow ref={setNodeRef} style={style} className="hover:bg-slate-50">
-      <TableCell>
+      <TableCell className="w-10 text-center">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded"
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 rounded inline-flex"
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="h-4 w-4 text-slate-400" />
         </button>
       </TableCell>
-      <TableCell className="max-w-[300px]">
+      <TableCell className="w-[40%]">
         {isEditing ? (
           <div className="flex items-center gap-2">
             <input
@@ -133,15 +133,15 @@ export function SortableBankRow({
           </div>
         )}
       </TableCell>
-      <TableCell onClick={onClick} className="cursor-pointer">
+      <TableCell onClick={onClick} className="w-[120px] text-center cursor-pointer">
         <Badge variant="secondary">
           {bank.questionCount || 0} 题
         </Badge>
       </TableCell>
-      <TableCell className="text-slate-500">
+      <TableCell className="w-[120px] text-center text-slate-500">
         {formatDate(bank.createdAt)}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell className="w-[100px] text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
