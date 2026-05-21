@@ -76,6 +76,7 @@ export default function AdminPage() {
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [importCategory, setImportCategory] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
@@ -153,7 +154,13 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const result = await importJson(file);
+    if (!importCategory) {
+      setError('请先选择要导入的分类');
+      e.target.value = '';
+      return;
+    }
+
+    const result = await importJson(file, importCategory);
     if (result.success) {
       setSuccess(`成功导入 ${result.data?.count || 0} 道题目`);
       await loadBanks();
@@ -427,21 +434,37 @@ export default function AdminPage() {
               <Database className="h-4 w-4 mr-2" />
               导出数据库
             </Button>
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleJsonImport}
-                className="hidden"
-                disabled={isImporting}
-              />
-              <Button variant="outline" asChild>
-                <span>
-                  <FileJson className="h-4 w-4 mr-2" />
-                  {isImporting ? '导入中...' : '导入JSON'}
-                </span>
-              </Button>
-            </label>
+            <div className="flex items-center gap-2">
+              <select
+                value={importCategory}
+                onChange={(e) => setImportCategory(e.target.value)}
+                className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="">选择导入分类</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {(cat.depth || 0) > 0
+                      ? `${'  '.repeat(cat.depth || 0)}└ ${cat.name}`
+                      : cat.name}
+                  </option>
+                ))}
+              </select>
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleJsonImport}
+                  className="hidden"
+                  disabled={isImporting}
+                />
+                <Button variant="outline" asChild>
+                  <span>
+                    <FileJson className="h-4 w-4 mr-2" />
+                    {isImporting ? '导入中...' : '导入JSON'}
+                  </span>
+                </Button>
+              </label>
+            </div>
             <Link href="/admin/create">
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
