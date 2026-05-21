@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 解析请求体获取要导出的表
-    let tables: string[] = ['users', 'activation_codes', 'user_activations', 'categories', 'banks', 'questions'];
+    // 注意：banks 和 questions 存储在 localStorage，不在数据库中
+    let tables: string[] = ['users', 'activation_codes', 'user_activations', 'categories'];
     try {
       const body = await request.json();
       if (body.tables && Array.isArray(body.tables) && body.tables.length > 0) {
@@ -196,101 +197,8 @@ export async function POST(request: NextRequest) {
     stats['categories'] = categories?.length || 0;
     } // end if (tables.includes('categories'))
 
-    // 5. 导出 banks 表
-    if (tables.includes('banks')) {
-    sql += `-- 创建 banks 表\n`;
-    sql += `CREATE TABLE IF NOT EXISTS banks (\n`;
-    sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
-    sql += `  name VARCHAR(200) NOT NULL,\n`;
-    sql += `  description TEXT,\n`;
-    sql += `  source_file VARCHAR(200),\n`;
-    sql += `  question_count INTEGER DEFAULT 0,\n`;
-    sql += `  category_id VARCHAR(100),\n`;
-    sql += `  status VARCHAR(20) DEFAULT 'active',\n`;
-    sql += `  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),\n`;
-    sql += `  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n`;
-    sql += `);\n\n`;
-
-    // 导出 banks 数据
-    const { data: banks, error: banksError } = await client
-      .from('banks')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (banksError) {
-      console.error('导出 banks 失败:', banksError);
-    } else if (banks && banks.length > 0) {
-      sql += `-- banks 表数据 (${banks.length} 条)\n`;
-      for (const bank of banks) {
-        sql += `INSERT INTO banks (id, name, description, source_file, question_count, category_id, status, created_at, updated_at) VALUES (`;
-        sql += `'${bank.id}', `;
-        sql += `'${bank.name.replace(/'/g, "''")}', `;
-        sql += `${bank.description ? `'${bank.description.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `${bank.source_file ? `'${bank.source_file.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `${bank.question_count || 0}, `;
-        sql += `${bank.category_id ? `'${bank.category_id}'` : 'NULL'}, `;
-        sql += `'${bank.status || 'active'}', `;
-        sql += `${bank.created_at ? `'${bank.created_at}'` : 'NOW()'}, `;
-        sql += `${bank.updated_at ? `'${bank.updated_at}'` : 'NOW()'});
-`;
-      }
-      sql += `\n`;
-    }
-    stats['banks'] = banks?.length || 0;
-    } // end if (tables.includes('banks'))
-
-    // 6. 导出 questions 表
-    if (tables.includes('questions')) {
-    sql += `-- 创建 questions 表\n`;
-    sql += `CREATE TABLE IF NOT EXISTS questions (\n`;
-    sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
-    sql += `  bank_id VARCHAR(100) NOT NULL,\n`;
-    sql += `  parent_id VARCHAR(100),\n`;
-    sql += `  type VARCHAR(50) NOT NULL,\n`;
-    sql += `  content TEXT NOT NULL,\n`;
-    sql += `  options TEXT,\n`;
-    sql += `  answer TEXT,\n`;
-    sql += `  explanation TEXT,\n`;
-    sql += `  difficulty VARCHAR(20) DEFAULT 'medium',\n`;
-    sql += `  tags TEXT,\n`;
-    sql += `  case_background TEXT,\n`;
-    sql += `  case_context TEXT,\n`;
-    sql += `  status VARCHAR(20) DEFAULT 'active',\n`;
-    sql += `  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n`;
-    sql += `);\n\n`;
-
-    // 导出 questions 数据
-    const { data: questions, error: questionsError } = await client
-      .from('questions')
-      .select('*')
-      .order('created_at', { ascending: true });
-
-    if (questionsError) {
-      console.error('导出 questions 失败:', questionsError);
-    } else if (questions && questions.length > 0) {
-      sql += `-- questions 表数据 (${questions.length} 条)\n`;
-      for (const q of questions) {
-        sql += `INSERT INTO questions (id, bank_id, parent_id, type, content, options, answer, explanation, difficulty, tags, case_background, case_context, status, created_at) VALUES (`;
-        sql += `'${q.id}', `;
-        sql += `'${q.bank_id}', `;
-        sql += `${q.parent_id ? `'${q.parent_id}'` : 'NULL'}, `;
-        sql += `'${q.type}', `;
-        sql += `'${q.content.replace(/'/g, "''")}', `;
-        sql += `${q.options ? `'${q.options.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `${q.answer ? `'${q.answer.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `${q.explanation ? `'${q.explanation.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `'${q.difficulty || 'medium'}', `;
-        sql += `${q.tags ? `'${q.tags.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `${q.case_background ? `'${q.case_background.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `${q.case_context ? `'${q.case_context.replace(/'/g, "''")}'` : 'NULL'}, `;
-        sql += `'${q.status || 'active'}', `;
-        sql += `${q.created_at ? `'${q.created_at}'` : 'NOW()'});
-`;
-      }
-      sql += `\n`;
-    }
-    stats['questions'] = questions?.length || 0;
-    } // end if (tables.includes('questions'))
+    // 注意：banks 和 questions 表存储在 localStorage，不在数据库中
+    // 如需导出题库数据，请使用浏览器的 localStorage 导出功能
 
     // 添加注释
     sql += `-- 导出完成\n`;

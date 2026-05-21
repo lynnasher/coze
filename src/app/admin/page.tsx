@@ -402,7 +402,8 @@ export default function AdminPage() {
 
   // 数据库导出对话框状态
   const [isExportDbDialogOpen, setIsExportDbDialogOpen] = useState(false);
-  const [selectedTables, setSelectedTables] = useState<string[]>(['users', 'activation_codes', 'user_activations', 'categories', 'banks', 'questions']);
+  // 注意：banks 和 questions 存储在 localStorage，不在数据库中
+  const [selectedTables, setSelectedTables] = useState<string[]>(['users', 'activation_codes', 'user_activations', 'categories']);
 
   // 验证登录状态
   useEffect(() => {
@@ -1717,13 +1718,12 @@ export default function AdminPage() {
           </DialogHeader>
           
           <div className="py-4 space-y-3">
+            {/* 注意：banks 和 questions 存储在 localStorage，不在数据库中 */}
             {[
               { id: 'users', label: 'users（用户账号）', color: 'bg-blue-100 text-blue-700' },
               { id: 'activation_codes', label: 'activation_codes（激活码）', color: 'bg-green-100 text-green-700' },
               { id: 'user_activations', label: 'user_activations（激活记录）', color: 'bg-purple-100 text-purple-700' },
               { id: 'categories', label: 'categories（分类）', color: 'bg-orange-100 text-orange-700' },
-              { id: 'banks', label: 'banks（题库）', color: 'bg-cyan-100 text-cyan-700' },
-              { id: 'questions', label: 'questions（题目）', color: 'bg-rose-100 text-rose-700' },
             ].map((table) => (
               <div
                 key={table.id}
