@@ -313,7 +313,7 @@ export default function ActivationCodesPage() {
 
   // 复制激活码
   const copyToClipboard = (code: ActivationCode) => {
-    const textToCopy = `${code.code} - ${code.category_name}`;
+    const textToCopy = `激活码：${code.code}\n所属科目：${code.category_name}`;
     navigator.clipboard.writeText(textToCopy);
   };
 
