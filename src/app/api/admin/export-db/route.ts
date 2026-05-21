@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '../../../../storage/database/supabase-client';
 
 /**
+ * 转义 SQL 字符串中的特殊字符
+ */
+function escapeSql(str: string): string {
+  if (str === null || str === undefined) return '';
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+/**
  * 导出数据库结构和数据
  * POST /api/admin/export-db
  */
@@ -422,23 +435,10 @@ export async function POST(request: NextRequest) {
   }  // 结束try-catch
 }  // 结束POST函数
 
-// GET函数保持不变
-
-    return NextResponse.json({
-      success: true,
-      sql,
-      stats
-    });
-
-  } catch (error) {
-    console.error('导出数据库失败:', error);
-    return NextResponse.json(
-      { error: '导出失败: ' + (error as Error).message },
-      { status: 500 }
-    );
-  }
-}
-
+/**
+ * 获取数据库中可用的表列表
+ * GET /api/admin/export-db
+ */
 /**
  * 获取数据库中可用的表列表
  * GET /api/admin/export-db

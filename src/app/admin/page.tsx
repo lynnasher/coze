@@ -448,9 +448,6 @@ export default function AdminPage() {
     }
   };
 
-  // 导出数据库
-  useEffect(() => {
-
   // 验证登录状态
   useEffect(() => {
     const token = localStorage.getItem('admin_token');
