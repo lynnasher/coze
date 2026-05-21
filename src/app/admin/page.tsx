@@ -47,6 +47,8 @@ import {
   Plus,
   Database,
   GripVertical,
+  User,
+  Key,
 } from 'lucide-react';
 
 import { useAdminAuth, useBanks, useCategories, useExportDb, useImport } from './hooks';
@@ -357,6 +359,36 @@ export default function AdminPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 用户管理入口 */}
+          <Link href="/admin/users">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                  <User className="h-4 w-4 text-purple-500" />
+                  用户管理
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">管理</div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* 激活码管理入口 */}
+          <Link href="/admin/codes">
+            <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-slate-500 flex items-center gap-2">
+                  <Key className="h-4 w-4 text-green-500" />
+                  激活码管理
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">生成</div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* 操作栏 */}
