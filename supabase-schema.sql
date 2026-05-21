@@ -25,7 +25,7 @@ COMMENT ON COLUMN public.categories.parent_id IS '父分类ID，支持二级分�
 -- ----------------------------------------
 -- 2. 题库表 (banks)
 -- ----------------------------------------
-CREATE TABLE IF NOT EXISTS public.banks (
+CREATE TABLE IF NOT EXISTS public.question_banks (
     id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     description TEXT,
@@ -37,16 +37,16 @@ CREATE TABLE IF NOT EXISTS public.banks (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-COMMENT ON TABLE public.banks IS '题库表';
-COMMENT ON COLUMN public.banks.source_file IS '来源文件名';
-COMMENT ON COLUMN public.banks.question_count IS '题目数量';
+COMMENT ON TABLE public.question_banks IS '题库表';
+COMMENT ON COLUMN public.question_banks.source_file IS '来源文件名';
+COMMENT ON COLUMN public.question_banks.question_count IS '题目数量';
 
 -- ----------------------------------------
 -- 3. 题目表 (questions)
 -- ----------------------------------------
 CREATE TABLE IF NOT EXISTS public.questions (
     id VARCHAR(100) PRIMARY KEY,
-    bank_id VARCHAR(100) REFERENCES public.banks(id) ON DELETE CASCADE,
+    bank_id VARCHAR(100) REFERENCES public.question_banks(id) ON DELETE CASCADE,
     parent_id VARCHAR(100) REFERENCES public.questions(id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL CHECK (type IN ('single', 'multiple', 'true-false', 'fill-blank', 'comprehensive')),
     content TEXT NOT NULL,
@@ -128,7 +128,7 @@ COMMENT ON TABLE public.user_activations IS '用户激活记录表';
 CREATE INDEX IF NOT EXISTS idx_questions_bank_id ON public.questions(bank_id);
 CREATE INDEX IF NOT EXISTS idx_questions_parent_id ON public.questions(parent_id);
 CREATE INDEX IF NOT EXISTS idx_questions_type ON public.questions(type);
-CREATE INDEX IF NOT EXISTS idx_banks_category_id ON public.banks(category_id);
+CREATE INDEX IF NOT EXISTS idx_banks_category_id ON public.question_banks(category_id);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON public.users(phone);
 CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON public.activation_codes(code);
 CREATE INDEX IF NOT EXISTS idx_user_activations_user_id ON public.user_activations(user_id);
@@ -141,7 +141,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activation_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_activations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.banks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.question_banks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.questions ENABLE ROW LEVEL SECURITY;
 
 -- 创建 RLS 策略（管理员可以访问所有数据）
@@ -157,7 +157,7 @@ CREATE POLICY "Allow admin full access" ON public.user_activations
 CREATE POLICY "Allow admin full access" ON public.categories
     FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
-CREATE POLICY "Allow admin full access" ON public.banks
+CREATE POLICY "Allow admin full access" ON public.question_banks
     FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
 
 CREATE POLICY "Allow admin full access" ON public.questions

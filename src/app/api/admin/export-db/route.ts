@@ -273,7 +273,7 @@ export async function GET(request: NextRequest) {
       activation_codes: { name: '激活码', color: 'bg-green-100 text-green-600' },
       user_activations: { name: '激活记录', color: 'bg-purple-100 text-purple-600' },
       categories: { name: '分类', color: 'bg-orange-100 text-orange-600' },
-      banks: { name: '题库', color: 'bg-cyan-100 text-cyan-600' },
+      question_banks: { name: '题库', color: 'bg-cyan-100 text-cyan-600' },
       questions: { name: '题目', color: 'bg-rose-100 text-rose-600' }
     };
 

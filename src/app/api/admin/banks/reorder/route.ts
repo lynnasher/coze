@@ -37,7 +37,7 @@ export async function PUT(request: Request) {
     // 批量更新排序
     const updates = orders.map(({ id, sortOrder }: ReorderItem) =>
       supabase
-        .from('banks')
+        .from('question_banks')
         .update({ sort_order: sortOrder })
         .eq('id', id)
     );
