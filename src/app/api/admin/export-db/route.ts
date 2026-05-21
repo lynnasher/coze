@@ -32,8 +32,24 @@ export async function POST(request: NextRequest) {
     let sql = '';
     const stats: Record<string, number> = {};
 
+    // 先查询数据库中实际存在的表
+    const { data: existingTables, error: tablesError } = await client
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public');
+
+    if (tablesError) {
+      console.error('查询表列表失败:', tablesError);
+    }
+
+    const dbTables = new Set(existingTables?.map(t => t.table_name) || []);
+    console.log('数据库中存在的表:', Array.from(dbTables));
+
+    // 过滤出实际存在的表
+    const availableTables = tables.filter(t => dbTables.has(t));
+
     // 1. 导出 users 表
-    if (tables.includes('users')) {
+    if (availableTables.includes('users')) {
     sql += `-- 创建 users 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS users (\n`;
     sql += `  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n`;
@@ -79,7 +95,7 @@ export async function POST(request: NextRequest) {
     } // end if (tables.includes('users'))
 
     // 2. 导出 activation_codes 表
-    if (tables.includes('activation_codes')) {
+    if (availableTables.includes('activation_codes')) {
     sql += `-- 创建 activation_codes 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS activation_codes (\n`;
     sql += `  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n`;
@@ -124,7 +140,7 @@ export async function POST(request: NextRequest) {
     } // end if (tables.includes('activation_codes'))
 
     // 3. 导出 user_activations 表
-    if (tables.includes('user_activations')) {
+    if (availableTables.includes('user_activations')) {
     sql += `-- 创建 user_activations 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS user_activations (\n`;
     sql += `  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n`;
@@ -161,7 +177,7 @@ export async function POST(request: NextRequest) {
     } // end if (tables.includes('user_activations'))
 
     // 4. 导出 categories 表
-    if (tables.includes('categories')) {
+    if (availableTables.includes('categories')) {
     sql += `-- 创建 categories 表\n`;
     sql += `CREATE TABLE IF NOT EXISTS categories (\n`;
     sql += `  id VARCHAR(100) PRIMARY KEY,\n`;
@@ -214,6 +230,71 @@ export async function POST(request: NextRequest) {
     console.error('导出数据库失败:', error);
     return NextResponse.json(
       { error: '导出失败: ' + (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 获取数据库中可用的表列表
+ * GET /api/admin/export-db
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // 验证管理员权限
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: '未提供认证令牌' },
+        { status: 401 }
+      );
+    }
+
+    const client = getSupabaseAdminClient();
+    
+    // 查询数据库中实际存在的表
+    const { data: tables, error } = await client
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', 'public')
+      .order('table_name');
+
+    if (error) {
+      console.error('查询表列表失败:', error);
+      return NextResponse.json(
+        { error: '查询失败: ' + error.message },
+        { status: 500 }
+      );
+    }
+
+    // 定义表的中文名称和颜色
+    const tableInfo: Record<string, { name: string; color: string }> = {
+      users: { name: '用户账号', color: 'bg-blue-100 text-blue-600' },
+      activation_codes: { name: '激活码', color: 'bg-green-100 text-green-600' },
+      user_activations: { name: '激活记录', color: 'bg-purple-100 text-purple-600' },
+      categories: { name: '分类', color: 'bg-orange-100 text-orange-600' },
+      banks: { name: '题库', color: 'bg-cyan-100 text-cyan-600' },
+      questions: { name: '题目', color: 'bg-rose-100 text-rose-600' }
+    };
+
+    // 返回表列表
+    const availableTables = tables
+      ?.filter(t => t.table_name !== 'information_schema')
+      .map(t => ({
+        id: t.table_name,
+        name: tableInfo[t.table_name]?.name || t.table_name,
+        color: tableInfo[t.table_name]?.color || 'bg-gray-100 text-gray-600'
+      })) || [];
+
+    return NextResponse.json({
+      success: true,
+      tables: availableTables
+    });
+
+  } catch (error) {
+    console.error('获取表列表失败:', error);
+    return NextResponse.json(
+      { error: '获取失败: ' + (error as Error).message },
       { status: 500 }
     );
   }

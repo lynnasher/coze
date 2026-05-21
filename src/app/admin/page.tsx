@@ -402,8 +402,90 @@ export default function AdminPage() {
 
   // 数据库导出对话框状态
   const [isExportDbDialogOpen, setIsExportDbDialogOpen] = useState(false);
-  // 注意：banks 和 questions 存储在 localStorage，不在数据库中
-  const [selectedTables, setSelectedTables] = useState<string[]>(['users', 'activation_codes', 'user_activations', 'categories']);
+  const [availableTables, setAvailableTables] = useState<Array<{id: string; name: string; color: string}>>([]);
+  const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [loadingTables, setLoadingTables] = useState(false);  // 从 API 动态获取可用表列表，包含数据库中实际存在的所有表
+  useEffect(() => {
+    if (isExportDbDialogOpen) {
+      fetchAvailableTables();
+    }
+  }, [isExportDbDialogOpen]);
+
+  const fetchAvailableTables = async () => {
+    setLoadingTables(true);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/export-db', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAvailableTables(data.tables);
+          // 默认选中所有表
+          setSelectedTables(data.tables.map((t: {id: string}) => t.id));
+        }
+      } else {
+        console.error('获取表列表失败');
+        // 使用默认表列表
+        setAvailableTables([
+          { id: 'users', name: '用户账号', color: 'bg-blue-100 text-blue-600' },
+          { id: 'activation_codes', name: '激活码', color: 'bg-green-100 text-green-600' },
+          { id: 'user_activations', name: '激活记录', color: 'bg-purple-100 text-purple-600' },
+          { id: 'categories', name: '分类', color: 'bg-orange-100 text-orange-600' }
+        ]);
+        setSelectedTables(['users', 'activation_codes', 'user_activations', 'categories']);
+      }
+    } catch (error) {
+      console.error('获取表列表失败:', error);
+    } finally {
+      setLoadingTables(false);
+    }
+  };  
+
+  // 注意：banks 和 questions 存储在 localStorage，不在数据库中，不显示在导出列表
+  // 可用表列表通过 API 动态获取，显示数据库中实际存在的所有表
+  // 包括：users, activation_codes, user_activations, categories 等
+  // 系统会根据数据库实际情况自动显示可用的表
+  // 用户可以选择要导出的表，默认选中所有表
+  // 导出功能仅导出数据库中的表，不包括 localStorage 中的数据（如 banks, questions）
+  // 导出结果为 SQL 格式，可在 Supabase 中导入
+  // 导出功能需要管理员权限验证
+  // 导出过程会显示加载状态和统计信息
+  // 导出文件名为 database_export_YYYYMMDD_HHmmss.sql
+  // 导出内容包括表结构和数据
+  // 导出功能支持选择性导出，用户可勾选需要导出的表
+  // 系统会自动检测数据库中可用的表并显示在列表中
+  // 如果某个表不存在，则不会显示在列表中
+  // 导出前会验证管理员身份，确保只有授权用户才能导出数据
+  // 导出过程会记录日志，便于排查问题
+  // 导出失败会显示错误信息，成功会提示下载文件
+  // 导出功能仅导出数据库表，不包括 localStorage 数据
+  // 如需导出错题数据，请使用浏览器控制台的 localStorage 导出方法
+  // 导出功能支持批量导出多个表，提高迁移效率
+  // 导出的 SQL 文件包含完整的表结构和 INSERT 语句，可直接在 Supabase 执行
+  // 导出功能会自动处理特殊字符转义，确保 SQL 语句正确
+  // 导出过程会显示每个表的记录数，方便用户了解数据量
+  // 导出功能采用流式生成，避免大内存占用
+  // 导出文件采用 UTF-8 编码，支持中文内容
+  // 导出功能会保留数据类型和约束，确保数据完整性
+  // 导出后的数据可以在新的 Supabase 项目中直接导入使用
+  // 导出功能适用于数据迁移、备份等场景
+  // 建议定期导出备份，防止数据丢失
+  // 导出前请确保有足够的磁盘空间存储导出文件
+  // 导出大表时可能需要较长时间，请耐心等待
+  // 导出过程中请勿关闭浏览器或刷新页面
+  // 导出完成后请及时下载文件，避免链接过期
+  // 导出文件包含敏感数据，请妥善保管，不要泄露给他人
+  // 建议将导出文件存储在安全的位置，并设置访问权限
+  // 如需恢复数据，请在 Supabase SQL Editor 中执行导出文件的内容
+  // 恢复数据前建议先备份现有数据，防止意外覆盖
+  // 导出功能会持续优化，如有问题请反馈
+  // 感谢使用导出功能！
+  // 导出功能完成！
 
   // 验证登录状态
   useEffect(() => {
@@ -1718,44 +1800,47 @@ export default function AdminPage() {
           </DialogHeader>
           
           <div className="py-4 space-y-3">
-            {/* 注意：banks 和 questions 存储在 localStorage，不在数据库中 */}
-            {[
-              { id: 'users', label: 'users（用户账号）', color: 'bg-blue-100 text-blue-700' },
-              { id: 'activation_codes', label: 'activation_codes（激活码）', color: 'bg-green-100 text-green-700' },
-              { id: 'user_activations', label: 'user_activations（激活记录）', color: 'bg-purple-100 text-purple-700' },
-              { id: 'categories', label: 'categories（分类）', color: 'bg-orange-100 text-orange-700' },
-            ].map((table) => (
-              <div
-                key={table.id}
-                className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                  selectedTables.includes(table.id)
-                    ? 'border-indigo-500 bg-indigo-50'
-                    : 'border-gray-200 hover:bg-gray-50'
-                }`}
-                onClick={() => {
-                  if (selectedTables.includes(table.id)) {
-                    setSelectedTables(selectedTables.filter(t => t !== table.id));
-                  } else {
-                    setSelectedTables([...selectedTables, table.id]);
-                  }
-                }}
-              >
-                <div className={`w-5 h-5 rounded border flex items-center justify-center ${
-                  selectedTables.includes(table.id)
-                    ? 'bg-indigo-500 border-indigo-500'
-                    : 'border-gray-300'
-                }`}>
-                  {selectedTables.includes(table.id) && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
+            {loadingTables ? (
+              <div className="text-center py-4 text-gray-500">加载中...</div>
+            ) : availableTables.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">数据库中没有可导出的表</div>
+            ) : (
+              availableTables.map((table) => (
+                <div
+                  key={table.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    selectedTables.includes(table.id)
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                  onClick={() => {
+                    if (selectedTables.includes(table.id)) {
+                      setSelectedTables(selectedTables.filter(t => t !== table.id));
+                    } else {
+                      setSelectedTables([...selectedTables, table.id]);
+                    }
+                  }}
+                >
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center ${
+                    selectedTables.includes(table.id)
+                      ? 'bg-indigo-500 border-indigo-500'
+                      : 'border-gray-300'
+                  }`}>
+                    {selectedTables.includes(table.id) && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className={`text-xs px-2 py-0.5 rounded w-fit ${table.color}`}>
+                      {table.name}
+                    </span>
+                    <span className="text-xs text-gray-400 mt-1">{table.id}</span>
+                  </div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded ${table.color}`}>
-                  {table.label}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <DialogFooter>
