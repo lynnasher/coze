@@ -312,8 +312,9 @@ export default function ActivationCodesPage() {
   };
 
   // 复制激活码
-  const copyToClipboard = (code: string) => {
-    navigator.clipboard.writeText(code);
+  const copyToClipboard = (code: ActivationCode) => {
+    const textToCopy = `${code.code} - ${code.category_name}`;
+    navigator.clipboard.writeText(textToCopy);
   };
 
   // 格式化过期时间
@@ -515,7 +516,7 @@ export default function ActivationCodesPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => copyToClipboard(code.code)}
+                                onClick={() => copyToClipboard(code)}
                                 className="h-6 w-6 p-0"
                               >
                                 <Copy className="w-3 h-3" />
