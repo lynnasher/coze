@@ -16,12 +16,12 @@ function createText(text: string, options?: { bold?: boolean; color?: string; si
   });
 }
 
-// 创建带答案高亮的选项文本（答案选项加粗）
-function createOptionWithAnswer(optionId: string, optionText: string, isAnswer: boolean, size: number = 26): TextRun {
+// 创建选项文本
+function createOptionText(optionId: string, optionText: string, size: number = 26): TextRun {
   return new TextRun({
     text: `${optionId}. ${optionText}`,
     font: 'SimHei',
-    bold: isAnswer, // 正确答案加粗
+    bold: false, // 正确答案不加粗
     color: '000000', // 统一黑色
     size: size, // 题目选项字体大一号
   });
@@ -81,17 +81,6 @@ export async function GET(request: Request) {
         ],
         alignment: AlignmentType.CENTER,
         spacing: { after: 400 },
-        indent: { left: 0 },
-      })
-    );
-
-    // 添加说明
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          createText('[说明]本试卷包含以下题型：单选题、多选题、判断题、填空题、综合题。'),
-        ],
-        spacing: { after: 200 },
         indent: { left: 0 },
       })
     );
@@ -200,11 +189,10 @@ export async function GET(request: Request) {
                 const optionId = option?.id ? String(option.id).toUpperCase() : '';
                 const optionText = option?.text || '';
                 if (optionId && optionText) {
-                  const isAnswer = childAnswerIds.includes(optionId);
                   paragraphs.push(
                     new Paragraph({
                       children: [
-                        createOptionWithAnswer(optionId, optionText, isAnswer),
+                        createOptionText(optionId, optionText),
                       ],
                       spacing: { after: 50 },
                       indent: { left: 0 },
@@ -216,13 +204,12 @@ export async function GET(request: Request) {
 
             // 判断题子题目选项
             if (child.type === 'true-false' && (!child.options || child.options.length === 0)) {
-              const isCorrectAnswerA = childAnswerIds.includes('A');
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createOptionWithAnswer('A', '正确', isCorrectAnswerA),
+                    createOptionText('A', '正确'),
                     createText('    '),
-                    createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
+                    createOptionText('B', '错误'),
                   ],
                   spacing: { after: 100 },
                   indent: { left: 0 },
@@ -332,11 +319,10 @@ export async function GET(request: Request) {
             const optionId = option?.id ? String(option.id).toUpperCase() : '';
             const optionText = option?.text || '';
             if (optionId && optionText) {
-              const isAnswer = answerIds.includes(optionId);
               paragraphs.push(
                 new Paragraph({
                   children: [
-                    createOptionWithAnswer(optionId, optionText, isAnswer),
+                    createOptionText(optionId, optionText),
                   ],
                   spacing: { after: 50 },
                   indent: { left: 0 }, // 左缩进为0
@@ -348,27 +334,12 @@ export async function GET(request: Request) {
 
         // 判断题的选项简化
         if (type === 'true-false' && (!question.options || question.options.length === 0)) {
-          // 判断题答案判断
-          let isCorrectAnswerA = false;
-          if (question.answer) {
-            try {
-              const answer = typeof question.answer === 'string' 
-                ? (question.answer.startsWith('[') ? JSON.parse(question.answer)[0] : question.answer)
-                : question.answer;
-              const normalizedAnswer = String(answer).toLowerCase();
-              isCorrectAnswerA = normalizedAnswer === 'a' || normalizedAnswer === 'true' || 
-                normalizedAnswer === '正确' || normalizedAnswer === '对';
-            } catch {
-              isCorrectAnswerA = false;
-            }
-          }
-
           paragraphs.push(
             new Paragraph({
               children: [
-                createOptionWithAnswer('A', '正确', isCorrectAnswerA),
+                createOptionText('A', '正确'),
                 createText('    '),
-                createOptionWithAnswer('B', '错误', !isCorrectAnswerA),
+                createOptionText('B', '错误'),
               ],
               spacing: { after: 100 },
               indent: { left: 0 },
