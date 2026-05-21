@@ -339,49 +339,37 @@ export default function UsersPage() {
       {/* 主内容 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">总用户数</p>
-                  <p className="text-3xl font-bold">{users.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <User className="w-6 h-6 text-blue-600" />
-                </div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+          <Card className="p-2 sm:p-3">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-1">
+                <User className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
+                <span className="text-[10px] sm:text-xs text-gray-500">总用户</span>
               </div>
-            </CardContent>
+              <span className="text-base sm:text-xl font-bold">{users.length}</span>
+            </div>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">活跃用户</p>
-                  <p className="text-3xl font-bold">
-                    {users.filter(u => u.status === 'active').length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <UserCheck className="w-6 h-6 text-green-600" />
-                </div>
+          <Card className="p-2 sm:p-3">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-1">
+                <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                <span className="text-[10px] sm:text-xs text-gray-500">活跃用户</span>
               </div>
-            </CardContent>
+              <span className="text-base sm:text-xl font-bold">
+                {users.filter(u => u.status === 'active').length}
+              </span>
+            </div>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">管理员</p>
-                  <p className="text-3xl font-bold">
-                    {users.filter(u => u.role === 'admin').length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-amber-600" />
-                </div>
+          <Card className="p-2 sm:p-3">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600" />
+                <span className="text-[10px] sm:text-xs text-gray-500">管理员</span>
               </div>
-            </CardContent>
+              <span className="text-base sm:text-xl font-bold">
+                {users.filter(u => u.role === 'admin').length}
+              </span>
+            </div>
           </Card>
         </div>
 
@@ -412,17 +400,17 @@ export default function UsersPage() {
             </div>
 
             {/* 表格 */}
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
+            <div className="rounded-lg border overflow-x-auto">
+              <Table className="min-w-[600px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>手机号</TableHead>
-                    <TableHead>昵称</TableHead>
-                    <TableHead>角色</TableHead>
-                    <TableHead>状态</TableHead>
+                    <TableHead className="w-[100px]">手机号</TableHead>
+                    <TableHead className="w-[80px]">昵称</TableHead>
+                    <TableHead className="w-[80px]">角色</TableHead>
+                    <TableHead className="w-[70px]">状态</TableHead>
                     <TableHead>激活码</TableHead>
-                    <TableHead>注册时间</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead className="w-[100px]">注册时间</TableHead>
+                    <TableHead className="w-[60px] text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
