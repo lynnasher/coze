@@ -252,22 +252,7 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseAdminClient();
     
-    // 查询数据库中实际存在的表
-    const { data: tables, error } = await client
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public')
-      .order('table_name');
-
-    if (error) {
-      console.error('查询表列表失败:', error);
-      return NextResponse.json(
-        { error: '查询失败: ' + error.message },
-        { status: 500 }
-      );
-    }
-
-    // 定义表的中文名称和颜色
+    // 定义可能存在的表
     const tableInfo: Record<string, { name: string; color: string }> = {
       users: { name: '用户账号', color: 'bg-blue-100 text-blue-600' },
       activation_codes: { name: '激活码', color: 'bg-green-100 text-green-600' },
@@ -277,14 +262,27 @@ export async function GET(request: NextRequest) {
       questions: { name: '题目', color: 'bg-rose-100 text-rose-600' }
     };
 
-    // 返回表列表
-    const availableTables = tables
-      ?.filter(t => t.table_name !== 'information_schema')
-      .map(t => ({
-        id: t.table_name,
-        name: tableInfo[t.table_name]?.name || t.table_name,
-        color: tableInfo[t.table_name]?.color || 'bg-gray-100 text-gray-600'
-      })) || [];
+    // 检查每个表是否存在（通过尝试查询）
+    const availableTables: Array<{ id: string; name: string; color: string }> = [];
+    
+    for (const [tableName, info] of Object.entries(tableInfo)) {
+      try {
+        const { error } = await client
+          .from(tableName)
+          .select('id', { count: 'exact', head: true });
+        
+        // 如果没有错误，说明表存在
+        if (!error) {
+          availableTables.push({
+            id: tableName,
+            name: info.name,
+            color: info.color
+          });
+        }
+      } catch {
+        // 表不存在或查询失败，跳过
+      }
+    }
 
     return NextResponse.json({
       success: true,
