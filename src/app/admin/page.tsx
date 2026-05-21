@@ -331,76 +331,50 @@ export default function AdminPage() {
         )}
 
         {/* 统计卡片 - 第一行 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-3 sm:mb-4">
-          <Card className="col-span-1">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">题库总数</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-xl sm:text-3xl font-bold">{stats.totalBanks}</div>
-            </CardContent>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+          <Card className="col-span-1 p-2">
+            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">题库总数</div>
+            <div className="text-base sm:text-xl font-bold leading-none">{stats.totalBanks}</div>
           </Card>
-          <Card className="col-span-1">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">题目总数</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-xl sm:text-3xl font-bold">{stats.totalQuestions}</div>
-            </CardContent>
+          <Card className="col-span-1 p-2">
+            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">题目总数</div>
+            <div className="text-base sm:text-xl font-bold leading-none">{stats.totalQuestions}</div>
           </Card>
-          <Card className="col-span-1">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">分类数量</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-xl sm:text-3xl font-bold">{categories.length}</div>
-            </CardContent>
+          <Card className="col-span-1 p-2">
+            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">分类数量</div>
+            <div className="text-base sm:text-xl font-bold leading-none">{categories.length}</div>
           </Card>
-          <Card className="col-span-1">
-            <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-              <CardTitle className="text-xs sm:text-sm font-medium text-slate-500">平均正确率</CardTitle>
-            </CardHeader>
-            <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-              <div className="text-xl sm:text-3xl font-bold">
-                {stats.totalQuestions > 0
-                  ? Math.round((banks.reduce((s, b) => s + (b.correctRate || 0) * (b.questionCount || 0), 0) / stats.totalQuestions) * 100)
-                  : 0}%
-              </div>
-            </CardContent>
+          <Card className="col-span-1 p-2">
+            <div className="text-[10px] sm:text-xs text-slate-500 leading-none mb-1">平均正确率</div>
+            <div className="text-base sm:text-xl font-bold leading-none">
+              {stats.totalQuestions > 0
+                ? Math.round((banks.reduce((s, b) => s + (b.correctRate || 0) * (b.questionCount || 0), 0) / stats.totalQuestions) * 100)
+                : 0}%
+            </div>
           </Card>
         </div>
 
         {/* 功能入口 - 第二行 */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           {/* 用户管理入口 */}
           <Link href="/admin/users" className="col-span-1">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-xs sm:text-sm font-medium text-slate-500 flex items-center gap-1.5 sm:gap-2">
-                  <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500" />
-                  <span className="hidden sm:inline">用户管理</span>
-                  <span className="sm:hidden">用户</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-                <div className="text-lg sm:text-2xl font-bold">管理</div>
-              </CardContent>
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
+              <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-500 shrink-0" />
+              <div>
+                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">用户管理</div>
+                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">管理</div>
+              </div>
             </Card>
           </Link>
 
           {/* 激活码管理入口 */}
           <Link href="/admin/codes" className="col-span-1">
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardHeader className="pb-1 sm:pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
-                <CardTitle className="text-xs sm:text-sm font-medium text-slate-500 flex items-center gap-1.5 sm:gap-2">
-                  <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
-                  <span className="hidden sm:inline">激活码管理</span>
-                  <span className="sm:hidden">激活码</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
-                <div className="text-lg sm:text-2xl font-bold">生成</div>
-              </CardContent>
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer h-full p-2 flex items-center gap-2">
+              <Key className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 shrink-0" />
+              <div>
+                <div className="text-[10px] sm:text-xs text-slate-500 leading-none">激活码管理</div>
+                <div className="text-sm sm:text-base font-bold leading-none mt-0.5">生成</div>
+              </div>
             </Card>
           </Link>
         </div>
