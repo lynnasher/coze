@@ -60,6 +60,11 @@ export function useBanks() {
     }
   }, []);
 
+  // 自动加载数据
+  useEffect(() => {
+    loadBanks();
+  }, [loadBanks]);
+
   const updateBankOrder = async (newBanks: QuestionBank[]) => {
     setBanks(newBanks);
     try {
