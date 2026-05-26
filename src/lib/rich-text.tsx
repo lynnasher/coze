@@ -43,6 +43,11 @@ export function parseRichContent(content: string): Array<{ type: 'text' | 'image
   
   if (!content) return parts;
 
+  // 先将 <br/> 或 <br> 标签转换为换行符
+  content = content.replace(/<br\s*\/?>/gi, '\n');
+  // 清理连续换行符（3个以上转为2个）
+  content = content.replace(/\n{3,}/g, '\n\n');
+
   // 处理 HTML img 标签
   const htmlImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
   const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
