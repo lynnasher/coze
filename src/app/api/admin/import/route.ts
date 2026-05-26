@@ -236,7 +236,11 @@ function parseQuestions(text: string): { questions: ParsedQuestion[]; bankName: 
     // 处理解析
     const explanationMatch = trimmed.match(/^(名师解析|答案解析|解析)[：:]\s*([\s\S]+)/);
     if (explanationMatch && currentQuestion) {
-      currentQuestion.explanation = explanationMatch[2].trim();
+      const explanationText = explanationMatch[2].trim();
+      // 将 <br/> 或 <br> 标签转换为换行符
+      currentQuestion.explanation = explanationText
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/\n{3,}/g, '\n\n');
       continue;
     }
 
