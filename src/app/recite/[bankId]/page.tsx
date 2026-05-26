@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, BookOpen, CheckCircle2, Lightbulb, ChevronRight, Lock, AlertCircle } from 'lucide-react';
 import { Question } from '@/lib/types';
@@ -474,7 +474,30 @@ function renderTextWithImages(text: string) {
     result.push(text.slice(ptr));
   }
 
-  return result.length > 0 ? result : text;
+  // 处理 <br/> 标签转换为换行
+  const processBrTags = (content: string | React.ReactNode): React.ReactNode => {
+    if (typeof content !== 'string') return content;
+    
+    const parts = content.split(/<br\s*\/?>/gi);
+    if (parts.length <= 1) return content;
+    
+    return parts.map((part, index) => (
+      <React.Fragment key={index}>
+        {part}
+        {index < parts.length - 1 && <br />}
+      </React.Fragment>
+    ));
+  };
+
+  // 处理结果中的每个部分
+  const finalResult = result.map((item, index) => {
+    if (typeof item === 'string') {
+      return processBrTags(item);
+    }
+    return item;
+  });
+
+  return finalResult.length > 0 ? finalResult : text;
 }
 
 // 单个题目卡片组件

@@ -150,7 +150,11 @@ function parseQuestions(text: string): { questions: ParsedQuestion[]; bankName: 
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\t/g, ' ')
-    .replace(/↵/g, '\n');
+    .replace(/↵/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');  // 将 <br/> 或 <br> 转换为换行符
+
+  // 将连续的换行符替换为单个换行符，并去除首尾空白
+  cleanText = cleanText.replace(/\n{3,}/g, '\n\n').trim();
 
   // 移除页眉页脚
   cleanText = cleanText.replace(/第\s*\d+\s*页/gi, '');
