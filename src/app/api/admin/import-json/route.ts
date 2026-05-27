@@ -226,7 +226,7 @@ function apiProcessChildren(children: Record<string, unknown>[], parentId: strin
       type: childType,
       content: childContent,
       options: childOptions,
-      answer: processChildAnswer(child, childType),
+      answer: processChildAnswer(child, childType, childOptions),
       explanation: cleanHtmlTags(((child.explanation as string) || (child.parsetext as string)) || ''),
       difficulty: (child.difficulty as string) || 'medium',
       tags: [],
@@ -253,7 +253,7 @@ function processQuestion(q: Record<string, unknown>, bankId: string, parentId?: 
     ];
   }
   
-  const answer = processAnswer(q, questionType);
+  const answer = processAnswer(q, questionType, options);
   const questionId = generateId();
   const content = cleanHtmlTags((q.question as string) || (q.content as string) || (q.stem as string) || '');
   const explanation = cleanHtmlTags((q.explanation as string) || (q.parsetext as string) || '');
