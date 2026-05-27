@@ -46,20 +46,26 @@ export async function POST(request: NextRequest) {
     const stats: Record<string, number> = {};
 
     // 先查询数据库中实际存在的表
-    const { data: existingTables, error: tablesError } = await client
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public');
+    let availableTables = tables;
+    try {
+      const { data: existingTables, error: tablesError } = await client
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public');
 
-    if (tablesError) {
-      console.error('查询表列表失败:', tablesError);
+      if (tablesError) {
+        console.error('查询表列表失败:', tablesError);
+      } else {
+        const dbTables = new Set(existingTables?.map(t => t.table_name) || []);
+        console.log('数据库中存在的表:', Array.from(dbTables));
+        // 过滤出实际存在的表
+        availableTables = tables.filter(t => dbTables.has(t));
+        console.log('可用的表:', availableTables);
+      }
+    } catch (schemaError) {
+      console.error('查询 information_schema 失败:', schemaError);
+      // 如果查询失败，使用请求的表列表继续尝试
     }
-
-    const dbTables = new Set(existingTables?.map(t => t.table_name) || []);
-    console.log('数据库中存在的表:', Array.from(dbTables));
-
-    // 过滤出实际存在的表
-    const availableTables = tables.filter(t => dbTables.has(t));
 
     // 1. 导出 users 表
     if (availableTables.includes('users')) {
@@ -78,6 +84,7 @@ export async function POST(request: NextRequest) {
     sql += `);\n\n`;
 
     // 导出 users 数据
+    console.log('开始导出 users 表...');
     const { data: users, error: usersError } = await client
       .from('users')
       .select('*')
@@ -85,6 +92,7 @@ export async function POST(request: NextRequest) {
 
     if (usersError) {
       console.error('导出 users 失败:', usersError);
+      sql += `-- 导出 users 数据失败: ${usersError.message}\n\n`;
     } else if (users && users.length > 0) {
       sql += `-- users 表数据 (${users.length} 条)\n`;
       for (const user of users) {
@@ -103,8 +111,11 @@ export async function POST(request: NextRequest) {
 `;
       }
       sql += `\n`;
+    } else {
+      sql += `-- users 表暂无数据\n\n`;
     }
     stats['users'] = users?.length || 0;
+    console.log(`users 表导出完成: ${stats['users']} 条记录`);
     } // end if (tables.includes('users'))
 
     // 2. 导出 activation_codes 表
@@ -476,8 +487,8 @@ export async function GET(request: NextRequest) {
       try {
         const { error } = await client
           .from(tableName)
-          .select('id', { count: 'exact', head: true });
-        
+          .select('*', { count: 'exact', head: true });
+
         // 如果没有错误，说明表存在
         if (!error) {
           availableTables.push({
@@ -485,9 +496,11 @@ export async function GET(request: NextRequest) {
             name: info.name,
             color: info.color
           });
+        } else {
+          console.log(`表 ${tableName} 检查失败:`, error);
         }
-      } catch {
-        // 表不存在或查询失败，跳过
+      } catch (err) {
+        console.log(`表 ${tableName} 查询异常:`, err);
       }
     }
 
