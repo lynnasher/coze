@@ -4,6 +4,9 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
 import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
 
+// sessionStorage key for quiz state persistence
+const QUIZ_SESSION_KEY = 'quiz_current_session';
+
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
     questions: [],
@@ -23,7 +26,7 @@ export function useQuiz() {
   // 组件挂载/卸载跟踪
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     // 页面卸载前强制同步（防止数据丢失）
     const handleBeforeUnload = () => {
       if (cloudSyncService.hasPendingSync()) {
@@ -31,9 +34,9 @@ export function useQuiz() {
         forceSyncBeacon();
       }
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     return () => {
       isMountedRef.current = false;
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -43,6 +46,22 @@ export function useQuiz() {
       }
     };
   }, []);
+
+  // 保存做题状态到 sessionStorage（用于页面刷新恢复）
+  useEffect(() => {
+    if (hasStarted && quizState.questions.length > 0) {
+      const stateToSave = {
+        quizState,
+        hasStarted,
+        timestamp: Date.now(),
+      };
+      try {
+        sessionStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(stateToSave));
+      } catch {
+        // 忽略存储错误（如存储空间不足）
+      }
+    }
+  }, [quizState, hasStarted]);
 
   // 预加载题目（当 currentIndex 变化时，提前加载后续题目）
   useEffect(() => {
@@ -104,9 +123,54 @@ export function useQuiz() {
 
   // 开始练习
   const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
+    // 检查 sessionStorage 是否有保存的状态
+    try {
+      const savedSession = sessionStorage.getItem(QUIZ_SESSION_KEY);
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession) as {
+          quizState: QuizState;
+          hasStarted: boolean;
+          timestamp: number;
+        };
+
+        // 检查是否是同一个题库和模式（5分钟内有效）
+        const isSameBank = parsed.quizState.bankId === bankId;
+        const isSameMode = parsed.quizState.mode === mode;
+        const isRecent = Date.now() - parsed.timestamp < 5 * 60 * 1000; // 5分钟
+        const isNotComplete = !parsed.quizState.isComplete;
+
+        if (isSameBank && isSameMode && isRecent && isNotComplete && parsed.quizState.questions.length > 0) {
+          // 恢复之前的状态
+          setQuizState(parsed.quizState);
+          setHasStarted(true);
+          preloadIndexRef.current = -1; // 重置预加载位置
+
+          // 恢复最近练习记录
+          if (parsed.quizState.bankId) {
+            const existingRecord = recentPracticeStore.getByBankId(parsed.quizState.bankId);
+            if (existingRecord) {
+              recentPracticeStore.update({
+                ...existingRecord,
+                currentIndex: parsed.quizState.currentIndex,
+                lastPracticeAt: Date.now(),
+              });
+            }
+          }
+          return;
+        }
+      }
+    } catch {
+      // 解析失败，继续正常流程
+    }
+
+    // 清除之前的 sessionStorage
+    try {
+      sessionStorage.removeItem(QUIZ_SESSION_KEY);
+    } catch {}
+
     // 立即设置 hasStarted 为 true，避免页面闪烁
     setHasStarted(true);
-    
+
     let questions: Question[] = [];
     const currentBankId = bankId;
     let currentBankName = '全部题目';
@@ -448,6 +512,12 @@ export function useQuiz() {
   const resetQuiz = useCallback(() => {
     clearPreloadCache(); // 清除预加载缓存
     preloadIndexRef.current = -1; // 重置预加载位置
+
+    // 清除 sessionStorage
+    try {
+      sessionStorage.removeItem(QUIZ_SESSION_KEY);
+    } catch {}
+
     setQuizState({
       questions: [],
       currentIndex: 0,
@@ -532,7 +602,12 @@ export function useQuiz() {
       isComplete: true,
       showResult: true,
     }));
-    
+
+    // 清除 sessionStorage（已完成练习）
+    try {
+      sessionStorage.removeItem(QUIZ_SESSION_KEY);
+    } catch {}
+
     // 交卷后同步数据到云端（检查组件是否已挂载）
     if (isMountedRef.current) {
       const userId = getCurrentUserId();
