@@ -59,8 +59,27 @@ export const deviceService = {
 
   // 验证当前设备是否有效
   async validateDevice(): Promise<DeviceValidationResult> {
-    const user = this.getCurrentUser();
-    const deviceId = this.getDeviceId();
+    // 优先检查普通用户
+    let user = this.getCurrentUser();
+    let deviceId = this.getDeviceId();
+
+    // 如果没有普通用户，检查管理员
+    if (!user) {
+      const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      const adminDeviceId = typeof window !== 'undefined' ? localStorage.getItem('admin_device_id') : null;
+      const adminUserStr = typeof window !== 'undefined' ? localStorage.getItem('admin_user') : null;
+      
+      if (adminToken && adminUserStr) {
+        try {
+          const adminUser = JSON.parse(adminUserStr);
+          user = { id: adminUser.id, phone: adminUser.username || adminUser.phone };
+          deviceId = adminDeviceId;
+          console.log(`[DeviceService] 使用管理员账号验证: userId=${user.id}`);
+        } catch {
+          console.log('[DeviceService] 解析管理员信息失败');
+        }
+      }
+    }
 
     console.log(`[DeviceService] 开始验证: userId=${user?.id}, deviceId=${deviceId}`);
 

@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { requireAdminAuth } from '@/lib/api-auth';
 import { verifyPassword, hashPassword } from '@/lib/services/user-service';
+import crypto from 'crypto';
+
+// 生成设备ID
+function generateDeviceId(): string {
+  return `device_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+}
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -74,6 +80,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // 生成新的设备ID（修改密码后踢掉其他设备）
+    const newDeviceId = generateDeviceId();
+
     // 更新密码到数据库（使用 scrypt 哈希）
     const hashedNewPassword = hashPassword(newPassword);
     const { error: updateError } = await supabase
@@ -83,6 +92,7 @@ export async function POST(request: Request) {
         is_default_password: false,
         last_changed: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        device_id: newDeviceId, // 更新设备ID，使其他设备被踢下线
       })
       .eq('username', username);
 
@@ -97,6 +107,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: '密码修改成功',
+      deviceId: newDeviceId, // 返回新的设备ID
     });
   } catch (error) {
     console.error('修改密码错误:', error);

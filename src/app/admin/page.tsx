@@ -326,18 +326,15 @@ export default function AdminPage() {
       });
       const result = await response.json();
       if (result.success) {
-        setSuccess('密码修改成功，请重新登录');
+        // 更新当前设备的 device_id，使其他设备被踢下线
+        if (result.deviceId) {
+          localStorage.setItem('admin_device_id', result.deviceId);
+        }
+        setSuccess('密码修改成功，其他设备已被踢下线');
         setIsChangePasswordOpen(false);
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
-        // 延迟登出，让用户看到成功提示
-        setTimeout(() => {
-          localStorage.removeItem('admin_token');
-          localStorage.removeItem('admin_user');
-          localStorage.removeItem('admin_device_id');
-          router.push('/admin/login');
-        }, 1500);
       } else {
         setPasswordError(result.error || '密码修改失败');
       }
