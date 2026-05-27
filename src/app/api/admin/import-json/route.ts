@@ -90,6 +90,13 @@ async function migrateImagesInText(text: string): Promise<string> {
   return result;
 }
 
+// 清理HTML标签（只保留纯文本）
+function cleanHtmlTags(text: string): string {
+  if (!text || typeof text !== 'string') return text || '';
+  // 移除 <strong> 和 <b> 标签，保留内容
+  return text.replace(/<\/?(strong|b)[^>]*>/gi, '');
+}
+
 // 获取图片存储路径（按年月）
 function getImagePath(): string {
   const now = new Date();
@@ -200,7 +207,7 @@ interface Question {
 // API 路由专用的 processChildren（支持 images 字段）
 function apiProcessChildren(children: Record<string, unknown>[], parentId: string, bankId: string): Question[] {
   return children.map((child) => {
-    const childContent = (child.question as string) || (child.content as string) || (child.stem as string) || '';
+    const childContent = cleanHtmlTags((child.question as string) || (child.content as string) || (child.stem as string) || '');
     const childQType = child.type || child.qtype;
     const childType = detectQuestionType(childQType);
     return {
@@ -210,7 +217,7 @@ function apiProcessChildren(children: Record<string, unknown>[], parentId: strin
       content: childContent,
       options: processChildOptions(child),
       answer: processChildAnswer(child, childType),
-      explanation: ((child.explanation as string) || (child.parsetext as string)) || undefined,
+      explanation: cleanHtmlTags(((child.explanation as string) || (child.parsetext as string)) || ''),
       difficulty: (child.difficulty as string) || 'medium',
       tags: [],
       bankId,
@@ -229,8 +236,8 @@ function processQuestion(q: Record<string, unknown>, bankId: string, parentId?: 
   const options = processOptions(q);
   const answer = processAnswer(q, questionType);
   const questionId = generateId();
-  const content = (q.question as string) || (q.content as string) || (q.stem as string) || '';
-  const explanation = (q.explanation as string) || (q.parsetext as string) || '';
+  const content = cleanHtmlTags((q.question as string) || (q.content as string) || (q.stem as string) || '');
+  const explanation = cleanHtmlTags((q.explanation as string) || (q.parsetext as string) || '');
   
   return {
     id: questionId,

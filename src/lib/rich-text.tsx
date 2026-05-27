@@ -45,6 +45,8 @@ export function parseRichContent(content: string): Array<{ type: 'text' | 'image
 
   // 先将 <br/> 或 <br> 标签转换为换行符
   content = content.replace(/<br\s*\/?>/gi, '\n');
+  // 去除 <strong> 和 <b> 标签，保留内容
+  content = content.replace(/<\/?(strong|b)\s*\/?>/gi, '');
   // 清理连续换行符（3个以上转为2个）
   content = content.replace(/\n{3,}/g, '\n\n');
 

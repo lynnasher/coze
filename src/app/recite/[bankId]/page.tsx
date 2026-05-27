@@ -392,6 +392,14 @@ export default function RecitePage() {
 function renderTextWithImages(text: string) {
   if (!text) return text;
 
+  // 清理 <strong> 和 <b> 标签，保留纯文本
+  text = text.replace(/<(strong|b)>(.*?)<\/(strong|b)>/gi, '$2');
+
+  // 将 <br/> 或 <br> 标签转换为换行符
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  // 清理连续换行符（3个以上转为2个）
+  text = text.replace(/\n{3,}/g, '\n\n');
+
   // 匹配 markdown 图片语法 ![alt](url)
   const mdImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
   // 匹配 HTML <img> 标签
