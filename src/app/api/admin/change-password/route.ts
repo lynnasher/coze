@@ -75,14 +75,12 @@ export async function POST(request: Request) {
     }
 
     // 更新密码到数据库（使用 scrypt 哈希）
-    // 重置 device_id 使其他设备被踢下线（单设备登录安全机制）
     const hashedNewPassword = hashPassword(newPassword);
     const { error: updateError } = await supabase
       .from('admin_users')
       .update({
         password: hashedNewPassword,
         is_default_password: false,
-        device_id: null,
         last_changed: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
