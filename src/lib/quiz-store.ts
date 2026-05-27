@@ -357,6 +357,14 @@ export const questionStore = {
     return question;
   },
 
+  // 清除指定题目ID列表的所有题目（用于删除题库时清理题目）
+  removeByQuestionIds: (questionIds: string[]) => {
+    if (typeof window === 'undefined' || questionIds.length === 0) return;
+    const questions = questionStore.getAll();
+    const filtered = questions.filter(q => !questionIds.includes(q.id));
+    questionStore.save(filtered);
+  },
+
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
