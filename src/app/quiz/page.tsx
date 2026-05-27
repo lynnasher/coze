@@ -33,6 +33,7 @@ import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
+import { getCurrentUser, AuthModal } from '@/components/AuthModal';
 import Link from 'next/link';
 
 // 题型配置常量
@@ -62,6 +63,12 @@ function QuizPageContent() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [resultStats, setResultStats] = useState({ accuracy: 0, total: 0, correct: 0, wrong: 0, unanswered: 0 });
   
+  // 权限检查状态
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  
   const questionRef = useRef<HTMLDivElement>(null);
   
   // 使用 useQuiz hook
@@ -78,12 +85,68 @@ function QuizPageContent() {
     restartQuiz,
   } = useQuiz();
   
-  // 初始化时开始练习
+  // 权限检查
   useEffect(() => {
-    if (bankId && !isLoading) {
+    const checkPermission = async () => {
+      if (!bankId) {
+        setIsCheckingAuth(false);
+        return;
+      }
+      
+      const user = await getCurrentUser();
+      if (!user) {
+        setAuthError('请先登录后再做题');
+        setShowAuthModal(true);
+        setIsCheckingAuth(false);
+        return;
+      }
+      
+      // 检查用户是否有权限访问该题库（已激活的分类）
+      // 获取题库信息来检查分类
+      try {
+        const response = await fetch(`/api/banks/${bankId}`);
+        if (!response.ok) {
+          setAuthError('题库不存在');
+          setIsCheckingAuth(false);
+          return;
+        }
+        
+        const bank = await response.json();
+        const bankCategoryId = bank.categoryId;
+        
+        // 如果没有分类ID，允许访问（兼容旧数据）
+        if (!bankCategoryId) {
+          setHasPermission(true);
+          setIsCheckingAuth(false);
+          return;
+        }
+        
+        // 检查用户是否已激活该分类
+        const activatedCategories = user.activatedCategories || [];
+        if (!activatedCategories.includes(bankCategoryId)) {
+          setAuthError('您没有权限访问该题库，请先激活对应科目');
+          setIsCheckingAuth(false);
+          return;
+        }
+        
+        setHasPermission(true);
+        setIsCheckingAuth(false);
+      } catch (error) {
+        console.error('权限检查失败:', error);
+        setAuthError('权限检查失败，请稍后重试');
+        setIsCheckingAuth(false);
+      }
+    };
+    
+    checkPermission();
+  }, [bankId]);
+  
+  // 初始化时开始练习（仅在权限检查通过后）
+  useEffect(() => {
+    if (bankId && !isLoading && hasPermission) {
       startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
     }
-  }, [bankId, mode, isLoading, startQuiz]);
+  }, [bankId, mode, isLoading, startQuiz, hasPermission]);
   
   // 设备验证
   const { kicked: isKicked } = useDeviceValidation();
@@ -576,6 +639,55 @@ function QuizPageContent() {
       </>
     );
   };
+  
+  // 显示权限检查加载状态
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500">检查权限中...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // 无权限时显示提示
+  if (!hasPermission) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+            <FileCheck className="w-8 h-8 text-amber-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-800 mb-2">无法访问</h2>
+          <p className="text-slate-500 mb-6">{authError || '您没有权限访问该题库'}</p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => router.push('/')} variant="outline" className="rounded-xl">
+              返回首页
+            </Button>
+            {authError?.includes('登录') && (
+              <Button onClick={() => setShowAuthModal(true)} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
+                去登录
+              </Button>
+            )}
+          </div>
+          
+          {/* 登录弹窗 */}
+          <AuthModal 
+            isOpen={showAuthModal} 
+            onClose={() => {
+              setShowAuthModal(false);
+              // 登录成功后刷新页面重新检查权限
+              if (authError?.includes('登录')) {
+                window.location.reload();
+              }
+            }} 
+          />
+        </div>
+      </div>
+    );
+  }
   
   // 显示加载状态
   if (isLoading) {
