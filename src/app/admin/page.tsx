@@ -311,6 +311,11 @@ export default function AdminPage() {
     setPasswordError('');
     try {
       const token = localStorage.getItem('admin_token');
+      if (!token) {
+        setPasswordError('登录已过期，请重新登录');
+        setIsChangingPassword(false);
+        return;
+      }
       const response = await fetch('/api/admin/change-password', {
         method: 'POST',
         headers: {
