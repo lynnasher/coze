@@ -81,38 +81,8 @@ export async function POST(request: Request) {
         .eq('id', admin.id);
     }
 
-    // 检查是否需要强制修改密码
-    const needChangePassword = admin.is_default_password;
-
-    // 如果启用了 2FA，返回临时令牌，需要二次验证
-    if (admin.two_factor_enabled) {
-      // 生成临时令牌（5分钟有效）
-      const tempTokenPayload = {
-        userId: admin.id,
-        exp: Date.now() + 5 * 60 * 1000, // 5分钟过期
-      };
-      const tempToken = Buffer.from(JSON.stringify(tempTokenPayload)).toString('base64');
-      const tempSignature = crypto.createHmac('sha256', process.env.TOKEN_SECRET || 'dev_only_unsafe_key')
-        .update(tempToken)
-        .digest('hex');
-
-      return NextResponse.json({
-        success: true,
-        need2FA: true,
-        tempToken: `${tempToken}.${tempSignature}`,
-        user: {
-          id: admin.id,
-          username: admin.username,
-          role: 'admin',
-          isDefaultPassword: admin.is_default_password,
-        },
-        needChangePassword,
-      });
-    }
-
-    // 未启用 2FA，直接完成登录
     const token = generateToken(admin.id, 'admin');
-
+    
     // 生成设备ID并更新到数据库（单设备登录控制）
     const deviceId = generateDeviceId();
     await supabase
@@ -120,15 +90,18 @@ export async function POST(request: Request) {
       .update({ device_id: deviceId })
       .eq('id', admin.id);
 
+    // 检查是否需要强制修改密码
+    const needChangePassword = admin.is_default_password;
+
     return NextResponse.json({
       success: true,
       token,
       deviceId, // 返回 deviceId 给前端
-      user: {
+      user: { 
         id: admin.id,
-        username: admin.username,
+        username: admin.username, 
         role: 'admin',
-        isDefaultPassword: admin.is_default_password,
+        isDefaultPassword: admin.is_default_password
       },
       needChangePassword,
     });
