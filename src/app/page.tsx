@@ -39,7 +39,7 @@ import {
   Clock
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, cachedFetch, CACHE_TTL, getCacheKey, invalidateCache, cloudSyncService, wrongStreakStore, getCurrentUserId, forceSync, calculateStats, createSafeSync, deletedQuestionStore } from '@/lib/quiz-store';
-import { Question, QuestionType, Difficulty, Category } from '@/lib/types';
+import { Question, QuestionType, Difficulty, Category, PracticeRecord } from '@/lib/types';
 import { BankCard } from '@/components/BankCard';
 import { getCurrentUser as getStoredUser, AuthModal } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
@@ -168,7 +168,7 @@ export default function QuizApp() {
     const { deletedQuestionStore, questionStore } = require('@/lib/quiz-store');
     // 获取所有已删除的题目ID（包括 deletedQuestionStore 记录的和 questionStore 中不存在的）
     const deletedFromStore = deletedQuestionStore.getAll();
-    const existingQuestionIds = new Set(questionStore.getAll().map(q => q.id));
+    const existingQuestionIds = new Set(questionStore.getAll().map((q: Question) => q.id));
     // 从记录中找出 questionStore 中不存在的题目ID（即已删除的题目）
     const recordQuestionIds = recordStore.getAll().map(r => r.questionId);
     const deletedFromMissing = recordQuestionIds.filter(id => !existingQuestionIds.has(id));
@@ -503,11 +503,7 @@ export default function QuizApp() {
       }
     } else {
       // 未登录状态：立即从本地计算错题数（本地计算很快）
-      const { questionStore } = require('@/lib/quiz-store');
-      const existingQuestionIds = new Set(questionStore.getAll().map((q: Question) => q.id));
-      const recordQuestionIds = recordStore.getAll().map((r: PracticeRecord) => r.questionId);
-      const deletedFromMissing = recordQuestionIds.filter((id: string) => !existingQuestionIds.has(id));
-      const count = recalculateWrongData(deletedFromMissing);
+      const count = recalculateWrongData();
       setWrongCount(count);
       hasSyncedRef.current = false;
     }
