@@ -312,15 +312,14 @@ export default function RecitePage() {
 
       {/* 内容区 */}
       <main className="max-w-[900px] mx-auto px-4 py-6 relative">
-        {/* 背题模式水印 */}
+        {/* 背题模式水印 - 仅在打印时显示 */}
         <div 
-          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-0"
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-0 hidden print:block"
           style={{ 
-            opacity: 0.86,
-            transform: 'translate(-90%, -10%) ',
+            opacity: 0.15,
           }}
         >
-          <span className="text-gray-400 text-lg font-medium whitespace-nowrap">
+          <span className="text-gray-500 text-2xl font-medium whitespace-nowrap rotate-[-15deg] inline-block">
             微信：tanngeche
           </span>
         </div>
