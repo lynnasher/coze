@@ -96,7 +96,6 @@ function QuizPageContent() {
       const user = await getCurrentUser();
       if (!user) {
         setAuthError('请先登录后再做题');
-        setShowAuthModal(true);
         setIsCheckingAuth(false);
         return;
       }
