@@ -335,6 +335,13 @@ export const questionStore = {
     return questions;
   },
 
+  removeByQuestionIds: (questionIds: string[]) => {
+    const idSet = new Set(questionIds);
+    const questions = questionStore.getAll().filter(q => !idSet.has(q.id));
+    questionStore.save(questions);
+    return questions;
+  },
+
   getById: (id: string): Question | undefined => {
     return questionStore.getAll().find(q => q.id === id);
   },

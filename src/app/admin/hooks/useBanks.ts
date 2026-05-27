@@ -95,11 +95,15 @@ export function useBanks() {
       if (response.ok) {
         const data = await response.json();
         
-        // 清除该题库相关的错题记录
+        // 清除该题库相关的本地数据
         if (data.deletedQuestionIds && data.deletedQuestionIds.length > 0) {
-          const { recordStore, wrongStreakStore } = await import('@/lib/quiz-store');
+          const { recordStore, wrongStreakStore, questionStore } = await import('@/lib/quiz-store');
+          // 清除练习记录
           recordStore.removeByQuestionIds(data.deletedQuestionIds);
+          // 清除错题连续正确次数
           wrongStreakStore.removeByQuestionIds(data.deletedQuestionIds);
+          // 清除题目本身
+          questionStore.removeByQuestionIds(data.deletedQuestionIds);
         }
         
         await loadBanks();
