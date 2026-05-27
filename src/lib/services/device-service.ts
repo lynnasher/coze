@@ -20,16 +20,37 @@ export const deviceService = {
     return localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
   },
 
-  // 获取当前用户信息
-  getCurrentUser(): { id: string; phone: string } | null {
+  // 获取当前用户信息（同时支持普通用户和管理员）
+  getCurrentUser(): { id: string; phone?: string; username?: string; role?: string } | null {
     if (typeof window === 'undefined') return null;
+    
+    // 先检查普通用户
     const userData = localStorage.getItem(STORAGE_KEYS.USER);
-    if (!userData) return null;
-    try {
-      return JSON.parse(userData);
-    } catch {
-      return null;
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch {
+        // 继续检查管理员
+      }
     }
+    
+    // 检查管理员用户
+    const adminData = localStorage.getItem('admin_user');
+    if (adminData) {
+      try {
+        const admin = JSON.parse(adminData);
+        // 管理员用户格式转换为统一格式
+        return {
+          id: admin.id,
+          username: admin.username,
+          role: 'admin'
+        };
+      } catch {
+        return null;
+      }
+    }
+    
+    return null;
   },
 
   // 验证当前设备是否有效
@@ -88,6 +109,9 @@ export const deviceService = {
     localStorage.removeItem(STORAGE_KEYS.TOKEN);
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.DEVICE_ID);
+    // 清除管理员登录数据
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
     // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
     localStorage.removeItem(STORAGE_KEYS.RECORDS);
     localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);

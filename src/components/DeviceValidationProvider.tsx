@@ -2,6 +2,7 @@
 
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from './DeviceKickedDialog';
+import { deviceService } from '@/lib/services/device-service';
 
 /**
  * 设备验证 Provider
@@ -13,10 +14,17 @@ export function DeviceValidationProvider({ children }: { children: React.ReactNo
     validateOnFocus: true,
   });
 
+  const handleConfirm = () => {
+    // 清除登录状态并刷新页面
+    deviceService.clearAuthData();
+    clearKickState();
+    window.location.reload();
+  };
+
   return (
     <>
       {children}
-      <DeviceKickedDialog open={kicked} message={kickMessage} onConfirm={clearKickState} />
+      <DeviceKickedDialog open={kicked} message={kickMessage} onConfirm={handleConfirm} />
     </>
   );
 }
