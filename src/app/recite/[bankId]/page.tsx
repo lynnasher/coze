@@ -319,7 +319,7 @@ export default function RecitePage() {
             opacity: 1.15,
           }}
         >
-          <span className="text-gray-500 text-2xl font-medium whitespace-nowrap rotate-[-15deg] inline-block">
+          <span className="text-gray-500 text-2xl font-medium whitespace-nowrap rotate-[-75deg] inline-block">
             微信：tanngeche
           </span>
         </div>
