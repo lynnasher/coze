@@ -520,12 +520,14 @@ export const getWrongQuestionIds = (): string[] => {
   const records = recordStore.getAll();
   const streaks = wrongStreakStore.getAll();
   const deletedIds = deletedQuestionStore.getAll();
+  const existingQuestionIds = new Set(questionStore.getAll().map(q => q.id));
   
   // 收集所有答错过的题目ID（只统计真正作答过的题目，排除空答题记录）
   const wrongQuestions = new Set<string>();
   records.forEach(record => {
-    // 排除已删除的题目
+    // 排除已删除的题目（从 deletedQuestionStore 或 questionStore 中不存在）
     if (deletedIds.includes(record.questionId)) return;
+    if (!existingQuestionIds.has(record.questionId)) return; // 题目不存在于 questionStore，说明已删除
     // 排除空答题记录（没有实际作答过的题目）
     if (!record.selectedAnswer) return;
     const answer = Array.isArray(record.selectedAnswer) ? record.selectedAnswer : String(record.selectedAnswer);
