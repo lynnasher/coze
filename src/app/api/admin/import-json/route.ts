@@ -263,7 +263,7 @@ function flattenQuestions(questions: Record<string, unknown>[], bankId: string):
     // 同时支持 children 和 sub_questions 两种字段名
     const children = (q.children as Record<string, unknown>[] | undefined) ||
                      (q.sub_questions as Record<string, unknown>[] | undefined);
-    const hasChildren = Array.isArray(children) && children.length > 0;> 综合题导入修复完成！已同时支持 `children` 和 `sub_questions` 两种子题字段格式。这样您上传的JSON文件中的综合题子题应该能正确显示了。请测试一下导入功能。تذكر that I need to be careful with the edit. Let me re-check the exact content to make sure the replacement is correct. Let me read a bit more to see the exact formatting.  
+    const hasChildren = Array.isArray(children) && children.length > 0;  
     
     const qType = q.type || q.qtype;
     const isComprehensive = 
