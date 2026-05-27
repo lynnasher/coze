@@ -357,14 +357,16 @@ export default function WrongBookPage() {
       }
     });
     
-    // 匹配题库名称
+    // 匹配题库名称，过滤已删除的题库
     bankMap.forEach((count, bankId) => {
       const bank = banks.find(b => b.id === bankId);
-      counts.push({
-        id: bankId,
-        name: bank?.name || '未知题库',
-        count,
-      });
+      if (bank) {
+        counts.push({
+          id: bankId,
+          name: bank.name,
+          count,
+        });
+      }
     });
     
     // 按错题数量降序排列
