@@ -165,11 +165,13 @@ export default function QuizApp() {
   
   // 重新计算错题数据（委托给公共模块）
   const recalculateWrongData = useCallback(() => {
+    const { deletedQuestionStore } = require('@/lib/quiz-store');
     return recalculateWrongDataUtil(
       recordStore.getAll(),
       (records) => recordStore.save(records),
       (streaks) => wrongStreakStore.save(streaks),
-      () => getWrongQuestionIds().length
+      () => getWrongQuestionIds().length,
+      deletedQuestionStore.getAll()
     );
   }, []);
   

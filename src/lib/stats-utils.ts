@@ -21,11 +21,13 @@ export function recalculateWrongData(
   allRecords: PracticeRecord[],
   saveRecords: (records: PracticeRecord[]) => void,
   saveStreaks: (streaks: Record<string, number>) => void,
-  getWrongCount: () => number
+  getWrongCount: () => number,
+  deletedIds: string[] = []
 ): number {
-  // 找出所有答错过的题目
+  // 找出所有答错过的题目（排除已删除的题目）
   const wrongQuestionIds = new Set<string>();
   allRecords.forEach(r => {
+    if (deletedIds.includes(r.questionId)) return;
     if (!hasValidAnswer(r)) return;
     if (!r.isCorrect) {
       wrongQuestionIds.add(r.questionId);

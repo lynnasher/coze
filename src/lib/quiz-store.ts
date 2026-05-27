@@ -519,10 +519,13 @@ export const deletedQuestionStore = {
 export const getWrongQuestionIds = (): string[] => {
   const records = recordStore.getAll();
   const streaks = wrongStreakStore.getAll();
+  const deletedIds = deletedQuestionStore.getAll();
   
   // 收集所有答错过的题目ID（只统计真正作答过的题目，排除空答题记录）
   const wrongQuestions = new Set<string>();
   records.forEach(record => {
+    // 排除已删除的题目
+    if (deletedIds.includes(record.questionId)) return;
     // 排除空答题记录（没有实际作答过的题目）
     if (!record.selectedAnswer) return;
     const answer = Array.isArray(record.selectedAnswer) ? record.selectedAnswer : String(record.selectedAnswer);
