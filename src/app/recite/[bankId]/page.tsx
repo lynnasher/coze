@@ -311,7 +311,19 @@ export default function RecitePage() {
       </header>
 
       {/* 内容区 */}
-      <main className="max-w-[900px] mx-auto px-4 py-6">
+      <main className="max-w-[900px] mx-auto px-4 py-6 relative">
+        {/* 背题模式水印 */}
+        <div 
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-0"
+          style={{ 
+            opacity: 0.06,
+            transform: 'translate(-50%, -50%) rotate(-15deg)',
+          }}
+        >
+          <span className="text-gray-400 text-lg font-medium whitespace-nowrap">
+            微信：tanngeche
+          </span>
+        </div>
         {questions.length === 0 ? (
           <div className="text-center py-20">
             <BookOpen className="w-12 h-12 text-gray-300 mx-auto" />
