@@ -305,6 +305,19 @@ function detectQuestionType(question: { options?: ParsedOption[]; answer: string
     return 'true-false';
   }
 
+  // 判断题自动识别：只有 A/B 两个选项且答案是 A 或 B 时
+  const answerStr = Array.isArray(question.answer) ? question.answer[0] : question.answer;
+  if (question.options.length === 2 && 
+      question.options.every(opt => opt.id === 'A' || opt.id === 'B') &&
+      (answerStr === 'A' || answerStr === 'B')) {
+    // 自动补充判断题选项文本
+    question.options = [
+      { id: 'A', text: '正确' },
+      { id: 'B', text: '错误' }
+    ];
+    return 'true-false';
+  }
+
   return 'single';
 }
 

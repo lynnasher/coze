@@ -210,12 +210,22 @@ function apiProcessChildren(children: Record<string, unknown>[], parentId: strin
     const childContent = cleanHtmlTags((child.question as string) || (child.content as string) || (child.stem as string) || '');
     const childQType = child.type || child.qtype;
     const childType = detectQuestionType(childQType);
+    
+    // 子题目判断题自动添加默认选项 A：正确，B：错误
+    let childOptions = processChildOptions(child);
+    if (childType === 'true-false' && (!childOptions || childOptions.length === 0)) {
+      childOptions = [
+        { id: 'a', text: '正确' },
+        { id: 'b', text: '错误' },
+      ];
+    }
+    
     return {
       id: generateId(),
       parentId: parentId,
       type: childType,
       content: childContent,
-      options: processChildOptions(child),
+      options: childOptions,
       answer: processChildAnswer(child, childType),
       explanation: cleanHtmlTags(((child.explanation as string) || (child.parsetext as string)) || ''),
       difficulty: (child.difficulty as string) || 'medium',
@@ -233,7 +243,16 @@ function processQuestion(q: Record<string, unknown>, bankId: string, parentId?: 
   const qType = q.type || q.qtype;
   const questionType = detectQuestionType(qType);
   
-  const options = processOptions(q);
+  let options = processOptions(q);
+  
+  // 判断题自动添加默认选项 A：正确，B：错误
+  if (questionType === 'true-false' && (!options || options.length === 0)) {
+    options = [
+      { id: 'a', text: '正确' },
+      { id: 'b', text: '错误' },
+    ];
+  }
+  
   const answer = processAnswer(q, questionType);
   const questionId = generateId();
   const content = cleanHtmlTags((q.question as string) || (q.content as string) || (q.stem as string) || '');
