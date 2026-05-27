@@ -316,7 +316,7 @@ export default function RecitePage() {
         <div 
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-0 hidden print:block"
           style={{ 
-            opacity: 0.15,
+            opacity: 1.15,
           }}
         >
           <span className="text-gray-500 text-2xl font-medium whitespace-nowrap rotate-[-15deg] inline-block">
