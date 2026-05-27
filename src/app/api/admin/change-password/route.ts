@@ -29,16 +29,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { username, oldPassword, newPassword } = body;
+    const { oldPassword, newPassword } = body;
 
     // 验证请求参数
-    if (!username || !oldPassword || !newPassword) {
+    if (!oldPassword || !newPassword) {
       return NextResponse.json(
         { error: '请提供完整的参数' },
         { status: 400 }
       );
     }
 
+    // 使用认证信息中的用户名
+    const username = auth.username;
     const supabase = await getSupabaseClient();
 
     // 查询管理员
