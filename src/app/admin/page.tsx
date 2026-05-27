@@ -463,20 +463,12 @@ export default function AdminPage() {
                 <FileJson className="h-4 w-4 sm:h-5 sm:w-5" />
                 导入题库
               </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                导入 JSON 格式题库到指定分类
-              </CardDescription>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setIsCategoryModalOpen(true)}>
                 <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
                 <span className="hidden sm:inline">管理分类</span>
                 <span className="sm:hidden">分类</span>
-              </Button>
-              <Button variant="outline" size="sm" onClick={openExportDbDialog}>
-                <Database className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
-                <span className="hidden sm:inline">导出数据库</span>
-                <span className="sm:hidden">导出</span>
               </Button>
             </div>
           </CardHeader>

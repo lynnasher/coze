@@ -438,9 +438,6 @@ export default function ActivationCodesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>激活码列表</CardTitle>
-                <CardDescription>
-                  管理题库激活码，每个激活码对应一个最小子分类
-                </CardDescription>
               </div>
               <Button onClick={() => setCreateModalOpen(true)} className="gap-1">
                 <Plus className="w-4 h-4" />
