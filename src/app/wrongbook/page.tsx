@@ -24,7 +24,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken, deletedQuestionStore } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import { checkAnswer as sharedCheckAnswer } from '@/lib/import-utils';
@@ -125,21 +125,30 @@ export default function WrongBookPage() {
       // 先 pull 云端数据
       const cloudData = await cloudSyncService.pullData(user.id);
       if (cloudData) {
+        // 过滤掉已删除的题目相关数据
+        const validRecords = cloudData.records.filter(r => !deletedQuestionStore.isDeleted(r.questionId));
+        const validStreaks: Record<string, number> = {};
+        Object.entries(cloudData.streaks).forEach(([questionId, streak]) => {
+          if (!deletedQuestionStore.isDeleted(questionId)) {
+            validStreaks[questionId] = streak;
+          }
+        });
+        
         // 合并本地和云端数据（而不是直接覆盖）
         const localRecords = recordStore.getAll();
         const localStreaks = wrongStreakStore.getAll();
         
         // 合并练习记录（去重，以 ID 为准）
         const recordMap = new Map<string, typeof localRecords[0]>();
-        // 先添加云端记录
-        cloudData.records.forEach(r => recordMap.set(r.id, r));
+        // 先添加云端记录（已过滤）
+        validRecords.forEach(r => recordMap.set(r.id, r));
         // 再添加本地记录（会覆盖同 ID 的云端记录，保留本地最新状态）
         localRecords.forEach(r => recordMap.set(r.id, r));
         const mergedRecords = Array.from(recordMap.values());
         
         // 合并 streaks（本地优先，因为本地可能有最新做题状态）
         const mergedStreaks = {
-          ...cloudData.streaks,
+          ...validStreaks,
           ...localStreaks,
         };
         

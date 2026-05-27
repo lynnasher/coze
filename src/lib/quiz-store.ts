@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   STATS: 'quiz_stats',
   WRONG_STATS: 'quiz_wrong_stats',
   CATEGORIES: 'quiz_categories',
+  DELETED_QUESTIONS: 'quiz_deleted_questions', // 已删除的题目ID列表（用于过滤云端同步数据）
 } as const;
 
 // 获取当前用户 ID（从 localStorage 的 token 中解析，兼容签名 token 格式）
@@ -470,6 +471,39 @@ export const wrongStreakStore = {
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);
+  },
+};
+
+// 已删除题目ID管理（用于过滤云端同步数据）
+export const deletedQuestionStore = {
+  // 获取所有已删除的题目ID
+  getAll: (): string[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const data = localStorage.getItem(STORAGE_KEYS.DELETED_QUESTIONS);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  // 添加已删除的题目ID
+  add: (questionIds: string[]) => {
+    if (typeof window === 'undefined' || questionIds.length === 0) return;
+    const existing = deletedQuestionStore.getAll();
+    const updated = [...new Set([...existing, ...questionIds])];
+    localStorage.setItem(STORAGE_KEYS.DELETED_QUESTIONS, JSON.stringify(updated));
+  },
+
+  // 检查题目是否已删除
+  isDeleted: (questionId: string): boolean => {
+    return deletedQuestionStore.getAll().includes(questionId);
+  },
+
+  // 清除所有已删除记录（谨慎使用）
+  clear: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.DELETED_QUESTIONS);
   },
 };
 

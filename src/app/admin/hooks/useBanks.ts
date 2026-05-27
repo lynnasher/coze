@@ -97,13 +97,15 @@ export function useBanks() {
         
         // 清除该题库相关的本地数据
         if (data.deletedQuestionIds && data.deletedQuestionIds.length > 0) {
-          const { recordStore, wrongStreakStore, questionStore } = await import('@/lib/quiz-store');
+          const { recordStore, wrongStreakStore, questionStore, deletedQuestionStore } = await import('@/lib/quiz-store');
           // 清除练习记录
           recordStore.removeByQuestionIds(data.deletedQuestionIds);
           // 清除错题连续正确次数
           wrongStreakStore.removeByQuestionIds(data.deletedQuestionIds);
           // 清除题目本身
           questionStore.removeByQuestionIds(data.deletedQuestionIds);
+          // 记录已删除的题目ID（用于过滤云端同步数据）
+          deletedQuestionStore.add(data.deletedQuestionIds);
         }
         
         await loadBanks();
