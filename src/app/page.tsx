@@ -250,37 +250,45 @@ export default function QuizApp() {
   
   // 只使用数据库的题库
   const { banks, bankAccuracies } = useMemo(() => {
-    // 计算每个题库的正确率
-    const allQuestions = questionStore.getAll();
-    const allRecords = recordStore.getAll();
-    
-    // 对每个题目，取最新的一条记录
-    const questionBestRecord: Record<string, { timestamp: number; isCorrect: boolean }> = {};
-    allRecords.forEach(r => {
-      const existing = questionBestRecord[r.questionId];
-      if (!existing || r.timestamp > existing.timestamp) {
-        questionBestRecord[r.questionId] = { timestamp: r.timestamp, isCorrect: r.isCorrect };
+    // 计算每个题库的正确率（仅在 dbBanks 变化时重新计算）
+    // 使用 Map 替代 filter 循环，提高性能
+    const questionBankMap = new Map<string, string>(); // questionId -> bankId
+    questionStore.getAll().forEach(q => {
+      if (q.bankId) {
+        questionBankMap.set(q.id, q.bankId);
       }
     });
-    
-    const accuracies: Record<string, number | undefined> = {};
-    
-    const mappedBanks = dbBanks.map(b => {
-      // 获取该题库下的题目
-      const bankQuestions = allQuestions.filter(q => q.bankId === b.id);
-      const questionIds = bankQuestions.map(q => q.id);
-      
-      // 计算正确率
-      let accuracy: number | undefined = undefined;
-      if (questionIds.length > 0) {
-        const doneQuestions = questionIds.filter(qid => questionBestRecord[qid]);
-        if (doneQuestions.length > 0) {
-          const correctCount = doneQuestions.filter(qid => questionBestRecord[qid].isCorrect).length;
-          accuracy = Math.round((correctCount / doneQuestions.length) * 100);
-        }
+
+    // 使用 Map 构建题目最佳记录
+    const questionBestRecord = new Map<string, { timestamp: number; isCorrect: boolean }>();
+    recordStore.getAll().forEach(r => {
+      const existing = questionBestRecord.get(r.questionId);
+      if (!existing || r.timestamp > existing.timestamp) {
+        questionBestRecord.set(r.questionId, { timestamp: r.timestamp, isCorrect: r.isCorrect });
       }
-      accuracies[b.id] = accuracy;
-      
+    });
+
+    // 预计算每个题库的题目统计数据
+    const bankStats = new Map<string, { done: number; correct: number }>();
+    questionBestRecord.forEach((record, questionId) => {
+      const bankId = questionBankMap.get(questionId);
+      if (bankId) {
+        const stats = bankStats.get(bankId) || { done: 0, correct: 0 };
+        stats.done++;
+        if (record.isCorrect) stats.correct++;
+        bankStats.set(bankId, stats);
+      }
+    });
+
+    const accuracies: Record<string, number | undefined> = {};
+
+    const mappedBanks = dbBanks.map(b => {
+      // 直接从预计算的 stats 获取正确率
+      const stats = bankStats.get(b.id);
+      accuracies[b.id] = stats && stats.done > 0
+        ? Math.round((stats.correct / stats.done) * 100)
+        : undefined;
+
       return {
         id: b.id,
         name: b.name,
@@ -291,9 +299,11 @@ export default function QuizApp() {
         createdAt: b.created_at ? new Date(b.created_at).getTime() : Date.now(),
       };
     });
-    
+
     return { banks: mappedBanks, bankAccuracies: accuracies };
-  }, [dbBanks, homeStats, questions]);
+  // 只在 dbBanks 或 homeStats 变化时重新计算
+  // homeStats 包含答题记录变化的信号
+  }, [dbBanks, homeStats.totalCount]);
 
   // 刷新用户激活的分类（检查过期时间）
   const refreshActivatedCategories = useCallback(async (userId: string): Promise<string[]> => {
@@ -328,46 +338,50 @@ export default function QuizApp() {
 
   // 统一的初始数据加载函数（使用缓存减少重复请求）
   const loadAllData = useCallback(async () => {
-    // 加载本地数据（从 localStorage 立即获取）
+    // 加载本地数据（从 localStorage 立即获取，不阻塞）
     setQuestions(questionStore.getAll());
     setRecentPractices(recentPracticeStore.getRecent(3));
-    
+
     // 获取当前用户
     const user = getCurrentUser();
     setCurrentUser(user);
-    
-    // 使用缓存加载分类
-    const { data: categoriesData } = await cachedFetch<{ categories: Category[] }>(
-      '/api/categories',
-      getCacheKey('categories'),
-      CACHE_TTL.CATEGORIES
-    );
-    if (categoriesData?.categories) {
-      setCategories(categoriesData.categories);
+
+    // 并行加载分类和题库（减少串行等待时间）
+    const [categoriesResult, banksResult] = await Promise.all([
+      // 使用缓存加载分类
+      cachedFetch<{ categories: Category[] }>(
+        '/api/categories',
+        getCacheKey('categories'),
+        CACHE_TTL.CATEGORIES
+      ),
+      // 使用缓存加载题库
+      cachedFetch<{ banks: Array<{
+        id: string;
+        name: string;
+        description?: string;
+        question_count?: number;
+        category_id?: string;
+        created_at?: string;
+        isActivated?: boolean;
+      }> }>(
+        '/api/banks',
+        getCacheKey('banks'),
+        CACHE_TTL.BANKS,
+        false // 题库列表公开，不需要认证
+      ),
+    ]);
+
+    if (categoriesResult.data?.categories) {
+      setCategories(categoriesResult.data.categories);
     }
-    
-    // 使用缓存加载题库
-    const { data: banksData } = await cachedFetch<{ banks: Array<{
-      id: string;
-      name: string;
-      description?: string;
-      question_count?: number;
-      category_id?: string;
-      created_at?: string;
-      isActivated?: boolean;
-    }> }>(
-      '/api/banks',
-      getCacheKey('banks'),
-      CACHE_TTL.BANKS,
-      false // 题库列表公开，不需要认证
-    );
-    if (banksData?.banks) {
-      setDbBanks(banksData.banks);
+
+    if (banksResult.data?.banks) {
+      setDbBanks(banksResult.data.banks);
     }
-    
-    // 如果用户已登录，刷新激活的分类（等待完成后再继续，确保题库浏览能正确显示）
+
+    // 如果用户已登录，刷新激活的分类（不阻塞首屏渲染）
     if (user) {
-      await refreshActivatedCategories(user.id);
+      refreshActivatedCategories(user.id).catch(() => {});
     }
   }, [refreshActivatedCategories]);
 
@@ -424,24 +438,34 @@ export default function QuizApp() {
   // 当用户登录时从云端同步数据并获取错题数量
   useEffect(() => {
     if (currentUser) {
-      // 首次同步：先推送本地数据到云端（保留未登录时的做题记录），再拉取云端数据合并
-      if (!hasSyncedRef.current) {
-        hasSyncedRef.current = true;
-        // 先推送本地数据到云端（如果有），避免数据丢失
-        const localRecords = recordStore.getAll();
-        const localStreaks = wrongStreakStore.getAll();
-        if (localRecords.length > 0 || Object.keys(localStreaks).length > 0) {
-          // 有本地数据，先推送再拉取（合并）
-          syncWrongCountFromCloud(false);
+      // 延迟云端同步，不阻塞首屏渲染
+      const syncWithDelay = () => {
+        // 首次同步：先推送本地数据到云端（保留未登录时的做题记录），再拉取云端数据合并
+        if (!hasSyncedRef.current) {
+          hasSyncedRef.current = true;
+          // 先推送本地数据到云端（如果有），避免数据丢失
+          const localRecords = recordStore.getAll();
+          const localStreaks = wrongStreakStore.getAll();
+          if (localRecords.length > 0 || Object.keys(localStreaks).length > 0) {
+            // 有本地数据，先推送再拉取（合并）
+            syncWrongCountFromCloud(false);
+          } else {
+            // 没有本地数据，直接拉取云端数据
+            syncWrongCountFromCloud(true);
+          }
         } else {
-          // 没有本地数据，直接拉取云端数据
-          syncWrongCountFromCloud(true);
+          syncWrongCountFromCloud(false);
         }
+      };
+
+      // 使用 requestIdleCallback 或 setTimeout 延迟执行
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        window.requestIdleCallback(syncWithDelay, { timeout: 2000 });
       } else {
-        syncWrongCountFromCloud(false);
+        setTimeout(syncWithDelay, 500);
       }
     } else {
-      // 未登录状态：从本地计算错题数
+      // 未登录状态：立即从本地计算错题数（本地计算很快）
       const count = recalculateWrongData();
       setWrongCount(count);
       hasSyncedRef.current = false;
