@@ -316,8 +316,8 @@ export default function RecitePage() {
         <div 
           className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none z-0"
           style={{ 
-            opacity: 0.06,
-            transform: 'translate(-50%, -50%) rotate(-15deg)',
+            opacity: 0.86,
+            transform: 'translate(-90%, -10%) ',
           }}
         >
           <span className="text-gray-400 text-lg font-medium whitespace-nowrap">
