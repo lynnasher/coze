@@ -32,6 +32,44 @@ function setCachedSignedUrl(key: string, url: string): void {
 }
 
 /**
+ * 渲染带 sub/sup 标签的文本
+ * 将 <sub>和<sup> 标签转换为对应的 React 元素
+ */
+function renderTextWithSubSup(text: string): React.ReactNode {
+  // 匹配 <sub>text</sub> 或 <sup>text</sup>
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  const regex = /<(sub|sup)>(.*?)<\/(sub|sup)>/gi;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    const [fullMatch, tag, content] = match;
+    const matchIndex = match.index;
+
+    // 添加标签前的文本
+    if (matchIndex > lastIndex) {
+      parts.push(text.slice(lastIndex, matchIndex));
+    }
+
+    // 根据标签类型创建对应的元素
+    if (tag.toLowerCase() === 'sub') {
+      parts.push(<sub key={parts.length}>{content}</sub>);
+    } else if (tag.toLowerCase() === 'sup') {
+      parts.push(<sup key={parts.length}>{content}</sup>);
+    }
+
+    lastIndex = matchIndex + fullMatch.length;
+  }
+
+  // 添加剩余的文本
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+}
+
+/**
  * 解析富文本内容，提取文本和图片
  * 支持格式：
  * - HTML: <img src="..." alt="..." /> 或 <img src="..."/>
@@ -263,12 +301,12 @@ export function RichTextWithBreaks({ content, className = '', imageClassName = '
             />
           );
         }
-        // 将换行符转换为 <br/>
+        // 将换行符转换为 <br/>，并处理 <sub> 和 <sup> 标签
         return (
           <span key={index} className={textClassName}>
             {part.value.split('\n').map((line, i, arr) => (
               <React.Fragment key={i}>
-                {line}
+                {renderTextWithSubSup(line)}
                 {i < arr.length - 1 && <br />}
               </React.Fragment>
             ))}

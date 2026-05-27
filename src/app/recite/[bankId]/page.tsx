@@ -497,10 +497,59 @@ function renderTextWithImages(text: string) {
     ));
   };
 
+  // 处理 <sub> 和 <sup> 标签
+  const processSubSupTags = (content: string | React.ReactNode): React.ReactNode => {
+    if (typeof content !== 'string') return content;
+    
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    
+    // 匹配 <sub>text</sub> 或 <sup>text</sup>
+    const regex = /<(sub|sup)>(.*?)<\/(sub|sup)>/gi;
+    let match;
+    
+    while ((match = regex.exec(content)) !== null) {
+      const [fullMatch, tag, innerText] = match;
+      const beforeText = content.slice(lastIndex, match.index);
+      
+      if (beforeText) {
+        parts.push(beforeText);
+      }
+      
+      if (tag.toLowerCase() === 'sub') {
+        parts.push(<sub key={match.index}>{innerText}</sub>);
+      } else {
+        parts.push(<sup key={match.index}>{innerText}</sup>);
+      }
+      
+      lastIndex = match.index + fullMatch.length;
+    }
+    
+    if (lastIndex < content.length) {
+      parts.push(content.slice(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : content;
+  };
+
   // 处理结果中的每个部分
   const finalResult = result.map((item, index) => {
     if (typeof item === 'string') {
-      return processBrTags(item);
+      // 先处理 <br/>，再处理 <sub>/<sup>
+      const withBr = processBrTags(item);
+      if (typeof withBr === 'string') {
+        return processSubSupTags(withBr);
+      }
+      // 如果是 ReactNode 数组，对每个字符串元素处理 <sub>/<sup>
+      if (Array.isArray(withBr)) {
+        return withBr.map((child, childIndex) => {
+          if (typeof child === 'string') {
+            return processSubSupTags(child);
+          }
+          return child;
+        });
+      }
+      return withBr;
     }
     return item;
   });

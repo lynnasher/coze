@@ -90,10 +90,10 @@ async function migrateImagesInText(text: string): Promise<string> {
   return result;
 }
 
-// 清理HTML标签（只保留纯文本）
+// 清理HTML标签（只保留纯文本，保留 sub/sup 标签）
 function cleanHtmlTags(text: string): string {
   if (!text || typeof text !== 'string') return text || '';
-  // 移除 <strong> 和 <b> 标签，保留内容
+  // 只移除 <strong> 和 <b> 标签，保留 sub/sup 标签用于显示
   return text.replace(/<\/?(strong|b)[^>]*>/gi, '');
 }
 
