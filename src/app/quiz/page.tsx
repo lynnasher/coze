@@ -662,16 +662,9 @@ function QuizPageContent() {
           </div>
           <h2 className="text-xl font-semibold text-slate-800 mb-2">无法访问</h2>
           <p className="text-slate-500 mb-6">{authError || '您没有权限访问该题库'}</p>
-          <div className="flex gap-3 justify-center">
-            <Button onClick={() => router.push('/')} variant="outline" className="rounded-xl">
-              返回首页
-            </Button>
-            {authError?.includes('登录') && (
-              <Button onClick={() => setShowAuthModal(true)} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
-                去登录
-              </Button>
-            )}
-          </div>
+          <Button onClick={() => setShowAuthModal(true)} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
+            去登录
+          </Button>
           
           {/* 登录弹窗 */}
           <AuthModal 
@@ -679,9 +672,7 @@ function QuizPageContent() {
             onClose={() => {
               setShowAuthModal(false);
               // 登录成功后刷新页面重新检查权限
-              if (authError?.includes('登录')) {
-                window.location.reload();
-              }
+              window.location.reload();
             }} 
           />
         </div>
