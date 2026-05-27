@@ -142,7 +142,7 @@ export default function AdminLayout({
 
       {/* 设备被踢下线提示 */}
       <DeviceKickedDialog
-        isOpen={kicked}
+        open={kicked}
         onConfirm={handleKickConfirm}
         message={kickMessage}
       />
