@@ -34,7 +34,11 @@ export async function PUT(request: Request) {
       }
       await userService.updateActivatedCategories(userId, value);
     } else if (action === 'password') {
-      // 修改用户密码
+      // 修改用户密码 - 先检查是否是管理员
+      const targetUser = await userService.findById(userId);
+      if (targetUser?.role === 'admin') {
+        return NextResponse.json({ success: false, error: '不能修改管理员的密码' }, { status: 403 });
+      }
       const { password } = body;
       if (!password || typeof password !== 'string' || password.length < 6) {
         return NextResponse.json({ success: false, error: '密码至少6位' }, { status: 400 });
@@ -67,6 +71,12 @@ export async function DELETE(
 
     if (!userId) {
       return NextResponse.json({ success: false, error: '请提供用户ID' }, { status: 400 });
+    }
+
+    // 检查是否是管理员，禁止删除管理员
+    const targetUser = await userService.findById(userId);
+    if (targetUser?.role === 'admin') {
+      return NextResponse.json({ success: false, error: '不能删除管理员账号' }, { status: 403 });
     }
 
     await userService.deleteUser(userId);

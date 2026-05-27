@@ -21,19 +21,21 @@ export async function GET(request: Request) {
   try {
     const client = getSupabaseAdminClient();
     
-    // 先获取总数
+    // 先获取总数（排除管理员）
     const { count: totalCount, error: countError } = await client
       .from('users')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .neq('role', 'admin');
     
     if (countError) {
       console.error('获取用户总数失败:', countError);
     }
     
-    // 分页获取用户
+    // 分页获取用户（排除管理员）
     const { data: usersData, error: usersError } = await client
       .from('users')
       .select('*')
+      .neq('role', 'admin')
       .order('created_at', { ascending: false })
       .range(offset, offset + validPageSize - 1);
     
