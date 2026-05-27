@@ -239,29 +239,56 @@ export const userService = {
   // 验证设备ID（检查当前设备是否有效）
   async validateDevice(userId: string, deviceId: string): Promise<boolean> {
     const client = getSupabaseClient();
-    const { data, error } = await client
+    
+    // 先检查 users 表（普通用户）
+    const { data: userData, error: userError } = await client
       .from('users')
       .select('device_id')
       .eq('id', userId)
       .maybeSingle();
     
-    console.log(`[ValidateDevice] userId=${userId}, match=${data?.device_id === deviceId}`);
-    
-    if (error || !data) {
+    if (userData) {
+      console.log(`[ValidateDevice] userId=${userId}, match=${userData?.device_id === deviceId}`);
+      
+      // 如果数据库中没有 device_id（旧用户），允许当前设备通过验证
+      if (!userData.device_id) {
+        return true;
+      }
+      
+      // 如果 device_id 匹配，验证通过
+      if (userData.device_id === deviceId) {
+        return true;
+      }
+      
+      // device_id 不匹配，说明设备被挤下线
       return false;
     }
     
-    // 如果数据库中没有 device_id（旧用户），允许当前设备通过验证
-    if (!data.device_id) {
-      return true;
+    // 再检查 admin_users 表（管理员）
+    const { data: adminData, error: adminError } = await client
+      .from('admin_users')
+      .select('device_id')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (adminData) {
+      console.log(`[ValidateDevice] admin userId=${userId}, match=${adminData?.device_id === deviceId}`);
+      
+      // 如果数据库中没有 device_id（旧管理员），允许当前设备通过验证
+      if (!adminData.device_id) {
+        return true;
+      }
+      
+      // 如果 device_id 匹配，验证通过
+      if (adminData.device_id === deviceId) {
+        return true;
+      }
+      
+      // device_id 不匹配，说明设备被挤下线
+      return false;
     }
     
-    // 如果 device_id 匹配，验证通过
-    if (data.device_id === deviceId) {
-      return true;
-    }
-    
-    // device_id 不匹配，说明设备被挤下线
+    // 用户不存在
     return false;
   },
 

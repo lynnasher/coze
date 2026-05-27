@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { checkLoginRateLimit, getClientIP } from '@/lib/admin-auth';
 import { generateToken, verifyPassword, hashPassword } from '@/lib/services/user-service';
+import crypto from 'crypto'; // 添加 crypto 用于生成 deviceId
+
+// 生成设备ID
+function generateDeviceId(): string {
+  return `device_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+}
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -76,6 +82,13 @@ export async function POST(request: Request) {
     }
 
     const token = generateToken(admin.id, 'admin');
+    
+    // 生成设备ID并更新到数据库（单设备登录控制）
+    const deviceId = generateDeviceId();
+    await supabase
+      .from('admin_users')
+      .update({ device_id: deviceId })
+      .eq('id', admin.id);
 
     // 检查是否需要强制修改密码
     const needChangePassword = admin.is_default_password;
@@ -83,6 +96,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       token,
+      deviceId, // 返回 deviceId 给前端
       user: { 
         id: admin.id,
         username: admin.username, 

@@ -658,7 +658,10 @@ function QuizPageContent() {
           <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
             <FileCheck className="w-8 h-8 text-amber-500" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-800 mb-2">请先登录以查看和练习题库</h2>
+<h2 className="text-lg font-semibold text-gray-900 mb-2">没有权限</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            请先登录以查看和练习题库
+          </p>
           <Button onClick={() => router.push('/')} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
             返回首页
           </Button>

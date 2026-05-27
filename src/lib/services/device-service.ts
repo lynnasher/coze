@@ -14,10 +14,14 @@ export interface DeviceValidationResult {
 
 // 设备验证服务
 export const deviceService = {
-  // 获取存储的设备ID
+  // 获取存储的设备ID（同时支持普通用户和管理员）
   getDeviceId(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+    // 先检查普通用户的 deviceId
+    const deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+    if (deviceId) return deviceId;
+    // 再检查管理员的 deviceId
+    return localStorage.getItem('admin_device_id');
   },
 
   // 获取当前用户信息（同时支持普通用户和管理员）
@@ -112,6 +116,7 @@ export const deviceService = {
     // 清除管理员登录数据
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
+    localStorage.removeItem('admin_device_id');
     // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
     localStorage.removeItem(STORAGE_KEYS.RECORDS);
     localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);

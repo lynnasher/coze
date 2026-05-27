@@ -58,6 +58,11 @@ export default function AdminLoginPage() {
       localStorage.setItem('admin_token', data.token);
       localStorage.setItem('admin_user', JSON.stringify(data.user));
       
+      // 存储设备ID（单设备登录控制）
+      if (data.deviceId) {
+        localStorage.setItem('admin_device_id', data.deviceId);
+      }
+      
       // 检查是否需要强制修改密码
       if (data.needChangePassword) {
         router.push('/admin/change-password');
