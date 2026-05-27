@@ -375,20 +375,8 @@ export default function ActivationCodesPage() {
                 <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
                   <Key className="w-4 h-4 text-white" />
                 </div>
-                <h1 className="text-lg font-semibold">激活码管理</h1>
+                <h1 className="text-lg font-semibold">激活码</h1>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={loadCodes} className="gap-1">
-                <RefreshCw className="w-4 h-4" />
-                刷新
-              </Button>
-              <span className="text-sm text-gray-500">
-                管理员: {currentUser?.username}
-              </span>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
-              </Button>
             </div>
           </div>
         </div>

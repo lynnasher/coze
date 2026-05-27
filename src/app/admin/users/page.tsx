@@ -320,18 +320,6 @@ export default function UsersPage() {
                 <h1 className="text-lg font-semibold">用户管理</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => loadUsers()} className="gap-1">
-                <RefreshCw className="w-4 h-4" />
-                刷新
-              </Button>
-              <span className="text-sm text-gray-500">
-                管理员: {currentUser?.nickname || currentUser?.phone}
-              </span>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </header>
