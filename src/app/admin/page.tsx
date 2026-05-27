@@ -310,9 +310,13 @@ export default function AdminPage() {
     setIsChangingPassword(true);
     setPasswordError('');
     try {
+      const token = localStorage.getItem('admin_token');
       const response = await fetch('/api/admin/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ oldPassword, newPassword }),
       });
       const result = await response.json();
