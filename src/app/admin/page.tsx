@@ -50,6 +50,7 @@ import {
   User,
   Key,
   Layers,
+  Lock,
 } from 'lucide-react';
 
 import { useAdminAuth, useBanks, useCategories, useExportDb, useImport } from './hooks';
@@ -60,6 +61,7 @@ import {
   DeleteConfirmDialog,
   MoveCategoryDialog,
   EditBankDialog,
+  ChangePasswordDialog,
 } from './components';
 import type { QuestionBank, Category } from './types';
 import { categoryColors } from './types';
@@ -92,6 +94,15 @@ export default function AdminPage() {
   const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
   const [editingBankName, setEditingBankName] = useState('');
   const [editingBankDesc, setEditingBankDesc] = useState('');
+
+  // Change password state
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Inline editing state
   const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
@@ -282,6 +293,52 @@ export default function AdminPage() {
     router.push(`/admin/bank/${bank.id}`);
   };
 
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordError('请填写所有字段');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的新密码不一致');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('新密码长度至少8位');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordError('');
+    try {
+      const response = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSuccess('密码修改成功，请重新登录');
+        setIsChangePasswordOpen(false);
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        // 延迟登出，让用户看到成功提示
+        setTimeout(() => {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_user');
+          localStorage.removeItem('admin_device_id');
+          router.push('/admin/login');
+        }, 1500);
+      } else {
+        setPasswordError(result.error || '密码修改失败');
+      }
+    } catch (error) {
+      setPasswordError('网络错误，请重试');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -307,6 +364,10 @@ export default function AdminPage() {
               <Button variant="outline" size="sm" onClick={loadBanks} disabled={banksLoading}>
                 <RefreshCw className={`h-4 w-4 mr-1.5 ${banksLoading ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">刷新</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsChangePasswordOpen(true)}>
+                <Key className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">修改密码</span>
               </Button>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-1.5" />
@@ -652,6 +713,21 @@ export default function AdminPage() {
         onNameChange={setEditingBankName}
         onDescChange={setEditingBankDesc}
         onSave={handleEditBankSave}
+      />
+
+      {/* 修改密码对话框 */}
+      <ChangePasswordDialog
+        open={isChangePasswordOpen}
+        onOpenChange={setIsChangePasswordOpen}
+        oldPassword={oldPassword}
+        setOldPassword={setOldPassword}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword}
+        onSubmit={handleChangePassword}
+        isLoading={isChangingPassword}
+        error={passwordError}
       />
     </div>
   );

@@ -4,3 +4,4 @@ export { CategoryManageDialog } from './CategoryManageDialog';
 export { DeleteConfirmDialog } from './DeleteConfirmDialog';
 export { MoveCategoryDialog } from './MoveCategoryDialog';
 export { EditBankDialog } from './EditBankDialog';
+export { ChangePasswordDialog } from './ChangePasswordDialog';
