@@ -256,7 +256,25 @@ export default function QuizApp() {
     // 刷新首页统计数据
     refreshHomeStats();
   }, [recalculateWrongData, refreshHomeStats]);
-  
+
+  // 监听题库删除事件，自动刷新错题统计
+  useEffect(() => {
+    const handleBankDeleted = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const deletedIds = customEvent.detail?.questionIds as string[];
+      if (deletedIds && deletedIds.length > 0) {
+        // 重新计算错题数据并更新显示
+        const count = recalculateWrongData();
+        setWrongCount(count);
+        // 刷新首页统计数据
+        refreshHomeStats();
+      }
+    };
+
+    window.addEventListener('bankDeleted', handleBankDeleted);
+    return () => window.removeEventListener('bankDeleted', handleBankDeleted);
+  }, [recalculateWrongData, refreshHomeStats]);
+
   // 只使用数据库的题库
   const { banks, bankAccuracies } = useMemo(() => {
     // 计算每个题库的正确率（仅在 dbBanks 变化时重新计算）
