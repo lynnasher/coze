@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { userService } from '@/lib/services/user-service';
-import { adminUserService } from '@/lib/services/admin-user-service';
 
 /**
  * 验证设备ID接口
@@ -22,14 +21,8 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 先尝试验证普通用户
-    let isValid = await userService.validateDevice(userId, deviceId);
-    
-    // 如果普通用户验证失败，尝试验证管理员用户
-    if (!isValid) {
-      console.log(`[ValidateDevice] 普通用户验证失败，尝试验证管理员`);
-      isValid = await adminUserService.validateDevice(userId, deviceId);
-    }
+    // 验证设备（管理员和普通用户都存储在 users 表中）
+    const isValid = await userService.validateDevice(userId, deviceId);
     
     console.log(`[ValidateDevice] 验证结果: isValid=${isValid}`);
 

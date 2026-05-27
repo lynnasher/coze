@@ -122,7 +122,7 @@ function QuizPageContent() {
         }
         
         // 检查用户是否已激活该分类
-        const activatedCategories = user.activatedCategories || [];
+        const activatedCategories = user.activated_categories || [];
         if (!activatedCategories.includes(bankCategoryId)) {
           setAuthError('您没有权限访问该题库，请先激活对应科目');
           setIsCheckingAuth(false);
@@ -668,11 +668,13 @@ function QuizPageContent() {
           
           {/* 登录弹窗 */}
           <AuthModal 
-            isOpen={showAuthModal} 
-            onClose={() => {
-              setShowAuthModal(false);
-              // 登录成功后刷新页面重新检查权限
-              window.location.reload();
+            open={showAuthModal} 
+            onOpenChange={(open) => {
+              setShowAuthModal(open);
+              if (!open) {
+                // 弹窗关闭后刷新页面重新检查权限
+                window.location.reload();
+              }
             }} 
           />
         </div>
