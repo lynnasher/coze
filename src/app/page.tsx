@@ -503,7 +503,11 @@ export default function QuizApp() {
       }
     } else {
       // 未登录状态：立即从本地计算错题数（本地计算很快）
-      const count = recalculateWrongData();
+      const { questionStore } = require('@/lib/quiz-store');
+      const existingQuestionIds = new Set(questionStore.getAll().map((q: Question) => q.id));
+      const recordQuestionIds = recordStore.getAll().map((r: PracticeRecord) => r.questionId);
+      const deletedFromMissing = recordQuestionIds.filter((id: string) => !existingQuestionIds.has(id));
+      const count = recalculateWrongData(deletedFromMissing);
       setWrongCount(count);
       hasSyncedRef.current = false;
     }
