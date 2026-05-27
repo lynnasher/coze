@@ -287,11 +287,13 @@ export default function WrongBookPage() {
         return;
       }
       
-      // 本地没有则从云端缓存查找
-      const cloudQuestion = cloudQuestions[id];
-      if (cloudQuestion) {
-        foundQuestions.push(cloudQuestion);
-        return;
+      // 本地没有则从云端缓存查找（但跳过已删除的题目）
+      if (!deletedQuestionStore.isDeleted(id)) {
+        const cloudQuestion = cloudQuestions[id];
+        if (cloudQuestion) {
+          foundQuestions.push(cloudQuestion);
+          return;
+        }
       }
     });
     
