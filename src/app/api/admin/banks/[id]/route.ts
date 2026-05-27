@@ -75,9 +75,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: '题库不存在' }, { status: 404 });
     }
 
+    // 获取题库下的所有题目ID（用于前端清理错题记录）
+    const questions = await bankService.getQuestionsByBankIdFlat(id!);
+    const deletedQuestionIds = questions.map(q => q.id);
+
     await bankService.deleteBank(id!);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deletedQuestionIds });
   } catch (error) {
     console.error('Failed to delete bank:', error);
     return NextResponse.json({ error: '删除失败' }, { status: 500 });

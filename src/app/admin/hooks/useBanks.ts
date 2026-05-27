@@ -93,6 +93,15 @@ export function useBanks() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        
+        // 清除该题库相关的错题记录
+        if (data.deletedQuestionIds && data.deletedQuestionIds.length > 0) {
+          const { recordStore, wrongStreakStore } = await import('@/lib/quiz-store');
+          recordStore.removeByQuestionIds(data.deletedQuestionIds);
+          wrongStreakStore.removeByQuestionIds(data.deletedQuestionIds);
+        }
+        
         await loadBanks();
         return { success: true };
       }

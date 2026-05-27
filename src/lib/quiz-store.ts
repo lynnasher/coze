@@ -387,6 +387,14 @@ export const recordStore = {
     return recordStore.getAll().filter(r => r.questionId === questionId);
   },
 
+  // 清除指定题目ID列表的所有记录（用于删除题库时清理错题）
+  removeByQuestionIds: (questionIds: string[]) => {
+    if (typeof window === 'undefined' || questionIds.length === 0) return;
+    const records = recordStore.getAll();
+    const filtered = records.filter(r => !questionIds.includes(r.questionId));
+    recordStore.save(filtered);
+  },
+
   clear: () => {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEYS.RECORDS);
@@ -439,6 +447,16 @@ export const wrongStreakStore = {
   // 删除某道题的记录（移出错题本）
   remove: (questionId: string) => {
     wrongStreakStore.reset(questionId);
+  },
+
+  // 清除指定题目ID列表的所有记录（用于删除题库时清理错题）
+  removeByQuestionIds: (questionIds: string[]) => {
+    if (typeof window === 'undefined' || questionIds.length === 0) return;
+    const streaks = wrongStreakStore.getAll();
+    questionIds.forEach(id => {
+      delete streaks[id];
+    });
+    wrongStreakStore.save(streaks);
   },
 
   // 清空所有
