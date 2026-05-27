@@ -106,6 +106,26 @@ export default function WrongBookPage() {
     setRefreshKey(k => k + 1);
   }, []);
 
+  // 监听题库删除事件，自动刷新数据
+  useEffect(() => {
+    const handleBankDeleted = (e: CustomEvent<{ questionIds: string[] }>) => {
+      // 清除本地相关数据
+      const { recordStore, wrongStreakStore, questionStore, deletedQuestionStore } = 
+        require('@/lib/quiz-store') as typeof import('@/lib/quiz-store');
+      deletedQuestionStore.add(e.detail.questionIds);
+      recordStore.removeByQuestionIds(e.detail.questionIds);
+      wrongStreakStore.removeByQuestionIds(e.detail.questionIds);
+      questionStore.removeByQuestionIds(e.detail.questionIds);
+      // 刷新页面数据
+      refreshData();
+    };
+    
+    window.addEventListener('bankDeleted', handleBankDeleted as EventListener);
+    return () => {
+      window.removeEventListener('bankDeleted', handleBankDeleted as EventListener);
+    };
+  }, [refreshData]);
+
   const recalculateWrongData = useCallback(() => {
     const result = recalculateWrongDataUtil(
       recordStore.getAll(),

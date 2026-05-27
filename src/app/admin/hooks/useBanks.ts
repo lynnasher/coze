@@ -106,6 +106,11 @@ export function useBanks() {
           questionStore.removeByQuestionIds(data.deletedQuestionIds);
           // 记录已删除的题目ID（用于过滤云端同步数据）
           deletedQuestionStore.add(data.deletedQuestionIds);
+          
+          // 触发全局事件通知其他组件刷新数据
+          window.dispatchEvent(new CustomEvent('bankDeleted', { 
+            detail: { questionIds: data.deletedQuestionIds } 
+          }));
         }
         
         await loadBanks();
