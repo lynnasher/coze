@@ -33,7 +33,7 @@ import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
-import { getCurrentUser, AuthModal } from '@/components/AuthModal';
+import { getCurrentUser } from '@/components/AuthModal';
 import Link from 'next/link';
 
 // 题型配置常量
@@ -66,7 +66,6 @@ function QuizPageContent() {
   // 权限检查状态
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
   const questionRef = useRef<HTMLDivElement>(null);
@@ -659,23 +658,11 @@ function QuizPageContent() {
           <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
             <FileCheck className="w-8 h-8 text-amber-500" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-800 mb-2">无法访问</h2>
-          <p className="text-slate-500 mb-6">{authError || '您没有权限访问该题库'}</p>
-          <Button onClick={() => setShowAuthModal(true)} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
-            去登录
+          <h2 className="text-xl font-semibold text-slate-800 mb-2">请先登录以查看和练习题库</h2>
+          <Button onClick={() => router.push('/')} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
+            返回首页
           </Button>
-          
-          {/* 登录弹窗 */}
-          <AuthModal 
-            open={showAuthModal} 
-            onOpenChange={(open) => {
-              setShowAuthModal(open);
-              if (!open) {
-                // 弹窗关闭后刷新页面重新检查权限
-                window.location.reload();
-              }
-            }} 
-          />
+
         </div>
       </div>
     );
