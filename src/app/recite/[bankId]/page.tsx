@@ -7,6 +7,7 @@ import { Question } from '@/lib/types';
 import { questionStore, bankStore } from '@/lib/quiz-store';
 import { getCurrentUser } from '@/components/AuthModal';
 import { Button } from '@/components/ui/button';
+import { RichTextWithBreaks } from '@/lib/rich-text';
 
 // 题型标签映射
 const TYPE_LABELS: Record<string, { text: string; color: string }> = {
@@ -399,175 +400,6 @@ export default function RecitePage() {
   );
 }
 
-// 将文本中的图片 URL 转为 <img> 标签
-function renderTextWithImages(text: string) {
-  if (!text) return text;
-
-  // 清理 <strong> 和 <b> 标签，保留纯文本
-  text = text.replace(/<(strong|b)>(.*?)<\/(strong|b)>/gi, '$2');
-
-  // 将 <br/> 或 <br> 标签转换为换行符
-  text = text.replace(/<br\s*\/?>/gi, '\n');
-  // 清理连续换行符（3个以上转为2个）
-  text = text.replace(/\n{3,}/g, '\n\n');
-
-  // 匹配 markdown 图片语法 ![alt](url)
-  const mdImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
-  // 匹配 HTML <img> 标签
-  const htmlImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*\/?>/gi;
-  // 匹配直接嵌入的图片 URL
-  const urlRegex = /(https?:\/\/[^\s"'<>]+?\.(?:png|jpg|jpeg|gif|webp|svg|bmp)(?:\?[^\s"'<>]*)?)/gi;
-
-  const parts: (string | React.ReactNode)[] = [];
-  let lastIndex = 0;
-
-  // 先处理 markdown 图片
-  let match: RegExpExecArray | null;
-  const mdMatches: { index: number; alt: string; url: string }[] = [];
-
-  const mdRegex = new RegExp(mdImageRegex.source, 'g');
-  while ((match = mdRegex.exec(text)) !== null) {
-    mdMatches.push({ index: match.index, alt: match[1], url: match[2] });
-  }
-
-  // 合并所有匹配点（md图片 + html img + 直接url）
-  interface MatchItem {
-    index: number;
-    length: number;
-    alt: string;
-    url: string;
-  }
-  const allMatches: MatchItem[] = [];
-
-  for (const m of mdMatches) {
-    allMatches.push({ index: m.index, length: `![${m.alt}](${m.url})`.length, alt: m.alt, url: m.url });
-  }
-
-  // 处理 HTML <img> 标签
-  const htmlImgRegex2 = new RegExp(htmlImgRegex.source, 'gi');
-  while ((match = htmlImgRegex2.exec(text)) !== null) {
-    const isOverlapped = allMatches.some(
-      (m) => match!.index >= m.index && match!.index < m.index + m.length
-    );
-    if (!isOverlapped) {
-      allMatches.push({ index: match.index, length: match[0].length, alt: '', url: match[1] });
-    }
-  }
-
-  const urlRegex2 = new RegExp(urlRegex.source, 'gi');
-  while ((match = urlRegex2.exec(text)) !== null) {
-    // 检查是否已被 md 图片匹配覆盖
-    const isOverlapped = allMatches.some(
-      (m) => match!.index >= m.index && match!.index < m.index + m.length
-    );
-    if (!isOverlapped) {
-      allMatches.push({ index: match.index, length: match[0].length, alt: '', url: match[0] });
-    }
-  }
-
-  // 排序
-  allMatches.sort((a, b) => a.index - b.index);
-
-  // 构建输出
-  let result: (string | React.ReactNode)[] = [];
-  let ptr = 0;
-  for (const m of allMatches) {
-    if (m.index > ptr) {
-      result.push(text.slice(ptr, m.index));
-    }
-    result.push(
-      <img
-        key={m.index}
-        src={m.url}
-        alt={m.alt || ''}
-        className="max-w-full h-auto rounded-lg my-2 inline-block"
-        loading="lazy"
-        onError={(e) => {
-          (e.target as HTMLImageElement).style.display = 'none';
-        }}
-      />
-    );
-    ptr = m.index + m.length;
-  }
-  if (ptr < text.length) {
-    result.push(text.slice(ptr));
-  }
-
-  // 处理 <br/> 标签转换为换行
-  const processBrTags = (content: string | React.ReactNode): React.ReactNode => {
-    if (typeof content !== 'string') return content;
-    
-    const parts = content.split(/<br\s*\/?>/gi);
-    if (parts.length <= 1) return content;
-    
-    return parts.map((part, index) => (
-      <React.Fragment key={index}>
-        {part}
-        {index < parts.length - 1 && <br />}
-      </React.Fragment>
-    ));
-  };
-
-  // 处理 <sub> 和 <sup> 标签
-  const processSubSupTags = (content: string | React.ReactNode): React.ReactNode => {
-    if (typeof content !== 'string') return content;
-    
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-    
-    // 匹配 <sub>text</sub> 或 <sup>text</sup>
-    const regex = /<(sub|sup)>(.*?)<\/(sub|sup)>/gi;
-    let match;
-    
-    while ((match = regex.exec(content)) !== null) {
-      const [fullMatch, tag, innerText] = match;
-      const beforeText = content.slice(lastIndex, match.index);
-      
-      if (beforeText) {
-        parts.push(beforeText);
-      }
-      
-      if (tag.toLowerCase() === 'sub') {
-        parts.push(<sub key={match.index}>{innerText}</sub>);
-      } else {
-        parts.push(<sup key={match.index}>{innerText}</sup>);
-      }
-      
-      lastIndex = match.index + fullMatch.length;
-    }
-    
-    if (lastIndex < content.length) {
-      parts.push(content.slice(lastIndex));
-    }
-    
-    return parts.length > 0 ? parts : content;
-  };
-
-  // 处理结果中的每个部分
-  const finalResult = result.map((item, index) => {
-    if (typeof item === 'string') {
-      // 先处理 <br/>，再处理 <sub>/<sup>
-      const withBr = processBrTags(item);
-      if (typeof withBr === 'string') {
-        return processSubSupTags(withBr);
-      }
-      // 如果是 ReactNode 数组，对每个字符串元素处理 <sub>/<sup>
-      if (Array.isArray(withBr)) {
-        return withBr.map((child, childIndex) => {
-          if (typeof child === 'string') {
-            return processSubSupTags(child);
-          }
-          return child;
-        });
-      }
-      return withBr;
-    }
-    return item;
-  });
-
-  return finalResult.length > 0 ? finalResult : text;
-}
-
 // 单个题目卡片组件
 function ReciteCard({
   question,
@@ -591,9 +423,10 @@ function ReciteCard({
             {index}
           </span>
           <div className="flex-1">
-            <p className="text-base text-gray-900 leading-relaxed">
-              {renderTextWithImages(question.content)}
-            </p>
+            <RichTextWithBreaks 
+              content={question.content} 
+              textClassName="text-base text-gray-900 leading-relaxed"
+            />
           </div>
         </div>
 
@@ -634,7 +467,7 @@ function ReciteCard({
                       ${isCorrect ? 'text-emerald-800 font-medium' : 'text-gray-600'}
                     `}
                   >
-                    {renderTextWithImages(option.text)}
+                    <RichTextWithBreaks content={option.text} />
                   </span>
                   {/* 正确标记 */}
                   {isCorrect && (
@@ -691,9 +524,10 @@ function ReciteCard({
               <Lightbulb className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium text-amber-700">名师解析：</span>
-                <p className="text-sm text-amber-700 leading-relaxed mt-0.5">
-                  {renderTextWithImages(question.explanation)}
-                </p>
+                <RichTextWithBreaks 
+                  content={question.explanation || ''} 
+                  textClassName="text-sm text-amber-700 leading-relaxed mt-0.5"
+                />
               </div>
             </div>
           </div>
@@ -728,7 +562,7 @@ function ReciteItem({
             <span className="text-xs text-gray-400">{question.children.length} 道子题</span>
           </div>
           <div className="mt-3 text-gray-700 leading-relaxed">
-            {renderTextWithImages(question.caseBackground || question.content)}
+            <RichTextWithBreaks content={question.caseBackground || question.content || ''} />
           </div>
         </div>
 
@@ -772,7 +606,7 @@ function ReciteItem({
                       <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle">
                         {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
                       </span>
-                      {renderTextWithImages(child.content)}
+                      <RichTextWithBreaks content={child.content} />
                     </p>
                   </div>
                 </div>
@@ -801,7 +635,7 @@ function ReciteItem({
                             {option.id}
                           </span>
                           <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-600'}`}>
-                            {renderTextWithImages(option.text)}
+                            <RichTextWithBreaks content={option.text} />
                           </span>
                         </div>
                       );
@@ -818,9 +652,10 @@ function ReciteItem({
                   {child.explanation && (
                     <div className="mt-2 pt-2 border-t border-amber-100">
                       <div className="text-xs text-gray-500 mb-1">解析：</div>
-                      <div className="text-sm text-gray-700 leading-relaxed">
-                        {renderTextWithImages(child.explanation)}
-                      </div>
+                      <RichTextWithBreaks 
+                        content={child.explanation} 
+                        textClassName="text-sm text-gray-700 leading-relaxed"
+                      />
                     </div>
                   )}
                 </div>
