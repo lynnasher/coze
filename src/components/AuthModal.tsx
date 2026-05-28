@@ -75,7 +75,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
       if (data.success) {
         setCountdown(60);
         if (data.testCode) {
-          alert(`【测试模式】验证码: ${data.testCode}`);
+          alert(`验证码: ${data.testCode}`);
         }
       } else {
         setError(data.error || '获取验证码失败');

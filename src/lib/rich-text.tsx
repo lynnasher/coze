@@ -88,8 +88,8 @@ export function parseRichContent(content: string): Array<{ type: 'text' | 'image
   // 清理连续换行符（3个以上转为2个）
   content = content.replace(/\n{3,}/g, '\n\n');
 
-  // 处理 HTML img 标签
-  const htmlImgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  // 处理 HTML img 标签 - 支持 src="url"、src='url'、src=url（无引号）
+  const htmlImgRegex = /<img[^>]+src\s*=\s*(?:["']([^"']+)["']|([^\s>]+))[^>]*>/gi;
   const mdImgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
   let lastIndex = 0;
@@ -106,12 +106,13 @@ export function parseRichContent(content: string): Array<{ type: 'text' | 'image
     }
     
     // 添加图片
-    const srcMatch = htmlMatch[0].match(/src=["']([^"']+)["']/i);
-    const altMatch = htmlMatch[0].match(/alt=["']([^"']+)["']/i);
-    if (srcMatch) {
+    // htmlMatch[1] 是带引号的 src，htmlMatch[2] 是无引号的 src
+    const imgSrc = htmlMatch[1] || htmlMatch[2];
+    const altMatch = htmlMatch[0].match(/alt\s*=\s*["']([^"']+)["']/i);
+    if (imgSrc) {
       parts.push({
         type: 'image',
-        value: srcMatch[1],
+        value: imgSrc.trim(),
         alt: altMatch ? altMatch[1] : undefined
       });
     }
@@ -181,8 +182,29 @@ export function parseRichContent(content: string): Array<{ type: 'text' | 'image
 function RichTextImage({ src, alt, className }: { src: string; alt?: string; className?: string }) {
   const [imageUrl, setImageUrl] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // 从签名 URL 中提取对象存储 key
+  const extractKeyFromUrl = (url: string): string | null => {
+    try {
+      const urlObj = new URL(url);
+      // 匹配 tos.coze.site 域名下的路径
+      if (urlObj.hostname.includes('tos.coze.site')) {
+        // 路径格式: /bucket/key?sign=xxx
+        const pathMatch = urlObj.pathname.match(/\/[^/]+\/(.+)/);
+        if (pathMatch) {
+          return pathMatch[1];
+        }
+      }
+    } catch {
+      // URL 解析失败，返回 null
+    }
+    return null;
+  };
 
   useEffect(() => {
+    setHasError(false);
     // 如果不是对象存储 key，直接使用
     if (!isObjectStorageKey(src)) {
       setImageUrl(src);
@@ -221,6 +243,46 @@ function RichTextImage({ src, alt, className }: { src: string; alt?: string; cla
       });
   }, [src]);
 
+  const handleError = () => {
+    // 如果还没重试过，尝试从 URL 提取 key 并重新获取签名
+    if (retryCount === 0) {
+      const key = extractKeyFromUrl(imageUrl);
+      if (key) {
+        setRetryCount(1);
+        setIsLoading(true);
+        fetch(`/api/image/signed-url?key=${encodeURIComponent(key)}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.url) {
+              setCachedSignedUrl(key, data.url);
+              setImageUrl(data.url);
+              setHasError(false);
+            } else {
+              setHasError(true);
+            }
+          })
+          .catch(err => {
+            console.error('Failed to get signed URL on retry:', err);
+            setHasError(true);
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+        return;
+      }
+    }
+    setHasError(true);
+    console.error('Image failed to load:', imageUrl);
+  };
+
+  if (hasError) {
+    return (
+      <div className="max-w-full my-2 p-4 bg-gray-50 border border-gray-200 rounded text-center text-gray-400 text-sm">
+        <span>📷 图片加载失败</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <img
@@ -228,6 +290,7 @@ function RichTextImage({ src, alt, className }: { src: string; alt?: string; cla
         alt={alt || '题目图片'}
         className={`max-w-full h-auto my-2 rounded ${className}`}
         loading="lazy"
+        onError={handleError}
       />
       {isLoading && (
         <div className="w-full h-20 bg-gray-100 animate-pulse rounded my-2 flex items-center justify-center">
