@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { userService } from '@/lib/services/user-service';
+import { hashPassword } from '@/lib/services/user-service';
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
 import { requireAdminAuth } from '@/lib/api-auth';
 
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     }
 
     // 加密密码
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = hashPassword(password);
 
     // 创建设备ID
     const deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
