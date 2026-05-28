@@ -25,7 +25,7 @@ export function useImport() {
         questions: data.questions,
         bankName: data.bankName || data.subjectName || file.name.replace('.json', ''),
         categoryId,
-      });
+      }) as { count?: number; bankId?: string; bankName?: string };
 
       return { success: true, data: result };
     } catch (err: any) {
