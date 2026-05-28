@@ -42,22 +42,39 @@ function createSmsClient(): Dysmsapi20170525 {
 async function sendSmsCode(phone: string, code: string): Promise<void> {
   const client = createSmsClient();
 
+  const templateCode = process.env.ALIYUN_SMS_TEMPLATE_CODE || 'SMS_215071136';
+  const signName = process.env.ALIYUN_SMS_SIGN_NAME || '阿里云短信测试';
+
+  console.log('[短信发送参数]', {
+    phone,
+    signName,
+    templateCode,
+    templateParam: JSON.stringify({ code, min: '5' }),
+  });
+
   const sendSmsRequest = new $Dysmsapi20170525.SendSmsRequest({
     phoneNumbers: phone,
-    signName: process.env.ALIYUN_SMS_SIGN_NAME || '阿里云短信测试',
-    templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE || 'SMS_215071136',
-    templateParam: JSON.stringify({ code }),
+    signName: signName,
+    templateCode: templateCode,
+    templateParam: JSON.stringify({ code, min: '5' }),
   });
 
   const response = await client.sendSms(sendSmsRequest);
+
+  console.log('[短信发送响应]', {
+    code: response.body.code,
+    message: response.body.message,
+    requestId: response.body.requestId,
+    bizId: response.body.bizId,
+  });
 
   if (response.body.code !== 'OK') {
     console.error('[阿里云短信错误]', {
       code: response.body.code,
       message: response.body.message,
       requestId: response.body.requestId,
-      templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE,
-      signName: process.env.ALIYUN_SMS_SIGN_NAME,
+      templateCode,
+      signName,
     });
     throw new Error(`短信发送失败: ${response.body.message}`);
   }
