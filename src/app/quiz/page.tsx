@@ -641,7 +641,7 @@ function QuizPageContent() {
   // 权限检查骨架屏 - 与正常页面布局一致，无感知过渡
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 animate-in fade-in duration-300">
         {/* 顶部导航骨架 */}
         <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -724,7 +724,7 @@ function QuizPageContent() {
   // 无权限时显示提示
   if (!hasPermission) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 animate-in fade-in duration-300">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 mx-auto mb-4 bg-amber-100 rounded-full flex items-center justify-center">
             <FileCheck className="w-8 h-8 text-amber-500" />
@@ -745,7 +745,7 @@ function QuizPageContent() {
   // 显示加载状态
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 animate-in fade-in duration-300">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center animate-pulse">
             <BookOpen className="w-8 h-8 text-indigo-500" />
@@ -759,7 +759,7 @@ function QuizPageContent() {
   // 题库为空时显示提示
   if (quizState.questions.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 animate-in fade-in duration-300">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
             <BookOpen className="w-8 h-8 text-slate-400" />
@@ -774,7 +774,7 @@ function QuizPageContent() {
   }
   
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 animate-in fade-in duration-300">
       {/* 设备被踢下线提示 */}
       <DeviceKickedDialog open={isKicked} onConfirm={() => router.push('/')} />
       
