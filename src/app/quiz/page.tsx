@@ -83,6 +83,12 @@ function QuizPageContent() {
     restartQuiz,
   } = useQuiz();
   
+  // 使用 ref 存储 startQuiz 以避免 useEffect 依赖变化
+  const startQuizRef = useRef(startQuiz);
+  useEffect(() => {
+    startQuizRef.current = startQuiz;
+  }, [startQuiz]);
+  
   // 权限检查 - 优化版：先同步检查本地用户，再异步验证权限
   useEffect(() => {
     const checkPermission = async () => {
@@ -145,12 +151,12 @@ function QuizPageContent() {
     checkPermission();
   }, [bankId]);
   
-  // 初始化时开始练习（仅在权限检查通过后）
+  // 初始化时开始练习（仅在权限检查通过后且题目未加载时）
   useEffect(() => {
-    if (bankId && !isLoading && hasPermission) {
+    if (bankId && hasPermission === true && quizState.questions.length === 0 && !quizState.isLoading) {
       startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
     }
-  }, [bankId, mode, isLoading, startQuiz, hasPermission]);
+  }, [bankId, mode, hasPermission, quizState.questions.length, quizState.isLoading, startQuiz]);
   
   // 设备验证
   const { kicked: isKicked } = useDeviceValidation();
@@ -682,15 +688,15 @@ function QuizPageContent() {
     );
   }
   
-  // 题库为空时显示提示
-  if (quizState.questions.length === 0) {
+  // 题库为空时显示提示（需要权限检查完成后才显示）
+  if (hasPermission !== null && quizState.questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
             <BookOpen className="w-8 h-8 text-slate-400" />
           </div>
-          <p className="text-slate-500 mb-4">题目加载中^_^</p>
+          <p className="text-slate-500 mb-4">题库暂无题目</p>
           <Button onClick={() => router.push('/')} variant="outline" className="rounded-xl">
             返回首页
           </Button>
