@@ -292,64 +292,6 @@ export const userService = {
     return false;
   },
 
-  // 管理员登录
-  async adminLogin(username: string, password: string): Promise<{ user: DbUser; token: string; deviceId: string }> {
-    const client = getSupabaseClient();
-    const adminClient = getSupabaseAdminClient();
-
-    // 查找管理员用户（通过昵称或特定字段）
-    const { data, error } = await client.from('users').select('*').eq('nickname', username).maybeSingle();
-    if (error) throw new Error(`管理员登录失败: ${error.message}`);
-    if (!data) {
-      throw new Error('管理员账号不存在');
-    }
-
-    const user = data as DbUser;
-
-    // 验证是否为管理员
-    if (user.role !== 'admin') {
-      throw new Error('该账号不是管理员');
-    }
-
-    // 验证密码
-    if (!verifyPassword(password, user.password)) {
-      throw new Error('密码错误');
-    }
-
-    // 如果密码是旧格式（base64 或明文），自动升级为 scrypt 哈希
-    if (!user.password.includes(':')) {
-      const newHash = hashPassword(password);
-      await adminClient.from('users').update({ password: newHash }).eq('id', user.id);
-    }
-
-    // 检查用户状态
-    if (user.status === 'banned') {
-      throw new Error('账号已被禁用');
-    }
-
-    // 生成新的设备ID（单设备登录：新设备挤掉旧设备）
-    const deviceId = generateDeviceId();
-
-    // 更新最后登录时间和设备ID（使用 admin client 确保可以更新）
-    const { error: updateError } = await adminClient.from('users').update({ 
-      last_login_at: new Date().toISOString(),
-      device_id: deviceId 
-    }).eq('id', user.id);
-
-    if (updateError) {
-      console.error('更新设备ID失败:', updateError);
-      // 继续登录流程，不因设备ID更新失败而阻止登录
-    }
-
-    // 更新内存中的用户信息
-    user.device_id = deviceId;
-
-    // 生成 token
-    const token = generateToken(user.id, user.role);
-
-    return { user, token, deviceId };
-  },
-
   // 更新用户激活的分类
   async updateActivatedCategories(userId: string, categoryIds: string[]): Promise<void> {
     const client = getSupabaseClient();
@@ -427,23 +369,3 @@ export const userService = {
     }>;
   },
 };
-
-// 初始化默认管理员
-export async function initDefaultAdmin(): Promise<void> {
-  const client = getSupabaseAdminClient();
-
-  // 检查是否已存在管理员
-  const { data: existingAdmin } = await client.from('users').select('id').eq('role', 'admin').maybeSingle();
-  if (existingAdmin) return;
-
-  // 创建默认管理员
-  const adminPassword = hashPassword('admin123');
-  await client.from('users').insert({
-    phone: 'admin',
-    password: adminPassword,
-    nickname: '管理员',
-    role: 'admin',
-    status: 'active',
-    activated_categories: null,
-  });
-}

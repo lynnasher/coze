@@ -1,19 +1,10 @@
 import { NextResponse } from 'next/server';
-import { userService, initDefaultAdmin } from '@/lib/services/user-service';
-
-// 初始化默认管理员
-let adminInitialized = false;
+import { userService } from '@/lib/services/user-service';
 
 export async function POST(request: Request) {
   try {
-    // 首次调用时初始化管理员
-    if (!adminInitialized) {
-      await initDefaultAdmin();
-      adminInitialized = true;
-    }
-
     const body = await request.json();
-    const { type, phone, password, nickname, username } = body;
+    const { type, phone, password, nickname } = body;
 
     if (type === 'register') {
       // 用户注册
@@ -69,34 +60,6 @@ export async function POST(request: Request) {
           error: '管理员账号请从后台登录' 
         }, { status: 403 });
       }
-      
-      // 解析激活的分类
-      let activatedCategories: string[] = [];
-      try {
-        activatedCategories = JSON.parse(user.activated_categories || '[]');
-      } catch {}
-
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: user.id,
-          phone: user.phone,
-          nickname: user.nickname,
-          role: user.role,
-          activated_categories: activatedCategories,
-        },
-        token,
-        deviceId,
-      });
-    }
-
-    if (type === 'admin_login') {
-      // 管理员登录
-      if (!username || !password) {
-        return NextResponse.json({ success: false, error: '请提供用户名和密码' }, { status: 400 });
-      }
-
-      const { user, token, deviceId } = await userService.adminLogin(username, password);
       
       // 解析激活的分类
       let activatedCategories: string[] = [];
