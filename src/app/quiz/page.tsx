@@ -64,7 +64,8 @@ function QuizPageContent() {
   const [resultStats, setResultStats] = useState({ accuracy: 0, total: 0, correct: 0, wrong: 0, unanswered: 0 });
   
   // 权限检查状态
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasPermission, setHasPermission] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
   const questionRef = useRef<HTMLDivElement>(null);
@@ -83,42 +84,28 @@ function QuizPageContent() {
     restartQuiz,
   } = useQuiz();
   
-  // 使用 ref 存储 startQuiz 以避免 useEffect 依赖变化
-  const startQuizRef = useRef(startQuiz);
-  useEffect(() => {
-    startQuizRef.current = startQuiz;
-  }, [startQuiz]);
-  
-  // 权限检查 - 优化版：先同步检查本地用户，再异步验证权限
+  // 权限检查
   useEffect(() => {
     const checkPermission = async () => {
       if (!bankId) {
+        setIsCheckingAuth(false);
         return;
       }
       
-      // 同步检查本地存储，快速响应
-      const userJson = localStorage.getItem('user');
-      if (!userJson) {
-        setHasPermission(false);
+      const user = await getCurrentUser();
+      if (!user) {
         setAuthError('请先登录后再做题');
-        return;
-      }
-      
-      let user;
-      try {
-        user = JSON.parse(userJson);
-      } catch {
-        setHasPermission(false);
-        setAuthError('登录状态异常，请重新登录');
+        setIsCheckingAuth(false);
         return;
       }
       
       // 检查用户是否有权限访问该题库（已激活的分类）
+      // 获取题库信息来检查分类
       try {
         const response = await fetch(`/api/banks/${bankId}`);
         if (!response.ok) {
-          setHasPermission(false);
           setAuthError('题库不存在');
+          setIsCheckingAuth(false);
           return;
         }
         
@@ -128,37 +115,36 @@ function QuizPageContent() {
         // 如果没有分类ID，允许访问（兼容旧数据）
         if (!bankCategoryId) {
           setHasPermission(true);
-          
+          setIsCheckingAuth(false);
           return;
         }
         
         // 检查用户是否已激活该分类
         const activatedCategories = user.activated_categories || [];
         if (!activatedCategories.includes(bankCategoryId)) {
-          setHasPermission(false);
           setAuthError('您没有权限访问该题库，请先激活对应科目');
+          setIsCheckingAuth(false);
           return;
         }
         
         setHasPermission(true);
-        
+        setIsCheckingAuth(false);
       } catch (error) {
         console.error('权限检查失败:', error);
-        // 网络错误时，如果本地有用户信息，允许访问（降级处理）
-        setHasPermission(true);
-        
+        setAuthError('权限检查失败，请稍后重试');
+        setIsCheckingAuth(false);
       }
     };
     
     checkPermission();
   }, [bankId]);
   
-  // 初始化时开始练习（仅在权限检查通过后且题目未加载时）
+  // 初始化时开始练习（仅在权限检查通过后）
   useEffect(() => {
-    if (bankId && hasPermission === true && quizState.questions.length === 0 && !quizState.isLoading) {
+    if (bankId && !isLoading && hasPermission) {
       startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
     }
-  }, [bankId, mode, hasPermission, quizState.questions.length, quizState.isLoading, startQuiz]);
+  }, [bankId, mode, isLoading, startQuiz, hasPermission]);
   
   // 设备验证
   const { kicked: isKicked } = useDeviceValidation();
@@ -653,10 +639,19 @@ function QuizPageContent() {
   };
   
   // 显示权限检查加载状态
-
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500">检查权限中...</p>
+        </div>
+      </div>
+    );
+  }
   
-  // 无权限时显示提示（null 表示检查中，false 表示无权限）
-  if (hasPermission === false) {
+  // 无权限时显示提示
+  if (!hasPermission) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center max-w-md">
@@ -690,15 +685,15 @@ function QuizPageContent() {
     );
   }
   
-  // 题库为空时显示提示（需要权限检查完成后才显示）
-  if (hasPermission !== null && quizState.questions.length === 0) {
+  // 题库为空时显示提示
+  if (quizState.questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-slate-200 rounded-full flex items-center justify-center">
             <BookOpen className="w-8 h-8 text-slate-400" />
           </div>
-          <p className="text-slate-500 mb-4">题库暂无题目</p>
+          <p className="text-slate-500 mb-4">题目加载中^_^</p>
           <Button onClick={() => router.push('/')} variant="outline" className="rounded-xl">
             返回首页
           </Button>

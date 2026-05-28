@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
 import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
-import { apiClient } from '@/lib/api-client';
 
 // sessionStorage key for quiz state persistence
 const QUIZ_SESSION_KEY = 'quiz_current_session';
@@ -93,15 +92,23 @@ export function useQuiz() {
       // 处理分类ID（cat_xxx格式）
       if (bankId?.startsWith('cat_')) {
         const categoryId = bankId.replace('cat_', '');
-        const data = await apiClient.get(`/api/questions?categoryId=${categoryId}`);
-        return data.questions as Question[];
+        const url = `/api/questions?categoryId=${categoryId}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          return data.questions as Question[];
+        }
+        return null;
       }
       
       const url = bankId ? `/api/questions?bankId=${bankId}` : '/api/questions';
-      const data = await apiClient.get(url);
-      return data.questions as Question[];
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        return data.questions as Question[];
+      }
     } catch (error) {
-      // API 客户端已处理错误，这里静默返回 null
+      // 忽略错误
     }
     return null;
   }, []);
