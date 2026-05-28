@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Dysmsapi20170525, * as $Dysmsapi20170525 from '@alicloud/dysmsapi20170525';
-import OpenApi, * as $OpenApi from '@alicloud/openapi-client';
+import * as $OpenApi from '@alicloud/openapi-client';
 
 // 验证码存储（生产环境应使用Redis）
 const verificationCodes = new Map<string, { code: string; expiresAt: number }>();
@@ -51,7 +51,7 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
     templateParam: JSON.stringify({ code, min: '5' }),
   });
 
-  console.log('[普通短信服务] 发送请求:', {
+  console.log('[短信服务] 发送请求:', {
     phoneNumbers: phone,
     signName,
     templateCode,
@@ -60,7 +60,7 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
   try {
     const response = await smsClient.sendSms(sendSmsRequest);
 
-    console.log('[普通短信服务响应]', {
+    console.log('[短信服务响应]', {
       code: response.body.code,
       message: response.body.message,
       requestId: response.body.requestId,
@@ -71,7 +71,7 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
       throw new Error(`短信发送失败: ${response.body.message}`);
     }
 
-    console.log('[普通短信服务] 短信发送成功');
+    console.log('[短信服务] 短信发送成功');
   } catch (error: unknown) {
     console.error('[短信发送异常]', error);
     if (error instanceof Error) {
@@ -159,7 +159,7 @@ export function verifyCode(phone: string, code: string): boolean {
   return true;
 }
 
-// 定期清理过期验证码
+// 清理过期验证码（每10分钟运行一次）
 setInterval(() => {
   const now = Date.now();
   for (const [phone, record] of verificationCodes.entries()) {
@@ -167,4 +167,4 @@ setInterval(() => {
       verificationCodes.delete(phone);
     }
   }
-}, 60 * 1000); // 每分钟清理一次
+}, 10 * 60 * 1000);
