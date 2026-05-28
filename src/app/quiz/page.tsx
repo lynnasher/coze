@@ -638,13 +638,84 @@ function QuizPageContent() {
     );
   };
   
-  // 显示权限检查加载状态
+  // 权限检查骨架屏 - 与正常页面布局一致，无感知过渡
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500">检查权限中...</p>
+      <div className="min-h-screen bg-slate-50">
+        {/* 顶部导航骨架 */}
+        <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-slate-200 animate-pulse"></div>
+              <div className="w-32 h-5 bg-slate-200 rounded animate-pulse"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-20 h-8 bg-slate-200 rounded-lg animate-pulse"></div>
+              <div className="w-8 h-8 bg-slate-200 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+        </header>
+        
+        {/* 进度条骨架 */}
+        <div className="bg-white border-b border-slate-200">
+          <div className="max-w-6xl mx-auto px-4 py-3">
+            <div className="w-full h-2 bg-slate-200 rounded-full animate-pulse"></div>
+            <div className="flex justify-between mt-2">
+              <div className="w-16 h-4 bg-slate-200 rounded animate-pulse"></div>
+              <div className="w-24 h-4 bg-slate-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+        
+        {/* 主体内容骨架 */}
+        <main className="max-w-6xl mx-auto px-4 py-6">
+          <div className="max-w-3xl mx-auto">
+            {/* 题型标签 */}
+            <div className="w-24 h-6 bg-slate-200 rounded-full mb-4 animate-pulse"></div>
+            
+            {/* 案例背景 */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+              <div className="w-24 h-5 bg-slate-200 rounded mb-3 animate-pulse"></div>
+              <div className="space-y-2">
+                <div className="w-full h-4 bg-slate-200 rounded animate-pulse"></div>
+                <div className="w-5/6 h-4 bg-slate-200 rounded animate-pulse"></div>
+                <div className="w-4/6 h-4 bg-slate-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+            
+            {/* 题目内容 */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
+              <div className="space-y-3 mb-6">
+                <div className="w-full h-5 bg-slate-200 rounded animate-pulse"></div>
+                <div className="w-5/6 h-5 bg-slate-200 rounded animate-pulse"></div>
+              </div>
+              
+              {/* 选项骨架 */}
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-full h-14 bg-slate-100 rounded-lg animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+            
+            {/* 答案解析骨架 */}
+            <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 mb-6">
+              <div className="w-24 h-5 bg-amber-200/50 rounded mb-3 animate-pulse"></div>
+              <div className="space-y-2">
+                <div className="w-full h-4 bg-amber-200/50 rounded animate-pulse"></div>
+                <div className="w-4/6 h-4 bg-amber-200/50 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </main>
+        
+        {/* 底部导航骨架 */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg">
+          <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="w-24 h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+            <div className="w-32 h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+            <div className="w-24 h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
         </div>
       </div>
     );
