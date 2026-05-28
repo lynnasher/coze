@@ -99,6 +99,7 @@ function QuizPageContent() {
       // 同步检查本地存储，快速响应
       const userJson = localStorage.getItem('user');
       if (!userJson) {
+        setHasPermission(false);
         setAuthError('请先登录后再做题');
         return;
       }
@@ -107,6 +108,7 @@ function QuizPageContent() {
       try {
         user = JSON.parse(userJson);
       } catch {
+        setHasPermission(false);
         setAuthError('登录状态异常，请重新登录');
         return;
       }
@@ -115,8 +117,8 @@ function QuizPageContent() {
       try {
         const response = await fetch(`/api/banks/${bankId}`);
         if (!response.ok) {
+          setHasPermission(false);
           setAuthError('题库不存在');
-          
           return;
         }
         
@@ -133,8 +135,8 @@ function QuizPageContent() {
         // 检查用户是否已激活该分类
         const activatedCategories = user.activated_categories || [];
         if (!activatedCategories.includes(bankCategoryId)) {
+          setHasPermission(false);
           setAuthError('您没有权限访问该题库，请先激活对应科目');
-          
           return;
         }
         
