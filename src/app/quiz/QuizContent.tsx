@@ -336,10 +336,10 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     }
   }, [quizState]);
   
-  // 返回首页
+  // 返回题库页面
   const handleReturnHome = useCallback(() => {
     resetQuiz();
-    router.push('/');
+    router.push('/?tab=library');
   }, [resetQuiz, router]);
   
   // 子组件：答题卡
@@ -620,13 +620,13 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               </Button>
             </Link>
           )}
-          {/* 返回首页按钮 */}
+          {/* 返回题库按钮 */}
           <Button
             variant="outline"
             className="w-full h-11 rounded-xl border-slate-200 text-slate-600"
             onClick={() => { setShowResultSheet(false); handleReturnHome(); }}
           >
-            返回首页
+            返回题库
           </Button>
         </div>
       </>
@@ -659,8 +659,8 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
           <p className="text-sm text-gray-500 mb-6">
             请先登录以查看和练习题库
           </p>
-          <Button onClick={() => router.push('/')} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
-            返回首页
+          <Button onClick={() => router.push('/?tab=library')} className="rounded-xl bg-indigo-500 hover:bg-indigo-600">
+            返回题库
           </Button>
 
         </div>
@@ -677,8 +677,8 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             <BookOpen className="w-8 h-8 text-slate-400" />
           </div>
           <p className="text-slate-500 mb-4">题目加载中^_^</p>
-          <Button onClick={() => router.push('/')} variant="outline" className="rounded-xl">
-            返回首页
+          <Button onClick={() => router.push('/?tab=library')} variant="outline" className="rounded-xl">
+            返回题库
           </Button>
         </div>
       </div>
