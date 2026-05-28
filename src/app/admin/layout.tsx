@@ -6,6 +6,7 @@ import { getLoginPath } from '@/lib/admin-config';
 import { Shield } from 'lucide-react';
 import { deviceService } from '@/lib/services/device-service';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 // 加载状态
 function AdminLoading() {
@@ -30,7 +31,7 @@ export default function AdminLayout({
 
   // 验证 token
   const checkAuth = useCallback(() => {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem(STORAGE_KEYS.ADMIN_TOKEN);
     if (!token) {
       router.push(getLoginPath());
       return;
@@ -42,22 +43,22 @@ export default function AdminLayout({
       const payload = JSON.parse(atob(payloadStr));
 
       if (!payload.exp || payload.exp < Date.now()) {
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_user');
-        localStorage.removeItem('admin_device_id');
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_DEVICE_ID);
         router.push(getLoginPath());
         return;
       }
 
-      const userStr = localStorage.getItem('admin_user');
+      const userStr = localStorage.getItem(STORAGE_KEYS.ADMIN_USER);
       if (userStr) {
         setCurrentUser(JSON.parse(userStr));
       }
       setIsAuthenticated(true);
     } catch {
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-      localStorage.removeItem('admin_device_id');
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
+      localStorage.removeItem(STORAGE_KEYS.ADMIN_DEVICE_ID);
       router.push(getLoginPath());
     }
   }, [router]);
@@ -123,9 +124,9 @@ export default function AdminLayout({
           <span className="text-slate-300">欢迎，{currentUser?.username}</span>
           <button
             onClick={() => {
-              localStorage.removeItem('admin_token');
-              localStorage.removeItem('admin_user');
-              localStorage.removeItem('admin_device_id');
+              localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+              localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
+              localStorage.removeItem(STORAGE_KEYS.ADMIN_DEVICE_ID);
               router.push(getLoginPath());
             }}
             className="text-slate-300 hover:text-white transition-colors"

@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { checkLoginRateLimit, getClientIP } from '@/lib/admin-auth';
-import { generateToken, verifyPassword, hashPassword } from '@/lib/services/user-service';
-import crypto from 'crypto'; // 添加 crypto 用于生成 deviceId
-
-// 生成设备ID
-function generateDeviceId(): string {
-  return `device_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-}
+import { generateToken, verifyPassword, hashPassword, generateDeviceId } from '@/lib/services/user-service';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {

@@ -21,7 +21,7 @@ export const deviceService = {
     const deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
     if (deviceId) return deviceId;
     // 再检查管理员的 deviceId
-    return localStorage.getItem('admin_device_id');
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_DEVICE_ID);
   },
 
   // 获取当前用户信息（同时支持普通用户和管理员）
@@ -39,7 +39,7 @@ export const deviceService = {
     }
     
     // 检查管理员用户
-    const adminData = localStorage.getItem('admin_user');
+    const adminData = localStorage.getItem(STORAGE_KEYS.ADMIN_USER);
     if (adminData) {
       try {
         const admin = JSON.parse(adminData);
@@ -65,9 +65,9 @@ export const deviceService = {
 
     // 如果没有普通用户，检查管理员
     if (!user) {
-      const adminToken = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-      const adminDeviceId = typeof window !== 'undefined' ? localStorage.getItem('admin_device_id') : null;
-      const adminUserStr = typeof window !== 'undefined' ? localStorage.getItem('admin_user') : null;
+      const adminToken = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ADMIN_TOKEN) : null;
+      const adminDeviceId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ADMIN_DEVICE_ID) : null;
+      const adminUserStr = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.ADMIN_USER) : null;
       
       if (adminToken && adminUserStr) {
         try {
@@ -133,9 +133,9 @@ export const deviceService = {
     localStorage.removeItem(STORAGE_KEYS.USER);
     localStorage.removeItem(STORAGE_KEYS.DEVICE_ID);
     // 清除管理员登录数据
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    localStorage.removeItem('admin_device_id');
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_DEVICE_ID);
     // 清除用户相关的错题数据（避免切换账号时看到之前用户的数据）
     localStorage.removeItem(STORAGE_KEYS.RECORDS);
     localStorage.removeItem(STORAGE_KEYS.WRONG_STREAK);

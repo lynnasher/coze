@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Lock, RefreshCw, Shield } from 'lucide-react';
 import { useCaptcha, CaptchaDisplay, verifyCaptcha } from '@/components/Captcha';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -55,12 +56,12 @@ export default function AdminLoginPage() {
       }
 
       // 保存 token 到 localStorage
-      localStorage.setItem('admin_token', data.token);
-      localStorage.setItem('admin_user', JSON.stringify(data.user));
-      
+      localStorage.setItem(STORAGE_KEYS.ADMIN_TOKEN, data.token);
+      localStorage.setItem(STORAGE_KEYS.ADMIN_USER, JSON.stringify(data.user));
+
       // 存储设备ID（单设备登录控制）
       if (data.deviceId) {
-        localStorage.setItem('admin_device_id', data.deviceId);
+        localStorage.setItem(STORAGE_KEYS.ADMIN_DEVICE_ID, data.deviceId);
       }
       
       // 检查是否需要强制修改密码

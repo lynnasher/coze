@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getLoginPath } from '@/lib/admin-config';
+import { STORAGE_KEYS } from '@/lib/constants';
 
 export function useAdminAuth() {
   const router = useRouter();
@@ -10,8 +11,8 @@ export function useAdminAuth() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
-    const user = localStorage.getItem('admin_user');
+    const token = localStorage.getItem(STORAGE_KEYS.ADMIN_TOKEN);
+    const user = localStorage.getItem(STORAGE_KEYS.ADMIN_USER);
 
     if (!token || !user) {
       router.push(getLoginPath());
@@ -22,8 +23,8 @@ export function useAdminAuth() {
       const payloadStr = token.split('.')[0];
       const payload = JSON.parse(atob(payloadStr));
       if (payload.exp < Date.now()) {
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_user');
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
         router.push(getLoginPath());
         return;
       }
@@ -36,8 +37,8 @@ export function useAdminAuth() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
     router.push(getLoginPath());
   };
 

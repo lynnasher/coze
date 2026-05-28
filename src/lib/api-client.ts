@@ -4,18 +4,19 @@
  */
 
 import { toast } from "sonner";
+import { STORAGE_KEYS } from "./constants";
 
 // 获取认证令牌
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("admin_token");
+  return localStorage.getItem(STORAGE_KEYS.ADMIN_TOKEN);
 }
 
 // 处理 401 未授权
 function handleUnauthorized() {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_user");
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.ADMIN_USER);
     window.location.href = "/admin/login";
   }
 }
