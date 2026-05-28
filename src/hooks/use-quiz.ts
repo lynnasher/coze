@@ -18,7 +18,6 @@ export function useQuiz() {
     isComplete: false,
   });
 
-  const [isLoading, setIsLoading] = useState(true);
   const [hasStarted, setHasStarted] = useState(false); // 追踪是否已开始练习
   const preloadIndexRef = useRef(-1); // 记录已预加载到的位置
   const isMountedRef = useRef(true); // 跟踪组件是否已挂载
@@ -115,11 +114,7 @@ export function useQuiz() {
 
   // 初始化加载题目 - 仅用于首页展示，不加载题目详情
   // 题目加载由 startQuiz 统一管理
-  useEffect(() => {
-    // 初始化时不加载任何题目，题目加载由 startQuiz 统一管理
-    // 避免在用户开始练习某个题库后，初始化 effect 加载所有题目覆盖掉
-    setIsLoading(false);
-  }, []); // 空依赖，确保只执行一次
+  // 注意：题目加载由 startQuiz 统一管理，不在这里初始化
 
   // 开始练习
   const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
@@ -648,7 +643,6 @@ export function useQuiz() {
     currentQuestion,
     currentAnswer,
     isAnswerCorrect,
-    isLoading,
     hasStarted,
     setHasStarted,
     startQuiz,

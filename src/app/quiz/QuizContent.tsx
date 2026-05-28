@@ -77,7 +77,6 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   // 使用 useQuiz hook
   const {
     quizState,
-    isLoading,
     startQuiz,
     selectAnswer,
     submitAnswer,
@@ -642,7 +641,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
           <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center animate-pulse">
             <BookOpen className="w-8 h-8 text-indigo-500" />
           </div>
-          <p className="text-slate-500">正在检查权限...</p>
+          <p className="text-slate-500">题目加载中^_^</p>
         </div>
       </div>
     );
@@ -664,20 +663,6 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             返回首页
           </Button>
 
-        </div>
-      </div>
-    );
-  }
-  
-  // 显示加载状态
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 animate-in fade-in duration-300">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center animate-pulse">
-            <BookOpen className="w-8 h-8 text-indigo-500" />
-          </div>
-          <p className="text-slate-500">正在加载题目...</p>
         </div>
       </div>
     );
