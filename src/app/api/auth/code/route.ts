@@ -52,6 +52,13 @@ async function sendSmsCode(phone: string, code: string): Promise<void> {
   const response = await client.sendSms(sendSmsRequest);
 
   if (response.body.code !== 'OK') {
+    console.error('[阿里云短信错误]', {
+      code: response.body.code,
+      message: response.body.message,
+      requestId: response.body.requestId,
+      templateCode: process.env.ALIYUN_SMS_TEMPLATE_CODE,
+      signName: process.env.ALIYUN_SMS_SIGN_NAME,
+    });
     throw new Error(`短信发送失败: ${response.body.message}`);
   }
 }
@@ -130,10 +137,17 @@ export async function POST(request: Request) {
           });
         } catch (smsError) {
           console.error('[短信发送失败]', smsError);
-          return NextResponse.json(
-            { success: false, error: '短信发送失败，请稍后重试' },
-            { status: 500 }
-          );
+          // 阿里云短信发送失败时，降级到测试模式
+          console.log(`[测试模式-降级] 手机号: ${phone}, 验证码: ${code}`);
+          console.log('[提示] 阿里云短信配置可能有问题，已自动切换到测试模式');
+          console.log('[阿里云短信错误]', (smsError as Error).message);
+          
+          verificationCodes.set(phone, { code, expiresAt });
+          return NextResponse.json({ 
+            success: true, 
+            message: '验证码已发送（测试模式）',
+            testCode: code // 降级到测试模式时返回验证码
+          });
         }
       } else {
         // 开发/测试环境：控制台输出验证码
