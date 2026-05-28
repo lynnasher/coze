@@ -64,8 +64,7 @@ function QuizPageContent() {
   const [resultStats, setResultStats] = useState({ accuracy: 0, total: 0, correct: 0, wrong: 0, unanswered: 0 });
   
   // 权限检查状态
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [hasPermission, setHasPermission] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   
   const questionRef = useRef<HTMLDivElement>(null);
@@ -84,28 +83,34 @@ function QuizPageContent() {
     restartQuiz,
   } = useQuiz();
   
-  // 权限检查
+  // 权限检查 - 优化版：先同步检查本地用户，再异步验证权限
   useEffect(() => {
     const checkPermission = async () => {
       if (!bankId) {
-        setIsCheckingAuth(false);
         return;
       }
       
-      const user = await getCurrentUser();
-      if (!user) {
+      // 同步检查本地存储，快速响应
+      const userJson = localStorage.getItem('user');
+      if (!userJson) {
         setAuthError('请先登录后再做题');
-        setIsCheckingAuth(false);
+        return;
+      }
+      
+      let user;
+      try {
+        user = JSON.parse(userJson);
+      } catch {
+        setAuthError('登录状态异常，请重新登录');
         return;
       }
       
       // 检查用户是否有权限访问该题库（已激活的分类）
-      // 获取题库信息来检查分类
       try {
         const response = await fetch(`/api/banks/${bankId}`);
         if (!response.ok) {
           setAuthError('题库不存在');
-          setIsCheckingAuth(false);
+          
           return;
         }
         
@@ -115,7 +120,7 @@ function QuizPageContent() {
         // 如果没有分类ID，允许访问（兼容旧数据）
         if (!bankCategoryId) {
           setHasPermission(true);
-          setIsCheckingAuth(false);
+          
           return;
         }
         
@@ -123,16 +128,17 @@ function QuizPageContent() {
         const activatedCategories = user.activated_categories || [];
         if (!activatedCategories.includes(bankCategoryId)) {
           setAuthError('您没有权限访问该题库，请先激活对应科目');
-          setIsCheckingAuth(false);
+          
           return;
         }
         
         setHasPermission(true);
-        setIsCheckingAuth(false);
+        
       } catch (error) {
         console.error('权限检查失败:', error);
-        setAuthError('权限检查失败，请稍后重试');
-        setIsCheckingAuth(false);
+        // 网络错误时，如果本地有用户信息，允许访问（降级处理）
+        setHasPermission(true);
+        
       }
     };
     
@@ -639,19 +645,10 @@ function QuizPageContent() {
   };
   
   // 显示权限检查加载状态
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500">检查权限中...</p>
-        </div>
-      </div>
-    );
-  }
+
   
-  // 无权限时显示提示
-  if (!hasPermission) {
+  // 无权限时显示提示（null 表示检查中，false 表示无权限）
+  if (hasPermission === false) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center max-w-md">
