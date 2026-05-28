@@ -245,7 +245,7 @@ export default function RecitePage() {
             背题模式需要登录后才能访问
           </p>
           <Button 
-            onClick={() => router.push('/')}
+            onClick={() => router.push('/?tab=library')}
             className="bg-indigo-600 hover:bg-indigo-700"
           >
             返回首页
