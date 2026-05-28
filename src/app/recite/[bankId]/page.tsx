@@ -327,7 +327,7 @@ export default function RecitePage() {
         {questions.length === 0 ? (
           <div className="text-center py-20">
             <BookOpen className="w-12 h-12 text-gray-300 mx-auto" />
-            <p className="mt-4 text-gray-500">不要那么着急，先做一次再背题</p>
+            <p className="mt-4 text-gray-500">该题库暂无题目</p>
           </div>
         ) : (
           <div className="space-y-8">
