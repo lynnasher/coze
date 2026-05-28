@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getLoginPath } from '@/lib/admin-config';
+import { apiClient } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -310,21 +311,10 @@ export default function AdminPage() {
     setIsChangingPassword(true);
     setPasswordError('');
     try {
-      const token = localStorage.getItem('admin_token');
-      if (!token) {
-        setPasswordError('登录已过期，请重新登录');
-        setIsChangingPassword(false);
-        return;
-      }
-      const response = await fetch('/api/admin/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ oldPassword, newPassword }),
+      const result = await apiClient.post('/api/admin/change-password', {
+        oldPassword,
+        newPassword,
       });
-      const result = await response.json();
       if (result.success) {
         // 更新当前设备的 device_id，使其他设备被踢下线
         if (result.deviceId) {
@@ -338,8 +328,8 @@ export default function AdminPage() {
       } else {
         setPasswordError(result.error || '密码修改失败');
       }
-    } catch (error) {
-      setPasswordError('网络错误，请重试');
+    } catch (error: any) {
+      setPasswordError(error.message || '网络错误，请重试');
     } finally {
       setIsChangingPassword(false);
     }

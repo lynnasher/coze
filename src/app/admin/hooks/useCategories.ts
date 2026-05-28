@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { apiClient } from '@/lib/api-client';
 import type { Category } from '../types';
 import { STORAGE_KEYS } from '../types';
 
@@ -59,32 +60,23 @@ export function useCategories() {
 
   const loadCategories = useCallback(async () => {
     try {
-      const response = await fetch('/api/admin/categories', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-      });
+      const data = await apiClient.get<{ categories: Category[] }>('/api/admin/categories');
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.categories) {
-          // 按层级排序：父分类在前，子分类在后，同级按 order 排序
-          const sortedCategories = sortCategoriesByHierarchy(data.categories);
-          setCategories(sortedCategories);
-          localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(sortedCategories));
-          return;
-        }
-      }
-
-      const storedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      if (storedCategories) {
-        setCategories(JSON.parse(storedCategories));
+      if (data.categories) {
+        // 按层级排序：父分类在前，子分类在后，同级按 order 排序
+        const sortedCategories = sortCategoriesByHierarchy(data.categories);
+        setCategories(sortedCategories);
+        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(sortedCategories));
+        return;
       }
     } catch {
-      const storedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      if (storedCategories) {
-        setCategories(JSON.parse(storedCategories));
-      }
+      // 静默处理错误，使用本地缓存
+    }
+
+    // 使用本地缓存
+    const storedCategories = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+    if (storedCategories) {
+      setCategories(JSON.parse(storedCategories));
     }
   }, []);
 
@@ -96,31 +88,24 @@ export function useCategories() {
     if (!name.trim()) return { success: false, error: '请输入分类名称' };
 
     try {
-      const url = editingCategory ? `/api/admin/categories/${editingCategory.id}` : '/api/admin/categories';
-      const method = editingCategory ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({
+      if (editingCategory) {
+        await apiClient.put(`/api/admin/categories/${editingCategory.id}`, {
           name: name.trim(),
           color,
           parentId,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { success: false, error: error.error || '保存失败' };
+        });
+      } else {
+        await apiClient.post('/api/admin/categories', {
+          name: name.trim(),
+          color,
+          parentId,
+        });
       }
 
       await loadCategories();
       return { success: true };
-    } catch {
-      return { success: false, error: '网络错误' };
+    } catch (error: any) {
+      return { success: false, error: error?.message || '保存失败' };
     }
   };
 
@@ -140,16 +125,7 @@ export function useCategories() {
 
     try {
       for (const id of idsToDelete) {
-        const response = await fetch(`/api/admin/categories/${id}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-        });
-
-        if (!response.ok) {
-          return { success: false, error: '删除失败' };
-        }
+        await apiClient.delete(`/api/admin/categories/${id}`);
       }
 
       await loadCategories();

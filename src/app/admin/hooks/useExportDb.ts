@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { apiClient } from '@/lib/api-client';
 
 export function useExportDb() {
   const [availableTables, setAvailableTables] = useState<Array<{ id: string; name: string; color: string }>>([]);
@@ -9,17 +10,13 @@ export function useExportDb() {
   const fetchAvailableTables = useCallback(async () => {
     setLoadingTables(true);
     try {
-      const response = await fetch('/api/admin/export-db', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-      });
+      const data = await apiClient.get<{
+        success: boolean;
+        tables: Array<{ id: string; name: string; color: string }>;
+      }>('/api/admin/export-db');
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setAvailableTables(data.tables);
-        }
+      if (data.success) {
+        setAvailableTables(data.tables);
       }
     } finally {
       setLoadingTables(false);
@@ -28,24 +25,10 @@ export function useExportDb() {
 
   const exportDatabase = async (selectedTables: string[]) => {
     try {
-      const response = await fetch('/api/admin/export-db', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({ tables: selectedTables }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { success: false, error: error.error || '导出失败' };
-      }
-
-      const data = await response.json();
+      const data = await apiClient.post('/api/admin/export-db', { tables: selectedTables });
       return { success: true, data };
-    } catch {
-      return { success: false, error: '网络错误' };
+    } catch (error: any) {
+      return { success: false, error: error?.message || '导出失败' };
     }
   };
 
