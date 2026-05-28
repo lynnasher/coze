@@ -28,7 +28,7 @@ import {
   Grid3X3,
   ArrowLeft,
 } from 'lucide-react';
-import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService, generateId, getWrongQuestionIds, bankStore } from '@/lib/quiz-store';
+import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService, generateId, getWrongQuestionIds } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
@@ -100,15 +100,16 @@ function QuizPageContent() {
       }
       
       // 检查用户是否有权限访问该题库（已激活的分类）
-      // 从本地 store 获取题库信息（避免网络请求，提升加载速度）
+      // 获取题库信息来检查分类
       try {
-        const bank = bankStore.getById(bankId);
-        if (!bank) {
+        const response = await fetch(`/api/banks/${bankId}`);
+        if (!response.ok) {
           setAuthError('题库不存在');
           setIsCheckingAuth(false);
           return;
         }
         
+        const bank = await response.json();
         const bankCategoryId = bank.categoryId;
         
         // 如果没有分类ID，允许访问（兼容旧数据）
