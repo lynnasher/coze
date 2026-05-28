@@ -25,7 +25,7 @@ export function useExportDb() {
 
   const exportDatabase = async (selectedTables: string[]) => {
     try {
-      const data = await apiClient.post('/api/admin/export-db', { tables: selectedTables });
+      const data = await apiClient.post('/api/admin/export-db', { tables: selectedTables }) as { sql?: string };
       return { success: true, data };
     } catch (error: any) {
       return { success: false, error: error?.message || '导出失败' };
