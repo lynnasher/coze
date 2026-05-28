@@ -314,7 +314,7 @@ export default function AdminPage() {
       const result = await apiClient.post('/api/admin/change-password', {
         oldPassword,
         newPassword,
-      });
+      }) as { success?: boolean; deviceId?: string; error?: string };
       if (result.success) {
         // 更新当前设备的 device_id，使其他设备被踢下线
         if (result.deviceId) {
