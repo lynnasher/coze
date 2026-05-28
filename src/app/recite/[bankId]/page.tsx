@@ -95,13 +95,17 @@ export default function RecitePage() {
           });
         }
 
-        // 如果 localStorage 没有数据，尝试从后端获取
+        // 如果 localStorage 没有数据，尝试从后端获取（使用普通用户接口）
         if (bankQuestions.length === 0) {
-          const response = await fetch(`/api/admin/banks/${bankId}/questions`);
+          const response = await fetch(`/api/questions?bankId=${bankId}`);
           if (response.ok) {
             const data = await response.json();
             bankQuestions = data.questions || [];
             if (data.bankName) setBankName(data.bankName);
+            // 将获取到的题目存入 localStorage，后续无需再请求
+            if (bankQuestions.length > 0) {
+              questionStore.addMultiple(bankQuestions);
+            }
           }
         }
 
