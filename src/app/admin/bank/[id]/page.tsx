@@ -778,6 +778,30 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
     setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, text } : opt));
   };
 
+  // 添加选项
+  const addOption = () => {
+    const nextId = String.fromCharCode(97 + options.length); // a=97, b=98, ...
+    if (nextId <= 'z') {
+      setOptions(prev => [...prev, { id: nextId, text: '' }]);
+    }
+  };
+
+  // 删除选项
+  const removeOption = (id: string) => {
+    if (options.length <= 2) {
+      alert('至少需要保留2个选项');
+      return;
+    }
+    setOptions(prev => {
+      const filtered = prev.filter(opt => opt.id !== id);
+      // 重新编号 a, b, c, d...
+      return filtered.map((opt, index) => ({
+        ...opt,
+        id: String.fromCharCode(97 + index),
+      }));
+    });
+  };
+
   // 添加子题
   const addChildQuestion = () => {
     const newChild: Question = {
@@ -953,9 +977,30 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                         {/* 子题选项（单选/多选） */}
                         {['single', 'multiple'].includes(child.type) && (
                           <div className="space-y-1 mb-2">
-                            <Label className="text-xs text-slate-500">选项</Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs text-slate-500">选项</Label>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs"
+                                onClick={() => {
+                                  const opts = child.options || [];
+                                  const nextId = String.fromCharCode(97 + opts.length);
+                                  if (nextId <= 'z') {
+                                    updateChildQuestion(index, {
+                                      options: [...opts, { id: nextId, text: '' }],
+                                    });
+                                  }
+                                }}
+                                disabled={(child.options?.length || 0) >= 26}
+                              >
+                                <Plus className="w-3 h-3 mr-1" />
+                                添加
+                              </Button>
+                            </div>
                             <div className="grid grid-cols-1 gap-1">
-                              {child.options?.map((opt) => (
+                              {child.options?.map((opt, optIndex) => (
                                 <div key={opt.id} className="flex items-center gap-2">
                                   <span className="w-5 text-xs font-medium">{opt.id}.</span>
                                   <Input
@@ -969,6 +1014,26 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                                     placeholder={`选项 ${opt.id.toUpperCase()}`}
                                     className="h-7 text-sm"
                                   />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+                                    onClick={() => {
+                                      if ((child.options?.length || 0) <= 2) {
+                                        alert('至少需要保留2个选项');
+                                        return;
+                                      }
+                                      const filtered = child.options?.filter(o => o.id !== opt.id) || [];
+                                      const renumbered = filtered.map((o, i) => ({
+                                        ...o,
+                                        id: String.fromCharCode(97 + i),
+                                      }));
+                                      updateChildQuestion(index, { options: renumbered });
+                                    }}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
                                 </div>
                               ))}
                             </div>
@@ -1024,7 +1089,19 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
           {/* 选项 */}
           {showOptions && (
             <div className="space-y-2">
-              <Label>选项</Label>
+              <div className="flex items-center justify-between">
+                <Label>选项</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addOption}
+                  disabled={options.length >= 26}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  添加选项
+                </Button>
+              </div>
               <div className="space-y-2">
                 {options.map((opt) => (
                   <div key={opt.id} className="flex items-center gap-2">
@@ -1034,6 +1111,15 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                       onChange={(e) => handleOptionChange(opt.id, e.target.value)}
                       placeholder={`选项 ${opt.id.toUpperCase()}`}
                     />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeOption(opt.id)}
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
                   </div>
                 ))}
               </div>
