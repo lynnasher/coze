@@ -174,6 +174,19 @@ export default function WrongBookPage() {
         
         recordStore.save(mergedRecords);
         wrongStreakStore.save(mergedStreaks);
+        
+        // 获取云端记录中的题目ID，并尝试从云端获取缺失的题目
+        const cloudQuestionIds = [...new Set(validRecords.map(r => r.questionId))];
+        const localQuestions = questionStore.getAll();
+        const localQuestionIds = new Set(localQuestions.map(q => q.id));
+        const missingQuestionIds = cloudQuestionIds.filter(id => !localQuestionIds.has(id));
+        
+        if (missingQuestionIds.length > 0) {
+          // 延迟执行，让状态先更新
+          setTimeout(() => {
+            fetchQuestionsFromCloud(missingQuestionIds);
+          }, 100);
+        }
       }
       // 再按需 push 本地数据
       if (!skipPush) {
@@ -183,7 +196,7 @@ export default function WrongBookPage() {
       setIsSyncing(false);
       recalculateWrongData();
     }
-  }, [recalculateWrongData]);
+  }, [recalculateWrongData, fetchQuestionsFromCloud]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const user = getStoredUser();
