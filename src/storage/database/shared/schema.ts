@@ -96,6 +96,7 @@ export const questionBanks = pgTable(
     source_file: varchar("source_file", { length: 255 }),
     question_count: integer("question_count").default(0),
     category_id: varchar("category_id", { length: 36 }).references(() => categories.id),
+    sort_order: integer("sort_order").default(0),
     status: varchar("status", { length: 20 }).default("active"), // active=正常, disabled=禁用
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),

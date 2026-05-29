@@ -9,6 +9,7 @@ export interface DbQuestionBank {
   source_file: string | null;
   question_count: number;
   category_id: string | null;
+  sort_order: number;
   status: string;
   created_at: string;
   updated_at: string;
@@ -97,6 +98,7 @@ export const bankService = {
       .from('question_banks')
       .select('*')
       .neq('status', 'disabled') // 排除已禁用的题库
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`获取题库列表失败: ${error.message}`);
