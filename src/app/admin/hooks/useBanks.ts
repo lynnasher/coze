@@ -62,11 +62,11 @@ export function useBanks() {
   const updateBankOrder = async (newBanks: QuestionBank[]) => {
     setBanks(newBanks);
     try {
-      await apiClient.post('/api/admin/banks/reorder', {
-        bankIds: newBanks.map((b) => b.id),
+      await apiClient.put('/api/admin/banks/reorder', {
+        orders: newBanks.map((b, index) => ({ id: b.id, sortOrder: index })),
       });
-    } catch {
-      // 静默处理错误
+    } catch (err) {
+      console.error('保存排序失败:', err);
     }
   };
 
