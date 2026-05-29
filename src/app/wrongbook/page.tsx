@@ -196,7 +196,7 @@ export default function WrongBookPage() {
       setIsSyncing(false);
       recalculateWrongData();
     }
-  }, [recalculateWrongData, fetchQuestionsFromCloud]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recalculateWrongData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const user = getStoredUser();
