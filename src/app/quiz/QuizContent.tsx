@@ -75,16 +75,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   
   // 进度恢复状态
   const [showResumeDialog, setShowResumeDialog] = useState(false);
-  const [savedProgress, setSavedProgress] = useState<{
-    currentIndex: number;
-    total: number;
-    progress: string;
-    bankId: string;
-    mode: 'random' | 'sequential' | 'wrong';
-    answers: Record<string, string | string[]>;
-    timeSpent: number;
-    questionIds: string[];
-  } | null>(null);
+  const [savedProgress, setSavedProgress] = useState<QuizProgress | null>(null);
   
   const questionRef = useRef<HTMLDivElement>(null);
   
@@ -148,17 +139,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
         // 检查是否有可恢复的做题进度
         const progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
         if (progress && progress.questionIds.length > 0) {
-          const answeredCount = Object.keys(progress.answers).length;
-          setSavedProgress({
-            currentIndex: progress.currentIndex + 1,
-            total: progress.questionIds.length,
-            progress: `${answeredCount}/${progress.questionIds.length}`,
-            bankId: progress.bankId,
-            mode: progress.mode,
-            answers: progress.answers,
-            timeSpent: progress.timeSpent,
-            questionIds: progress.questionIds,
-          });
+          setSavedProgress(progress);
           setShowResumeDialog(true);
           setIsCheckingAuth(false);
           return;
@@ -729,9 +710,9 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                 </div>
                 <DialogTitle className="text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
                 <p className="text-sm text-slate-500">
-                  上次做到第 {savedProgress?.currentIndex || 0} 题，共 {savedProgress?.total || 0} 题
+                  上次做到第 {(savedProgress?.currentIndex ?? 0) + 1} 题，共 {savedProgress?.questionIds?.length || 0} 题
                   <br />
-                  已答 {savedProgress?.progress || '0/0'} 题
+                  已答 {savedProgress ? Object.keys(savedProgress.answers).length : 0}/{savedProgress?.questionIds?.length || 0} 题
                 </p>
               </DialogHeader>
               <div className="flex gap-3 mt-4">
