@@ -718,19 +718,19 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               <div className="flex gap-3 mt-4">
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     setShowResumeDialog(false);
                     clearProgress(bankId);
-                    startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
+                    await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
                   }}
                   className="flex-1 rounded-xl h-11"
                 >
                   重新开始
                 </Button>
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     setShowResumeDialog(false);
-                    startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false, savedProgress);
+                    await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false, savedProgress);
                   }}
                   className="flex-1 rounded-xl h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                 >
