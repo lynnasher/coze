@@ -707,8 +707,61 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     );
   }
   
-  // 题库为空时显示提示
+  // 题库为空时，检查是否需要显示恢复进度弹窗
   if (quizState.questions.length === 0) {
+    // 如果有保存的进度，显示恢复弹窗
+    if (showResumeDialog && savedProgress) {
+      return (
+        <>
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 animate-in fade-in duration-300">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 rounded-full flex items-center justify-center animate-pulse">
+                <BookOpen className="w-8 h-8 text-indigo-500" />
+              </div>
+              <p className="text-slate-500">正在准备题目...</p>
+            </div>
+          </div>
+          <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+            <DialogContent className="max-w-[90vw] sm:max-w-sm rounded-2xl p-5">
+              <DialogHeader className="text-center space-y-3">
+                <div className="w-14 h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="w-7 h-7 text-white" />
+                </div>
+                <DialogTitle className="text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
+                <p className="text-sm text-slate-500">
+                  上次做到第 {savedProgress?.currentIndex || 0} 题，共 {savedProgress?.total || 0} 题
+                  <br />
+                  已答 {savedProgress?.progress || '0/0'} 题
+                </p>
+              </DialogHeader>
+              <div className="flex gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowResumeDialog(false);
+                    clearProgress();
+                    startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
+                  }}
+                  className="flex-1 rounded-xl h-11"
+                >
+                  重新开始
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowResumeDialog(false);
+                    startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, true, savedProgress);
+                  }}
+                  className="flex-1 rounded-xl h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                >
+                  继续上次
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 animate-in fade-in duration-300">
         <div className="text-center">
