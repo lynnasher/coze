@@ -192,7 +192,10 @@ export function useQuiz() {
   }, []);
 
   // 开始练习
-  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null, clearSaved = true) => {
+  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null, options?: { clearSaved?: boolean; initialProgress?: QuizProgress }) => {
+    const clearSaved = options?.clearSaved ?? true;
+    const initialProgress = options?.initialProgress;
+    
     // 清除之前的进度（恢复时不清除）
     if (clearSaved) {
       clearProgress();
@@ -307,13 +310,14 @@ export function useQuiz() {
       });
     }
 
+    // 使用初始进度或默认值
     setQuizState({
       questions,
-      currentIndex: 0,
-      answers: {},
+      currentIndex: initialProgress?.currentIndex ?? 0,
+      answers: initialProgress?.answers ?? {},
       showResult: false,
       mode,
-      timeSpent: 0,
+      timeSpent: initialProgress?.timeSpent ?? 0,
       isComplete: false,
       bankId: currentBankId || undefined,
       bankName: currentBankName || undefined,

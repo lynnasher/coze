@@ -100,7 +100,6 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     resetQuiz,
     restartQuiz,
     checkProgress,
-    resumeQuiz,
     clearProgress,
   } = useQuiz();
   
@@ -1154,11 +1153,8 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               onClick={async () => {
                 setShowResumeDialog(false);
                 setIsCheckingAuth(true);
-                // 传入 false 不清除已保存的进度
-                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false);
-                if (savedProgress) {
-                  resumeQuiz(savedProgress);
-                }
+                // 传入初始进度，startQuiz 会自动恢复状态
+                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false, savedProgress);
                 setIsCheckingAuth(false);
               }}
             >
