@@ -135,3 +135,94 @@
 body {
   @apply font-sans;
 }
+
+/* 打印样式 - 简化输出 */
+@media print {
+  /* 基础样式重置 */
+  * {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000 !important;
+  }
+  
+  /* 隐藏装饰性元素 */
+  header,
+  .sticky,
+  button,
+  svg,
+  [class*="rounded-full"],
+  [class*="backdrop-blur"] {
+    display: none !important;
+  }
+  
+  /* 简化卡片样式 */
+  [class*="rounded-xl"],
+  [class*="rounded-lg"] {
+    border-radius: 0 !important;
+    border: 1px solid #ccc !important;
+    margin-bottom: 12pt !important;
+    padding: 8pt !important;
+  }
+  
+  /* 简化颜色 */
+  [class*="text-gray"],
+  [class*="text-slate"] {
+    color: #333 !important;
+  }
+  
+  [class*="text-emerald"],
+  [class*="text-green"] {
+    color: #000 !important;
+    font-weight: 600 !important;
+  }
+  
+  [class*="text-amber"],
+  [class*="text-yellow"] {
+    color: #333 !important;
+  }
+  
+  [class*="text-indigo"],
+  [class*="text-purple"],
+  [class*="text-rose"],
+  [class*="text-cyan"],
+  [class*="text-teal"] {
+    color: #333 !important;
+  }
+  
+  /* 正确选项标记 */
+  [class*="bg-emerald-50"],
+  [class*="bg-green-50"] {
+    border: 1px solid #666 !important;
+  }
+  
+  /* 答案区域 */
+  [class*="bg-amber-50"] {
+    border: 1px dashed #999 !important;
+  }
+  
+  /* 题型标签 */
+  [class*="bg-indigo-100"],
+  [class*="bg-purple-100"],
+  [class*="bg-rose-100"],
+  [class*="bg-cyan-100"],
+  [class*="bg-teal-100"] {
+    border: 1px solid #ccc !important;
+    padding: 2pt 6pt !important;
+  }
+  
+  /* 页面边距 */
+  @page {
+    margin: 2cm;
+  }
+  
+  /* 避免分页 */
+  div {
+    page-break-inside: avoid;
+  }
+}
