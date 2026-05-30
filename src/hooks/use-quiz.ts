@@ -508,14 +508,17 @@ export function useQuiz() {
   }, [quizState.mode, startQuiz]);
 
   // 重置练习状态（返回首页时调用）
-  const resetQuiz = useCallback(() => {
+  const resetQuiz = useCallback((clearSavedProgress = true) => {
     clearPreloadCache(); // 清除预加载缓存
     preloadIndexRef.current = -1; // 重置预加载位置
 
-    // 清除 localStorage 中的进度
-    try {
-      localStorage.removeItem(QUIZ_PROGRESS_KEY);
-    } catch {}
+    // 仅当明确指定时才清除 localStorage 中的进度
+    // 用户做到一半退出时，不清除进度以便下次恢复
+    if (clearSavedProgress) {
+      try {
+        localStorage.removeItem(QUIZ_PROGRESS_KEY);
+      } catch {}
+    }
 
     setQuizState({
       questions: [],

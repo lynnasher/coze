@@ -365,9 +365,11 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   
   // 返回题库页面
   const handleReturnHome = useCallback(() => {
-    resetQuiz();
+    // 如果已完成（交卷），清除进度；否则保留进度以便下次恢复
+    const shouldClear = quizState.isComplete;
+    resetQuiz(shouldClear);
     router.push('/?tab=library');
-  }, [resetQuiz, router]);
+  }, [resetQuiz, router, quizState.isComplete]);
   
   // 子组件：答题卡
   // eslint-disable-next-line react-hooks/static-components
