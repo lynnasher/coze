@@ -136,18 +136,19 @@ body {
   @apply font-sans;
 }
 
-/* 打印样式 - 简化输出 */
+/* 打印样式 - 紧凑简化输出 */
 @media print {
   /* 基础样式重置 */
   * {
     background: transparent !important;
     box-shadow: none !important;
     text-shadow: none !important;
+    border: none !important;
   }
   
   body {
-    font-size: 12pt;
-    line-height: 1.5;
+    font-size: 11pt;
+    line-height: 1.4;
     color: #000 !important;
   }
   
@@ -155,74 +156,88 @@ body {
   header,
   .sticky,
   button,
-  svg,
-  [class*="rounded-full"],
   [class*="backdrop-blur"] {
     display: none !important;
   }
   
-  /* 简化卡片样式 */
+  /* 隐藏图标 svg */
+  svg {
+    display: none !important;
+  }
+  
+  /* 题号保留显示，去掉装饰 */
+  [class*="rounded-full"] {
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 18pt !important;
+    padding: 0 4pt 0 0 !important;
+    margin: 0 !important;
+    display: inline !important;
+  }
+  
+  /* 去掉卡片边框和圆角，紧凑间距 */
   [class*="rounded-xl"],
   [class*="rounded-lg"] {
     border-radius: 0 !important;
-    border: 1px solid #ccc !important;
-    margin-bottom: 12pt !important;
-    padding: 8pt !important;
+    margin: 0 0 8pt 0 !important;
+    padding: 0 !important;
   }
   
-  /* 简化颜色 */
+  /* 选项紧凑排列 */
+  [class*="space-y-2"] > * {
+    margin: 0 0 3pt 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* 答案和解析区域紧凑 */
+  [class*="bg-emerald-50"],
+  [class*="bg-green-50"],
+  [class*="bg-amber-50"] {
+    padding: 3pt 0 !important;
+    margin: 3pt 0 !important;
+  }
+  
+  /* 统一文字颜色 */
   [class*="text-gray"],
-  [class*="text-slate"] {
-    color: #333 !important;
-  }
-  
+  [class*="text-slate"],
   [class*="text-emerald"],
-  [class*="text-green"] {
-    color: #000 !important;
-    font-weight: 600 !important;
-  }
-  
+  [class*="text-green"],
   [class*="text-amber"],
-  [class*="text-yellow"] {
-    color: #333 !important;
-  }
-  
   [class*="text-indigo"],
   [class*="text-purple"],
   [class*="text-rose"],
   [class*="text-cyan"],
   [class*="text-teal"] {
-    color: #333 !important;
+    color: #000 !important;
   }
   
-  /* 正确选项标记 */
-  [class*="bg-emerald-50"],
-  [class*="bg-green-50"] {
-    border: 1px solid #666 !important;
-  }
-  
-  /* 答案区域 */
-  [class*="bg-amber-50"] {
-    border: 1px dashed #999 !important;
-  }
-  
-  /* 题型标签 */
+  /* 题型标签简化 */
   [class*="bg-indigo-100"],
   [class*="bg-purple-100"],
   [class*="bg-rose-100"],
   [class*="bg-cyan-100"],
-  [class*="bg-teal-100"] {
-    border: 1px solid #ccc !important;
-    padding: 2pt 6pt !important;
+  [class*="bg-teal-100"],
+  [class*="bg-gray-100"] {
+    padding: 0 4pt !important;
+    margin-right: 4pt !important;
   }
   
-  /* 页面边距 */
+  /* 页面边距 - 节省用纸 */
   @page {
-    margin: 2cm;
+    margin: 1.2cm 0.8cm;
+    size: A4;
   }
   
-  /* 避免分页 */
-  div {
+  /* 题目之间避免分页 */
+  [class*="space-y-6"] > * {
     page-break-inside: avoid;
+    margin-bottom: 10pt !important;
+  }
+  
+  /* 子题紧凑 */
+  [class*="divide-y"] > * {
+    padding: 6pt 0 !important;
+    margin: 0 !important;
   }
 }
