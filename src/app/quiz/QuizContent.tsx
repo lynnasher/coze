@@ -749,7 +749,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                 <Button
                   onClick={() => {
                     setShowResumeDialog(false);
-                    startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, true, savedProgress);
+                    startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false, savedProgress);
                   }}
                   className="flex-1 rounded-xl h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                 >
