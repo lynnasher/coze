@@ -145,20 +145,12 @@ export function useQuiz() {
       // 按 bankId 读取对应的进度
       const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
       const saved = localStorage.getItem(key);
-      console.log('[DEBUG] checkProgress:', { key, saved: saved ? 'exists' : 'null', bankId, mode });
       if (!saved) return null;
       const parsed = JSON.parse(saved) as QuizProgress;
-      console.log('[DEBUG] checkProgress parsed:', { 
-        currentIndex: parsed.currentIndex,
-        answersCount: parsed.answers ? Object.keys(parsed.answers).length : 0,
-        parsedBankId: parsed.bankId,
-        parsedMode: parsed.mode,
-      });
       const isSameBank = parsed.bankId === bankId;
       const isSameMode = parsed.mode === mode;
       const hasQuestions = parsed.questionIds && parsed.questionIds.length > 0;
       if (isSameBank && isSameMode && hasQuestions) {
-        console.log('[DEBUG] checkProgress returning parsed with currentIndex:', parsed.currentIndex);
         return parsed;
       }
     } catch {
@@ -324,11 +316,6 @@ export function useQuiz() {
     }
 
     // 使用初始进度或默认值
-    console.log('[DEBUG] startQuiz setQuizState:', {
-      initialProgressCurrentIndex: initialProgress?.currentIndex,
-      initialProgressAnswers: initialProgress?.answers ? Object.keys(initialProgress.answers).length : 0,
-      willSetCurrentIndex: initialProgress?.currentIndex ?? 0,
-    });
     setQuizState({
       questions,
       currentIndex: initialProgress?.currentIndex ?? 0,
@@ -658,9 +645,13 @@ export function useQuiz() {
       showResult: true,
     }));
 
-    // 清除 sessionStorage（已完成练习）
+    // 清除 localStorage 进度（已完成练习）
     try {
-      sessionStorage.removeItem(QUIZ_SESSION_KEY);
+      if (quizState.bankId) {
+        localStorage.removeItem(`${QUIZ_PROGRESS_KEY}_${quizState.bankId}`);
+      } else {
+        localStorage.removeItem(QUIZ_PROGRESS_KEY);
+      }
     } catch {}
 
     // 交卷后同步数据到云端（检查组件是否已挂载）

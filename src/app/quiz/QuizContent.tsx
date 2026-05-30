@@ -730,7 +730,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                 <Button
                   onClick={async () => {
                     setShowResumeDialog(false);
-                    await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false, savedProgress);
+                    await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, { clearSaved: false, initialProgress: savedProgress! });
                   }}
                   className="flex-1 rounded-xl h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                 >
@@ -1163,9 +1163,9 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             </div>
             <DialogTitle className="text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
             <p className="text-sm text-slate-500">
-              上次做到第 {savedProgress?.currentIndex || 0} 题，共 {savedProgress?.total || 0} 题
+              上次做到第 {(savedProgress?.currentIndex ?? 0) + 1} 题，共 {savedProgress?.questionIds?.length || 0} 题
               <br />
-              已答 {savedProgress?.progress || '0/0'} 题
+              已答 {savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0}/{savedProgress?.questionIds?.length || 0} 题
             </p>
           </DialogHeader>
           <div className="flex gap-3 mt-4">
@@ -1188,7 +1188,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                 setShowResumeDialog(false);
                 setIsCheckingAuth(true);
                 // 传入初始进度，startQuiz 会自动恢复状态
-                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, false, savedProgress);
+                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, { clearSaved: false, initialProgress: savedProgress! });
                 setIsCheckingAuth(false);
               }}
             >
