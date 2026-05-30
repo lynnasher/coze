@@ -76,7 +76,9 @@ export function useQuiz() {
         timestamp: Date.now(),
       };
       try {
-        localStorage.setItem(QUIZ_PROGRESS_KEY, JSON.stringify(progress));
+        // 按 bankId 分别保存进度，支持多题库独立恢复
+        const key = quizState.bankId ? `${QUIZ_PROGRESS_KEY}_${quizState.bankId}` : QUIZ_PROGRESS_KEY;
+        localStorage.setItem(key, JSON.stringify(progress));
       } catch {
         // 忽略存储错误（如存储空间不足）
       }
@@ -140,7 +142,9 @@ export function useQuiz() {
   // 检查是否有可恢复的做题进度
   const checkProgress = useCallback((mode: PracticeMode, bankId?: string | null): QuizProgress | null => {
     try {
-      const saved = localStorage.getItem(QUIZ_PROGRESS_KEY);
+      // 按 bankId 读取对应的进度
+      const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
+      const saved = localStorage.getItem(key);
       if (!saved) return null;
       const parsed = JSON.parse(saved) as QuizProgress;
       const isSameBank = parsed.bankId === bankId;
@@ -185,9 +189,10 @@ export function useQuiz() {
   }, []);
 
   // 清除做题进度
-  const clearProgress = useCallback(() => {
+  const clearProgress = useCallback((bankId?: string | null) => {
     try {
-      localStorage.removeItem(QUIZ_PROGRESS_KEY);
+      const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
+      localStorage.removeItem(key);
     } catch {}
   }, []);
 
@@ -198,7 +203,7 @@ export function useQuiz() {
     
     // 清除之前的进度（恢复时不清除）
     if (clearSaved) {
-      clearProgress();
+      clearProgress(bankId);
     }
 
     // 立即设置 hasStarted 为 true，避免页面闪烁

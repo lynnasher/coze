@@ -720,7 +720,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   variant="outline"
                   onClick={() => {
                     setShowResumeDialog(false);
-                    clearProgress();
+                    clearProgress(bankId);
                     startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
                   }}
                   className="flex-1 rounded-xl h-11"
@@ -1174,7 +1174,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               className="flex-1 rounded-xl"
               onClick={async () => {
                 setShowResumeDialog(false);
-                clearProgress();
+                clearProgress(bankId);
                 setIsCheckingAuth(true);
                 await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
                 setIsCheckingAuth(false);
