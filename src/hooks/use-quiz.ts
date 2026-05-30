@@ -4,8 +4,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
 import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
 
-// sessionStorage key for quiz state persistence
-const QUIZ_SESSION_KEY = 'quiz_current_session';
+// localStorage key for quiz state persistence (持久化，浏览器关闭后仍存在)
+const QUIZ_PROGRESS_KEY = 'quiz_progress';
 
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
@@ -46,16 +46,16 @@ export function useQuiz() {
     };
   }, []);
 
-  // 保存做题状态到 sessionStorage（用于页面刷新恢复）
+  // 保存做题状态到 localStorage（持久化，浏览器关闭后仍可恢复）
   useEffect(() => {
-    if (hasStarted && quizState.questions.length > 0) {
+    if (hasStarted && quizState.questions.length > 0 && !quizState.isComplete) {
       const stateToSave = {
         quizState,
         hasStarted,
         timestamp: Date.now(),
       };
       try {
-        sessionStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(stateToSave));
+        localStorage.setItem(QUIZ_PROGRESS_KEY, JSON.stringify(stateToSave));
       } catch {
         // 忽略存储错误（如存储空间不足）
       }
@@ -116,52 +116,56 @@ export function useQuiz() {
   // 题目加载由 startQuiz 统一管理
   // 注意：题目加载由 startQuiz 统一管理，不在这里初始化
 
-  // 开始练习
-  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
-    // 检查 sessionStorage 是否有保存的状态
+  // 检查是否有可恢复的做题进度
+  const checkProgress = useCallback((mode: PracticeMode, bankId?: string | null) => {
     try {
-      const savedSession = sessionStorage.getItem(QUIZ_SESSION_KEY);
-      if (savedSession) {
-        const parsed = JSON.parse(savedSession) as {
-          quizState: QuizState;
-          hasStarted: boolean;
-          timestamp: number;
-        };
-
-        // 检查是否是同一个题库和模式（5分钟内有效）
-        const isSameBank = parsed.quizState.bankId === bankId;
-        const isSameMode = parsed.quizState.mode === mode;
-        const isRecent = Date.now() - parsed.timestamp < 5 * 60 * 1000; // 5分钟
-        const isNotComplete = !parsed.quizState.isComplete;
-
-        if (isSameBank && isSameMode && isRecent && isNotComplete && parsed.quizState.questions.length > 0) {
-          // 恢复之前的状态
-          setQuizState(parsed.quizState);
-          setHasStarted(true);
-          preloadIndexRef.current = -1; // 重置预加载位置
-
-          // 恢复最近练习记录
-          if (parsed.quizState.bankId) {
-            const existingRecord = recentPracticeStore.getByBankId(parsed.quizState.bankId);
-            if (existingRecord) {
-              recentPracticeStore.update({
-                ...existingRecord,
-                currentIndex: parsed.quizState.currentIndex,
-                lastPracticeAt: Date.now(),
-              });
-            }
-          }
-          return;
-        }
+      const saved = localStorage.getItem(QUIZ_PROGRESS_KEY);
+      if (!saved) return null;
+      const parsed = JSON.parse(saved) as {
+        quizState: QuizState;
+        hasStarted: boolean;
+        timestamp: number;
+      };
+      const isSameBank = parsed.quizState.bankId === bankId;
+      const isSameMode = parsed.quizState.mode === mode;
+      const isNotComplete = !parsed.quizState.isComplete;
+      if (isSameBank && isSameMode && isNotComplete && parsed.quizState.questions.length > 0) {
+        return parsed.quizState;
       }
     } catch {
-      // 解析失败，继续正常流程
+      // 解析失败
     }
+    return null;
+  }, []);
 
-    // 清除之前的 sessionStorage
+  // 恢复做题进度
+  const resumeQuiz = useCallback((savedState: QuizState) => {
+    setQuizState(savedState);
+    setHasStarted(true);
+    preloadIndexRef.current = -1;
+    if (savedState.bankId) {
+      const existingRecord = recentPracticeStore.getByBankId(savedState.bankId);
+      if (existingRecord) {
+        recentPracticeStore.update({
+          ...existingRecord,
+          currentIndex: savedState.currentIndex,
+          lastPracticeAt: Date.now(),
+        });
+      }
+    }
+  }, []);
+
+  // 清除做题进度
+  const clearProgress = useCallback(() => {
     try {
-      sessionStorage.removeItem(QUIZ_SESSION_KEY);
+      localStorage.removeItem(QUIZ_PROGRESS_KEY);
     } catch {}
+  }, []);
+
+  // 开始练习
+  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
+    // 清除之前的进度（如果不恢复的话）
+    clearProgress();
 
     // 立即设置 hasStarted 为 true，避免页面闪烁
     setHasStarted(true);
@@ -508,9 +512,9 @@ export function useQuiz() {
     clearPreloadCache(); // 清除预加载缓存
     preloadIndexRef.current = -1; // 重置预加载位置
 
-    // 清除 sessionStorage
+    // 清除 localStorage 中的进度
     try {
-      sessionStorage.removeItem(QUIZ_SESSION_KEY);
+      localStorage.removeItem(QUIZ_PROGRESS_KEY);
     } catch {}
 
     setQuizState({
@@ -655,5 +659,8 @@ export function useQuiz() {
     restartQuiz,
     resetQuiz,
     stats,
+    checkProgress,
+    resumeQuiz,
+    clearProgress,
   };
 }

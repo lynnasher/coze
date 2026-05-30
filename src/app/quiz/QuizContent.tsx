@@ -72,6 +72,14 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   const [hasPermission, setHasPermission] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
+  // 进度恢复状态
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
+  const [savedProgress, setSavedProgress] = useState<{
+    currentIndex: number;
+    total: number;
+    progress: string;
+  } | null>(null);
+  
   const questionRef = useRef<HTMLDivElement>(null);
   
   // 使用 useQuiz hook
@@ -85,6 +93,9 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     goToQuestion,
     resetQuiz,
     restartQuiz,
+    checkProgress,
+    resumeQuiz,
+    clearProgress,
   } = useQuiz();
   
   // 权限检查和题目加载（合并为一个 effect，并行执行）
@@ -126,8 +137,24 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
           }
         }
         
-        // 权限通过，立即开始加载题目
+        // 权限通过
         setHasPermission(true);
+        
+        // 检查是否有可恢复的做题进度
+        const progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+        if (progress && progress.questions.length > 0) {
+          const answeredCount = Object.keys(progress.answers).length;
+          setSavedProgress({
+            currentIndex: progress.currentIndex + 1,
+            total: progress.questions.length,
+            progress: `${answeredCount}/${progress.questions.length}`,
+          });
+          setShowResumeDialog(true);
+          setIsCheckingAuth(false);
+          return;
+        }
+        
+        // 没有进度，重新开始
         await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
         setIsCheckingAuth(false);
       } catch (error) {
@@ -1078,6 +1105,50 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
           </DialogHeader>
           {/* eslint-disable-next-line react-hooks/static-components */}
           <ResultSheetContent />
+        </DialogContent>
+      </Dialog>
+
+      {/* 恢复做题进度弹窗 */}
+      <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
+        <DialogContent className="max-w-[90vw] sm:max-w-sm rounded-2xl p-5">
+          <DialogHeader className="text-center space-y-3">
+            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <BookOpen className="w-7 h-7 text-white" />
+            </div>
+            <DialogTitle className="text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
+            <p className="text-sm text-slate-500">
+              上次做到第 {savedProgress?.currentIndex || 0} 题，共 {savedProgress?.total || 0} 题
+              <br />
+              已答 {savedProgress?.progress || '0/0'} 题
+            </p>
+          </DialogHeader>
+          <div className="flex gap-3 mt-4">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-xl"
+              onClick={async () => {
+                setShowResumeDialog(false);
+                clearProgress();
+                setIsCheckingAuth(true);
+                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
+                setIsCheckingAuth(false);
+              }}
+            >
+              重新开始
+            </Button>
+            <Button
+              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+              onClick={async () => {
+                setShowResumeDialog(false);
+                const progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+                if (progress) {
+                  resumeQuiz(progress);
+                }
+              }}
+            >
+              继续上次
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
