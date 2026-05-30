@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuiz } from '@/hooks/use-quiz';
+import type { QuizProgress } from '@/hooks/use-quiz';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -78,6 +79,11 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     currentIndex: number;
     total: number;
     progress: string;
+    bankId: string;
+    mode: 'random' | 'sequential' | 'wrong';
+    answers: Record<string, string | string[]>;
+    timeSpent: number;
+    questionIds: string[];
   } | null>(null);
   
   const questionRef = useRef<HTMLDivElement>(null);
@@ -142,12 +148,17 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
         
         // 检查是否有可恢复的做题进度
         const progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
-        if (progress && progress.questions.length > 0) {
+        if (progress && progress.questionIds.length > 0) {
           const answeredCount = Object.keys(progress.answers).length;
           setSavedProgress({
             currentIndex: progress.currentIndex + 1,
-            total: progress.questions.length,
-            progress: `${answeredCount}/${progress.questions.length}`,
+            total: progress.questionIds.length,
+            progress: `${answeredCount}/${progress.questionIds.length}`,
+            bankId: progress.bankId,
+            mode: progress.mode,
+            answers: progress.answers,
+            timeSpent: progress.timeSpent,
+            questionIds: progress.questionIds,
           });
           setShowResumeDialog(true);
           setIsCheckingAuth(false);
@@ -1142,10 +1153,12 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
               onClick={async () => {
                 setShowResumeDialog(false);
-                const progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
-                if (progress) {
-                  resumeQuiz(progress);
+                setIsCheckingAuth(true);
+                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
+                if (savedProgress) {
+                  resumeQuiz(savedProgress);
                 }
+                setIsCheckingAuth(false);
               }}
             >
               继续上次

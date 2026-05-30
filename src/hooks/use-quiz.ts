@@ -7,6 +7,20 @@ import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuesti
 // localStorage key for quiz state persistence (持久化，浏览器关闭后仍存在)
 const QUIZ_PROGRESS_KEY = 'quiz_progress';
 
+// 只保存关键进度信息，避免超过 localStorage 5MB 限制
+export interface QuizProgress {
+  bankId?: string;
+  mode: PracticeMode;
+  currentIndex: number;
+  answers: Record<string, string | string[]>;
+  timeSpent: number;
+  questionIds: string[];
+  bankName?: string;
+  categoryId?: string;
+  categoryName?: string;
+  timestamp: number;
+}
+
 export function useQuiz() {
   const [quizState, setQuizState] = useState<QuizState>({
     questions: [],
@@ -49,13 +63,20 @@ export function useQuiz() {
   // 保存做题状态到 localStorage（持久化，浏览器关闭后仍可恢复）
   useEffect(() => {
     if (hasStarted && quizState.questions.length > 0 && !quizState.isComplete) {
-      const stateToSave = {
-        quizState,
-        hasStarted,
+      const progress: QuizProgress = {
+        bankId: quizState.bankId,
+        mode: quizState.mode,
+        currentIndex: quizState.currentIndex,
+        answers: quizState.answers,
+        timeSpent: quizState.timeSpent,
+        questionIds: quizState.questions.map(q => q.id),
+        bankName: quizState.bankName,
+        categoryId: quizState.categoryId,
+        categoryName: quizState.categoryName,
         timestamp: Date.now(),
       };
       try {
-        localStorage.setItem(QUIZ_PROGRESS_KEY, JSON.stringify(stateToSave));
+        localStorage.setItem(QUIZ_PROGRESS_KEY, JSON.stringify(progress));
       } catch {
         // 忽略存储错误（如存储空间不足）
       }
@@ -117,20 +138,16 @@ export function useQuiz() {
   // 注意：题目加载由 startQuiz 统一管理，不在这里初始化
 
   // 检查是否有可恢复的做题进度
-  const checkProgress = useCallback((mode: PracticeMode, bankId?: string | null) => {
+  const checkProgress = useCallback((mode: PracticeMode, bankId?: string | null): QuizProgress | null => {
     try {
       const saved = localStorage.getItem(QUIZ_PROGRESS_KEY);
       if (!saved) return null;
-      const parsed = JSON.parse(saved) as {
-        quizState: QuizState;
-        hasStarted: boolean;
-        timestamp: number;
-      };
-      const isSameBank = parsed.quizState.bankId === bankId;
-      const isSameMode = parsed.quizState.mode === mode;
-      const isNotComplete = !parsed.quizState.isComplete;
-      if (isSameBank && isSameMode && isNotComplete && parsed.quizState.questions.length > 0) {
-        return parsed.quizState;
+      const parsed = JSON.parse(saved) as QuizProgress;
+      const isSameBank = parsed.bankId === bankId;
+      const isSameMode = parsed.mode === mode;
+      const hasQuestions = parsed.questionIds && parsed.questionIds.length > 0;
+      if (isSameBank && isSameMode && hasQuestions) {
+        return parsed;
       }
     } catch {
       // 解析失败
@@ -139,16 +156,28 @@ export function useQuiz() {
   }, []);
 
   // 恢复做题进度
-  const resumeQuiz = useCallback((savedState: QuizState) => {
-    setQuizState(savedState);
+  const resumeQuiz = useCallback((progress: QuizProgress, loadedQuestions?: Question[]) => {
+    setQuizState(prev => ({
+      ...prev,
+      questions: loadedQuestions || prev.questions,
+      currentIndex: progress.currentIndex,
+      answers: progress.answers,
+      mode: progress.mode,
+      timeSpent: progress.timeSpent,
+      isComplete: false,
+      bankId: progress.bankId,
+      bankName: progress.bankName,
+      categoryId: progress.categoryId,
+      categoryName: progress.categoryName,
+    }));
     setHasStarted(true);
     preloadIndexRef.current = -1;
-    if (savedState.bankId) {
-      const existingRecord = recentPracticeStore.getByBankId(savedState.bankId);
+    if (progress.bankId) {
+      const existingRecord = recentPracticeStore.getByBankId(progress.bankId);
       if (existingRecord) {
         recentPracticeStore.update({
           ...existingRecord,
-          currentIndex: savedState.currentIndex,
+          currentIndex: progress.currentIndex,
           lastPracticeAt: Date.now(),
         });
       }
@@ -163,9 +192,11 @@ export function useQuiz() {
   }, []);
 
   // 开始练习
-  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null) => {
-    // 清除之前的进度（如果不恢复的话）
-    clearProgress();
+  const startQuiz = useCallback(async (mode: PracticeMode = 'sequential', bankId?: string | null, clearSaved = true) => {
+    // 清除之前的进度（恢复时不清除）
+    if (clearSaved) {
+      clearProgress();
+    }
 
     // 立即设置 hasStarted 为 true，避免页面闪烁
     setHasStarted(true);
