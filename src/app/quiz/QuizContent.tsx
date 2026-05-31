@@ -703,19 +703,19 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             </div>
           </div>
           <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
-            <DialogContent className="max-w-[90vw] sm:max-w-sm rounded-2xl p-5">
-              <DialogHeader className="text-center space-y-3">
-                <div className="w-14 h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-                  <BookOpen className="w-7 h-7 text-white" />
+            <DialogContent className="max-w-[92vw] sm:max-w-sm rounded-2xl p-4 sm:p-5">
+              <DialogHeader className="text-center space-y-2 sm:space-y-3">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
-                <DialogTitle className="text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
-                <p className="text-sm text-slate-500">
+                <DialogTitle className="text-base sm:text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
+                <p className="text-xs sm:text-sm text-slate-500">
                   上次做到第 {(savedProgress?.currentIndex ?? 0) + 1} 题，共 {savedProgress?.questionIds?.length || 0} 题
                   <br />
                   已答 {savedProgress ? Object.keys(savedProgress.answers).length : 0}/{savedProgress?.questionIds?.length || 0} 题
                 </p>
               </DialogHeader>
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4">
                 <Button
                   variant="outline"
                   onClick={async () => {
@@ -723,7 +723,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                     clearProgress(bankId);
                     await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
                   }}
-                  className="flex-1 rounded-xl h-11"
+                  className="flex-1 rounded-xl h-10 sm:h-11 text-sm sm:text-base"
                 >
                   重新开始
                 </Button>
@@ -732,7 +732,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                     setShowResumeDialog(false);
                     await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, { clearSaved: false, initialProgress: savedProgress! });
                   }}
-                  className="flex-1 rounded-xl h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                  className="flex-1 rounded-xl h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                 >
                   继续上次
                 </Button>
@@ -1156,22 +1156,22 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
 
       {/* 恢复做题进度弹窗 */}
       <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
-        <DialogContent className="max-w-[90vw] sm:max-w-sm rounded-2xl p-5">
-          <DialogHeader className="text-center space-y-3">
-            <div className="w-14 h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <BookOpen className="w-7 h-7 text-white" />
+        <DialogContent className="max-w-[92vw] sm:max-w-sm rounded-2xl p-4 sm:p-5">
+          <DialogHeader className="text-center space-y-2 sm:space-y-3">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
             </div>
-            <DialogTitle className="text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
-            <p className="text-sm text-slate-500">
+            <DialogTitle className="text-base sm:text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
+            <p className="text-xs sm:text-sm text-slate-500">
               上次做到第 {(savedProgress?.currentIndex ?? 0) + 1} 题，共 {savedProgress?.questionIds?.length || 0} 题
               <br />
               已答 {savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0}/{savedProgress?.questionIds?.length || 0} 题
             </p>
           </DialogHeader>
-          <div className="flex gap-3 mt-4">
+          <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4">
             <Button
               variant="outline"
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-xl h-10 sm:h-11 text-sm sm:text-base"
               onClick={async () => {
                 setShowResumeDialog(false);
                 clearProgress(bankId);
@@ -1183,7 +1183,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               重新开始
             </Button>
             <Button
-              className="flex-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
+              className="flex-1 rounded-xl h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
               onClick={async () => {
                 setShowResumeDialog(false);
                 setIsCheckingAuth(true);
