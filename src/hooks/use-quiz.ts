@@ -62,9 +62,7 @@ export function useQuiz() {
 
   // 保存做题状态到 localStorage（持久化，浏览器关闭后仍可恢复）
   useEffect(() => {
-    const shouldSave = hasStarted && quizState.questions.length > 0 && !quizState.isComplete;
-    console.log('[saveProgress] 检查是否保存:', { shouldSave, hasStarted, questionsCount: quizState.questions.length, isComplete: quizState.isComplete });
-    if (shouldSave) {
+    if (hasStarted && quizState.questions.length > 0 && !quizState.isComplete) {
       const progress: QuizProgress = {
         bankId: quizState.bankId,
         mode: quizState.mode,
@@ -81,12 +79,11 @@ export function useQuiz() {
         // 按 bankId 分别保存进度，支持多题库独立恢复
         const key = quizState.bankId ? `${QUIZ_PROGRESS_KEY}_${quizState.bankId}` : QUIZ_PROGRESS_KEY;
         localStorage.setItem(key, JSON.stringify(progress));
-        console.log('[saveProgress] 保存成功:', { key, currentIndex: progress.currentIndex, bankId: progress.bankId });
-      } catch (e) {
-        console.error('[saveProgress] 保存失败:', e);
+      } catch {
+        // 忽略存储错误（如存储空间不足）
       }
     }
-  }, [quizState, hasStarted]);  
+  }, [quizState, hasStarted]);
 
   // 预加载题目（当 currentIndex 变化时，提前加载后续题目）
   useEffect(() => {
@@ -146,30 +143,22 @@ export function useQuiz() {
   const checkProgress = useCallback((mode: PracticeMode, bankId?: string | null): QuizProgress | null => {
     // 确保只在客户端执行
     if (typeof window === 'undefined') {
-      console.log('[checkProgress] SSR 环境，跳过检查');
       return null;
     }
     try {
       // 按 bankId 读取对应的进度
       const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
       const saved = localStorage.getItem(key);
-      console.log('[checkProgress] 检查进度:', { key, hasData: !!saved, mode, bankId });
-      if (!saved) {
-        console.log('[checkProgress] 无保存的进度');
-        return null;
-      }
+      if (!saved) return null;
       const parsed = JSON.parse(saved) as QuizProgress;
       const isSameBank = parsed.bankId === bankId;
       const isSameMode = parsed.mode === mode;
       const hasQuestions = parsed.questionIds && parsed.questionIds.length > 0;
-      console.log('[checkProgress] 解析结果:', { isSameBank, isSameMode, hasQuestions, savedCurrentIndex: parsed.currentIndex });
       if (isSameBank && isSameMode && hasQuestions) {
-        console.log('[checkProgress] 找到有效进度');
         return parsed;
       }
-      console.log('[checkProgress] 条件不满足，返回 null');
-    } catch (e) {
-      console.error('[checkProgress] 解析失败:', e);
+    } catch {
+      // 解析失败
     }
     return null;
   }, []);
