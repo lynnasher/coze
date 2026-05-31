@@ -729,17 +729,6 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                 </Button>
                 <Button
                   onClick={async () => {
-                    console.log('[继续上次] 点击:', {
-                      savedProgress: savedProgress ? {
-                        currentIndex: savedProgress.currentIndex,
-                        bankId: savedProgress.bankId,
-                        mode: savedProgress.mode,
-                        questionIdsCount: savedProgress.questionIds?.length,
-                        answersCount: savedProgress.answers ? Object.keys(savedProgress.answers).length : 0,
-                      } : null,
-                      bankId,
-                      mode,
-                    });
                     setShowResumeDialog(false);
                     await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, { clearSaved: false, initialProgress: savedProgress! });
                   }}

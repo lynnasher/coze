@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { userService } from '@/lib/services/user-service';
 
 // 验证码存储（生产环境应使用Redis）
 const verificationCodes = new Map<string, { code: string; expiresAt: number }>();
@@ -62,6 +63,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     } else {
       // 发送验证码
+      const { action } = body; // 'register' | 'login' | undefined
+      
+      // 如果是注册操作，先检查手机号是否已存在
+      if (action === 'register') {
+        const existingUser = await userService.findByPhone(phone);
+        if (existingUser) {
+          return NextResponse.json(
+            { success: false, error: '该手机号已注册，请直接登录' },
+            { status: 400 }
+          );
+        }
+      }
+      
       cleanExpiredCodes();
       
       // 检查是否在60秒内重复获取

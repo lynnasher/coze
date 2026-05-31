@@ -67,7 +67,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
       const response = await fetch('/api/auth/code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, type: 'send' }),
+        body: JSON.stringify({ phone, type: 'send', action: mode }), // mode: 'register' | 'login'
       });
 
       const data = await response.json();
