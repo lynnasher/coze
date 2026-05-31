@@ -5,7 +5,7 @@ import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
  * 数据库迁移接口
  * 用于执行数据库结构变更
  * POST /api/admin/migrate
- * Body: { operation: 'add_device_id' }
+ * Body: { operation: 'add_device_id' | 'add_valid_days' }
  */
 export async function POST(request: Request) {
   try {
@@ -50,6 +50,31 @@ export async function POST(request: Request) {
       });
     }
 
+    if (operation === 'add_valid_days') {
+      // 添加 valid_days 字段到 activation_codes 表
+      const client = getSupabaseAdminClient();
+      
+      // 检查字段是否已存在
+      const { error: checkError } = await client.from('activation_codes').select('valid_days').limit(1);
+      
+      if (checkError && checkError.message.includes('valid_days')) {
+        // 字段不存在，返回手动操作指南
+        return NextResponse.json({
+          success: false,
+          error: '请手动在 Supabase 控制台执行以下 SQL：',
+          sql: `
+            ALTER TABLE activation_codes ADD COLUMN valid_days INTEGER;
+            COMMENT ON COLUMN activation_codes.valid_days IS '用户激活后的有效天数（从激活时间开始计算）';
+          `
+        }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'valid_days 字段已存在'
+      });
+    }
+
     return NextResponse.json({ 
       success: false, 
       error: '未知的迁移操作' 
@@ -74,10 +99,16 @@ export async function GET() {
     
     const deviceIdColumnExists = !error || !error.message.includes('device_id');
 
+    // 检查 valid_days 字段是否存在
+    const { error: validDaysError } = await client.from('activation_codes').select('valid_days').limit(1);
+    
+    const validDaysColumnExists = !validDaysError || !validDaysError.message.includes('valid_days');
+
     return NextResponse.json({
       success: true,
       migrations: {
-        device_id_column: deviceIdColumnExists
+        device_id_column: deviceIdColumnExists,
+        valid_days_column: validDaysColumnExists
       }
     });
 
