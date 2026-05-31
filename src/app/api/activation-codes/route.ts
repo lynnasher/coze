@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { categoryId, categoryName, count, quantity, type, maxUses, expiresAt, description, validDays } = body;
+    const { categoryId, categoryName, count, quantity, type, maxUses, expiresAt, description } = body;
 
     if (!categoryId || !categoryName) {
       return NextResponse.json({ success: false, error: '请提供分类ID和名称' }, { status: 400 });
@@ -44,8 +44,7 @@ export async function POST(request: Request) {
       type || 'once',
       maxUses || 1,
       expiresAt,
-      description,
-      validDays // 用户激活后的有效天数
+      description
     );
 
     return NextResponse.json({ success: true, codes });

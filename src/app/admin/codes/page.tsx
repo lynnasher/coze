@@ -79,7 +79,6 @@ interface ActivationCode {
   max_uses: number;
   uses: number;
   expires_at: string | null;
-  valid_days: number | null; // 用户激活后的有效天数
   status: string;
   description: string | null;
   created_at: string;
@@ -215,23 +214,14 @@ export default function ActivationCodesPage() {
       const token = localStorage.getItem('admin_token');
       const category = categories.find(c => c.id === selectedCategory);
       
-      // 计算过期时间和有效天数
+      // 计算过期时间
       let expiresAt: string | null = null;
-      let validDays: number | null = null;
-      
       if (expireType === 'permanent') {
-        // 永久有效：两者都为 null
-        expiresAt = null;
-        validDays = null;
+        expiresAt = null; // 永久有效
       } else if (expireType === 'days') {
-        // 按天数：设置 valid_days，从用户激活时间开始计算
-        // expires_at 可以设为 null（激活码本身不过期）或设一个较远的未来时间
-        validDays = parseInt(expireDays);
-        expiresAt = null; // 激活码本身不设过期时间，用户激活后从激活时间开始计算
+        expiresAt = new Date(Date.now() + parseInt(expireDays) * 24 * 60 * 60 * 1000).toISOString();
       } else if (expireType === 'date' && expireDate) {
-        // 按日期：用户必须在指定日期前激活，激活后有效期为到期日
         expiresAt = expireDate.toISOString();
-        validDays = null;
       }
       
       const response = await fetch('/api/activation-codes', {
@@ -247,7 +237,6 @@ export default function ActivationCodesPage() {
           type: 'once',
           maxUses: 1,
           expiresAt,
-          validDays,
         }),
       });
 
@@ -329,14 +318,9 @@ export default function ActivationCodesPage() {
   };
 
   // 格式化过期时间
-  const formatExpireTime = (code: ActivationCode): string => {
-    // 如果有 valid_days，显示有效天数
-    if (code.valid_days && code.valid_days > 0) {
-      return `激活后${code.valid_days}天有效`;
-    }
-    // 否则显示固定过期时间
-    if (!code.expires_at) return '永久有效';
-    const expireDate = new Date(code.expires_at);
+  const formatExpireTime = (expiresAt: string | null): string => {
+    if (!expiresAt) return '永久有效';
+    const expireDate = new Date(expiresAt);
     const now = new Date();
     if (expireDate < now) return '已过期';
     
@@ -550,7 +534,7 @@ export default function ActivationCodesPage() {
                           <TableCell>
                             <div className="flex items-center gap-1 text-sm">
                               <Clock className={`w-3 h-3 ${isExpired ? 'text-red-500' : 'text-gray-400'}`} />
-                              {formatExpireTime(code)}
+                              {formatExpireTime(code.expires_at)}
                             </div>
                           </TableCell>
                           <TableCell>

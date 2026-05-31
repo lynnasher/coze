@@ -20,7 +20,6 @@ export interface ActivationCode {
   max_uses: number;
   uses: number;
   expires_at: string | null;
-  valid_days: number | null; // 用户激活后的有效天数（从激活时间开始计算）
   status: 'active' | 'used' | 'expired' | 'disabled';
   description: string | null;
   created_at: string;
@@ -58,8 +57,7 @@ export const activationCodeService = {
     type: 'once' | 'single' | 'multiple' = 'once',
     maxUses: number = 1,
     expiresAt?: number,
-    description?: string,
-    validDays?: number // 用户激活后的有效天数
+    description?: string
   ): Promise<ActivationCode> {
     const client = getSupabaseClient();
     
@@ -81,7 +79,6 @@ export const activationCodeService = {
       max_uses: maxUses,
       uses: 0,
       expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-      valid_days: validDays || null,
       status: 'active',
       description: description || null,
     }).select().single();
@@ -98,12 +95,11 @@ export const activationCodeService = {
     type: 'once' | 'single' | 'multiple' = 'once',
     maxUses: number = 1,
     expiresAt?: number,
-    description?: string,
-    validDays?: number // 用户激活后的有效天数
+    description?: string
   ): Promise<ActivationCode[]> {
     const codes: ActivationCode[] = [];
     for (let i = 0; i < count; i++) {
-      const code = await this.create(categoryId, categoryName, type, maxUses, expiresAt, description, validDays);
+      const code = await this.create(categoryId, categoryName, type, maxUses, expiresAt, description);
       codes.push(code);
     }
     return codes;
@@ -195,26 +191,13 @@ export const activationCodeService = {
     
     const client = getSupabaseClient();
     
-    // 计算用户激活记录的过期时间
-    let userExpiresAt: string | null = null;
-    if (activationCode.type === 'multiple') {
-      // multiple 类型永久有效
-      userExpiresAt = null;
-    } else if (activationCode.valid_days && activationCode.valid_days > 0) {
-      // 如果有 valid_days，从激活时间开始计算
-      userExpiresAt = new Date(Date.now() + activationCode.valid_days * 24 * 60 * 60 * 1000).toISOString();
-    } else {
-      // 否则使用激活码的过期时间（向后兼容旧数据）
-      userExpiresAt = activationCode.expires_at;
-    }
-    
     // 创建用户激活记录
     const { data: activation, error: activationError } = await client.from('user_activations').insert({
       user_id: userId,
       category_id: activationCode.category_id,
       category_name: activationCode.category_name,
       activation_code: activationCode.code,
-      expires_at: userExpiresAt,
+      expires_at: activationCode.type === 'multiple' ? null : activationCode.expires_at,
     }).select().single();
     
     if (activationError) throw new Error(`创建激活记录失败: ${activationError.message}`);
