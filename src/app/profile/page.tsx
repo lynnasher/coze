@@ -331,6 +331,31 @@ export default function ProfilePage() {
   const activatedCategories = user?.activated_categories || [];
   const topLevelCategories = categories.filter(c => !c.parentId);
 
+  // 按分类去重激活记录，选择最优惠的（永久有效优先，否则选更晚到期的）
+  const getUniqueActivations = () => {
+    const uniqueActivations = new Map<string, UserActivation>();
+    for (const a of userActivations) {
+      const existing = uniqueActivations.get(a.category_id);
+      if (!existing) {
+        uniqueActivations.set(a.category_id, a);
+      } else {
+        // 选择更优惠的：永久有效优先，否则选更晚到期的
+        const aIsPermanent = !a.expires_at;
+        const existingIsPermanent = !existing.expires_at;
+        if (aIsPermanent && !existingIsPermanent) {
+          uniqueActivations.set(a.category_id, a);
+        } else if (!aIsPermanent && !existingIsPermanent) {
+          // 都不是永久，选更晚到期的
+          if (new Date(a.expires_at!) > new Date(existing.expires_at!)) {
+            uniqueActivations.set(a.category_id, a);
+          }
+        }
+      }
+    }
+    return Array.from(uniqueActivations.values());
+  };
+  const uniqueActivations = getUniqueActivations();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -352,7 +377,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
-                <p className="text-xs text-gray-400">{userActivations.length} 个已激活分类</p>
+                <p className="text-xs text-gray-400">{uniqueActivations.length} 个已激活分类</p>
               </div>
             </Link>
             
@@ -387,7 +412,7 @@ export default function ProfilePage() {
               </div>
               <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
                 <div>
-                  <div className="text-xl font-bold text-orange-500">{userActivations.length}</div>
+                  <div className="text-xl font-bold text-orange-500">{uniqueActivations.length}</div>
                   <p className="text-xs text-gray-400">已激活</p>
                 </div>
                 <Button 
@@ -500,18 +525,18 @@ export default function ProfilePage() {
             <CardTitle className="text-sm flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-blue-500" />
               我的分类
-              <Badge variant="secondary" className="ml-auto text-xs">{userActivations.length}</Badge>
+              <Badge variant="secondary" className="ml-auto text-xs">{uniqueActivations.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
-            {userActivations.length === 0 ? (
+            {uniqueActivations.length === 0 ? (
               <div className="text-center py-4 text-gray-400">
                 <BookOpen className="w-6 h-6 mx-auto mb-1 opacity-50" />
                 <p className="text-xs">暂无已激活的分类</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
-                {userActivations.map((activation) => {
+                {uniqueActivations.map((activation) => {
                   const category = categories.find(c => c.id === activation.category_id);
                   const isExpired = activation.expires_at && new Date(activation.expires_at) < new Date();
                   
