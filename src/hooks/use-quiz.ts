@@ -79,8 +79,15 @@ export function useQuiz() {
         // 按 bankId 分别保存进度，支持多题库独立恢复
         const key = quizState.bankId ? `${QUIZ_PROGRESS_KEY}_${quizState.bankId}` : QUIZ_PROGRESS_KEY;
         localStorage.setItem(key, JSON.stringify(progress));
-      } catch {
-        // 忽略存储错误（如存储空间不足）
+        console.log('[saveProgress] 保存进度:', { 
+          key, 
+          bankId: progress.bankId, 
+          mode: progress.mode,
+          currentIndex: progress.currentIndex, 
+          questionIdsCount: progress.questionIds.length 
+        });
+      } catch (error) {
+        console.error('[saveProgress] 保存失败:', error);
       }
     }
   }, [quizState, hasStarted]);
@@ -149,16 +156,27 @@ export function useQuiz() {
       // 按 bankId 读取对应的进度
       const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
       const saved = localStorage.getItem(key);
+      console.log('[checkProgress] 读取进度:', { key, hasData: !!saved, bankId, mode });
       if (!saved) return null;
       const parsed = JSON.parse(saved) as QuizProgress;
       const isSameBank = parsed.bankId === bankId;
       const isSameMode = parsed.mode === mode;
       const hasQuestions = parsed.questionIds && parsed.questionIds.length > 0;
+      console.log('[checkProgress] 解析结果:', {
+        parsedBankId: parsed.bankId,
+        parsedMode: parsed.mode,
+        currentIndex: parsed.currentIndex,
+        questionIdsCount: parsed.questionIds?.length,
+        isSameBank,
+        isSameMode,
+        hasQuestions,
+        willReturn: isSameBank && isSameMode && hasQuestions
+      });
       if (isSameBank && isSameMode && hasQuestions) {
         return parsed;
       }
-    } catch {
-      // 解析失败
+    } catch (error) {
+      console.error('[checkProgress] 解析失败:', error);
     }
     return null;
   }, []);
@@ -320,6 +338,14 @@ export function useQuiz() {
     }
 
     // 使用初始进度或默认值
+    console.log('[startQuiz] 设置状态:', {
+      questionsCount: questions.length,
+      initialProgressCurrentIndex: initialProgress?.currentIndex,
+      initialProgressAnswers: initialProgress?.answers ? Object.keys(initialProgress.answers).length : 0,
+      willSetCurrentIndex: initialProgress?.currentIndex ?? 0,
+      bankId: currentBankId,
+      mode,
+    });
     setQuizState({
       questions,
       currentIndex: initialProgress?.currentIndex ?? 0,
