@@ -141,6 +141,10 @@ export function useQuiz() {
 
   // 检查是否有可恢复的做题进度
   const checkProgress = useCallback((mode: PracticeMode, bankId?: string | null): QuizProgress | null => {
+    // 确保只在客户端执行
+    if (typeof window === 'undefined') {
+      return null;
+    }
     try {
       // 按 bankId 读取对应的进度
       const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
