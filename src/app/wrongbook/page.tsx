@@ -154,26 +154,10 @@ export default function WrongBookPage() {
           }
         });
         
-        // 合并本地和云端数据（而不是直接覆盖）
-        const localRecords = recordStore.getAll();
-        const localStreaks = wrongStreakStore.getAll();
-        
-        // 合并练习记录（去重，以 ID 为准）
-        const recordMap = new Map<string, typeof localRecords[0]>();
-        // 先添加云端记录（已过滤）
-        validRecords.forEach(r => recordMap.set(r.id, r));
-        // 再添加本地记录（会覆盖同 ID 的云端记录，保留本地最新状态）
-        localRecords.forEach(r => recordMap.set(r.id, r));
-        const mergedRecords = Array.from(recordMap.values());
-        
-        // 合并 streaks（本地优先，因为本地可能有最新做题状态）
-        const mergedStreaks = {
-          ...validStreaks,
-          ...localStreaks,
-        };
-        
-        recordStore.save(mergedRecords);
-        wrongStreakStore.save(mergedStreaks);
+        // 云端优先：直接使用云端数据，不合并本地数据
+        // 这确保不同设备看到一致的错题记录
+        recordStore.save(validRecords);
+        wrongStreakStore.save(validStreaks);
         
         // 获取云端记录中的题目ID，并尝试从云端获取缺失的题目
         const cloudQuestionIds = [...new Set(validRecords.map(r => r.questionId))];

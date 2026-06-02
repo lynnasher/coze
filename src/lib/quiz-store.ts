@@ -992,25 +992,27 @@ const createSyncQueue = (): SyncQueue => ({
 // 全局同步队列
 let syncQueue = createSyncQueue();
 let syncTimeout: NodeJS.Timeout | null = null;
-const SYNC_DELAY = 3000; // 3秒防抖延迟
+const SYNC_DELAY = 0; // 立即同步，取消防抖延迟（多设备数据一致性优先）
 
 // 页面卸载前强制同步标记
 let hasPendingSync = false;
 
-// 添加记录到同步队列
+// 添加记录到同步队列（立即同步）
 export function queueRecordForSync(record: PracticeRecord): void {
   syncQueue.records.push(record);
   syncQueue.hasChanges = true;
   hasPendingSync = true;
-  debouncedSync();
+  // 立即同步，不再防抖
+  flushSyncQueue();
 }
 
-// 添加 streak 到同步队列
+// 添加 streak 到同步队列（立即同步）
 export function queueStreakForSync(questionId: string, streak: number): void {
   syncQueue.streaks[questionId] = streak;
   syncQueue.hasChanges = true;
   hasPendingSync = true;
-  debouncedSync();
+  // 立即同步，不再防抖
+  flushSyncQueue();
 }
 
 // 防抖同步函数
