@@ -46,7 +46,6 @@ import {
   List,
   Folder,
   Plus,
-  Database,
   GripVertical,
   User,
   Key,
@@ -409,15 +408,7 @@ export default function AdminPage() {
               <div className="text-xl font-bold">生成</div>
             </Card>
           </Link>
-          <Link href="/admin/database">
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-500">数据库管理</span>
-                <Database className="h-4 w-4 text-indigo-500" />
-              </div>
-              <div className="text-xl font-bold">导入/导出</div>
-            </Card>
-          </Link>
+
         </div>
 
         {/* 导入区域 */}
