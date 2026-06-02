@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Key,
   MoreHorizontal,
@@ -98,7 +99,7 @@ export default function ActivationCodesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   
   // 创建表单状态
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // 多选分类
   const [expireType, setExpireType] = useState<'permanent' | 'days' | 'date'>('days');
   const [expireDays, setExpireDays] = useState('30');
   const [expireDate, setExpireDate] = useState<Date | undefined>(
@@ -204,15 +205,14 @@ export default function ActivationCodesPage() {
 
   // 创建激活码
   const handleCreateCodes = async () => {
-    if (!selectedCategory) {
-      alert('请选择分类');
+    if (selectedCategories.length === 0) {
+      alert('请至少选择一个分类');
       return;
     }
 
     setCreating(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const category = categories.find(c => c.id === selectedCategory);
       
       // 计算过期时间
       let expiresAt: string | null = null;
@@ -224,32 +224,50 @@ export default function ActivationCodesPage() {
         expiresAt = expireDate.toISOString();
       }
       
-      const response = await fetch('/api/activation-codes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          categoryId: selectedCategory,
-          categoryName: category?.name || selectedCategory,
-          quantity: parseInt(codeCount) || 1,
-          type: 'once',
-          maxUses: 1,
-          expiresAt,
-        }),
-      });
+      // 批量为每个分类创建激活码
+      const quantity = parseInt(codeCount) || 1;
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const categoryId of selectedCategories) {
+        const category = categories.find(c => c.id === categoryId);
+        
+        const response = await fetch('/api/activation-codes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            categoryId: categoryId,
+            categoryName: category?.name || categoryId,
+            quantity: quantity,
+            type: 'once',
+            maxUses: 1,
+            expiresAt,
+          }),
+        });
 
-      if (response.ok) {
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
         setCreateModalOpen(false);
-        setSelectedCategory('');
+        setSelectedCategories([]);
         setExpireDays('30');
         setExpireDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
         setCodeCount('1');
         loadCodes();
+        
+        if (failCount > 0) {
+          alert(`成功创建 ${successCount} 个分类的激活码，${failCount} 个失败`);
+        }
       } else {
-        const data = await response.json();
-        alert(data.error || '创建失败');
+        alert('创建失败');
       }
     } catch (error) {
       console.error('创建激活码失败:', error);
@@ -650,51 +668,77 @@ export default function ActivationCodesPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="category">对应分类 *</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择分类" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px] overflow-y-auto">
-                  {categories.length === 0 ? (
-                    <SelectItem value="none" disabled>暂无分类，请先创建分类</SelectItem>
-                  ) : (
-                    (() => {
-                      // 获取顶级分类（按 order 排序）
-                      const topCategories = categories
-                        .filter(c => !c.parentId)
+              <Label>选择分类（可多选）*</Label>
+              <div className="border rounded-md p-3 max-h-[200px] overflow-y-auto space-y-1">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">暂无分类，请先创建分类</p>
+                ) : (
+                  (() => {
+                    // 获取顶级分类（按 order 排序）
+                    const topCategories = categories
+                      .filter(c => !c.parentId)
+                      .sort((a, b) => a.order - b.order);
+                    
+                    // 获取子分类（按 order 排序）
+                    const getChildren = (parentId: string) =>
+                      categories
+                        .filter(c => c.parentId === parentId)
                         .sort((a, b) => a.order - b.order);
-                      
-                      // 获取子分类（按 order 排序）
-                      const getChildren = (parentId: string) =>
-                        categories
-                          .filter(c => c.parentId === parentId)
-                          .sort((a, b) => a.order - b.order);
-                      
-                      // 按父分类分组渲染
-                      const items: React.ReactNode[] = [];
-                      topCategories.forEach(top => {
-                        // 渲染顶级分类
-                        items.push(
-                          <SelectItem key={top.id} value={top.id} className="font-medium">
+                    
+                    // 按父分类分组渲染
+                    const items: React.ReactNode[] = [];
+                    topCategories.forEach(top => {
+                      // 渲染顶级分类
+                      items.push(
+                        <div key={top.id} className="flex items-center space-x-2 py-1">
+                          <Checkbox
+                            id={`cat-${top.id}`}
+                            checked={selectedCategories.includes(top.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedCategories([...selectedCategories, top.id]);
+                              } else {
+                                setSelectedCategories(selectedCategories.filter(id => id !== top.id));
+                              }
+                            }}
+                          />
+                          <label htmlFor={`cat-${top.id}`} className="text-sm font-medium cursor-pointer">
                             {top.name}
-                          </SelectItem>
-                        );
-                        // 渲染其子分类（缩进显示）
-                        const children = getChildren(top.id);
-                        children.forEach(child => {
-                          items.push(
-                            <SelectItem key={child.id} value={child.id} className="pl-6 text-slate-600">
+                          </label>
+                        </div>
+                      );
+                      // 渲染其子分类（缩进显示）
+                      const children = getChildren(top.id);
+                      children.forEach(child => {
+                        items.push(
+                          <div key={child.id} className="flex items-center space-x-2 py-1 pl-6">
+                            <Checkbox
+                              id={`cat-${child.id}`}
+                              checked={selectedCategories.includes(child.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedCategories([...selectedCategories, child.id]);
+                                } else {
+                                  setSelectedCategories(selectedCategories.filter(id => id !== child.id));
+                                }
+                              }}
+                            />
+                            <label htmlFor={`cat-${child.id}`} className="text-sm text-slate-600 cursor-pointer">
                               ├─ {child.name}
-                            </SelectItem>
-                          );
-                        });
+                            </label>
+                          </div>
+                        );
                       });
-                      return items;
-                    })()
-                  )}
-                </SelectContent>
-              </Select>
+                    });
+                    return items;
+                  })()
+                )}
+              </div>
+              {selectedCategories.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  已选择 {selectedCategories.length} 个分类，每个分类将生成 {codeCount} 个激活码，共 {selectedCategories.length * parseInt(codeCount || '1')} 个
+                </p>
+              )}
             </div>
             
             <div className="space-y-2">
@@ -789,7 +833,7 @@ export default function ActivationCodesPage() {
             <Button variant="outline" onClick={() => setCreateModalOpen(false)}>
               取消
             </Button>
-            <Button onClick={handleCreateCodes} disabled={creating || !selectedCategory}>
+            <Button onClick={handleCreateCodes} disabled={creating || selectedCategories.length === 0}>
               {creating ? '生成中...' : '生成'}
             </Button>
           </DialogFooter>
