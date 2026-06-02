@@ -1,4 +1,4 @@
-import Dysmsapi20170525, * as $Dysmsapi20170525 from '@alicloud/dysmsapi20170525';
+import Dypnsapi20170525, * as $Dypnsapi20170525 from '@alicloud/dypnsapi20170525';
 import { $OpenApiUtil } from '@alicloud/openapi-core';
 import * as $tea from '@alicloud/tea-util';
 
@@ -14,16 +14,16 @@ const ALIYUN_SMS_TEMPLATE_CODE = process.env.ALIYUN_SMS_TEMPLATE_CODE || 'SMS_15
 const verifyCodeCache = new Map<string, { code: string; expireAt: number }>();
 
 /**
- * 创建阿里云短信服务客户端
+ * 创建阿里云号码认证服务客户端
  */
-function createClient(): Dysmsapi20170525 {
+function createClient(): Dypnsapi20170525 {
   const config = new $OpenApiUtil.Config({
     accessKeyId: ALIYUN_ACCESS_KEY_ID,
     accessKeySecret: ALIYUN_ACCESS_KEY_SECRET,
   });
-  // 短信服务接入地址
-  config.endpoint = 'dysmsapi.aliyuncs.com';
-  return new Dysmsapi20170525(config);
+  // 接入地址
+  config.endpoint = 'dypnsapi.aliyuncs.com';
+  return new Dypnsapi20170525(config);
 }
 
 /**
@@ -59,30 +59,23 @@ export async function sendSmsVerifyCode(phoneNumber: string): Promise<{
   }
 
   try {
-    // 生成6位验证码
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // 存储验证码供后续校验
-    verifyCodeCache.set(phoneNumber, {
-      code,
-      expireAt: Date.now() + 5 * 60 * 1000,
-    });
-
     const client = createClient();
-    const request = new $Dysmsapi20170525.SendSmsRequest({
-      phoneNumbers: phoneNumber,
+    const request = new $Dypnsapi20170525.SendSmsVerifyCodeRequest({
+      phoneNumber,
       signName: ALIYUN_SMS_SIGN_NAME,
       templateCode: ALIYUN_SMS_TEMPLATE_CODE,
-      templateParam: JSON.stringify({ code, min: '5' }),  // 模板变量：验证码和有效期(分钟)
+      templateParam: '{"code":"##code##","min":"5"}',  // 号码认证服务预置模板参数格式
+      codeLength: 6,  // 验证码长度
+      validTime: 300, // 有效期300秒
     });
 
-    const response = await client.sendSms(request);
+    const response = await client.sendSmsVerifyCode(request);
     
     if (response.statusCode === 200 && response.body?.code === 'OK') {
-      console.log(`[AliyunSMS] 验证码发送成功: ${phoneNumber}, Code=${response.body.code}`);
+      console.log(`[AliyunSMS] 验证码发送成功: ${phoneNumber}`);
       return {
         success: true,
-        codeId: response.body?.bizId || `real_${Date.now()}`,
+        codeId: (response.body as any).model?.bizId || `real_${Date.now()}`,
       };
     } else {
       console.error('[AliyunSMS] 发送失败:', response.body);
@@ -128,21 +121,38 @@ export async function checkSmsVerifyCode(phoneNumber: string, verifyCode: string
     return { success: true };
   }
 
-  // 使用本地缓存的验证码校验（阿里云短信服务不支持服务端校验，需自行校验）
-  const cached = verifyCodeCache.get(phoneNumber);
-  if (!cached) {
-    return { success: false, error: '验证码已过期，请重新获取' };
+  try {
+    const client = createClient();
+    const request = new $Dypnsapi20170525.CheckSmsVerifyCodeRequest({
+      phoneNumber,
+      verifyCode,
+      signName: ALIYUN_SMS_SIGN_NAME,
+      templateCode: ALIYUN_SMS_TEMPLATE_CODE,
+    });
+
+    const response = await client.checkSmsVerifyCode(request);
+    
+    if (response.statusCode === 200 && response.body?.code === 'OK') {
+      const verifyResult = (response.body as any).model?.verifyResult;
+      const valid = verifyResult === 'PASS' || verifyResult === true || verifyResult === 'true';
+      if (valid) {
+        console.log(`[AliyunSMS] 验证码校验通过: ${phoneNumber}`);
+        return { success: true };
+      } else {
+        return { success: false, error: '验证码错误' };
+      }
+    } else {
+      console.error('[AliyunSMS] 校验失败:', response.body);
+      return {
+        success: false,
+        error: response.body?.message || '校验失败',
+      };
+    }
+  } catch (error: any) {
+    console.error('[AliyunSMS] 校验异常:', error.message || error);
+    return {
+      success: false,
+      error: error.message || '校验失败',
+    };
   }
-  if (cached.expireAt < Date.now()) {
-    verifyCodeCache.delete(phoneNumber);
-    return { success: false, error: '验证码已过期，请重新获取' };
-  }
-  if (cached.code !== verifyCode) {
-    return { success: false, error: '验证码错误' };
-  }
-  
-  // 验证成功，删除验证码
-  verifyCodeCache.delete(phoneNumber);
-  console.log(`[AliyunSMS] 验证码校验通过: ${phoneNumber}`);
-  return { success: true };
 }
