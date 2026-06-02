@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '../../../../storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 /**
  * 数据库导入 API
@@ -10,12 +11,9 @@ import { getSupabaseAdminClient } from '../../../../storage/database/supabase-cl
 export async function POST(request: NextRequest) {
   try {
     // 验证管理员权限
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: '未提供认证令牌' },
-        { status: 401 }
-      );
+    const auth = await requireAdminAuth(request);
+    if (!auth.success) {
+      return auth.response;
     }
 
     // 解析请求体

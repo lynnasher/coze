@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '../../../../storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 /**
  * 转义 SQL 字符串中的特殊字符
@@ -21,12 +22,9 @@ function escapeSql(str: string): string {
 export async function POST(request: NextRequest) {
   try {
     // 验证管理员权限
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: '未提供认证令牌' },
-        { status: 401 }
-      );
+    const auth = await requireAdminAuth(request);
+    if (!auth.success) {
+      return auth.response;
     }
 
     // 解析请求体获取要导出的表
