@@ -201,10 +201,31 @@ function parseInsertToData(insertStmt: string, table: string): Record<string, un
     const valuesStr = valuesMatch[1];
     const values = parseValues(valuesStr);
 
+    // 字段名映射（SQL 导出列名 -> 数据库实际列名）
+    const columnMappings: Record<string, Record<string, string>> = {
+      categories: {
+        'order_num': 'order',  // SQL 中是 order_num，数据库中是 order
+      },
+      users: {
+        // users 表字段名一致，无需映射
+      },
+      activation_codes: {
+        // activation_codes 表字段名一致
+      },
+      user_activations: {
+        // user_activations 表字段名一致
+      }
+    };
+
     // 构建对象
     const obj: Record<string, unknown> = {};
+    const tableMapping = columnMappings[table] || {};
+    
     for (let i = 0; i < columns.length && i < values.length; i++) {
-      obj[columns[i]] = values[i];
+      const columnName = columns[i];
+      // 应用字段名映射
+      const mappedName = tableMapping[columnName] || columnName;
+      obj[mappedName] = values[i];
     }
 
     return obj;
