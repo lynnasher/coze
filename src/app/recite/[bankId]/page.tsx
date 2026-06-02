@@ -456,7 +456,7 @@ function ReciteCard({
                     className={`
                       flex-shrink-0 w-6 h-6 rounded-full
                       text-xs font-bold flex items-center justify-center
-                      print:w-4 print:h-4 print:text-[10px] print:bg-transparent print:text-black
+                      print:w-4 print:h-4 print:text-sm print:bg-transparent print:text-black
                       ${isCorrect
                         ? 'bg-emerald-500 text-white print:font-bold'
                         : 'bg-gray-200 text-gray-500'
@@ -608,7 +608,7 @@ function ReciteItem({
                   </span>
                   <div className="flex-1">
                     <p className="text-gray-800 leading-relaxed print:text-sm print:leading-snug">
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle print:bg-transparent print:text-black print:font-bold">
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle print:bg-transparent print:text-sm print:text-black print:font-bold">
                         {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
                       </span>
                       <RichTextWithBreaks content={child.content} />
@@ -631,7 +631,7 @@ function ReciteItem({
                           }`}
                         >
                           <span
-                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center print:w-3 print:h-3 print:text-[10px] print:bg-transparent ${
+                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center print:w-3 print:h-3 print:text-sm print:bg-transparent ${
                               isCorrect
                                 ? 'bg-green-500 text-white print:text-black print:font-bold'
                                 : 'bg-gray-200 text-gray-600 print:text-black'
