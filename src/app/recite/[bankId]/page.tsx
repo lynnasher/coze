@@ -419,7 +419,7 @@ function ReciteCard({
   isChild?: boolean;
 }) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden print:border-gray-400 print:shadow-none ${isChild ? 'ml-4' : ''}`}>
+    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden print:border-0 print:shadow-none ${isChild ? 'ml-4 print:ml-0' : ''}`}>
       <div className="p-5 print:p-2">
         {/* 题号 + 题干（同一行显示） */}
         <div className="flex items-start gap-2 mb-4 print:mb-1">
@@ -557,7 +557,7 @@ function ReciteItem({
   // 综合题：显示案例背景 + 子题列表
   if (question.type === 'comprehensive' && question.children && question.children.length > 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden print:border-gray-400 print:shadow-none">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden print:border-0 print:shadow-none">
         {/* 综合题案例背景 */}
         <div className="p-5 border-b border-gray-200 bg-rose-50/50 print:p-2 print:bg-transparent print:border-gray-400">
           <div className="flex items-start gap-2 print:gap-1">
