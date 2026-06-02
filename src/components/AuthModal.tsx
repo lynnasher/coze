@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User as UserIcon, LogOut, UserCircle } from 'lucide-react';
+import { User as UserIcon, LogOut, UserCircle, CheckCircle } from 'lucide-react';
 import type { User as UserType } from '@/lib/types';
 import { cloudSyncService } from '@/lib/quiz-store';
 
@@ -24,6 +24,12 @@ interface StoredUser {
   activated_categories: string[];
 }
 
+interface AuthModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAuthChange?: () => void;
+}
+
 export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [phone, setPhone] = useState('');
@@ -33,6 +39,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
   const [countdown, setCountdown] = useState(0);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   
   // 跟踪组件是否已挂载
   const isMountedRef = useRef(true);
@@ -75,7 +82,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
       if (data.success) {
         setCountdown(60);
         // 弹窗提示用户注意查收
-        alert('【云渚科技验证平台】您的验证码已发送，请在手机查收。');
+        setShowSuccessDialog(true);
         if (data.testCode) {
           alert(`验证码: ${data.testCode}`);
         }
@@ -202,13 +209,14 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center">
-            {mode === 'login' ? '登录账号' : '注册账号'}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">
+              {mode === 'login' ? '登录账号' : '注册账号'}
+            </DialogTitle>
+          </DialogHeader>
 
         <Tabs value={mode} onValueChange={(v) => { setMode(v as 'login' | 'register'); resetForm(); }} className="w-full">
           <TabsList className="grid w-full grid-cols-2 rounded-xl">
@@ -323,16 +331,34 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
         </Tabs>
       </DialogContent>
     </Dialog>
+    
+    {/* 验证码发送成功弹窗 */}
+    <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+      <DialogContent className="sm:max-w-sm rounded-2xl">
+        <DialogHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <DialogTitle className="text-xl">验证码已发送</DialogTitle>
+          <DialogDescription className="text-base mt-2">
+            【云渚科技验证平台】您的验证码已发送，请在手机查收。
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-4">
+          <Button 
+            onClick={() => setShowSuccessDialog(false)}
+            className="w-full rounded-xl"
+          >
+            我知道了
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
 
 // 用户状态显示组件
-interface AuthModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAuthChange?: () => void;
-}
-
 interface UserStatusProps {
   className?: string;
 }
