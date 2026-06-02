@@ -74,6 +74,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
 
       if (data.success) {
         setCountdown(60);
+        // 弹窗提示用户注意查收
+        alert('【云渚科技验证平台】您的验证码已发送，请在手机查收。');
         if (data.testCode) {
           alert(`验证码: ${data.testCode}`);
         }
