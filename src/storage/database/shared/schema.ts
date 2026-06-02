@@ -77,7 +77,7 @@ export const categories = pgTable(
     id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
     name: varchar("name", { length: 100 }).notNull(),
     color: varchar("color", { length: 20 }).default("blue"),
-    order_num: integer("order_num").default(0),
+    order: integer("order").default(0),
     parent_id: varchar("parent_id", { length: 36 }), // 父分类ID
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },

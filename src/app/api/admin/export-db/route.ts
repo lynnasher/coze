@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     const { data: categories, error: categoriesError } = await client
       .from('categories')
       .select('*')
-      .order('order_num', { ascending: true });
+      .order('order', { ascending: true });
 
     if (categoriesError) {
       console.error('导出 categories 失败:', categoriesError);

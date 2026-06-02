@@ -11,7 +11,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .order('order_num', { ascending: true });
+      .order('order', { ascending: true });
     
     if (error) {
       console.error('获取分类失败:', error);
@@ -30,7 +30,7 @@ export async function GET() {
       id: cat.id,
       name: cat.name,
       color: cat.color || 'blue',
-      order_num: cat.order_num || 0,
+      order: cat.order || 0,
       parentId: cat.parent_id || undefined,
       createdAt: new Date(cat.created_at).getTime()
     }));

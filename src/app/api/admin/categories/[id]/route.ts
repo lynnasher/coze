@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name.trim();
     if (body.color !== undefined) updateData.color = body.color;
-    if (body.order_num !== undefined) updateData.order_num = body.order_num;
+    if (body.order !== undefined) updateData.order = body.order;
     // parentId 为 null 表示设为顶级分类，string 表示设为某分类的子分类，undefined 表示不更新
     if (body.parentId !== undefined) {
       updateData.parent_id = body.parentId;
