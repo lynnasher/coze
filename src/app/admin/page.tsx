@@ -54,10 +54,9 @@ import {
   Lock,
 } from 'lucide-react';
 
-import { useAdminAuth, useBanks, useCategories, useExportDb, useImport } from './hooks';
+import { useAdminAuth, useBanks, useCategories, useImport } from './hooks';
 import {
   SortableBankRow,
-  ExportDbDialog,
   CategoryManageDialog,
   DeleteConfirmDialog,
   MoveCategoryDialog,
@@ -72,7 +71,6 @@ export default function AdminPage() {
   const { isAuthenticated, isLoading: authLoading, handleLogout } = useAdminAuth();
   const { banks, stats, isLoading: banksLoading, loadBanks, updateBankOrder, deleteBank, updateBank } = useBanks();
   const { categories, loadCategories, saveCategory, deleteCategory, getCategoryName, getCategoryColorClass } = useCategories();
-  const { availableTables, loadingTables, fetchAvailableTables, exportDatabase } = useExportDb();
   const { isImporting, importJson } = useImport();
 
   // UI State
@@ -90,8 +88,6 @@ export default function AdminPage() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isMoveCategoryDialogOpen, setIsMoveCategoryDialogOpen] = useState(false);
   const [bankToMove, setBankToMove] = useState<QuestionBank | null>(null);
-  const [isExportDbDialogOpen, setIsExportDbDialogOpen] = useState(false);
-  const [isImportingDb, setIsImportingDb] = useState(false);
   const [isEditBankDialogOpen, setIsEditBankDialogOpen] = useState(false);
   const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
   const [editingBankName, setEditingBankName] = useState('');
@@ -253,61 +249,6 @@ export default function AdminPage() {
     setInlineEditingName('');
   };
 
-  const handleExportDatabase = async (selectedTables: string[]) => {
-    const result = await exportDatabase(selectedTables);
-    if (result.success) {
-      const blob = new Blob([result.data?.sql || ''], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `database_export_${new Date().toISOString().slice(0, 10)}.sql`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      setSuccess('数据库导出成功');
-    } else {
-      setError(result.error || '导出失败');
-    }
-  };
-
-  const handleImportDatabase = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsImportingDb(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const sql = await file.text();
-      
-      const response = await fetch('/api/admin/import-db', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`,
-        },
-        body: JSON.stringify({ sql }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        const details = Object.entries(result.results || {})
-          .map(([table, r]) => `${table}: ${(r as { count: number }).count} 条`)
-          .join(', ');
-        setSuccess(`数据库导入成功，共 ${result.total} 条记录 (${details})`);
-      } else {
-        setError(result.error || '导入失败');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '导入失败');
-    } finally {
-      setIsImportingDb(false);
-      // 重置文件输入
-      event.target.value = '';
-    }
-  };
-
   const openMoveCategoryDialog = (bank: QuestionBank) => {
     setBankToMove(bank);
     setIsMoveCategoryDialogOpen(true);
@@ -323,11 +264,6 @@ export default function AdminPage() {
   const openDeleteDialog = (bank: QuestionBank) => {
     setBankToDelete(bank);
     setIsDeleteDialogOpen(true);
-  };
-
-  const openExportDbDialog = () => {
-    fetchAvailableTables();
-    setIsExportDbDialogOpen(true);
   };
 
   const goToBankEdit = (bank: QuestionBank) => {
@@ -473,34 +409,15 @@ export default function AdminPage() {
               <div className="text-xl font-bold">生成</div>
             </Card>
           </Link>
-          <Card 
-            className="hover:shadow-sm transition-shadow cursor-pointer p-3"
-            onClick={openExportDbDialog}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-slate-500">数据库导出</span>
-              <Database className="h-4 w-4 text-orange-500" />
-            </div>
-            <div className="text-xl font-bold">导出</div>
-          </Card>
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              accept=".sql"
-              onChange={handleImportDatabase}
-              className="hidden"
-              disabled={isImportingDb}
-            />
+          <Link href="/admin/database">
             <Card className="hover:shadow-sm transition-shadow cursor-pointer p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-slate-500">数据库导入</span>
-                <Database className="h-4 w-4 text-blue-500" />
+                <span className="text-xs text-slate-500">数据库管理</span>
+                <Database className="h-4 w-4 text-indigo-500" />
               </div>
-              <div className="text-xl font-bold">
-                {isImportingDb ? '导入中...' : '导入'}
-              </div>
+              <div className="text-xl font-bold">导入/导出</div>
             </Card>
-          </label>
+          </Link>
         </div>
 
         {/* 导入区域 */}
@@ -720,14 +637,6 @@ export default function AdminPage() {
       </main>
 
       {/* Dialogs */}
-      <ExportDbDialog
-        open={isExportDbDialogOpen}
-        onOpenChange={setIsExportDbDialogOpen}
-        availableTables={availableTables}
-        loadingTables={loadingTables}
-        onExport={handleExportDatabase}
-      />
-
       <CategoryManageDialog
         open={isCategoryModalOpen}
         onOpenChange={setIsCategoryModalOpen}
