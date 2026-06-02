@@ -203,9 +203,9 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
+      <DialogContent className="sm:max-w-[420px] w-[95%] max-w-[380px] sm:w-full rounded-2xl p-5 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-center">
+          <DialogTitle className="text-lg sm:text-xl font-bold text-center">
             {mode === 'login' ? '登录账号' : '注册账号'}
           </DialogTitle>
         </DialogHeader>
@@ -216,9 +216,9 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
             <TabsTrigger value="register">注册</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login" className="mt-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
+          <TabsContent value="login" className="mt-3">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">手机号</label>
                 <Input
                   type="tel"
@@ -227,10 +227,10 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
                   onChange={(e) => setPhone(e.target.value)}
                   maxLength={11}
                   required
-                  className="rounded-xl"
+                  className="rounded-xl h-9"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">密码</label>
                 <Input
                   type="password"
@@ -238,21 +238,21 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="rounded-xl"
+                  className="rounded-xl h-9"
                 />
               </div>
               {error && (
-                <p className="text-sm text-red-500 text-center">{error}</p>
+                <p className="text-xs text-red-500 text-center">{error}</p>
               )}
-              <Button type="submit" className="w-full rounded-xl" disabled={loading}>
+              <Button type="submit" className="w-full rounded-xl h-10" disabled={loading}>
                 {loading ? '登录中...' : '登录'}
               </Button>
             </form>
           </TabsContent>
 
-          <TabsContent value="register" className="mt-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
+          <TabsContent value="register" className="mt-3">
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">手机号</label>
                 <div className="flex gap-2">
                   <Input
@@ -262,12 +262,12 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
                     onChange={(e) => setPhone(e.target.value)}
                     maxLength={11}
                     required
-                    className="rounded-xl flex-1"
+                    className="rounded-xl flex-1 h-9"
                   />
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-xl whitespace-nowrap"
+                    className="rounded-xl whitespace-nowrap h-9 px-3 text-sm"
                     onClick={handleGetVerifyCode}
                     disabled={loading || countdown > 0}
                   >
@@ -275,7 +275,7 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
                   </Button>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">验证码</label>
                 <Input
                   type="text"
@@ -284,20 +284,20 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
                   onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   maxLength={6}
                   required
-                  className="rounded-xl"
+                  className="rounded-xl h-9"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">昵称（选填）</label>
                 <Input
                   type="text"
                   placeholder="请输入昵称"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  className="rounded-xl"
+                  className="rounded-xl h-9"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-medium">密码</label>
                 <Input
                   type="password"
@@ -306,13 +306,13 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={6}
                   required
-                  className="rounded-xl"
+                  className="rounded-xl h-9"
                 />
               </div>
               {error && (
-                <p className="text-sm text-red-500 text-center">{error}</p>
+                <p className="text-xs text-red-500 text-center">{error}</p>
               )}
-              <Button type="submit" className="w-full rounded-xl" disabled={loading}>
+              <Button type="submit" className="w-full rounded-xl h-10" disabled={loading}>
                 {loading ? '注册中...' : '注册'}
               </Button>
               <p className="text-xs text-gray-400 text-center">
