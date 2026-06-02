@@ -468,7 +468,7 @@ function ReciteCard({
                   {/* 选项文字 */}
                   <span
                     className={`
-                      text-sm leading-relaxed pt-0.5 print:text-xs print:leading-tight
+                      text-sm leading-relaxed pt-0.5 print:text-sm print:leading-snug
                       ${isCorrect ? 'text-emerald-800 font-medium print:text-black' : 'text-gray-600 print:text-black'}
                     `}
                   >
@@ -486,7 +486,7 @@ function ReciteCard({
 
         {/* 填空题答案 */}
         {question.type === 'fill-blank' && (
-          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-2 print:bg-transparent print:border-gray-400 print:text-sm">
             <div className="flex items-start gap-2 print:gap-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0 print:hidden" />
               <div>
@@ -499,7 +499,7 @@ function ReciteCard({
 
         {/* 判断题答案 */}
         {question.type === 'true-false' && (
-          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-2 print:bg-transparent print:border-gray-400 print:text-sm">
             <div className="flex items-start gap-2 print:gap-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0 print:hidden" />
               <div>
@@ -512,7 +512,7 @@ function ReciteCard({
 
         {/* 选择题答案 */}
         {(question.type === 'single' || question.type === 'multiple') && (
-          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-2 print:bg-transparent print:border-gray-400 print:text-sm">
             <div className="flex items-center gap-2 print:gap-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 print:hidden" />
               <span className="text-sm font-medium text-emerald-700 print:text-black">
@@ -524,14 +524,14 @@ function ReciteCard({
 
         {/* 解析 */}
         {question.explanation && (
-          <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+          <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 print:p-2 print:bg-transparent print:border-gray-400 print:text-sm">
             <div className="flex items-start gap-2 print:gap-1">
               <Lightbulb className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0 print:hidden" />
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium text-amber-700 print:text-black">名师解析：</span>
                 <RichTextWithBreaks 
                   content={question.explanation || ''} 
-                  textClassName="text-sm text-amber-700 leading-relaxed mt-0.5 print:text-xs print:text-black print:leading-tight"
+                  textClassName="text-sm text-amber-700 leading-relaxed mt-0.5 print:text-sm print:text-black print:leading-snug"
                 />
               </div>
             </div>
@@ -649,7 +649,7 @@ function ReciteItem({
                 )}
 
                 {/* 答案和解析 */}
-                <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 ml-8 print:p-0.5 print:bg-transparent print:border-gray-400 print:ml-4 print:text-xs">
+                <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 ml-8 print:p-1 print:bg-transparent print:border-gray-400 print:ml-4 print:text-sm">
                   <div className="flex items-center gap-2 mb-1 print:gap-1">
                     <span className="text-sm font-medium text-amber-700 print:text-black">正确答案：</span>
                     <span className="text-sm font-semibold text-amber-800 print:text-black">{childAnswerDisplay}</span>
@@ -659,7 +659,7 @@ function ReciteItem({
                       <div className="text-xs text-gray-500 mb-1 print:text-black">解析：</div>
                       <RichTextWithBreaks 
                         content={child.explanation} 
-                        textClassName="text-sm text-gray-700 leading-relaxed print:text-xs print:text-black print:leading-tight"
+                        textClassName="text-sm text-gray-700 leading-relaxed print:text-sm print:text-black print:leading-snug"
                       />
                     </div>
                   )}
