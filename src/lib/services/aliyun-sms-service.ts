@@ -1,5 +1,3 @@
-'use server';
-
 import Dypnsapi20170525, * as $Dypnsapi20170525 from '@alicloud/dypnsapi20170525';
 import { $OpenApiUtil } from '@alicloud/openapi-core';
 import * as $tea from '@alicloud/tea-util';
