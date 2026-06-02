@@ -64,7 +64,7 @@ export async function sendSmsVerifyCode(phoneNumber: string): Promise<{
       phoneNumber,
       signName: ALIYUN_SMS_SIGN_NAME,
       templateCode: ALIYUN_SMS_TEMPLATE_CODE,
-      templateParam: '{"code":"##code##"}',  // 必填：验证码变量替换
+      templateParam: '{"code":"##code##","min":"5"}',  // 必填：验证码变量替换，min表示有效期(分钟)
       codeLength: 6,  // 验证码长度
       validTime: 300, // 有效期300秒
     });
