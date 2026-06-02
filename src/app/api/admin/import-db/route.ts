@@ -80,19 +80,26 @@ export async function POST(request: NextRequest) {
 
           if (dataObjects.length === 0) continue;
 
+          // 调试日志：显示解析后的数据
+          if (table === 'categories' && i === 0) {
+            console.log('[导入数据库] categories 表第一条数据:', JSON.stringify(dataObjects[0], null, 2));
+          }
+
+          // 使用 upsert 代替 insert，处理 ID 冲突
           const { error: insertError } = await client
             .from(table)
-            .insert(dataObjects);
+            .upsert(dataObjects, { onConflict: 'id' });
 
           if (insertError) {
             console.error(`[导入数据库] 插入表 ${table} 失败:`, insertError);
+            console.error(`[导入数据库] 失败数据示例:`, JSON.stringify(dataObjects[0], null, 2));
             hasError = true;
             errorMessage = insertError.message;
-            // 尝试逐条插入
+            // 尝试逐条 upsert
             for (const data of dataObjects) {
               const { error: singleError } = await client
                 .from(table)
-                .insert([data]);
+                .upsert([data], { onConflict: 'id' });
               if (!singleError) {
                 insertedCount++;
               }
@@ -188,15 +195,21 @@ function parseInsertToData(insertStmt: string, table: string): Record<string, un
   try {
     // 提取列名
     const columnsMatch = insertStmt.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
-    if (!columnsMatch) return null;
+    if (!columnsMatch) {
+      console.warn('[parseInsertToData] 无法匹配列名:', insertStmt.substring(0, 100));
+      return null;
+    }
 
     const columns = columnsMatch[1]
       .split(',')
       .map(c => c.trim());
 
-    // 提取 VALUES
-    const valuesMatch = insertStmt.match(/VALUES\s*\(([\s\S]+)\);$/i);
-    if (!valuesMatch) return null;
+    // 提取 VALUES - 更健壮的正则，允许尾部空白
+    const valuesMatch = insertStmt.match(/VALUES\s*\(([\s\S]+?)\);?\s*$/i);
+    if (!valuesMatch) {
+      console.warn('[parseInsertToData] 无法匹配 VALUES:', insertStmt.substring(0, 100));
+      return null;
+    }
 
     const valuesStr = valuesMatch[1];
     const values = parseValues(valuesStr);
