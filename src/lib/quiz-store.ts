@@ -1522,12 +1522,12 @@ export const categoryStore = {
 
   // 获取顶级分类
   getRootCategories: (): Category[] => {
-    return categoryStore.getAll().filter(c => !c.parentId).sort((a, b) => a.order - b.order);
+    return categoryStore.getAll().filter(c => !c.parentId).sort((a, b) => a.order_num - b.order_num);
   },
 
   // 获取子分类
   getChildCategories: (parentId: string): Category[] => {
-    return categoryStore.getAll().filter(c => c.parentId === parentId).sort((a, b) => a.order - b.order);
+    return categoryStore.getAll().filter(c => c.parentId === parentId).sort((a, b) => a.order_num - b.order_num);
   },
 
   // 获取分类（包括父分类信息）
@@ -1539,7 +1539,7 @@ export const categoryStore = {
         return { ...c, parentName: parent?.name };
       }
       return c;
-    }).sort((a, b) => a.order - b.order);
+    }).sort((a, b) => a.order_num - b.order_num);
   },
 
   // 添加分类

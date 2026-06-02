@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       id: `cat_default_${index + 1}`,
       name: cat.name,
       color: cat.color,
-      order: cat.order,
+      order_num: cat.order_num,
       parent_id: null
     }));
     
