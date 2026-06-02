@@ -80,26 +80,19 @@ export async function POST(request: NextRequest) {
 
           if (dataObjects.length === 0) continue;
 
-          // 调试日志：显示解析后的数据
-          if (table === 'categories' && i === 0) {
-            console.log('[导入数据库] categories 表第一条数据:', JSON.stringify(dataObjects[0], null, 2));
-          }
-
-          // 使用 upsert 代替 insert，处理 ID 冲突
           const { error: insertError } = await client
             .from(table)
-            .upsert(dataObjects, { onConflict: 'id' });
+            .insert(dataObjects);
 
           if (insertError) {
             console.error(`[导入数据库] 插入表 ${table} 失败:`, insertError);
-            console.error(`[导入数据库] 失败数据示例:`, JSON.stringify(dataObjects[0], null, 2));
             hasError = true;
             errorMessage = insertError.message;
-            // 尝试逐条 upsert
+            // 尝试逐条插入
             for (const data of dataObjects) {
               const { error: singleError } = await client
                 .from(table)
-                .upsert([data], { onConflict: 'id' });
+                .insert([data]);
               if (!singleError) {
                 insertedCount++;
               }
@@ -195,50 +188,23 @@ function parseInsertToData(insertStmt: string, table: string): Record<string, un
   try {
     // 提取列名
     const columnsMatch = insertStmt.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
-    if (!columnsMatch) {
-      console.warn('[parseInsertToData] 无法匹配列名:', insertStmt.substring(0, 100));
-      return null;
-    }
+    if (!columnsMatch) return null;
 
     const columns = columnsMatch[1]
       .split(',')
       .map(c => c.trim());
 
-    // 提取 VALUES - 更健壮的正则，允许尾部空白
-    const valuesMatch = insertStmt.match(/VALUES\s*\(([\s\S]+?)\);?\s*$/i);
-    if (!valuesMatch) {
-      console.warn('[parseInsertToData] 无法匹配 VALUES:', insertStmt.substring(0, 100));
-      return null;
-    }
+    // 提取 VALUES
+    const valuesMatch = insertStmt.match(/VALUES\s*\(([\s\S]+)\);$/i);
+    if (!valuesMatch) return null;
 
     const valuesStr = valuesMatch[1];
     const values = parseValues(valuesStr);
 
-    // 字段名映射（SQL 导出列名 -> 数据库实际列名）
-    const columnMappings: Record<string, Record<string, string>> = {
-      categories: {
-        'order_num': 'order',  // SQL 中是 order_num，数据库中是 order
-      },
-      users: {
-        // users 表字段名一致，无需映射
-      },
-      activation_codes: {
-        // activation_codes 表字段名一致
-      },
-      user_activations: {
-        // user_activations 表字段名一致
-      }
-    };
-
     // 构建对象
     const obj: Record<string, unknown> = {};
-    const tableMapping = columnMappings[table] || {};
-    
     for (let i = 0; i < columns.length && i < values.length; i++) {
-      const columnName = columns[i];
-      // 应用字段名映射
-      const mappedName = tableMapping[columnName] || columnName;
-      obj[mappedName] = values[i];
+      obj[columns[i]] = values[i];
     }
 
     return obj;
