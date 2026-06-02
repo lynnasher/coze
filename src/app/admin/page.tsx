@@ -91,6 +91,7 @@ export default function AdminPage() {
   const [isMoveCategoryDialogOpen, setIsMoveCategoryDialogOpen] = useState(false);
   const [bankToMove, setBankToMove] = useState<QuestionBank | null>(null);
   const [isExportDbDialogOpen, setIsExportDbDialogOpen] = useState(false);
+  const [isImportingDb, setIsImportingDb] = useState(false);
   const [isEditBankDialogOpen, setIsEditBankDialogOpen] = useState(false);
   const [editingBank, setEditingBank] = useState<QuestionBank | null>(null);
   const [editingBankName, setEditingBankName] = useState('');
@@ -265,6 +266,44 @@ export default function AdminPage() {
       setSuccess('数据库导出成功');
     } else {
       setError(result.error || '导出失败');
+    }
+  };
+
+  const handleImportDatabase = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImportingDb(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const sql = await file.text();
+      
+      const response = await fetch('/api/admin/import-db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sql }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const details = Object.entries(result.results || {})
+          .map(([table, r]) => `${table}: ${(r as { count: number }).count} 条`)
+          .join(', ');
+        setSuccess(`数据库导入成功，共 ${result.total} 条记录 (${details})`);
+      } else {
+        setError(result.error || '导入失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '导入失败');
+    } finally {
+      setIsImportingDb(false);
+      // 重置文件输入
+      event.target.value = '';
     }
   };
 
@@ -443,6 +482,24 @@ export default function AdminPage() {
             </div>
             <div className="text-xl font-bold">导出</div>
           </Card>
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              accept=".sql"
+              onChange={handleImportDatabase}
+              className="hidden"
+              disabled={isImportingDb}
+            />
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer p-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500">数据库导入</span>
+                <Database className="h-4 w-4 text-blue-500" />
+              </div>
+              <div className="text-xl font-bold">
+                {isImportingDb ? '导入中...' : '导入'}
+              </div>
+            </Card>
+          </label>
         </div>
 
         {/* 导入区域 */}
