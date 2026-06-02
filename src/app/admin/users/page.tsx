@@ -129,11 +129,12 @@ export default function UsersPage() {
     }
   };
 
-  const loadUsers = async (page = currentPage, size = pageSize) => {
+  const loadUsers = async (page = currentPage, size = pageSize, search = searchQuery) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/users?page=${page}&pageSize=${size}`, {
+      const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
+      const response = await fetch(`/api/admin/users?page=${page}&pageSize=${size}${searchParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -148,9 +149,25 @@ export default function UsersPage() {
     }
   };
 
+  // 搜索防抖
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    const timer = setTimeout(() => {
+      // 搜索时重置到第一页
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+      } else {
+        loadUsers(1, pageSize, searchQuery);
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     if (currentUser) {
-      loadUsers(currentPage, pageSize);
+      loadUsers(currentPage, pageSize, searchQuery);
     }
   }, [currentUser, currentPage, pageSize]);
 
@@ -291,13 +308,7 @@ export default function UsersPage() {
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const query = searchQuery.toLowerCase();
-    return (
-      user.phone.includes(query) ||
-      user.nickname?.toLowerCase().includes(query)
-    );
-  });
+  // 搜索已由后端处理，直接使用 users
 
 
   return (
@@ -408,14 +419,14 @@ export default function UsersPage() {
                         加载中...
                       </TableCell>
                     </TableRow>
-                  ) : filteredUsers.length === 0 ? (
+                  ) : users.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         暂无用户
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
+                    users.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.phone}</TableCell>
                         <TableCell>{user.nickname || '-'}</TableCell>
@@ -528,7 +539,7 @@ export default function UsersPage() {
             </div>
             
             {/* 分页 */}
-            {!loading && filteredUsers.length > 0 && (
+            {!loading && users.length > 0 && (
               <div className="flex items-center justify-between mt-4 pt-4 border-t">
                 <div className="text-sm text-gray-500">
                   共 {totalCount} 条记录，每页 {pageSize} 条

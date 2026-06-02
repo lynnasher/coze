@@ -11,31 +11,45 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  // 解析分页参数
+  // 解析分页参数和搜索参数
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get('page') || '1', 10);
   const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+  const search = url.searchParams.get('search') || ''; // 搜索关键词
   const validPageSize = Math.min(Math.max(pageSize, 10), 100); // 限制 10-100
   const offset = (page - 1) * validPageSize;
 
   try {
     const client = getSupabaseAdminClient();
     
-    // 先获取总数（排除管理员）
-    const { count: totalCount, error: countError } = await client
+    // 构建基础查询（排除管理员）
+    let countQuery = client
       .from('users')
       .select('*', { count: 'exact', head: true })
       .neq('role', 'admin');
+    
+    let dataQuery = client
+      .from('users')
+      .select('*')
+      .neq('role', 'admin');
+    
+    // 如果有搜索关键词，添加搜索条件
+    if (search) {
+      // 使用 or 条件搜索手机号或昵称
+      const searchCondition = `phone.ilike.%${search}%,nickname.ilike.%${search}%`;
+      countQuery = countQuery.or(searchCondition);
+      dataQuery = dataQuery.or(searchCondition);
+    }
+    
+    // 先获取总数
+    const { count: totalCount, error: countError } = await countQuery;
     
     if (countError) {
       console.error('获取用户总数失败:', countError);
     }
     
-    // 分页获取用户（排除管理员）
-    const { data: usersData, error: usersError } = await client
-      .from('users')
-      .select('*')
-      .neq('role', 'admin')
+    // 分页获取用户
+    const { data: usersData, error: usersError } = await dataQuery
       .order('created_at', { ascending: false })
       .range(offset, offset + validPageSize - 1);
     
