@@ -334,13 +334,13 @@ export default function RecitePage() {
             <p className="mt-4 text-gray-500">该题库暂无题目</p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-8 print:space-y-2">
             {groupedQuestions.map((group, groupIndex) => (
-              <div key={group.type} className="space-y-4">
+              <div key={group.type} className="space-y-4 print:space-y-1">
                 {/* 题型分组标题 */}
-                <div className="sticky top-14 z-10 bg-gray-50/95 backdrop-blur py-2 border-b border-gray-200">
-                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                <div className="sticky top-14 z-10 bg-gray-50/95 backdrop-blur py-2 border-b border-gray-200 print:static print:bg-transparent print:py-1 print:border-gray-400">
+                  <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2 print:text-sm">
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium print:bg-transparent print:text-black print:font-bold ${
                       group.type === 'single' ? 'bg-indigo-100 text-indigo-700' :
                       group.type === 'multiple' ? 'bg-purple-100 text-purple-700' :
                       group.type === 'true-false' ? 'bg-cyan-100 text-cyan-700' :
@@ -349,14 +349,14 @@ export default function RecitePage() {
                     }`}>
                       {group.typeName}
                     </span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 print:text-black">
                       {group.questions.length} 题
                     </span>
                   </h2>
                 </div>
                 
                 {/* 该题型下的题目 */}
-                <div className="space-y-6">
+                <div className="space-y-6 print:space-y-2">
                   {(() => {
                     // 计算全局序号
                     let globalIndex = 1;
@@ -419,24 +419,24 @@ function ReciteCard({
   isChild?: boolean;
 }) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${isChild ? 'ml-4' : ''}`}>
-      <div className="p-5">
+    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden print:border-gray-400 print:shadow-none ${isChild ? 'ml-4' : ''}`}>
+      <div className="p-5 print:p-2">
         {/* 题号 + 题干（同一行显示） */}
-        <div className="flex items-start gap-2 mb-4">
-          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center mt-0.5">
+        <div className="flex items-start gap-2 mb-4 print:mb-1">
+          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center mt-0.5 print:bg-transparent print:text-black print:font-bold print:w-4 print:h-4">
             {index}
           </span>
           <div className="flex-1">
             <RichTextWithBreaks 
               content={question.content} 
-              textClassName="text-base text-gray-900 leading-relaxed"
+              textClassName="text-base text-gray-900 leading-relaxed print:text-sm print:leading-snug"
             />
           </div>
         </div>
 
         {/* 选项列表 */}
         {question.options && question.options.length > 0 && (
-          <div className="space-y-2 mb-4">
+          <div className="space-y-2 mb-4 print:space-y-0.5 print:mb-1">
             {question.options.map((option) => {
               const isCorrect = correctOptionIds.has(option.id.toUpperCase());
               return (
@@ -444,9 +444,9 @@ function ReciteCard({
                   key={option.id}
                   className={`
                     flex items-start gap-3 px-4 py-3 rounded-lg border
-                    transition-colors
+                    transition-colors print:px-1 print:py-0.5 print:border-0 print:bg-transparent
                     ${isCorrect
-                      ? 'bg-emerald-50 border-emerald-300'
+                      ? 'bg-emerald-50 border-emerald-300 print:font-bold'
                       : 'bg-gray-50 border-gray-100'
                     }
                   `}
@@ -456,8 +456,9 @@ function ReciteCard({
                     className={`
                       flex-shrink-0 w-6 h-6 rounded-full
                       text-xs font-bold flex items-center justify-center
+                      print:w-4 print:h-4 print:text-[10px] print:bg-transparent print:text-black
                       ${isCorrect
-                        ? 'bg-emerald-500 text-white'
+                        ? 'bg-emerald-500 text-white print:font-bold'
                         : 'bg-gray-200 text-gray-500'
                       }
                     `}
@@ -467,15 +468,15 @@ function ReciteCard({
                   {/* 选项文字 */}
                   <span
                     className={`
-                      text-sm leading-relaxed pt-0.5
-                      ${isCorrect ? 'text-emerald-800 font-medium' : 'text-gray-600'}
+                      text-sm leading-relaxed pt-0.5 print:text-xs print:leading-tight
+                      ${isCorrect ? 'text-emerald-800 font-medium print:text-black' : 'text-gray-600 print:text-black'}
                     `}
                   >
                     <RichTextWithBreaks content={option.text} />
                   </span>
                   {/* 正确标记 */}
                   {isCorrect && (
-                    <CheckCircle2 className="flex-shrink-0 w-4 h-4 text-emerald-500 mt-0.5 ml-auto" />
+                    <CheckCircle2 className="flex-shrink-0 w-4 h-4 text-emerald-500 mt-0.5 ml-auto print:hidden" />
                   )}
                 </div>
               );
@@ -485,12 +486,12 @@ function ReciteCard({
 
         {/* 填空题答案 */}
         {question.type === 'fill-blank' && (
-          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+            <div className="flex items-start gap-2 print:gap-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0 print:hidden" />
               <div>
-                <span className="text-sm font-medium text-emerald-700">参考答案：</span>
-                <span className="text-sm text-emerald-700">{answerDisplay}</span>
+                <span className="text-sm font-medium text-emerald-700 print:text-black">参考答案：</span>
+                <span className="text-sm text-emerald-700 print:text-black">{answerDisplay}</span>
               </div>
             </div>
           </div>
@@ -498,12 +499,12 @@ function ReciteCard({
 
         {/* 判断题答案 */}
         {question.type === 'true-false' && (
-          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-            <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+            <div className="flex items-start gap-2 print:gap-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0 print:hidden" />
               <div>
-                <span className="text-sm font-medium text-emerald-700">正确答案：</span>
-                <span className="text-sm text-emerald-700">{answerDisplay}</span>
+                <span className="text-sm font-medium text-emerald-700 print:text-black">正确答案：</span>
+                <span className="text-sm text-emerald-700 print:text-black">{answerDisplay}</span>
               </div>
             </div>
           </div>
@@ -511,10 +512,10 @@ function ReciteCard({
 
         {/* 选择题答案 */}
         {(question.type === 'single' || question.type === 'multiple') && (
-          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span className="text-sm font-medium text-emerald-700">
+          <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+            <div className="flex items-center gap-2 print:gap-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 print:hidden" />
+              <span className="text-sm font-medium text-emerald-700 print:text-black">
                 正确答案：{answerDisplay}
               </span>
             </div>
@@ -523,14 +524,14 @@ function ReciteCard({
 
         {/* 解析 */}
         {question.explanation && (
-          <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <div className="flex items-start gap-2">
-              <Lightbulb className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 print:p-1 print:bg-transparent print:border-gray-400 print:text-xs">
+            <div className="flex items-start gap-2 print:gap-1">
+              <Lightbulb className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0 print:hidden" />
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-amber-700">名师解析：</span>
+                <span className="text-sm font-medium text-amber-700 print:text-black">名师解析：</span>
                 <RichTextWithBreaks 
                   content={question.explanation || ''} 
-                  textClassName="text-sm text-amber-700 leading-relaxed mt-0.5"
+                  textClassName="text-sm text-amber-700 leading-relaxed mt-0.5 print:text-xs print:text-black print:leading-tight"
                 />
               </div>
             </div>
@@ -556,22 +557,22 @@ function ReciteItem({
   // 综合题：显示案例背景 + 子题列表
   if (question.type === 'comprehensive' && question.children && question.children.length > 0) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden print:border-gray-400 print:shadow-none">
         {/* 综合题案例背景 */}
-        <div className="p-5 border-b border-gray-200 bg-rose-50/50">
-          <div className="flex items-start gap-2">
-            <span className="flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-600">
+        <div className="p-5 border-b border-gray-200 bg-rose-50/50 print:p-2 print:bg-transparent print:border-gray-400">
+          <div className="flex items-start gap-2 print:gap-1">
+            <span className="flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-600 print:bg-transparent print:text-black print:font-bold">
               综合案例
             </span>
-            <span className="text-xs text-gray-400">{question.children.length} 道子题</span>
+            <span className="text-xs text-gray-400 print:text-black">{question.children.length} 道子题</span>
           </div>
-          <div className="mt-3 text-gray-700 leading-relaxed">
+          <div className="mt-3 text-gray-700 leading-relaxed print:mt-1 print:text-sm print:leading-snug">
             <RichTextWithBreaks content={question.caseBackground || question.content || ''} />
           </div>
         </div>
 
         {/* 子题列表 - 简洁显示，与案例背景同层 */}
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 print:divide-gray-300">
           {question.children.map((child, childIndex) => {
             const childAnswerDisplay = (() => {
               const answer = child.answer;
@@ -599,15 +600,15 @@ function ReciteItem({
             );
 
             return (
-              <div key={child.id} className="p-5">
+              <div key={child.id} className="p-5 print:p-1">
                 {/* 子题：题号 + 题型标签 + 题干（同一行） */}
-                <div className="flex items-start gap-2 mb-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center mt-0.5">
+                <div className="flex items-start gap-2 mb-3 print:mb-1">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center mt-0.5 print:bg-transparent print:text-black print:w-4 print:h-4">
                     {childIndex + 1}
                   </span>
                   <div className="flex-1">
-                    <p className="text-gray-800 leading-relaxed">
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle">
+                    <p className="text-gray-800 leading-relaxed print:text-sm print:leading-snug">
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle print:bg-transparent print:text-black print:font-bold">
                         {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
                       </span>
                       <RichTextWithBreaks content={child.content} />
@@ -617,28 +618,28 @@ function ReciteItem({
 
                 {/* 选项 */}
                 {child.options && child.options.length > 0 && (
-                  <div className="space-y-2 mb-4 ml-8">
+                  <div className="space-y-2 mb-4 ml-8 print:space-y-0 print:mb-1 print:ml-4">
                     {child.options.map((option) => {
                       const isCorrect = childCorrectIds.has(option.id.toUpperCase());
                       return (
                         <div
                           key={option.id}
-                          className={`flex items-start gap-3 p-2.5 rounded-lg ${
+                          className={`flex items-start gap-3 p-2.5 rounded-lg print:p-0.5 print:border-0 print:bg-transparent ${
                             isCorrect
-                              ? 'bg-green-50 border border-green-200'
+                              ? 'bg-green-50 border border-green-200 print:font-bold'
                               : 'bg-gray-50 border border-gray-100'
                           }`}
                         >
                           <span
-                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center ${
+                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center print:w-3 print:h-3 print:text-[10px] print:bg-transparent ${
                               isCorrect
-                                ? 'bg-green-500 text-white'
-                                : 'bg-gray-200 text-gray-600'
+                                ? 'bg-green-500 text-white print:text-black print:font-bold'
+                                : 'bg-gray-200 text-gray-600 print:text-black'
                             }`}
                           >
                             {option.id}
                           </span>
-                          <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium' : 'text-gray-600'}`}>
+                          <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium print:text-black' : 'text-gray-600 print:text-black'}`}>
                             <RichTextWithBreaks content={option.text} />
                           </span>
                         </div>
@@ -648,17 +649,17 @@ function ReciteItem({
                 )}
 
                 {/* 答案和解析 */}
-                <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 ml-8">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-amber-700">正确答案：</span>
-                    <span className="text-sm font-semibold text-amber-800">{childAnswerDisplay}</span>
+                <div className="bg-amber-50/50 border border-amber-100 rounded-lg p-3 ml-8 print:p-0.5 print:bg-transparent print:border-gray-400 print:ml-4 print:text-xs">
+                  <div className="flex items-center gap-2 mb-1 print:gap-1">
+                    <span className="text-sm font-medium text-amber-700 print:text-black">正确答案：</span>
+                    <span className="text-sm font-semibold text-amber-800 print:text-black">{childAnswerDisplay}</span>
                   </div>
                   {child.explanation && (
-                    <div className="mt-2 pt-2 border-t border-amber-100">
-                      <div className="text-xs text-gray-500 mb-1">解析：</div>
+                    <div className="mt-2 pt-2 border-t border-amber-100 print:mt-1 print:pt-1 print:border-gray-300">
+                      <div className="text-xs text-gray-500 mb-1 print:text-black">解析：</div>
                       <RichTextWithBreaks 
                         content={child.explanation} 
-                        textClassName="text-sm text-gray-700 leading-relaxed"
+                        textClassName="text-sm text-gray-700 leading-relaxed print:text-xs print:text-black print:leading-tight"
                       />
                     </div>
                   )}
