@@ -96,15 +96,18 @@ export default function RecitePage() {
         }
 
         // 如果 localStorage 没有数据，尝试从后端获取（使用普通用户接口）
-        if (bankQuestions.length === 0) {
+        // 或者虽然有数据但没有题库名称，也需要获取
+        if (bankQuestions.length === 0 || !bank?.name) {
           const response = await fetch(`/api/questions?bankId=${bankId}`);
           if (response.ok) {
             const data = await response.json();
-            bankQuestions = data.questions || [];
             if (data.bankName) setBankName(data.bankName);
-            // 将获取到的题目存入 localStorage，后续无需再请求
-            if (bankQuestions.length > 0) {
-              questionStore.addMultiple(bankQuestions);
+            if (bankQuestions.length === 0) {
+              bankQuestions = data.questions || [];
+              // 将获取到的题目存入 localStorage，后续无需再请求
+              if (bankQuestions.length > 0) {
+                questionStore.addMultiple(bankQuestions);
+              }
             }
           }
         }
@@ -310,7 +313,7 @@ export default function RecitePage() {
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <BookOpen className="w-4 h-4" />
-            <span>{bankName || '背题模式'}</span>
+            <span>背题模式</span>
           </div>
         </div>
       </header>
