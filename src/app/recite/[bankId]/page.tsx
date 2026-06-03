@@ -325,7 +325,7 @@ export default function RecitePage() {
           }}
         >
           <span className="text-gray-500 text-2xl font-medium whitespace-nowrap rotate-[-15deg] inline-block">
-            {bankName || '背题模式'}
+            微信：tanngeche
           </span>
         </div>
         {questions.length === 0 ? (
