@@ -56,7 +56,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ 
       questions: processedQuestions,
-      total: processedQuestions.length 
+      total: processedQuestions.length,
+      bankName: bankId ? (await bankService.getBankById(bankId))?.name : undefined
     });
   } catch (error) {
     console.error('Failed to get questions:', error);
