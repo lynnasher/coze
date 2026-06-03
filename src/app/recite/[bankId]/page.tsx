@@ -310,7 +310,7 @@ export default function RecitePage() {
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <BookOpen className="w-4 h-4" />
-            <span>背题模式</span>
+            <span>{bankName || '背题模式'}</span>
           </div>
         </div>
       </header>
