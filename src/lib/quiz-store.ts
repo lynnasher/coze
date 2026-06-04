@@ -976,6 +976,7 @@ const syncStatus: CloudSyncStatus = {
 interface SyncQueue {
   records: PracticeRecord[];  // 新增的记录
   streaks: Record<string, number>;  // 更新的 streak
+  quizProgress: Record<string, unknown> | null;  // 做题进度快照
   hasChanges: boolean;
 }
 
@@ -983,6 +984,7 @@ interface SyncQueue {
 const createSyncQueue = (): SyncQueue => ({
   records: [],
   streaks: {},
+  quizProgress: null,
   hasChanges: false,
 });
 
@@ -1009,6 +1011,15 @@ export function queueStreakForSync(questionId: string, streak: number): void {
   syncQueue.hasChanges = true;
   hasPendingSync = true;
   // 立即同步，不再防抖
+  flushSyncQueue();
+}
+
+// 添加做题进度到同步队列（立即同步）
+export function queueQuizProgressForSync(progress: Record<string, unknown>): void {
+  syncQueue.quizProgress = progress;
+  syncQueue.hasChanges = true;
+  hasPendingSync = true;
+  // 立即同步
   flushSyncQueue();
 }
 
@@ -1054,6 +1065,7 @@ export function forceSyncBeacon(): boolean {
       token,
       practiceHistory: syncQueue.records,
       streakData: syncQueue.streaks,
+      quizProgress: syncQueue.quizProgress,
     });
 
     const url = `/api/user-data`;
@@ -1108,7 +1120,7 @@ async function flushSyncQueue(): Promise<boolean> {
   
   return withSyncLock(async () => {
     // 再次检查（等待锁期间可能已被清空）
-    if (syncQueue.records.length === 0 && syncQueue.streaks.size === 0) return true;
+    if (syncQueue.records.length === 0 && syncQueue.streaks.size === 0 && !syncQueue.quizProgress) return true;
     
     try {
       // 先拉取云端最新数据（合并而不是覆盖）
@@ -1125,13 +1137,21 @@ async function flushSyncQueue(): Promise<boolean> {
         ...syncQueue.streaks,
       };
       
+      // 构建 POST body
+      const postBody: Record<string, unknown> = {
+        practiceHistory: mergedRecords,
+        streakData: mergedStreaks,
+      };
+      
+      // 如果有做题进度，附加到请求中
+      if (syncQueue.quizProgress) {
+        postBody.quizProgress = syncQueue.quizProgress;
+      }
+      
       // 上传到云端
       const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
-        body: JSON.stringify({
-          practiceHistory: mergedRecords,
-          streakData: mergedStreaks,
-        }),
+        body: JSON.stringify(postBody),
       });
       
       if (response.ok) {
@@ -1242,11 +1262,43 @@ export const cloudSyncService = {
     }
   },
 
+  // 保存做题进度到云端
+  async saveQuizProgress(progress: Record<string, unknown>): Promise<boolean> {
+    try {
+      const response = await authenticatedFetch('/api/user-data', {
+        method: 'POST',
+        body: JSON.stringify({ quizProgress: progress }),
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('保存做题进度到云端失败:', error);
+      return false;
+    }
+  },
+
+  // 从云端加载做题进度
+  async loadQuizProgress(): Promise<Record<string, unknown> | null> {
+    try {
+      const token = getUserToken();
+      if (!token) return null;
+
+      const response = await authenticatedFetch('/api/user-data');
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      return data.data?.quiz_progress || null;
+    } catch (error) {
+      console.error('加载做题进度失败:', error);
+      return null;
+    }
+  },
+
   // 从云端拉取数据
   async pullData(_userId: string): Promise<{
     records: PracticeRecord[];
     streaks: Record<string, number>;
     recentPractices: RecentPractice[];
+    quizProgress: Record<string, unknown>;
   } | null> {
     try {
       // 检查用户是否已登录（token 是否存在）
@@ -1295,7 +1347,9 @@ export const cloudSyncService = {
         lastPracticeAt: r.lastPracticeAt as number || new Date(r.last_practice_at as string).getTime(),
       }));
 
-      return { records, streaks, recentPractices };
+      const quizProgress: Record<string, unknown> = data.data?.quiz_progress || {};
+
+      return { records, streaks, recentPractices, quizProgress };
     } catch (error) {
       console.error('从云端拉取数据失败:', error);
       return null;

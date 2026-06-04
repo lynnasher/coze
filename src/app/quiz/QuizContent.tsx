@@ -91,6 +91,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     resetQuiz,
     restartQuiz,
     checkProgress,
+    loadCloudProgress,
     clearProgress,
   } = useQuiz();
   
@@ -136,8 +137,18 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
         // 权限通过
         setHasPermission(true);
         
-        // 检查是否有可恢复的做题进度
-        const progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+        // 检查是否有可恢复的做题进度（先查本地，再查云端）
+        let progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+        
+        // 本地没有进度时，尝试从云端加载（跨设备恢复）
+        if (!progress) {
+          const cloudProgress = await loadCloudProgress(bankId);
+          if (cloudProgress) {
+            // loadCloudProgress 已自动存入 localStorage，再查一次即可
+            progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+          }
+        }
+        
         if (progress && progress.questionIds.length > 0) {
           setSavedProgress(progress);
           setShowResumeDialog(true);

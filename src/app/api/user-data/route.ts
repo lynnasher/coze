@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: '请先登录' }, { status: 401 });
     }
 
-    const { practiceHistory, wrongQuestions, recentlyPracticed, streakData } = body;
+    const { practiceHistory, wrongQuestions, recentlyPracticed, streakData, quizProgress } = body;
 
     // 验证数据格式
     if (practiceHistory && !Array.isArray(practiceHistory)) {
@@ -115,6 +115,11 @@ export async function POST(request: Request) {
     };
     if (wrongQuestions !== undefined) updateFields.wrong_questions = wrongQuestions;
 
+    // 保存做题进度（全量覆盖，不做合并 - 每个 bankId 独立，无竞态）
+    if (quizProgress !== undefined) {
+      updateFields.quiz_progress = quizProgress;
+    }
+
     if (existingUserData) {
       // 更新现有数据（使用合并后的字段）
       const { error } = await client
@@ -135,6 +140,7 @@ export async function POST(request: Request) {
           wrong_questions: wrongQuestions || [],
           recently_practiced: recentlyPracticed || [],
           streak_data: streakData || {},
+          quiz_progress: quizProgress || {},
         });
 
       if (error) {

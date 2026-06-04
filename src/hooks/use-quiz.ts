@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, queueQuizProgressForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
 
 // localStorage key for quiz state persistence (持久化，浏览器关闭后仍存在)
 const QUIZ_PROGRESS_KEY = 'quiz_progress';
@@ -61,6 +61,7 @@ export function useQuiz() {
   }, []);
 
   // 保存做题状态到 localStorage（持久化，浏览器关闭后仍可恢复）
+  // 同时同步到云端（跨设备恢复）
   useEffect(() => {
     if (hasStarted && quizState.questions.length > 0 && !quizState.isComplete) {
       const progress: QuizProgress = {
@@ -79,6 +80,15 @@ export function useQuiz() {
         // 按 bankId 分别保存进度，支持多题库独立恢复
         const key = quizState.bankId ? `${QUIZ_PROGRESS_KEY}_${quizState.bankId}` : QUIZ_PROGRESS_KEY;
         localStorage.setItem(key, JSON.stringify(progress));
+
+        // 同步到云端（通过增量同步队列）
+        const userId = getCurrentUserId();
+        if (userId && quizState.bankId) {
+          // 云端按 bankId 组织，每个 bank 一个 key
+          queueQuizProgressForSync({
+            [quizState.bankId]: progress,
+          });
+        }
       } catch {
         // 忽略存储错误（如存储空间不足）
       }
@@ -161,6 +171,47 @@ export function useQuiz() {
       // 解析失败
     }
     return null;
+  }, []);
+
+  // 从云端加载做题进度并合并到 localStorage（跨设备恢复）
+  const loadCloudProgress = useCallback(async (bankId?: string | null): Promise<QuizProgress | null> => {
+    try {
+      const cloudProgress = await cloudSyncService.loadQuizProgress();
+      if (!cloudProgress) return null;
+
+      // cloudProgress 是 Record<string, unknown>，按 bankId 存储
+      // 查找匹配 bankId 的进度
+      const progressKey = bankId || 'default';
+      const savedProgress = cloudProgress[progressKey] as Record<string, unknown> | undefined;
+      if (!savedProgress) return null;
+
+      // 转换为 QuizProgress 格式
+      const progress: QuizProgress = {
+        bankId: savedProgress.bankId as string,
+        mode: savedProgress.mode as PracticeMode,
+        currentIndex: savedProgress.currentIndex as number,
+        answers: savedProgress.answers as Record<string, string | string[]>,
+        timeSpent: savedProgress.timeSpent as number,
+        questionIds: savedProgress.questionIds as string[],
+        bankName: savedProgress.bankName as string,
+        categoryId: savedProgress.categoryId as string,
+        categoryName: savedProgress.categoryName as string,
+        timestamp: savedProgress.timestamp as number,
+      };
+
+      // 存储到 localStorage，供 checkProgress 使用
+      const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
+      const existing = localStorage.getItem(key);
+      
+      // 只有云端进度更新（时间戳更新）时才覆盖本地
+      if (!existing || progress.timestamp > JSON.parse(existing).timestamp) {
+        localStorage.setItem(key, JSON.stringify(progress));
+      }
+
+      return progress;
+    } catch {
+      return null;
+    }
   }, []);
 
   // 恢复做题进度
@@ -711,6 +762,7 @@ export function useQuiz() {
     resetQuiz,
     stats,
     checkProgress,
+    loadCloudProgress,
     resumeQuiz,
     clearProgress,
   };

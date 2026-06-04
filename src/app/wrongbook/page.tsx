@@ -25,7 +25,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken, deletedQuestionStore, withSyncLock } from '@/lib/quiz-store';
-import { Question, QuestionType } from '@/lib/types';
+import { Question, PracticeRecord, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import { checkAnswer as sharedCheckAnswer } from '@/lib/import-utils';
 import Link from 'next/link';
