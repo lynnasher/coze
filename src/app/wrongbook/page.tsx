@@ -855,6 +855,14 @@ export default function WrongBookPage() {
       </header>
 
       <main className="max-w-[970px] mx-auto px-4 py-5">
+        {/* 首次加载中（mounted 为 false 且已登录，同步数据尚未完成） */}
+        {currentUser && !mounted && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-gray-500 text-sm">正在加载错题数据...</p>
+          </div>
+        )}
+
         {/* 未登录 */}
         {!currentUser && mounted && (
           <div className="text-center py-16">
