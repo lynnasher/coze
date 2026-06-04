@@ -208,6 +208,8 @@ export default function WrongBookPage() {
       const user = getStoredUser();
       setCurrentUser(user);
       if (user) {
+        // 先标记同步中，避免在异步同步完成前显示"暂无错题"
+        setIsSyncing(true);
         syncFromCloud(true).finally(() => recalculateWrongData());
       } else {
         refreshData();
