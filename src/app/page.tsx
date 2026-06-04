@@ -245,11 +245,25 @@ export default function QuizApp() {
       }
 
       if (!skipPush) {
-        await cloudSyncService.saveRecordsAndStreaks(
-          user.id,
-          recordStore.getAll(),
-          wrongStreakStore.getAll()
-        );
+        // 上传前基于合并后的记录重新计算 streaks，保证一致性
+        const allRecords = recordStore.getAll();
+        const computedStreaks: Record<string, number> = {};
+        const byQuestion: Record<string, typeof allRecords> = {};
+        allRecords.forEach(r => {
+          if (!byQuestion[r.questionId]) byQuestion[r.questionId] = [];
+          byQuestion[r.questionId].push(r);
+        });
+        Object.entries(byQuestion).forEach(([qId, qrs]) => {
+          qrs.sort((a, b) => b.timestamp - a.timestamp);
+          let streak = 0;
+          for (const r of qrs) {
+            if (r.isCorrect) streak++;
+            else streak = 0;
+          }
+          if (streak > 0) computedStreaks[qId] = streak;
+        });
+        wrongStreakStore.save(computedStreaks);
+        await cloudSyncService.saveRecordsAndStreaks(user.id, allRecords, computedStreaks);
       }
     } catch (error) {
       console.error('云端同步失败，使用本地数据:', error);

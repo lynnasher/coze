@@ -174,7 +174,27 @@ export default function WrongBookPage() {
       }
       // 再按需 push 本地数据
       if (!skipPush) {
-        await cloudSyncService.saveRecordsAndStreaks(user.id, recordStore.getAll(), wrongStreakStore.getAll());
+        // 上传前先基于记录重新计算 streaks，保证 streaks 与记录一致
+        const records = recordStore.getAll();
+        const computedStreaks: Record<string, number> = {};
+        // 按 questionId 分组，按时间排序，计算连续正确次数
+        const questionsByGroup: Record<string, PracticeRecord[]> = {};
+        records.forEach(r => {
+          if (!questionsByGroup[r.questionId]) questionsByGroup[r.questionId] = [];
+          questionsByGroup[r.questionId].push(r);
+        });
+        Object.entries(questionsByGroup).forEach(([qId, qRecords]) => {
+          // 按时间降序排列（最新的在前）
+          qRecords.sort((a, b) => b.timestamp - a.timestamp);
+          let streak = 0;
+          for (const r of qRecords) {
+            if (r.isCorrect) streak++;
+            else streak = 0;
+          }
+          if (streak > 0) computedStreaks[qId] = streak;
+        });
+        wrongStreakStore.save(computedStreaks);
+        await cloudSyncService.saveRecordsAndStreaks(user.id, records, computedStreaks);
       }
     } finally {
       setIsSyncing(false);
