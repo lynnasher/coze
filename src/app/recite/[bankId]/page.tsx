@@ -305,7 +305,11 @@ export default function RecitePage() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </button>
             <div>
-              <h1 className="text-base font-semibold text-gray-900">{bankName || '背题模式'}</h1>
+              <h1 className="text-base font-semibold text-gray-900">
+                <span className="print:hidden">背题模式</span>
+                {bankName && <span className="hidden print:inline">{bankName}</span>}
+                {!bankName && <span className="hidden print:inline">背题模式</span>}
+              </h1>
               <p className="text-xs text-gray-500">
                 {totalQuestionCount} 道题 · 含答案与解析
               </p>
@@ -400,7 +404,7 @@ export default function RecitePage() {
 
         {/* 底部 */}
         <div className="mt-12 pb-8 text-center">
-          <p className="text-xs text-gray-400">— 背题模式 · 全部题目已展示 —</p>
+          <p className="text-xs text-gray-400">— 解析很重要，你好好看了没 —</p>
         </div>
       </main>
     </div>
