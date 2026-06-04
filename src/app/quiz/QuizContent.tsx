@@ -1148,7 +1148,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   ? currentChildIndex === 0 && quizState.currentIndex === 0
                   : quizState.currentIndex === 0
               }
-              className="flex-1 sm:flex-none h-10 sm:h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+              className="flex-none h-9 px-3 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="ml-0.5 text-sm font-medium">上一题</span>
@@ -1157,7 +1157,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             <Button
               variant="outline"
               onClick={handleSubmitAnswer}
-              className="h-11 px-3 sm:px-6 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
+              className="h-9 px-3 rounded-xl border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold shadow-sm"
             >
               <BookOpen className="w-4 h-4" />
               <span>答案</span>
@@ -1173,7 +1173,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   <Button
                     size="sm"
                     onClick={handleFinishAndExit}
-                    className="flex-1 sm:flex-none h-10 sm:h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
+                    className="flex-none h-9 px-4 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
                   >
                     <FileCheck className="w-4 h-4" />
                     <span className="ml-0.5 text-sm">交卷</span>
@@ -1188,7 +1188,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="flex-1 sm:flex-none h-10 sm:h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
+                    className="flex-none h-9 px-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
                   >
                     <span className="text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -1203,7 +1203,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="flex-1 sm:flex-none h-10 sm:h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
+                    className="flex-none h-9 px-4 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
                   >
                     <span className="text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-0.5" />
