@@ -165,21 +165,17 @@ export default function QuizApp() {
   
   // 重新计算错题数据（委托给公共模块）
   const recalculateWrongData = useCallback(() => {
-    const { deletedQuestionStore, questionStore } = require('@/lib/quiz-store');
-    // 获取所有已删除的题目ID（包括 deletedQuestionStore 记录的和 questionStore 中不存在的）
-    const deletedFromStore = deletedQuestionStore.getAll();
-    const existingQuestionIds = new Set(questionStore.getAll().map((q: Question) => q.id));
-    // 从记录中找出 questionStore 中不存在的题目ID（即已删除的题目）
-    const recordQuestionIds = recordStore.getAll().map(r => r.questionId);
-    const deletedFromMissing = recordQuestionIds.filter(id => !existingQuestionIds.has(id));
-    const allDeletedIds = [...new Set([...deletedFromStore, ...deletedFromMissing])];
+    const { deletedQuestionStore } = require('@/lib/quiz-store');
+    // 只使用 deletedQuestionStore 中明确标记删除的题目ID
+    // 注意：不要从 questionStore 推断删除（新浏览器上 questionStore 可能为空）
+    const deletedIds = deletedQuestionStore.getAll();
     
     return recalculateWrongDataUtil(
       recordStore.getAll(),
       (records) => recordStore.save(records),
       (streaks) => wrongStreakStore.save(streaks),
       () => getWrongQuestionIds().length,
-      allDeletedIds
+      deletedIds
     );
   }, []);
   
