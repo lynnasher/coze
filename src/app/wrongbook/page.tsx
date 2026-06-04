@@ -166,10 +166,9 @@ export default function WrongBookPage() {
         const missingQuestionIds = cloudQuestionIds.filter(id => !localQuestionIds.has(id));
         
         if (missingQuestionIds.length > 0) {
-          // 延迟执行，让状态先更新
-          setTimeout(() => {
-            fetchQuestionsFromCloud(missingQuestionIds);
-          }, 100);
+          // 在 try 块中 await 完成，确保 finally 中 recalculateWrongData 时
+          // cloudQuestions 已经更新，避免错题列表分步显示
+          await fetchQuestionsFromCloud(missingQuestionIds);
         }
       }
       // 再按需 push 本地数据
@@ -200,7 +199,7 @@ export default function WrongBookPage() {
       setIsSyncing(false);
       recalculateWrongData();
     }
-  }, [recalculateWrongData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recalculateWrongData, fetchQuestionsFromCloud]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 监听登录/登出事件，自动刷新数据
   useEffect(() => {
