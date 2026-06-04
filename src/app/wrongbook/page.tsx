@@ -186,12 +186,14 @@ export default function WrongBookPage() {
     const user = getStoredUser();
     setCurrentUser(user);
     if (user) {
-      // 首次加载：先拉取云端数据（skipPush=true，避免推送可能属于其他用户的本地数据）
-      // 之后的操作（如答题）会通过增量同步队列推送
-      syncFromCloud(true);
+      // 首次加载：先拉取云端数据，同步完成后再渲染
+      syncFromCloud(true).finally(() => {
+        setMounted(true);
+      });
+    } else {
+      // 未登录，直接显示
+      setMounted(true);
     }
-    // 显示内容
-    setMounted(true);
     
     // 页面卸载前强制同步（使用 sendBeacon 防止数据丢失）
     const handleBeforeUnload = () => {
