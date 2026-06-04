@@ -139,13 +139,17 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
         
         // 检查是否有可恢复的做题进度（先查本地，再查云端）
         let progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+        console.log('[Quiz] 本地进度:', progress ? `找到 (index=${progress.currentIndex})` : '无');
         
         // 本地没有进度时，尝试从云端加载（跨设备恢复）
         if (!progress) {
+          console.log('[Quiz] 尝试从云端加载进度...');
           const cloudProgress = await loadCloudProgress(bankId);
+          console.log('[Quiz] 云端加载结果:', cloudProgress ? `找到 (index=${cloudProgress.currentIndex})` : '无');
           if (cloudProgress) {
             // loadCloudProgress 已自动存入 localStorage，再查一次即可
             progress = checkProgress(mode as 'random' | 'sequential' | 'wrong', bankId);
+            console.log('[Quiz] 重查本地进度:', progress ? `找到 (index=${progress.currentIndex})` : '仍无');
           }
         }
         

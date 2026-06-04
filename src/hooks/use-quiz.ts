@@ -84,6 +84,7 @@ export function useQuiz() {
         // 同步到云端（通过增量同步队列）
         const userId = getCurrentUserId();
         if (userId && quizState.bankId) {
+          console.log('[QuizSync] 保存进度到云端:', quizState.bankId, 'index=', quizState.currentIndex);
           // 云端按 bankId 组织，每个 bank 一个 key
           queueQuizProgressForSync({
             [quizState.bankId]: progress,
@@ -177,13 +178,18 @@ export function useQuiz() {
   const loadCloudProgress = useCallback(async (bankId?: string | null): Promise<QuizProgress | null> => {
     try {
       const cloudProgress = await cloudSyncService.loadQuizProgress();
+      console.log('[loadCloudProgress] 云端原始数据:', JSON.stringify(cloudProgress).slice(0, 500));
       if (!cloudProgress) return null;
 
       // cloudProgress 是 Record<string, unknown>，按 bankId 存储
       // 查找匹配 bankId 的进度
       const progressKey = bankId || 'default';
+      console.log('[loadCloudProgress] 查找 key:', progressKey, '可用 keys:', Object.keys(cloudProgress));
       const savedProgress = cloudProgress[progressKey] as Record<string, unknown> | undefined;
-      if (!savedProgress) return null;
+      if (!savedProgress) {
+        console.log('[loadCloudProgress] 未找到匹配的进度');
+        return null;
+      }
 
       // 转换为 QuizProgress 格式
       const progress: QuizProgress = {
@@ -198,6 +204,7 @@ export function useQuiz() {
         categoryName: savedProgress.categoryName as string,
         timestamp: savedProgress.timestamp as number,
       };
+      console.log('[loadCloudProgress] 转换后进度:', progress);
 
       // 存储到 localStorage，供 checkProgress 使用
       const key = bankId ? `${QUIZ_PROGRESS_KEY}_${bankId}` : QUIZ_PROGRESS_KEY;
@@ -206,6 +213,7 @@ export function useQuiz() {
       // 只有云端进度更新（时间戳更新）时才覆盖本地
       if (!existing || progress.timestamp > JSON.parse(existing).timestamp) {
         localStorage.setItem(key, JSON.stringify(progress));
+        console.log('[loadCloudProgress] 已写入 localStorage:', key);
       }
 
       return progress;
