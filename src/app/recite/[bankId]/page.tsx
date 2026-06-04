@@ -430,7 +430,7 @@ function ReciteCard({
       <div className="p-5 print:p-2">
         {/* 题号 + 题干（同一行显示） */}
         <div className="flex items-start gap-2 mb-4 print:mb-1">
-          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center mt-0.5 print:bg-transparent print:text-black print:font-bold print:w-4 print:h-4">
+          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex items-center justify-center mt-0.5 print:bg-transparent print:text-black print:font-normal print:w-5 print:h-5 print:text-sm">
             {index}
           </span>
           <div className="flex-1">
@@ -463,7 +463,7 @@ function ReciteCard({
                     className={`
                       flex-shrink-0 w-6 h-6 rounded-full
                       text-xs font-bold flex items-center justify-center
-                      print:w-4 print:h-4 print:text-sm print:bg-transparent print:text-black
+                      print:w-5 print:h-5 print:text-sm print:bg-transparent print:text-black
                       ${isCorrect
                         ? 'bg-emerald-500 text-white'
                         : 'bg-gray-200 text-gray-500'
@@ -475,8 +475,8 @@ function ReciteCard({
                   {/* 选项文字 */}
                   <span
                     className={`
-                      text-sm leading-relaxed pt-0.5 print:text-sm print:leading-snug
-                      ${isCorrect ? 'text-emerald-800 font-medium print:text-black' : 'text-gray-600 print:text-black'}
+                      text-sm leading-relaxed pt-0.5 print:text-sm print:leading-snug print:pt-0
+                      ${isCorrect ? 'text-emerald-800 font-medium print:text-black print:font-normal' : 'text-gray-600 print:text-black'}
                     `}
                   >
                     <RichTextWithBreaks content={option.text} />
@@ -610,7 +610,7 @@ function ReciteItem({
               <div key={child.id} className="p-5 print:p-1">
                 {/* 子题：题号 + 题型标签 + 题干（同一行） */}
                 <div className="flex items-start gap-2 mb-3 print:mb-1">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center mt-0.5 print:bg-transparent print:text-black print:w-4 print:h-4">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium flex items-center justify-center mt-0.5 print:bg-transparent print:text-black print:font-normal print:w-5 print:h-5 print:text-sm">
                     {childIndex + 1}
                   </span>
                   <div className="flex-1">
@@ -638,7 +638,7 @@ function ReciteItem({
                           }`}
                         >
                           <span
-                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center print:w-3 print:h-3 print:text-sm print:bg-transparent ${
+                            className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center print:w-4 print:h-4 print:text-sm print:bg-transparent ${
                               isCorrect
                                 ? 'bg-green-500 text-white print:text-black'
                                 : 'bg-gray-200 text-gray-600 print:text-black'
@@ -646,7 +646,7 @@ function ReciteItem({
                           >
                             {option.id}
                           </span>
-                          <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium print:text-black' : 'text-gray-600 print:text-black'}`}>
+                          <span className={`text-sm ${isCorrect ? 'text-green-800 font-medium print:text-black print:font-normal' : 'text-gray-600 print:text-black'}`}>
                             <RichTextWithBreaks content={option.text} />
                           </span>
                         </div>
