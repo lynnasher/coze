@@ -82,8 +82,10 @@ export function useQuiz() {
         localStorage.setItem(key, JSON.stringify(progress));
 
         // 同步到云端（通过增量同步队列）
+        // 只在有实际进度时（答过题或已翻页）才推，防止 index=0 的初始状态覆盖云端已有数据
+        const hasRealProgress = quizState.currentIndex > 0 || Object.keys(quizState.answers).length > 0;
         const userId = getCurrentUserId();
-        if (userId && quizState.bankId) {
+        if (userId && quizState.bankId && hasRealProgress) {
           console.log('[QuizSync] 保存进度到云端:', quizState.bankId, 'index=', quizState.currentIndex);
           // 云端按 bankId 组织，每个 bank 一个 key
           queueQuizProgressForSync({

@@ -1463,12 +1463,16 @@ export const cloudSyncService = {
         }
         // 4. 将云端做题进度写入 localStorage（供 checkProgress 恢复）
         if (data.quizProgress && Object.keys(data.quizProgress).length > 0) {
+          console.log('[syncOnLogin] 云端 quizProgress 原始数据:', JSON.stringify(data.quizProgress));
           for (const [bankId, progress] of Object.entries(data.quizProgress)) {
             if (progress && typeof progress === 'object') {
               const key = `quiz_progress_${bankId}`;
+              console.log(`[syncOnLogin] 写入 localStorage: key=${key}, index=${(progress as any).currentIndex}, bankId=${bankId}`);
               localStorage.setItem(key, JSON.stringify(progress));
             }
           }
+        } else {
+          console.log('[syncOnLogin] 云端无 quizProgress 数据');
         }
         return true;
       }
