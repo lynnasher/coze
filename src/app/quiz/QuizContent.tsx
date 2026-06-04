@@ -79,6 +79,13 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   
   const questionRef = useRef<HTMLDivElement>(null);
   
+  // 移动端触摸滑动状态
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const [slideOffset, setSlideOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const SWIPE_THRESHOLD = 60;
+  
   // 使用 useQuiz hook
   const {
     quizState,
@@ -376,6 +383,68 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     resetQuiz(shouldClear);
     router.push('/?tab=library');
   }, [resetQuiz, router, quizState.isComplete]);
+
+  // 移动端滑动切换题目
+  const isQuestionCard = useRef(false);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (showAnswerSheet || showResultSheet || showResumeDialog) return;
+    isQuestionCard.current = true;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    setSlideOffset(0);
+    setIsSwiping(false);
+  }, [showAnswerSheet, showResultSheet, showResumeDialog]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isQuestionCard.current) return;
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+    // 水平滑动幅度远大于垂直才视为滑动手势
+    if (Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && Math.abs(deltaX) > 10) {
+      e.preventDefault();
+      const clamped = Math.max(-120, Math.min(120, deltaX));
+      setSlideOffset(clamped);
+      setIsSwiping(true);
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!isQuestionCard.current) return;
+    isQuestionCard.current = false;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    setSlideOffset(0);
+    setIsSwiping(false);
+
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;
+    
+    // 检查当前是否在综合题的子题模式
+    const currentQuestion = quizState.questions[quizState.currentIndex];
+    const isComprehensive = currentQuestion?.type === 'comprehensive' && (currentQuestion.children?.length ?? 0) > 0;
+    
+    if (deltaX < 0) {
+      // 左滑 → 下一题
+      if (isComprehensive && currentChildIndex < (currentQuestion.children?.length || 1) - 1) {
+        setCurrentChildIndex(prev => prev + 1);
+      } else {
+        const lastIdx = quizState.questions.length - 1;
+        if (quizState.currentIndex < lastIdx) {
+          setCurrentChildIndex(0);
+          nextQuestion();
+        }
+      }
+    } else {
+      // 右滑 → 上一题
+      if (isComprehensive && currentChildIndex > 0) {
+        setCurrentChildIndex(prev => prev - 1);
+      } else if (quizState.currentIndex > 0) {
+        prevQuestion();
+        if (isComprehensive) {
+          setCurrentChildIndex(0);
+        }
+      }
+    }
+  }, [quizState, currentChildIndex, nextQuestion, prevQuestion, showAnswerSheet, showResultSheet, showResumeDialog]);
   
   // 子组件：答题卡
   // eslint-disable-next-line react-hooks/static-components
@@ -854,8 +923,17 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
       </div>
       
       {/* 题目区域 */}
-      <div ref={questionRef} className="max-w-[970px] mx-auto px-3 sm:px-4 py-4 pb-28">
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div 
+        ref={questionRef} 
+        className="max-w-[970px] mx-auto px-3 sm:px-4 py-4 pb-28 touch-pan-y"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div 
+          className="bg-white rounded-2xl shadow-sm overflow-hidden transition-transform duration-100"
+          style={isSwiping ? { transform: `translateX(${slideOffset * 0.3}px)`, opacity: 1 - Math.abs(slideOffset) / 600 } : {}}
+        >
           {/* 题目头部 */}
           <div className="sm:px-4 px-3 py-3 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center justify-between">
@@ -1044,9 +1122,9 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
       </div>
       
       {/* 底部固定操作栏 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 z-30">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-2 sm:px-4 py-2 sm:py-3 z-30">
         <div className="max-w-[970px] mx-auto">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
             <Button
               variant="outline"
               size="sm"
@@ -1067,7 +1145,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   ? currentChildIndex === 0 && quizState.currentIndex === 0
                   : quizState.currentIndex === 0
               }
-              className="h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
+              className="flex-1 sm:flex-none h-10 sm:h-9 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
             >
               <ChevronLeft className="w-4 h-4" />
               <span className="ml-0.5 text-sm font-medium">上一题</span>
@@ -1092,7 +1170,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   <Button
                     size="sm"
                     onClick={handleFinishAndExit}
-                    className="h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
+                    className="flex-1 sm:flex-none h-10 sm:h-9 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl"
                   >
                     <FileCheck className="w-4 h-4" />
                     <span className="ml-0.5 text-sm">交卷</span>
@@ -1107,7 +1185,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
+                    className="flex-1 sm:flex-none h-10 sm:h-9 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium rounded-xl"
                   >
                     <span className="text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-0.5" />
@@ -1122,7 +1200,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                       setShowExplanation(false);
                       setTimeout(scrollToQuestion, 50);
                     }}
-                    className="h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
+                    className="flex-1 sm:flex-none h-10 sm:h-9 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-medium rounded-xl"
                   >
                     <span className="text-sm">下一题</span>
                     <ChevronRight className="w-4 h-4 ml-0.5" />
