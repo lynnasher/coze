@@ -885,7 +885,7 @@ export default function WrongBookPage() {
             )}
 
             {/* 有错题 */}
-            {wrongQuestions.length > 0 && (
+            {currentUser && wrongQuestions.length > 0 && (
           <>
             {/* ========== 错题本卡片方案选择 ========== */}
             {(() => {
@@ -1104,7 +1104,7 @@ export default function WrongBookPage() {
         )}
 
         {/* 无错题或加载中 */}
-        {wrongQuestions.length === 0 && (
+        {currentUser && wrongQuestions.length === 0 && (
           <div className="text-center py-16">
             {isSyncing ? (
               <div className="w-full max-w-2xl mx-auto space-y-4">

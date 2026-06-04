@@ -182,36 +182,7 @@ export default function ProfilePage() {
     }
   };
 
-  // 直接切换分类激活状态（管理员功能）
-  const handleToggleCategory = async (categoryId: string, isActivated: boolean) => {
-    if (!user || user.role !== 'admin') return;
 
-    const updatedCategories = isActivated
-      ? user.activated_categories.filter(c => c !== categoryId)
-      : [...user.activated_categories, categoryId];
-
-    try {
-      // 使用管理员 token（如果有的话），否则使用用户 token
-      const adminToken = localStorage.getItem('admin_token');
-      const userToken = localStorage.getItem('quiz_user_token');
-      const token = adminToken || userToken;
-      
-      await fetch(`/api/admin/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ userId: user.id, action: 'categories', value: updatedCategories }),
-      });
-
-      const updatedUser = { ...user, activated_categories: updatedCategories };
-      setUser(updatedUser);
-      localStorage.setItem('quiz_user_data', JSON.stringify(updatedUser));
-    } catch {
-      // 忽略错误
-    }
-  };
 
   const handleLogout = () => {
     // 清除 Token
