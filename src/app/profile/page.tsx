@@ -406,9 +406,6 @@ export default function ProfilePage() {
               <div className="flex-1 min-w-0">
                 <h2 className="text-base font-bold text-gray-900 truncate">{user?.nickname || '用户'}</h2>
                 <p className="text-xs text-gray-500">{user?.phone}</p>
-                {user?.role === 'admin' && (
-                  <Badge variant="secondary" className="mt-0.5 text-xs">管理员</Badge>
-                )}
               </div>
               <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
                 <div>
@@ -596,18 +593,6 @@ export default function ProfilePage() {
                       }`}>
                         {isExpired ? '已过期' : formatExpireTime(activation.expires_at)}
                       </div>
-                      
-                      {/* 管理员删除按钮 */}
-                      {user?.role === 'admin' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleCategory(activation.category_id, true)}
-                          className="text-red-400 hover:text-red-500 hover:bg-red-50 h-6 w-6 p-0"
-                        >
-                          <LogOut className="w-3 h-3" />
-                        </Button>
-                      )}
                     </div>
                   );
                 })}
@@ -617,7 +602,7 @@ export default function ProfilePage() {
         </Card>
 
         {/* 快捷入口 - 单列显示 */}
-        <Link href="/">
+        <Link href="/?tab=library">
           <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-green-500">
             <CardContent className="p-3 flex items-center gap-3">
               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -631,23 +616,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </Link>
-
-        {user?.role === 'admin' && (
-          <Link href="/admin">
-            <Card className="cursor-pointer hover:shadow-md transition-shadow border-l-4 border-l-purple-500 mt-2">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Settings className="w-5 h-5 text-purple-600" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900 text-sm">后台管理</div>
-                  <div className="text-xs text-gray-400">题库和用户管理</div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </CardContent>
-            </Card>
-          </Link>
-        )}
       </main>
     </div>
   );

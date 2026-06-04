@@ -19,10 +19,9 @@ import { calculateStreakStats, calculateTrendData, calculateFilteredStats } from
 interface StatsViewProps {
   mounted: boolean;
   wrongCount: number;
-  wrongCountLoading: boolean;
 }
 
-export default function StatsView({ mounted, wrongCount, wrongCountLoading }: StatsViewProps) {
+export default function StatsView({ mounted, wrongCount }: StatsViewProps) {
   const [statsFilter, setStatsFilter] = useState<'day' | 'week' | 'month' | 'all'>('day');
 
   if (!mounted) return null;
@@ -180,9 +179,7 @@ export default function StatsView({ mounted, wrongCount, wrongCountLoading }: St
               <div className="flex-1">
                 <p className="text-sm font-bold text-slate-700">错题本</p>
                 <p className="text-xs text-slate-500">
-                {wrongCountLoading ? (
-                  <span className="inline-block w-16 h-4 bg-slate-200 rounded animate-pulse align-middle"></span>
-                ) : `${wrongCount} 道待复习`}
+                {wrongCount} 道待复习
               </p>
               </div>
               <ChevronRight className="w-5 h-5 text-slate-400" />

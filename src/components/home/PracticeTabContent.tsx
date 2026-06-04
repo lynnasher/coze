@@ -14,7 +14,6 @@ interface HomeStats {
 interface PracticeTabContentProps {
   mounted: boolean;
   wrongCount: number;
-  wrongCountLoading: boolean;
   homeStats: HomeStats;
   currentUser: {
     id: string;
@@ -28,7 +27,6 @@ interface PracticeTabContentProps {
 export function PracticeTabContent({ 
   mounted, 
   wrongCount,
-  wrongCountLoading,
   homeStats 
 }: PracticeTabContentProps) {
   return (
@@ -111,9 +109,7 @@ export function PracticeTabContent({
         <div className="grid grid-cols-3 gap-2 mb-3">
           <div className="bg-slate-100 rounded-xl p-3 text-center">
             <p className="text-xl font-bold text-slate-700">
-              {!mounted ? '-' : wrongCountLoading ? (
-                <span className="inline-block w-8 h-6 bg-slate-200 rounded animate-pulse align-middle"></span>
-              ) : wrongCount}
+              {!mounted ? '-' : wrongCount}
             </p>
             <p className="text-xs text-slate-500">错题</p>
           </div>
@@ -136,9 +132,7 @@ export function PracticeTabContent({
             <div className="flex-1">
               <p className="text-sm font-semibold text-slate-700">错题本</p>
               <p className="text-xs text-slate-500">
-                {!mounted ? '-' : wrongCountLoading ? (
-                  <span className="inline-block w-16 h-4 bg-slate-200 rounded animate-pulse align-middle"></span>
-                ) : `${wrongCount} 道待复习`}
+                {!mounted ? '-' : `${wrongCount} 道待复习`}
               </p>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400" />
