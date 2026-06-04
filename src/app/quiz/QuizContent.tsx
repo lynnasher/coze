@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuiz } from '@/hooks/use-quiz';
 import type { QuizProgress } from '@/hooks/use-quiz';
@@ -194,13 +194,16 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   const displayQuestionAnswer = displayQuestion ? quizState.answers[displayQuestion.id] : undefined;
   
   // 计算已答题数
-  const answeredCount = Object.keys(quizState.answers).filter(key => {
-    const answer = quizState.answers[key];
-    return answer !== undefined && answer !== '' && !(Array.isArray(answer) && answer.length === 0);
-  }).length;
+  const answeredCount = useMemo(() => 
+    Object.keys(quizState.answers).filter(key => {
+      const answer = quizState.answers[key];
+      return answer !== undefined && answer !== '' && !(Array.isArray(answer) && answer.length === 0);
+    }).length,
+    [quizState.answers]
+  );
   
   // 计算未答题数
-  const unansweredCount = quizState.questions.length - answeredCount;
+  const unansweredCount = useMemo(() => quizState.questions.length - answeredCount, [quizState.questions.length, answeredCount]);
   
   // 通用答案判断函数
   const isAnswerCorrect = useCallback((question: Question, answer: unknown): boolean => {
@@ -1247,49 +1250,6 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
         </DialogContent>
       </Dialog>
 
-      {/* 恢复做题进度弹窗 */}
-      <Dialog open={showResumeDialog} onOpenChange={setShowResumeDialog}>
-        <DialogContent className="max-w-[92vw] sm:max-w-sm rounded-2xl p-4 sm:p-5">
-          <DialogHeader className="text-center space-y-2 sm:space-y-3">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <BookOpen className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
-            </div>
-            <DialogTitle className="text-base sm:text-lg font-bold text-slate-800">发现未完成的练习</DialogTitle>
-            <p className="text-xs sm:text-sm text-slate-500">
-              上次做到第 {(savedProgress?.currentIndex ?? 0) + 1} 题，共 {savedProgress?.questionIds?.length || 0} 题
-              <br />
-              已答 {savedProgress?.answers ? Object.keys(savedProgress.answers).length : 0}/{savedProgress?.questionIds?.length || 0} 题
-            </p>
-          </DialogHeader>
-          <div className="flex gap-2 sm:gap-3 mt-3 sm:mt-4">
-            <Button
-              variant="outline"
-              className="flex-1 rounded-xl h-10 sm:h-11 text-sm sm:text-base"
-              onClick={async () => {
-                setShowResumeDialog(false);
-                clearProgress(bankId);
-                setIsCheckingAuth(true);
-                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId);
-                setIsCheckingAuth(false);
-              }}
-            >
-              重新开始
-            </Button>
-            <Button
-              className="flex-1 rounded-xl h-10 sm:h-11 text-sm sm:text-base bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
-              onClick={async () => {
-                setShowResumeDialog(false);
-                setIsCheckingAuth(true);
-                // 传入初始进度，startQuiz 会自动恢复状态
-                await startQuiz(mode as 'random' | 'sequential' | 'wrong', bankId, { clearSaved: false, initialProgress: savedProgress! });
-                setIsCheckingAuth(false);
-              }}
-            >
-              继续上次
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
