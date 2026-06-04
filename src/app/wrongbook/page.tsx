@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -137,6 +137,9 @@ export default function WrongBookPage() {
     return result;
   }, [refreshData]);
 
+  // 使用 ref 持有 fetchQuestionsFromCloud，避免 TDZ 问题
+  const fetchQuestionsFromCloudRef = useRef<((ids: string[]) => Promise<void>) | null>(null);
+
   const syncFromCloud = useCallback(async (skipPush: boolean = false) => {
     const user = getStoredUser();
     if (!user) return;
@@ -165,10 +168,11 @@ export default function WrongBookPage() {
         const localQuestionIds = new Set(localQuestions.map(q => q.id));
         const missingQuestionIds = cloudQuestionIds.filter(id => !localQuestionIds.has(id));
         
-        if (missingQuestionIds.length > 0) {
+        if (missingQuestionIds.length > 0 && fetchQuestionsFromCloudRef.current) {
+          // 通过 ref 调用，避免依赖数组中的 TDZ 问题
           // 在 try 块中 await 完成，确保 finally 中 recalculateWrongData 时
           // cloudQuestions 已经更新，避免错题列表分步显示
-          await fetchQuestionsFromCloud(missingQuestionIds);
+          await fetchQuestionsFromCloudRef.current(missingQuestionIds);
         }
       }
       // 再按需 push 本地数据
@@ -199,7 +203,7 @@ export default function WrongBookPage() {
       setIsSyncing(false);
       recalculateWrongData();
     }
-  }, [recalculateWrongData, fetchQuestionsFromCloud]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recalculateWrongData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 监听登录/登出事件，自动刷新数据
   useEffect(() => {
@@ -290,6 +294,11 @@ export default function WrongBookPage() {
       setIsLoadingQuestions(false);
     }
   }, []);
+
+  // 同步 ref，使 syncFromCloud 可以通过 ref 调用 fetchQuestionsFromCloud
+  useEffect(() => {
+    fetchQuestionsFromCloudRef.current = fetchQuestionsFromCloud;
+  }, [fetchQuestionsFromCloud]);
 
   // 记录缺失的题目ID用于调试
   const wrongQuestions = useMemo(() => {
