@@ -244,14 +244,10 @@ export default function WrongBookPage() {
   useEffect(() => {
     const user = getStoredUser();
     setCurrentUser(user);
+    // 立即渲染（先展示本地已有数据），同步在后台执行
+    setMounted(true);
     if (user) {
-      // 首次加载：先拉取云端数据，同步完成后再渲染
-      syncFromCloud(true).finally(() => {
-        setMounted(true);
-      });
-    } else {
-      // 未登录，直接显示
-      setMounted(true);
+      syncFromCloud(true).finally(() => recalculateWrongData());
     }
     
     // 页面卸载前强制同步（使用 sendBeacon 防止数据丢失）
@@ -281,28 +277,36 @@ export default function WrongBookPage() {
     
     setIsLoadingQuestions(true);
     try {
-      // 分批获取，每批10个
-      const batchSize = 10;
+      // 分批并发获取，每批50个
+      const batchSize = 50;
       const fetchedQuestions: Record<string, Question> = {};
       
+      const batches: string[][] = [];
       for (let i = 0; i < questionIds.length; i += batchSize) {
-        const batch = questionIds.slice(i, i + batchSize);
-        const response = await fetch('/api/questions/batch', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({ ids: batch }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          data.questions?.forEach((q: Question) => {
+        batches.push(questionIds.slice(i, i + batchSize));
+      }
+      
+      // 所有 batch 并发请求
+      const results = await Promise.allSettled(
+        batches.map(batch =>
+          fetch('/api/questions/batch', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ ids: batch }),
+          }).then(res => res.json())
+        )
+      );
+      
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.questions) {
+          result.value.questions.forEach((q: Question) => {
             fetchedQuestions[q.id] = q;
           });
         }
-      }
+      });
       
       setCloudQuestions(prev => ({ ...prev, ...fetchedQuestions }));
     } finally {
@@ -855,16 +859,8 @@ export default function WrongBookPage() {
       </header>
 
       <main className="max-w-[970px] mx-auto px-4 py-5">
-        {/* 首次加载中（mounted 为 false 且已登录，同步数据尚未完成） */}
-        {currentUser && !mounted && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-gray-500 text-sm">正在加载错题数据...</p>
-          </div>
-        )}
-
         {/* 未登录 */}
-        {!currentUser && mounted && (
+        {!currentUser && (
           <div className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
               <User className="w-7 h-7 text-white" />
@@ -880,30 +876,16 @@ export default function WrongBookPage() {
           </div>
         )}
 
-        {/* 同步中 */}
-        {currentUser && mounted && isSyncing && (
-          <div className="flex items-center justify-center py-16">
-            <RefreshCw className="w-5 h-5 animate-spin text-gray-400 mr-2" />
-            <span className="text-gray-500 text-sm">同步中...</span>
-          </div>
-        )}
+        {/* 同步中轻提示条（不阻塞内容展示） */}
+            {isSyncing && wrongQuestions.length > 0 && (
+              <div className="flex items-center justify-center gap-2 py-3 mb-4 bg-indigo-50 rounded-xl text-indigo-600 text-sm">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>正在同步最新数据...</span>
+              </div>
+            )}
 
-        {/* 无错题 */}
-        {currentUser && mounted && !isSyncing && wrongQuestions.length === 0 && (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-              <Check className="w-7 h-7 text-white" />
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">太棒了！暂无错题</h2>
-            <p className="text-gray-400 text-sm mb-6">继续保持，做题全对不是梦</p>
-            <Link href="/?tab=library">
-              <Button className="bg-gray-900 hover:bg-gray-800 h-11 px-8 rounded-xl">去刷题</Button>
-            </Link>
-          </div>
-        )}
-
-        {/* 有错题 */}
-        {currentUser && mounted && !isSyncing && wrongQuestions.length > 0 && (
+            {/* 有错题 */}
+            {wrongQuestions.length > 0 && (
           <>
             {/* ========== 错题本卡片方案选择 ========== */}
             {(() => {
@@ -1120,6 +1102,53 @@ export default function WrongBookPage() {
             )}
           </>
         )}
+
+        {/* 无错题或加载中 */}
+        {wrongQuestions.length === 0 && (
+          <div className="text-center py-16">
+            {isSyncing ? (
+              <div className="w-full max-w-2xl mx-auto space-y-4">
+                {/* 骨架屏：顶部进度栏 */}
+                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="w-1/3 h-full bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full animate-pulse" />
+                </div>
+                {/* 骨架屏：题目卡片 */}
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-16 h-5 bg-gray-200 rounded-full" />
+                      <div className="w-24 h-5 bg-gray-200 rounded-full" />
+                    </div>
+                    <div className="space-y-2 mb-4">
+                      <div className="w-full h-4 bg-gray-200 rounded" />
+                      <div className="w-3/4 h-4 bg-gray-200 rounded" />
+                    </div>
+                    <div className="space-y-2">
+                      {[1, 2, 3, 4].map(j => (
+                        <div key={j} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg">
+                          <div className="w-5 h-5 bg-gray-200 rounded-full" />
+                          <div className="flex-1 h-3 bg-gray-200 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Check className="w-7 h-7 text-white" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900 mb-1">太棒了！暂无错题</h2>
+                <p className="text-gray-400 text-sm mb-6">继续保持，做题全对不是梦</p>
+                <Link href="/?tab=library">
+                  <Button className="bg-gray-900 hover:bg-gray-800 h-11 px-8 rounded-xl">去刷题</Button>
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+
       </main>
 
       <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} onAuthChange={checkAuth} />
