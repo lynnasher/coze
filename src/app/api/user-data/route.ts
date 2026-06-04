@@ -71,24 +71,52 @@ export async function POST(request: Request) {
 
     const client = getSupabaseAdminClient();
 
-    // 只构建需要更新的字段（部分更新，避免覆盖未提供的字段）
-    const updateFields: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-    if (practiceHistory !== undefined) updateFields.practice_history = practiceHistory;
-    if (wrongQuestions !== undefined) updateFields.wrong_questions = wrongQuestions;
-    if (recentlyPracticed !== undefined) updateFields.recently_practiced = recentlyPracticed;
-    if (streakData !== undefined) updateFields.streak_data = streakData;
-
-    // 检查是否已存在数据
-    const { data: existingData } = await client
+    // 先获取云端现有数据（用于合并）
+    const { data: existingUserData } = await client
       .from('user_data')
-      .select('id')
+      .select('*')
       .eq('user_id', userId)
       .single();
 
-    if (existingData) {
-      // 更新现有数据（只更新提供的字段）
+    const existingPracticeHistory = existingUserData?.practice_history || [];
+    const existingStreakData = existingUserData?.streak_data || {};
+
+    // 合并 practiceHistory（按 ID 去重，避免竞态覆盖）
+    let mergedPracticeHistory = existingPracticeHistory;
+    if (practiceHistory !== undefined && Array.isArray(practiceHistory)) {
+      const existingIds = new Set(existingPracticeHistory.map((r: any) => r.id).filter(Boolean));
+      const newRecords = practiceHistory.filter((r: any) => r.id && !existingIds.has(r.id));
+      if (newRecords.length > 0) {
+        mergedPracticeHistory = [...existingPracticeHistory, ...newRecords];
+      }
+    }
+
+    // 合并 streakData（本地覆盖云端）
+    const mergedStreakData = streakData !== undefined
+      ? { ...existingStreakData, ...streakData }
+      : existingStreakData;
+
+    // 合并 recentlyPracticed
+    let mergedRecentlyPracticed = existingUserData?.recently_practiced || [];
+    if (recentlyPracticed !== undefined && Array.isArray(recentlyPracticed)) {
+      const existingIds = new Set(mergedRecentlyPracticed.map((r: any) => r.id).filter(Boolean));
+      const newItems = recentlyPracticed.filter((r: any) => r.id && !existingIds.has(r.id));
+      if (newItems.length > 0) {
+        mergedRecentlyPracticed = [...newItems, ...mergedRecentlyPracticed].slice(0, 50);
+      }
+    }
+
+    // 构建更新字段（全部基于合并后的数据）
+    const updateFields: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      practice_history: mergedPracticeHistory,
+      streak_data: mergedStreakData,
+      recently_practiced: mergedRecentlyPracticed,
+    };
+    if (wrongQuestions !== undefined) updateFields.wrong_questions = wrongQuestions;
+
+    if (existingUserData) {
+      // 更新现有数据（使用合并后的字段）
       const { error } = await client
         .from('user_data')
         .update(updateFields)
@@ -98,7 +126,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
     } else {
-      // 创建新数据（使用完整字段，未提供的用默认值）
+      // 创建新数据
       const { error } = await client
         .from('user_data')
         .insert({

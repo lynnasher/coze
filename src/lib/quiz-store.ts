@@ -1152,7 +1152,7 @@ export const cloudSyncService = {
   // 强制立即同步
   forceSync,
 
-  // 一次性保存练习记录和连续正确次数到云端（合并请求，避免竞态覆盖）
+  // 一次性保存练习记录和连续正确次数到云端（先拉取云端数据合并，避免竞态覆盖）
   async saveRecordsAndStreaks(userId: string, records: PracticeRecord[], streaks: Record<string, number>): Promise<boolean> {
     try {
       // 检查用户是否已登录（token 是否存在）
@@ -1162,9 +1162,21 @@ export const cloudSyncService = {
         return false;
       }
       
+      // 先拉取云端最新数据，按 ID 去重合并
+      const cloudData = await this.pullData(userId);
+      const existingRecordIds = new Set((cloudData?.records || []).map(r => r.id));
+      const newRecords = records.filter(r => !existingRecordIds.has(r.id));
+      const mergedRecords = [...(cloudData?.records || []), ...newRecords];
+      
+      // 合并 streaks
+      const mergedStreaks = {
+        ...(cloudData?.streaks || {}),
+        ...streaks,
+      };
+      
       const response = await authenticatedFetch('/api/user-data', {
         method: 'POST',
-        body: JSON.stringify({ practiceHistory: records, streakData: streaks }),
+        body: JSON.stringify({ practiceHistory: mergedRecords, streakData: mergedStreaks }),
       });
       return response.ok;
     } catch (error) {
