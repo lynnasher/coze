@@ -107,6 +107,7 @@ export default function ActivationCodesPage() {
   );
   const [codeCount, setCodeCount] = useState('1');
   const [creating, setCreating] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null); // 'valid' | 'expired' | 'used' | null
 
   // 检查管理员登录状态
   useEffect(() => {
@@ -359,10 +360,22 @@ export default function ActivationCodesPage() {
 
   const filteredCodes = codes.filter(code => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       code.code.toLowerCase().includes(query) ||
       code.category_name.toLowerCase().includes(query)
     );
+    // 状态筛选
+    if (statusFilter === 'valid') return matchesSearch && isCodeValid(code);
+    if (statusFilter === 'expired') {
+      return matchesSearch && (
+        (code.expires_at && new Date(code.expires_at) < new Date()) ||
+        code.status === 'expired'
+      );
+    }
+    if (statusFilter === 'used') {
+      return matchesSearch && (code.status === 'used' || code.uses >= code.max_uses);
+    }
+    return matchesSearch;
   });
 
   // 分页计算
@@ -404,7 +417,12 @@ export default function ActivationCodesPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* 统计卡片 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <Card className="p-3">
+          <Card
+            className={`p-3 cursor-pointer transition-all hover:shadow-md ${
+              statusFilter === null ? 'ring-2 ring-blue-500' : ''
+            }`}
+            onClick={() => { setStatusFilter(null); setCurrentPage(1); }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500">总激活码</p>
@@ -415,7 +433,12 @@ export default function ActivationCodesPage() {
               </div>
             </div>
           </Card>
-          <Card className="p-3">
+          <Card
+            className={`p-3 cursor-pointer transition-all hover:shadow-md ${
+              statusFilter === 'valid' ? 'ring-2 ring-green-500' : ''
+            }`}
+            onClick={() => { setStatusFilter(prev => prev === 'valid' ? null : 'valid'); setCurrentPage(1); }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500">可用激活码</p>
@@ -426,7 +449,12 @@ export default function ActivationCodesPage() {
               </div>
             </div>
           </Card>
-          <Card className="p-3">
+          <Card
+            className={`p-3 cursor-pointer transition-all hover:shadow-md ${
+              statusFilter === 'used' ? 'ring-2 ring-purple-500' : ''
+            }`}
+            onClick={() => { setStatusFilter(prev => prev === 'used' ? null : 'used'); setCurrentPage(1); }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500">已使用</p>
@@ -437,7 +465,12 @@ export default function ActivationCodesPage() {
               </div>
             </div>
           </Card>
-          <Card className="p-3">
+          <Card
+            className={`p-3 cursor-pointer transition-all hover:shadow-md ${
+              statusFilter === 'expired' ? 'ring-2 ring-red-500' : ''
+            }`}
+            onClick={() => { setStatusFilter(prev => prev === 'expired' ? null : 'expired'); setCurrentPage(1); }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500">已过期</p>
