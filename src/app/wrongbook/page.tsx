@@ -182,6 +182,25 @@ export default function WrongBookPage() {
     }
   }, [recalculateWrongData]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 监听登录/登出事件，自动刷新数据
+  useEffect(() => {
+    const handleUserAuthChange = () => {
+      const user = getStoredUser();
+      setCurrentUser(user);
+      if (user) {
+        syncFromCloud(true).finally(() => recalculateWrongData());
+      } else {
+        refreshData();
+      }
+    };
+    
+    window.addEventListener('user-auth-change', handleUserAuthChange);
+    
+    return () => {
+      window.removeEventListener('user-auth-change', handleUserAuthChange);
+    };
+  }, [syncFromCloud, recalculateWrongData]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const user = getStoredUser();
     setCurrentUser(user);
