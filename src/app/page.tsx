@@ -154,6 +154,8 @@ export default function QuizApp() {
   
   // 错题数量状态（优先使用云端同步后的本地数据）
   const [wrongCount, setWrongCount] = useState<number>(0);
+  // 错题数量加载状态：同步完成前不展示旧数据避免闪烁
+  const [wrongCountLoading, setWrongCountLoading] = useState(true);
   
   // 统计数据状态（直接从 recordStore 计算，避免 useQuiz hook 的缓存问题）
   const [homeStats, setHomeStats] = useState({
@@ -200,6 +202,7 @@ export default function QuizApp() {
     const user = getStoredUser();
     if (!user) {
       setWrongCount(0);
+      setWrongCountLoading(false);
       return;
     }
     
@@ -209,8 +212,11 @@ export default function QuizApp() {
       // Token 已被清除，说明设备被踢下线或已登出
       setCurrentUser(null);
       setWrongCount(0);
+      setWrongCountLoading(false);
       return;
     }
+    
+    setWrongCountLoading(true);
     
     try {
       const cloudData = await cloudSyncService.pullData(user.id);
@@ -272,6 +278,7 @@ export default function QuizApp() {
     // 重新计算错题数据并更新显示
     const count = recalculateWrongData();
     setWrongCount(count);
+    setWrongCountLoading(false);
     
     // 刷新首页统计数据
     refreshHomeStats();
@@ -573,6 +580,7 @@ export default function QuizApp() {
             <PracticeTabContent 
               mounted={mounted}
               wrongCount={wrongCount}
+              wrongCountLoading={wrongCountLoading}
               homeStats={homeStats}
               currentUser={currentUser}
             />
@@ -950,7 +958,7 @@ export default function QuizApp() {
 
           {/* 统计页面 - 懒加载 */}
           <TabsContent value="stats">
-            <StatsView mounted={mounted} wrongCount={wrongCount} />
+            <StatsView mounted={mounted} wrongCount={wrongCount} wrongCountLoading={wrongCountLoading} />
           </TabsContent>
         </Tabs>
       </main>

@@ -1073,6 +1073,28 @@ export function forceSyncBeacon(): boolean {
   }
 }
 
+// 全局同步锁：防止 flushSyncQueue 与 syncFromCloud 等并发执行导致数据覆盖
+let _globalSyncRunning = false;
+let _globalSyncQueue: Array<() => void> = [];
+
+export async function withSyncLock<T>(fn: () => Promise<T>): Promise<T> {
+  if (_globalSyncRunning) {
+    return new Promise((resolve, reject) => {
+      _globalSyncQueue.push(() => fn().then(resolve).catch(reject));
+    });
+  }
+  _globalSyncRunning = true;
+  try {
+    return await fn();
+  } finally {
+    _globalSyncRunning = false;
+    if (_globalSyncQueue.length > 0) {
+      const next = _globalSyncQueue.shift()!;
+      next();
+    }
+  }
+}
+
 // 执行同步队列
 async function flushSyncQueue(): Promise<boolean> {
   if (!syncQueue.hasChanges) return true;
@@ -1084,41 +1106,46 @@ async function flushSyncQueue(): Promise<boolean> {
   const token = getUserToken();
   if (!token) return false;
   
-  try {
-    // 先拉取云端最新数据（合并而不是覆盖）
-    const cloudData = await cloudSyncService.pullData(userId);
+  return withSyncLock(async () => {
+    // 再次检查（等待锁期间可能已被清空）
+    if (syncQueue.records.length === 0 && syncQueue.streaks.size === 0) return true;
     
-    // 合并记录（去重，以本地新增的记录为准）
-    const existingRecordIds = new Set(cloudData?.records.map(r => r.id) || []);
-    const newRecords = syncQueue.records.filter(r => !existingRecordIds.has(r.id));
-    const mergedRecords = [...(cloudData?.records || []), ...newRecords];
-    
-    // 合并 streaks（本地覆盖云端）
-    const mergedStreaks = {
-      ...(cloudData?.streaks || {}),
-      ...syncQueue.streaks,
-    };
-    
-    // 上传到云端
-    const response = await authenticatedFetch('/api/user-data', {
-      method: 'POST',
-      body: JSON.stringify({
-        practiceHistory: mergedRecords,
-        streakData: mergedStreaks,
-      }),
-    });
-    
-    if (response.ok) {
-      // 同步成功，清空队列
-      syncQueue = createSyncQueue();
-      hasPendingSync = false;
-      return true;
+    try {
+      // 先拉取云端最新数据（合并而不是覆盖）
+      const cloudData = await cloudSyncService.pullData(userId);
+      
+      // 合并记录（去重，以本地新增的记录为准）
+      const existingRecordIds = new Set(cloudData?.records.map(r => r.id) || []);
+      const newRecords = syncQueue.records.filter(r => !existingRecordIds.has(r.id));
+      const mergedRecords = [...(cloudData?.records || []), ...newRecords];
+      
+      // 合并 streaks（本地覆盖云端）
+      const mergedStreaks = {
+        ...(cloudData?.streaks || {}),
+        ...syncQueue.streaks,
+      };
+      
+      // 上传到云端
+      const response = await authenticatedFetch('/api/user-data', {
+        method: 'POST',
+        body: JSON.stringify({
+          practiceHistory: mergedRecords,
+          streakData: mergedStreaks,
+        }),
+      });
+      
+      if (response.ok) {
+        // 同步成功，清空队列
+        syncQueue = createSyncQueue();
+        hasPendingSync = false;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('同步队列失败:', error);
+      return false;
     }
-    return false;
-  } catch (error) {
-    console.error('同步队列失败:', error);
-    return false;
-  }
+  });
 }
 
 // 注册页面卸载前强制同步

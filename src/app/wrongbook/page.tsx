@@ -24,7 +24,7 @@ import {
   TrendingUp,
   Sparkles,
 } from 'lucide-react';
-import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken, deletedQuestionStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken, deletedQuestionStore, withSyncLock } from '@/lib/quiz-store';
 import { Question, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import { checkAnswer as sharedCheckAnswer } from '@/lib/import-utils';
@@ -145,36 +145,51 @@ export default function WrongBookPage() {
     if (!user) return;
     setIsSyncing(true);
     try {
-      // 先 pull 云端数据
-      const cloudData = await cloudSyncService.pullData(user.id);
-      if (cloudData) {
-        // 过滤掉已删除的题目相关数据
-        const validRecords = cloudData.records.filter(r => !deletedQuestionStore.isDeleted(r.questionId));
-        const validStreaks: Record<string, number> = {};
-        Object.entries(cloudData.streaks).forEach(([questionId, streak]) => {
-          if (!deletedQuestionStore.isDeleted(questionId)) {
-            validStreaks[questionId] = streak;
+      // 使用同步锁，避免与 flushSyncQueue 等并发导致数据覆盖
+      await withSyncLock(async () => {
+        // 先 pull 云端数据
+        const cloudData = await cloudSyncService.pullData(user.id);
+        if (cloudData) {
+          // 过滤掉已删除的题目相关数据
+          const validRecords = cloudData.records.filter(r => !deletedQuestionStore.isDeleted(r.questionId));
+          const validStreaks: Record<string, number> = {};
+          Object.entries(cloudData.streaks).forEach(([questionId, streak]) => {
+            if (!deletedQuestionStore.isDeleted(questionId)) {
+              validStreaks[questionId] = streak;
+            }
+          });
+          
+          // 合并策略：云端数据优先（同ID以云端为准），但保留本地特有的新记录
+          // 这确保不同设备看到一致的错题记录，同时不丢失本地尚未同步的做题数据
+          const existingRecords = recordStore.getAll();
+          const cloudRecordIds = new Set(validRecords.map(r => r.id));
+          const localOnlyRecords = existingRecords.filter(r => !cloudRecordIds.has(r.id));
+          recordStore.save([...validRecords, ...localOnlyRecords]);
+
+          // streaks 同理：云端优先，本地新增保留
+          const existingStreaks = wrongStreakStore.getAll();
+          const mergedStreaks = { ...validStreaks };
+          for (const [qId, streak] of Object.entries(existingStreaks)) {
+            if (!(qId in mergedStreaks)) {
+              mergedStreaks[qId] = streak;
+            }
           }
-        });
-        
-        // 云端优先：直接使用云端数据，不合并本地数据
-        // 这确保不同设备看到一致的错题记录
-        recordStore.save(validRecords);
-        wrongStreakStore.save(validStreaks);
-        
-        // 获取云端记录中的题目ID，并尝试从云端获取缺失的题目
-        const cloudQuestionIds = [...new Set(validRecords.map(r => r.questionId))];
-        const localQuestions = questionStore.getAll();
-        const localQuestionIds = new Set(localQuestions.map(q => q.id));
-        const missingQuestionIds = cloudQuestionIds.filter(id => !localQuestionIds.has(id));
-        
-        if (missingQuestionIds.length > 0 && fetchQuestionsFromCloudRef.current) {
-          // 通过 ref 调用，避免依赖数组中的 TDZ 问题
-          // 在 try 块中 await 完成，确保 finally 中 recalculateWrongData 时
-          // cloudQuestions 已经更新，避免错题列表分步显示
-          await fetchQuestionsFromCloudRef.current(missingQuestionIds);
+          wrongStreakStore.save(mergedStreaks);
+          
+          // 获取云端记录中的题目ID，并尝试从云端获取缺失的题目
+          const cloudQuestionIds = [...new Set(validRecords.map(r => r.questionId))];
+          const localQuestions = questionStore.getAll();
+          const localQuestionIds = new Set(localQuestions.map(q => q.id));
+          const missingQuestionIds = cloudQuestionIds.filter(id => !localQuestionIds.has(id));
+          
+          if (missingQuestionIds.length > 0 && fetchQuestionsFromCloudRef.current) {
+            // 通过 ref 调用，避免依赖数组中的 TDZ 问题
+            // 在 try 块中 await 完成，确保 finally 中 recalculateWrongData 时
+            // cloudQuestions 已经更新，避免错题列表分步显示
+            await fetchQuestionsFromCloudRef.current(missingQuestionIds);
+          }
         }
-      }
+      });
       // 再按需 push 本地数据
       if (!skipPush) {
         // 上传前先基于记录重新计算 streaks，保证 streaks 与记录一致
