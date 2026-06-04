@@ -1414,12 +1414,42 @@ export const cloudSyncService = {
     const userId = getCurrentUserId();
     if (!userId) return false;
 
-    // 清空本地之前用户的数据，避免新用户看到旧数据
+    // 1. 先把本地的做题进度推送到云端（登录前的离线进度）
+    try {
+      const localProgress: Record<string, unknown> = {};
+      const keys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('quiz_progress_')) {
+          keys.push(key);
+        }
+      }
+      for (const key of keys) {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed && parsed.bankId) {
+              localProgress[parsed.bankId] = parsed;
+            }
+          } catch {}
+        }
+      }
+      // 如果有本地进度，先推送到云端
+      if (Object.keys(localProgress).length > 0) {
+        await authenticatedFetch('/api/user-data', {
+          method: 'POST',
+          body: JSON.stringify({ quizProgress: localProgress }),
+        });
+      }
+    } catch {}
+
+    // 2. 清空本地之前用户的数据，避免新用户看到旧数据
     recordStore.clear();
     wrongStreakStore.clear();
     recentPracticeStore.clear();
 
-    // 从云端拉取当前用户的数据
+    // 3. 从云端拉取当前用户的数据（含做题进度）
     return this.pullData(userId).then(data => {
       if (data) {
         if (data.records.length > 0) {
@@ -1430,6 +1460,15 @@ export const cloudSyncService = {
         }
         if (data.recentPractices.length > 0) {
           recentPracticeStore.save(data.recentPractices);
+        }
+        // 4. 将云端做题进度写入 localStorage（供 checkProgress 恢复）
+        if (data.quizProgress && Object.keys(data.quizProgress).length > 0) {
+          for (const [bankId, progress] of Object.entries(data.quizProgress)) {
+            if (progress && typeof progress === 'object') {
+              const key = `quiz_progress_${bankId}`;
+              localStorage.setItem(key, JSON.stringify(progress));
+            }
+          }
         }
         return true;
       }
