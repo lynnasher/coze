@@ -453,7 +453,7 @@ function ReciteCard({
                     flex items-start gap-3 px-4 py-3 rounded-lg border
                     transition-colors print:px-1 print:py-0.5 print:border-0 print:bg-transparent
                     ${isCorrect
-                      ? 'bg-emerald-50 border-emerald-300 print:font-bold'
+                      ? 'bg-emerald-50 border-emerald-300'
                       : 'bg-gray-50 border-gray-100'
                     }
                   `}
@@ -465,7 +465,7 @@ function ReciteCard({
                       text-xs font-bold flex items-center justify-center
                       print:w-4 print:h-4 print:text-sm print:bg-transparent print:text-black
                       ${isCorrect
-                        ? 'bg-emerald-500 text-white print:font-bold'
+                        ? 'bg-emerald-500 text-white'
                         : 'bg-gray-200 text-gray-500'
                       }
                     `}
@@ -633,14 +633,14 @@ function ReciteItem({
                           key={option.id}
                           className={`flex items-start gap-3 p-2.5 rounded-lg print:p-0.5 print:border-0 print:bg-transparent ${
                             isCorrect
-                              ? 'bg-green-50 border border-green-200 print:font-bold'
+                              ? 'bg-green-50 border border-green-200'
                               : 'bg-gray-50 border border-gray-100'
                           }`}
                         >
                           <span
                             className={`flex-shrink-0 w-5 h-5 rounded text-xs font-medium flex items-center justify-center print:w-3 print:h-3 print:text-sm print:bg-transparent ${
                               isCorrect
-                                ? 'bg-green-500 text-white print:text-black print:font-bold'
+                                ? 'bg-green-500 text-white print:text-black'
                                 : 'bg-gray-200 text-gray-600 print:text-black'
                             }`}
                           >
