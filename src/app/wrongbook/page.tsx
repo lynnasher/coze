@@ -443,8 +443,19 @@ export default function WrongBookPage() {
   // 一次读取全部记录，避免 getWrongInfo 中每道题重复读取 localStorage
   const allRecords = useMemo(() => recordStore.getAll(), [refreshKey]);
 
+  // 按 questionId 索引化，O(1) 查找
+  const recordsByQuestionId = useMemo(() => {
+    const map = new Map<string, typeof allRecords>();
+    for (const r of allRecords) {
+      const existing = map.get(r.questionId);
+      if (existing) existing.push(r);
+      else map.set(r.questionId, [r]);
+    }
+    return map;
+  }, [allRecords]);
+
   const getWrongInfo = useCallback((questionId: string) => {
-    const records = allRecords.filter(r => r.questionId === questionId);
+    const records = recordsByQuestionId.get(questionId) || [];
     return { 
       wrongCount: records.filter(r => !r.isCorrect).length, 
       streak: wrongStreakStore.get(questionId) 
@@ -904,7 +915,7 @@ export default function WrongBookPage() {
               }).length;
 
               // ===== 方案一：数据仪表盘风格 =====
-              const Scheme1 = () => (
+              return (
                 <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 mb-4">
                   <div className="flex items-center gap-4">
                     {/* 左侧：错题总数 */}
@@ -962,7 +973,7 @@ export default function WrongBookPage() {
 
   
               // 默认使用方案一（功能入口风格），可以通过修改这里切换
-              return <Scheme1 />;
+              
             })()}
 
             {/* 题库分类筛选 - 下拉选择 */}
