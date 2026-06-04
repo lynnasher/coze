@@ -41,6 +41,7 @@ export const activationCodes = pgTable(
     max_uses: integer("max_uses").notNull().default(1),
     uses: integer("uses").notNull().default(0),
     expires_at: timestamp("expires_at", { withTimezone: true }),
+    duration_days: integer("duration_days"), // 激活后有效天数（如7/30/90），优先级高于 expires_at
     status: varchar("status", { length: 20 }).notNull().default("active"), // active=可用, used=已用完, expired=已过期, disabled=已禁用
     description: varchar("description", { length: 255 }), // 激活码描述
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

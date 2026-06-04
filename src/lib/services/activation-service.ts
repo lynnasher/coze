@@ -20,6 +20,7 @@ export interface ActivationCode {
   max_uses: number;
   uses: number;
   expires_at: string | null;
+  duration_days: number | null; // 激活后有效天数，优先级高于 expires_at
   status: 'active' | 'used' | 'expired' | 'disabled';
   description: string | null;
   created_at: string;

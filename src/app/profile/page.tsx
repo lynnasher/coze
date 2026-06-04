@@ -152,9 +152,13 @@ export default function ProfilePage() {
     setActivationSuccess('');
 
     try {
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       const response = await fetch('/api/activation-codes/use', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ code: activationCode, userId: user.id }),
       });
 

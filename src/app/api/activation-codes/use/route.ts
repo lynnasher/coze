@@ -6,22 +6,27 @@ import { verifyApiToken } from '@/lib/api-auth';
 // 使用激活码（用户接口）
 export async function POST(request: Request) {
   try {
+    // 验证用户身份：强制 token 认证
+    const { userId: tokenUserId, isAdmin } = verifyApiToken(request);
+    if (!tokenUserId) {
+      return NextResponse.json({ success: false, error: '未登录，请先登录' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { code, userId } = body;
+    const { code } = body;
 
     if (!code) {
       return NextResponse.json({ success: false, error: '请提供激活码' }, { status: 400 });
     }
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: '请先登录' }, { status: 400 });
-    }
+    // 使用 token 中的 userId（管理员可代用户激活，普通用户只能用自己身份）
+    const targetUserId = isAdmin ? (body.userId || tokenUserId) : tokenUserId;
 
     // 使用激活码
-    const activation = await activationCodeService.useCode(code, userId);
+    const activation = await activationCodeService.useCode(code, targetUserId);
 
     // 更新用户的激活分类列表
-    const user = await userService.findById(userId);
+    const user = await userService.findById(targetUserId);
     if (user) {
       let activatedCategories: string[] = [];
       try {
@@ -30,7 +35,7 @@ export async function POST(request: Request) {
       
       if (!activatedCategories.includes(activation.category_id)) {
         activatedCategories.push(activation.category_id);
-        await userService.updateActivatedCategories(userId, activatedCategories);
+        await userService.updateActivatedCategories(targetUserId, activatedCategories);
       }
     }
 
