@@ -1005,9 +1005,10 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   const isSelected = isMulti
                     ? Array.isArray(displayQuestionAnswer) && displayQuestionAnswer.includes(option.id)
                     : displayQuestionAnswer === option.id;
-                  const isCorrectAnswer = Array.isArray(displayQuestion.answer)
-                    ? displayQuestion.answer.some(a => String(a).toLowerCase() === option.id.toLowerCase())
-                    : String(displayQuestion.answer).toLowerCase() === option.id.toLowerCase();
+                  const correctAnswerList = Array.isArray(displayQuestion.answer)
+                    ? displayQuestion.answer
+                    : String(displayQuestion.answer).split(',').map(a => a.trim());
+                  const isCorrectAnswer = correctAnswerList.some(a => String(a).toLowerCase() === option.id.toLowerCase());
                   
                   let optionStyle = 'bg-slate-50/50';
                   if (isSelected && showExplanation) {
