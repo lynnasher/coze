@@ -77,7 +77,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
         body: JSON.stringify({ phone, type: 'send', action: mode }), // mode: 'register' | 'login'
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      const data = JSON.parse(text);
 
       if (data.success) {
         setCountdown(60);
@@ -89,7 +90,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
       } else {
         setError(data.error || '获取验证码失败');
       }
-    } catch {
+    } catch (e) {
+      console.error('[登录] 捕获异常:', e);
       setError('网络错误，请稍后重试');
     } finally {
       setLoading(false);
@@ -110,7 +112,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           body: JSON.stringify({ type: 'login', phone, password }),
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        const data = JSON.parse(text);
 
         if (data.success) {
           localStorage.setItem(TOKEN_KEY, data.token);
@@ -166,7 +169,8 @@ export function AuthModal({ open, onOpenChange, onAuthChange }: AuthModalProps) 
           body: JSON.stringify({ type: 'register', phone, password, nickname }),
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        const data = JSON.parse(text);
 
         if (data.success) {
           localStorage.setItem(TOKEN_KEY, data.token);
