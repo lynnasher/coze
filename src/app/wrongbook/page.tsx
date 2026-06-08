@@ -966,7 +966,7 @@ export default function WrongBookPage() {
                     <Button 
                       onClick={() => startReview(filteredQuestions)} 
                       disabled={filteredQuestions.length === 0}
-                      className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
+                      className="flex-[4] h-12 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
                     >
                       <BookOpen className="w-4 h-4 mr-2" />
                       开始复习
@@ -975,9 +975,9 @@ export default function WrongBookPage() {
                       onClick={() => router.push('/wrongbook/recite')} 
                       disabled={filteredQuestions.length === 0}
                       variant="outline"
-                      className="flex-1 h-12 rounded-2xl border-gray-300 hover:bg-gray-50 text-gray-700 font-medium"
+                      className="flex-[1] h-12 rounded-2xl border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs px-2"
                     >
-                      <RefreshCw className="w-4 h-4 mr-2" />
+                      <RefreshCw className="w-4 h-4 mr-1" />
                       快速背题
                     </Button>
                   </div>
