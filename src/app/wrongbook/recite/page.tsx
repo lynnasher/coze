@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Question, QuestionType } from '@/lib/types';
@@ -11,6 +11,14 @@ import { RichTextWithBreaks } from '@/lib/rich-text';
 const PAGE_SIZE = 20;
 
 export default function WrongbookRecitePage() {
+  return (
+    <Suspense fallback={null}>
+      <WrongbookReciteContent />
+    </Suspense>
+  );
+}
+
+function WrongbookReciteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeFilter = (searchParams.get('type') as QuestionType | null) || 'all';
@@ -102,7 +110,7 @@ export default function WrongbookRecitePage() {
           const fetched = await fetchQuestionsFromCloud(missingIds);
           for (const id of missingIds) {
             if (deletedQuestionStore.isDeleted(id)) continue;
-            const cloudQ = fetched[id];
+            const cloudQ = fetched?.[id];
             if (cloudQ) {
               foundQuestions.push(cloudQ);
             }
