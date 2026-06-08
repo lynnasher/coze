@@ -280,7 +280,7 @@ export default function WrongBookPage() {
     setIsLoadingQuestions(true);
     try {
       // 分批并发获取，每批50个
-      const batchSize = 50;
+      const batchSize = 10;
       const fetchedQuestions: Record<string, Question> = {};
       
       const batches: string[][] = [];

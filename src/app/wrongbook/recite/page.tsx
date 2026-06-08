@@ -32,7 +32,6 @@ export default function WrongbookRecitePage() {
         const stored = sessionStorage.getItem('wrongbook_recite_ids');
         if (stored) {
           try { filteredIds = JSON.parse(stored); } catch { filteredIds = []; }
-          sessionStorage.removeItem('wrongbook_recite_ids');
         } else {
           // 兜底：没有数据时加载全部错题
           filteredIds = getWrongQuestionIds();
@@ -80,7 +79,7 @@ export default function WrongbookRecitePage() {
           const token = getUserToken();
           if (token) {
             try {
-              const batchSize = 50;
+              const batchSize = 10;
               const batches: string[][] = [];
               for (let i = 0; i < missingIds.length; i += batchSize) {
                 batches.push(missingIds.slice(i, i + batchSize));
