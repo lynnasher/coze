@@ -351,7 +351,7 @@ export default function ProfilePage() {
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-800">智能刷题</h1>
+                <h1 className="text-lg font-bold text-gray-800">押题100</h1>
                 <p className="text-xs text-gray-400">{uniqueActivations.length} 个已激活分类</p>
               </div>
             </Link>

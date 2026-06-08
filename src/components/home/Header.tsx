@@ -32,7 +32,7 @@ export function Header({ currentUser, onNavigate }: HeaderProps) {
             <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-sm">
               <BookOpen className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-gray-900">智能刷题</span>
+            <span className="font-semibold text-gray-900">押题100</span>
           </button>
           
           {/* 用户信息 */}
