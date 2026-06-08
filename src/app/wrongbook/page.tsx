@@ -388,6 +388,7 @@ export default function WrongBookPage() {
   }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]);
 
   // 清理：云端也找不到的孤儿 ID 标记为已删除，避免污染计数
+  // 同时：云端找到了的题目从 deletedQuestionStore 中移除（之前可能被误标记）
   useEffect(() => {
     const wrongIds = getWrongQuestionIds();
     const allQuestions = questionStore.getAll();
@@ -397,12 +398,19 @@ export default function WrongBookPage() {
     });
     // 云端数据未加载完时不清理（防止误伤云端题目）
     if (Object.keys(cloudQuestions).length === 0) return;
+    
     const deletedIds = deletedQuestionStore.getAll();
     const orphanIds = wrongIds.filter(id =>
       !localIds.has(id) && !cloudQuestions[id] && !deletedIds.includes(id)
     );
     if (orphanIds.length > 0) {
       deletedQuestionStore.add(orphanIds);
+    }
+    
+    // 清理：云端找到了的题目从 deletedQuestionStore 移除（之前可能被误标记）
+    const staleDeleted = deletedIds.filter(id => cloudQuestions[id]);
+    if (staleDeleted.length > 0) {
+      deletedQuestionStore.remove(staleDeleted);
     }
   }, [cloudQuestions]);
 

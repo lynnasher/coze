@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight } from 'lucide-react';
 import { Question } from '@/lib/types';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore } from '@/lib/quiz-store';
+import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, getUserToken, deletedQuestionStore } from '@/lib/quiz-store';
 import { Button } from '@/components/ui/button';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
@@ -38,14 +38,78 @@ export default function WrongbookRecitePage() {
           filteredIds = getWrongQuestionIds();
         }
 
-        // 获取错误次数 >= 1 的题目（包含综合题的子题）
+        // 收集所有本地可用的题目 ID（含综合题子题）
+        const localIds = new Set<string>();
+        const localQuestionsMap = new Map<string, Question>();
+        for (const q of allQuestions) {
+          localIds.add(q.id);
+          localQuestionsMap.set(q.id, q);
+          if (q.children) {
+            q.children.forEach(c => {
+              localIds.add(c.id);
+              // 子题附加父题的案例背景
+              localQuestionsMap.set(c.id, {
+                ...c,
+                caseBackground: c.caseBackground || q.caseBackground,
+              });
+            });
+          }
+        }
+
+        // 获取错误次数 >= 1 的题目
         const tempQuestions: Question[] = [];
         const processedIds = new Set<string>();
-        
-        for (const q of allQuestions) {
-          if (filteredIds.includes(q.id) && !processedIds.has(q.id)) {
-            processedIds.add(q.id);
-            tempQuestions.push(q);
+        const missingIds: string[] = [];
+
+        for (const id of filteredIds) {
+          if (processedIds.has(id)) continue;
+          // 跳过已删除的题目
+          if (deletedQuestionStore.isDeleted(id)) continue;
+          
+          const localQ = localQuestionsMap.get(id);
+          if (localQ) {
+            processedIds.add(id);
+            tempQuestions.push(localQ);
+          } else {
+            missingIds.push(id);
+          }
+        }
+
+        // 本地缺失的题目尝试从云端批量获取
+        if (missingIds.length > 0) {
+          const token = getUserToken();
+          if (token) {
+            try {
+              const batchSize = 50;
+              const batches: string[][] = [];
+              for (let i = 0; i < missingIds.length; i += batchSize) {
+                batches.push(missingIds.slice(i, i + batchSize));
+              }
+              const results = await Promise.allSettled(
+                batches.map(batch =>
+                  fetch('/api/questions/batch', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ ids: batch }),
+                  }).then(res => res.json())
+                )
+              );
+              results.forEach(result => {
+                if (result.status === 'fulfilled' && result.value.questions) {
+                  result.value.questions.forEach((q: Question) => {
+                    if (!processedIds.has(q.id)) {
+                      processedIds.add(q.id);
+                      tempQuestions.push(q);
+                    }
+                  });
+                }
+              });
+            } catch {
+              // 云端获取失败，忽略，继续用本地数据
+            }
           }
         }
 

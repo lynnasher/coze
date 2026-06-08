@@ -500,6 +500,17 @@ export const deletedQuestionStore = {
     return deletedQuestionStore.getAll().includes(questionId);
   },
 
+  // 移除已删除标记（当云端确认题目存在时清理误标记）
+  remove: (questionIds: string[]) => {
+    if (typeof window === 'undefined' || questionIds.length === 0) return;
+    const existing = deletedQuestionStore.getAll();
+    const removeSet = new Set(questionIds);
+    const updated = existing.filter(id => !removeSet.has(id));
+    if (updated.length !== existing.length) {
+      localStorage.setItem(STORAGE_KEYS.DELETED_QUESTIONS, JSON.stringify(updated));
+    }
+  },
+
   // 清除所有已删除记录（谨慎使用）
   clear: () => {
     if (typeof window === 'undefined') return;
