@@ -1000,9 +1000,11 @@ export default function WrongBookPage() {
                     </Button>
                     <Button 
                       onClick={() => {
-                        const ids = filteredQuestions.map(q => q.id);
-                        sessionStorage.setItem('wrongbook_recite_ids', JSON.stringify(ids));
-                        router.push('/wrongbook/recite');
+                        const params = new URLSearchParams();
+                        if (typeFilter !== 'all') params.set('type', typeFilter);
+                        if (bankFilter !== 'all') params.set('bank', bankFilter);
+                        const qs = params.toString();
+                        router.push('/wrongbook/recite' + (qs ? `?${qs}` : ''));
                       }}
                       disabled={filteredQuestions.length === 0}
                       variant="outline"

@@ -1,52 +1,80 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight } from 'lucide-react';
-import { Question } from '@/lib/types';
-import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore, getUserToken, deletedQuestionStore } from '@/lib/quiz-store';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, BookOpen, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Question, QuestionType } from '@/lib/types';
+import { questionStore, getWrongQuestionIds, wrongStreakStore, getUserToken, deletedQuestionStore } from '@/lib/quiz-store';
 import { Button } from '@/components/ui/button';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
-const TYPE_LABELS: Record<string, { text: string; color: string }> = {
-  single: { text: '单选题', color: 'bg-indigo-100 text-indigo-700' },
-  multiple: { text: '多选题', color: 'bg-purple-100 text-purple-700' },
-  'true-false': { text: '判断题', color: 'bg-cyan-100 text-cyan-700' },
-  'fill-blank': { text: '填空题', color: 'bg-teal-100 text-teal-700' },
-  comprehensive: { text: '综合题', color: 'bg-rose-100 text-rose-700' },
-};
+const PAGE_SIZE = 20;
 
 export default function WrongbookRecitePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const typeFilter = (searchParams.get('type') as QuestionType | null) || 'all';
+  const bankFilter = searchParams.get('bank') || 'all';
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // 加载云端题目（与 wrongbook 一致的数据源）
+  const fetchQuestionsFromCloud = useCallback(async (questionIds: string[]) => {
+    if (questionIds.length === 0) return;
+    const token = getUserToken();
+    if (!token) return;
+
+    try {
+      const batchSize = 10;
+      const batches: string[][] = [];
+      for (let i = 0; i < questionIds.length; i += batchSize) {
+        batches.push(questionIds.slice(i, i + batchSize));
+      }
+
+      const results = await Promise.allSettled(
+        batches.map(batch =>
+          fetch('/api/questions/batch', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ ids: batch }),
+          }).then(res => res.json())
+        )
+      );
+
+      const fetched: Record<string, Question> = {};
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.questions) {
+          result.value.questions.forEach((q: Question) => {
+            fetched[q.id] = q;
+          });
+        }
+      });
+      setCloudQuestions(prev => ({ ...prev, ...fetched }));
+      return fetched;
+    } catch {
+      return {};
+    }
+  }, []);
 
   // 加载错题数据
   useEffect(() => {
     const loadWrongQuestions = async () => {
       try {
+        const wrongIds = getWrongQuestionIds();
         const allQuestions = questionStore.getAll();
-        
-        // 从 sessionStorage 获取已筛选的题目 ID
-        let filteredIds: string[] = [];
-        const stored = sessionStorage.getItem('wrongbook_recite_ids');
-        if (stored) {
-          try { filteredIds = JSON.parse(stored); } catch { filteredIds = []; }
-        } else {
-          // 兜底：没有数据时加载全部错题
-          filteredIds = getWrongQuestionIds();
-        }
 
-        // 收集所有本地可用的题目 ID（含综合题子题）
-        const localIds = new Set<string>();
+        // 收集本地所有题目（含综合题子题）
         const localQuestionsMap = new Map<string, Question>();
         for (const q of allQuestions) {
-          localIds.add(q.id);
           localQuestionsMap.set(q.id, q);
           if (q.children) {
             q.children.forEach(c => {
-              localIds.add(c.id);
-              // 子题附加父题的案例背景
               localQuestionsMap.set(c.id, {
                 ...c,
                 caseBackground: c.caseBackground || q.caseBackground,
@@ -55,72 +83,41 @@ export default function WrongbookRecitePage() {
           }
         }
 
-        // 获取错误次数 >= 1 的题目
-        const tempQuestions: Question[] = [];
-        const processedIds = new Set<string>();
+        // 先从本地找
+        const foundQuestions: Question[] = [];
         const missingIds: string[] = [];
 
-        for (const id of filteredIds) {
-          if (processedIds.has(id)) continue;
-          // 跳过已删除的题目
+        for (const id of wrongIds) {
           if (deletedQuestionStore.isDeleted(id)) continue;
-          
           const localQ = localQuestionsMap.get(id);
           if (localQ) {
-            processedIds.add(id);
-            tempQuestions.push(localQ);
+            foundQuestions.push(localQ);
           } else {
             missingIds.push(id);
           }
         }
 
-        // 本地缺失的题目尝试从云端批量获取
+        // 缺失的从云端获取
         if (missingIds.length > 0) {
-          const token = getUserToken();
-          if (token) {
-            try {
-              const batchSize = 10;
-              const batches: string[][] = [];
-              for (let i = 0; i < missingIds.length; i += batchSize) {
-                batches.push(missingIds.slice(i, i + batchSize));
-              }
-              const results = await Promise.allSettled(
-                batches.map(batch =>
-                  fetch('/api/questions/batch', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ ids: batch }),
-                  }).then(res => res.json())
-                )
-              );
-              results.forEach(result => {
-                if (result.status === 'fulfilled' && result.value.questions) {
-                  result.value.questions.forEach((q: Question) => {
-                    if (!processedIds.has(q.id)) {
-                      processedIds.add(q.id);
-                      tempQuestions.push(q);
-                    }
-                  });
-                }
-              });
-            } catch {
-              // 云端获取失败，忽略，继续用本地数据
+          const fetched = await fetchQuestionsFromCloud(missingIds);
+          for (const id of missingIds) {
+            if (deletedQuestionStore.isDeleted(id)) continue;
+            const cloudQ = fetched[id];
+            if (cloudQ) {
+              foundQuestions.push(cloudQ);
             }
           }
         }
 
-        // 按题型排序：单选 → 多选 → 判断 → 填空 → 综合
+        // 按题型排序
         const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
-        tempQuestions.sort((a, b) => {
+        foundQuestions.sort((a, b) => {
           const aOrder = typeOrder.indexOf(a.type);
           const bOrder = typeOrder.indexOf(b.type);
           return (aOrder === -1 ? 999 : aOrder) - (bOrder === -1 ? 999 : bOrder);
         });
 
-        setQuestions(tempQuestions);
+        setQuestions(foundQuestions);
       } catch (error) {
         console.error('加载错题数据失败:', error);
       } finally {
@@ -129,12 +126,33 @@ export default function WrongbookRecitePage() {
     };
 
     loadWrongQuestions();
-  }, []);
+  }, [fetchQuestionsFromCloud]);
+
+  // 应用筛选
+  const filteredQuestions = useMemo(() => {
+    let result = questions;
+    if (bankFilter !== 'all') {
+      result = result.filter(q => q.bankId === bankFilter);
+    }
+    if (typeFilter !== 'all') {
+      result = result.filter(q => q.type === typeFilter);
+    }
+    return result;
+  }, [questions, typeFilter, bankFilter]);
+
+  // 分页
+  const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
+  const paginatedQuestions = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredQuestions.slice(start, start + PAGE_SIZE);
+  }, [filteredQuestions, currentPage]);
+
+  // 筛选条件变化时回到第一页
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
 
   // 获取答案显示文本
   const getAnswerDisplay = useCallback((question: Question) => {
     const answer = question.answer;
-    
     if (question.type === 'true-false') {
       const answerKey = (Array.isArray(answer) ? answer[0] : answer)?.toString().toUpperCase();
       const option = question.options?.find(o => o.id.toUpperCase() === answerKey);
@@ -144,11 +162,9 @@ export default function WrongbookRecitePage() {
       }
       return answerKey;
     }
-    
     if (question.type === 'fill-blank') {
       return Array.isArray(answer) ? answer.join('；') : answer;
     }
-    
     if (Array.isArray(answer)) {
       return answer.map(a => a.toUpperCase()).join('、');
     }
@@ -169,30 +185,26 @@ export default function WrongbookRecitePage() {
   // 按题型分组
   const groupedQuestions = useMemo(() => {
     const groups: Record<string, Question[]> = {};
-    
-    questions.forEach(q => {
+    paginatedQuestions.forEach(q => {
       const typeKey = q.type;
       if (!groups[typeKey]) groups[typeKey] = [];
       groups[typeKey].push(q);
     });
-    
     const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
     const sortedGroups: { type: string; typeName: string; questions: Question[] }[] = [];
-    
+    const typeNames: Record<string, string> = {
+      'single': '单选题', 'multiple': '多选题', 'true-false': '判断题',
+      'fill-blank': '填空题', 'comprehensive': '综合题'
+    };
     typeOrder.forEach(type => {
       if (groups[type] && groups[type].length > 0) {
-        const typeNames: Record<string, string> = {
-          'single': '单选题', 'multiple': '多选题', 'true-false': '判断题',
-          'fill-blank': '填空题', 'comprehensive': '综合题'
-        };
         sortedGroups.push({ type, typeName: typeNames[type] || type, questions: groups[type] });
       }
     });
-    
     return sortedGroups;
-  }, [questions]);
+  }, [paginatedQuestions]);
 
-  const totalCount = questions.length;
+  const totalCount = filteredQuestions.length;
   const masteredCount = questions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
 
   if (loading) {
@@ -222,6 +234,7 @@ export default function WrongbookRecitePage() {
               <h1 className="text-base font-semibold text-gray-900">错题快速背题</h1>
               <p className="text-xs text-gray-500">
                 {totalCount} 道错题 · 已掌握 {masteredCount} 题
+                {(typeFilter !== 'all' || bankFilter !== 'all') && ' · 已筛选'}
               </p>
             </div>
           </div>
@@ -234,10 +247,12 @@ export default function WrongbookRecitePage() {
 
       {/* 内容区 */}
       <main className="max-w-[900px] mx-auto px-4 py-6">
-        {questions.length === 0 ? (
+        {filteredQuestions.length === 0 ? (
           <div className="text-center py-20">
             <BookOpen className="w-12 h-12 text-gray-300 mx-auto" />
-            <p className="mt-4 text-gray-500">暂无错题，继续保持！</p>
+            <p className="mt-4 text-gray-500">
+              {questions.length === 0 ? '暂无错题，继续保持！' : '当前筛选条件下没有错题'}
+            </p>
             <Button
               onClick={() => router.push('/wrongbook')}
               variant="outline"
@@ -269,7 +284,7 @@ export default function WrongbookRecitePage() {
                 {/* 题目列表 */}
                 <div className="space-y-6">
                   {(() => {
-                    let globalIndex = 1;
+                    let globalIndex = (currentPage - 1) * PAGE_SIZE + 1;
                     for (let i = 0; i < groupIndex; i++) {
                       globalIndex += groupedQuestions[i].questions.reduce((acc, q) => {
                         if (q.type === 'comprehensive' && q.children) {
@@ -287,7 +302,6 @@ export default function WrongbookRecitePage() {
                         globalIndex += 1;
                       }
                       
-                      // 综合题的特殊处理
                       if (question.type === 'comprehensive') {
                         return (
                           <div key={question.id}>
@@ -332,8 +346,35 @@ export default function WrongbookRecitePage() {
           </div>
         )}
 
+        {/* 分页 */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              上一页
+            </Button>
+            <span className="text-sm text-gray-500 px-3">
+              {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              下一页
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+
         {/* 底部 */}
-        {questions.length > 0 && (
+        {filteredQuestions.length > 0 && (
           <div className="mt-12 pb-8 text-center">
             <p className="text-xs text-gray-400">— 温故而知新，可以为师矣 —</p>
           </div>
@@ -343,7 +384,7 @@ export default function WrongbookRecitePage() {
   );
 }
 
-// 题目卡片组件（从背诵模式复用）
+// 题目卡片组件
 function ReciteCard({
   question,
   index,
