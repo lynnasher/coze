@@ -19,8 +19,7 @@ const TYPE_LABELS: Record<string, { text: string; color: string }> = {
 export default function WrongbookRecitePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const bankFilter = searchParams.get('bankId');
-  const typeFilter = searchParams.get('type');
+  const idsParam = searchParams.get('ids');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,38 +27,37 @@ export default function WrongbookRecitePage() {
   useEffect(() => {
     const loadWrongQuestions = async () => {
       try {
-        const wrongIds = getWrongQuestionIds();
         const allQuestions = questionStore.getAll();
         
+        // 从 URL 参数中获取已筛选的题目 ID
+        let filteredIds: string[] = [];
+        if (idsParam) {
+          filteredIds = idsParam.split(',').filter(Boolean);
+        } else {
+          // 兜底：没有参数时加载全部错题
+          filteredIds = getWrongQuestionIds();
+        }
+
         // 获取错误次数 >= 1 的题目（包含综合题的子题）
         const tempQuestions: Question[] = [];
         const processedIds = new Set<string>();
         
         for (const q of allQuestions) {
-          if (wrongIds.includes(q.id) && !processedIds.has(q.id)) {
+          if (filteredIds.includes(q.id) && !processedIds.has(q.id)) {
             processedIds.add(q.id);
             tempQuestions.push(q);
           }
         }
 
-        // 应用筛选条件（与错题本页面保持一致）
-        let filtered = tempQuestions;
-        if (bankFilter && bankFilter !== 'all') {
-          filtered = filtered.filter(q => q.bankId === bankFilter);
-        }
-        if (typeFilter && typeFilter !== 'all') {
-          filtered = filtered.filter(q => q.type === typeFilter);
-        }
-
         // 按题型排序：单选 → 多选 → 判断 → 填空 → 综合
         const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
-        filtered.sort((a, b) => {
+        tempQuestions.sort((a, b) => {
           const aOrder = typeOrder.indexOf(a.type);
           const bOrder = typeOrder.indexOf(b.type);
           return (aOrder === -1 ? 999 : aOrder) - (bOrder === -1 ? 999 : bOrder);
         });
 
-        setQuestions(filtered);
+        setQuestions(tempQuestions);
       } catch (error) {
         console.error('加载错题数据失败:', error);
       } finally {
@@ -68,7 +66,7 @@ export default function WrongbookRecitePage() {
     };
 
     loadWrongQuestions();
-  }, [bankFilter, typeFilter]);
+  }, [idsParam]);
 
   // 获取答案显示文本
   const getAnswerDisplay = useCallback((question: Question) => {

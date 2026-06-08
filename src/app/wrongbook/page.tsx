@@ -972,7 +972,10 @@ export default function WrongBookPage() {
                       开始复习
                     </Button>
                     <Button 
-                      onClick={() => router.push(`/wrongbook/recite?bankId=${bankFilter}&type=${typeFilter}`)} 
+                      onClick={() => {
+                        const ids = filteredQuestions.map(q => q.id);
+                        router.push(`/wrongbook/recite?ids=${ids.join(',')}`);
+                      }}
                       disabled={filteredQuestions.length === 0}
                       variant="outline"
                       className="flex-[1] h-12 rounded-2xl border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs px-2"
