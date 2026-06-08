@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight } from 'lucide-react';
 import { Question } from '@/lib/types';
 import { questionStore, recordStore, getWrongQuestionIds, wrongStreakStore } from '@/lib/quiz-store';
@@ -18,8 +18,6 @@ const TYPE_LABELS: Record<string, { text: string; color: string }> = {
 
 export default function WrongbookRecitePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const idsParam = searchParams.get('ids');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,12 +27,14 @@ export default function WrongbookRecitePage() {
       try {
         const allQuestions = questionStore.getAll();
         
-        // 从 URL 参数中获取已筛选的题目 ID
+        // 从 sessionStorage 获取已筛选的题目 ID
         let filteredIds: string[] = [];
-        if (idsParam) {
-          filteredIds = idsParam.split(',').filter(Boolean);
+        const stored = sessionStorage.getItem('wrongbook_recite_ids');
+        if (stored) {
+          try { filteredIds = JSON.parse(stored); } catch { filteredIds = []; }
+          sessionStorage.removeItem('wrongbook_recite_ids');
         } else {
-          // 兜底：没有参数时加载全部错题
+          // 兜底：没有数据时加载全部错题
           filteredIds = getWrongQuestionIds();
         }
 
