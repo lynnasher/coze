@@ -385,7 +385,26 @@ export default function WrongBookPage() {
     if (missingIds.length > 0) {
       fetchQuestionsFromCloud(missingIds);
     }
-  }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]); 
+  }, [refreshKey, cloudQuestions, fetchQuestionsFromCloud]);
+
+  // 清理：云端也找不到的孤儿 ID 标记为已删除，避免污染计数
+  useEffect(() => {
+    const wrongIds = getWrongQuestionIds();
+    const allQuestions = questionStore.getAll();
+    const localIds = new Set(allQuestions.map(q => q.id));
+    allQuestions.forEach(q => {
+      if (q.children) q.children.forEach(c => localIds.add(c.id));
+    });
+    // 云端数据未加载完时不清理（防止误伤云端题目）
+    if (Object.keys(cloudQuestions).length === 0) return;
+    const deletedIds = deletedQuestionStore.getAll();
+    const orphanIds = wrongIds.filter(id =>
+      !localIds.has(id) && !cloudQuestions[id] && !deletedIds.includes(id)
+    );
+    if (orphanIds.length > 0) {
+      deletedQuestionStore.add(orphanIds);
+    }
+  }, [cloudQuestions]);
 
   const filteredQuestions = useMemo(() => {
     let result = wrongQuestions;

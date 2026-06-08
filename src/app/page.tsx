@@ -174,14 +174,7 @@ export default function QuizApp() {
       recordStore.getAll(),
       (records) => recordStore.save(records),
       (streaks) => wrongStreakStore.save(streaks),
-      () => {
-        const wrongIds = getWrongQuestionIds();
-        const allQuestions = questionStore.getAll();
-        // 新浏览器上 questionStore 可能为空，此时返回原始数量
-        if (allQuestions.length === 0) return wrongIds.length;
-        const storeIds = new Set(allQuestions.map(q => q.id));
-        return wrongIds.filter(id => storeIds.has(id)).length;
-      },
+      () => getWrongQuestionIds().length,
       deletedIds
     );
   }, []);
