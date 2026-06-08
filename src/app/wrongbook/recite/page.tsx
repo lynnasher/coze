@@ -66,7 +66,7 @@ export default function WrongbookRecitePage() {
     };
 
     loadWrongQuestions();
-  }, [idsParam]);
+  }, []);
 
   // 获取答案显示文本
   const getAnswerDisplay = useCallback((question: Question) => {
