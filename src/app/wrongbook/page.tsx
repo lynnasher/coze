@@ -29,6 +29,7 @@ import { Question, PracticeRecord, QuestionType } from '@/lib/types';
 import { recalculateWrongData as recalculateWrongDataUtil } from '@/lib/stats-utils';
 import { checkAnswer as sharedCheckAnswer } from '@/lib/import-utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
@@ -65,6 +66,7 @@ export default function WrongBookPage() {
   const [bankFilter, setBankFilter] = useState<string | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
+  const router = useRouter();
   
   // 云端题目数据缓存（用于解决不同设备间题目数据不一致问题）
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
@@ -960,13 +962,25 @@ export default function WrongBookPage() {
                  
                       
                   {/* 开始复习按钮 */}
-                  <Button 
-                    onClick={() => startReview(filteredQuestions)} 
-                    disabled={filteredQuestions.length === 0}
-                    className="w-full h-12 mt-5 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
-                  >
-                    开始复习
-                  </Button>
+                  <div className="flex gap-3 mt-5">
+                    <Button 
+                      onClick={() => startReview(filteredQuestions)} 
+                      disabled={filteredQuestions.length === 0}
+                      className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      开始复习
+                    </Button>
+                    <Button 
+                      onClick={() => router.push('/wrongbook/recite')} 
+                      disabled={filteredQuestions.length === 0}
+                      variant="outline"
+                      className="flex-1 h-12 rounded-2xl border-gray-300 hover:bg-gray-50 text-gray-700 font-medium"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      快速背题
+                    </Button>
+                  </div>
                 </div>
               );
 
