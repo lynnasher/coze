@@ -172,9 +172,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: '手机号格式不正确' }, { status: 400 });
     }
 
-    // 验证密码长度
-    if (password.length < 6) {
-      return NextResponse.json({ success: false, error: '密码至少6位' }, { status: 400 });
+    // 验证密码强度（至少8位，包含大小写字母和数字）
+    if (password.length < 8) {
+      return NextResponse.json({ success: false, error: '密码长度至少8位' }, { status: 400 });
+    }
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json({ success: false, error: '密码需包含小写字母' }, { status: 400 });
+    }
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json({ success: false, error: '密码需包含大写字母' }, { status: 400 });
+    }
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json({ success: false, error: '密码需包含数字' }, { status: 400 });
     }
 
     const adminClient = getSupabaseAdminClient();

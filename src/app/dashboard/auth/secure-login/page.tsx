@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,31 +8,48 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Lock, RefreshCw, Shield } from 'lucide-react';
-import { useCaptcha, CaptchaDisplay, verifyCaptcha } from '@/components/Captcha';
+
+interface CaptchaData {
+  token: string;
+  image: string;
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaData, setCaptchaData] = useState<CaptchaData | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { code, canvasRef, refresh: refreshCaptcha } = useCaptcha({ length: 4, width: 140, height: 44 });
+
+  const fetchCaptcha = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/captcha');
+      const data = await res.json();
+      if (data.success) {
+        setCaptchaData({ token: data.token, image: data.image });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCaptcha();
+  }, [fetchCaptcha]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // 验证验证码
-    if (!verifyCaptcha(captchaInput, code)) {
-      setError('验证码错误，请重新输入');
-      refreshCaptcha();
-      setCaptchaInput('');
+    if (!username || !password) {
+      setError('请输入用户名和密码');
       return;
     }
 
-    if (!username || !password) {
-      setError('请输入用户名和密码');
+    if (!captchaInput || !captchaData) {
+      setError('请输入验证码');
       return;
     }
 
@@ -42,14 +59,19 @@ export default function AdminLoginPage() {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          captchaToken: captchaData.token,
+          captchaInput: captchaInput.toUpperCase(),
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         setError(data.error || '登录失败');
-        refreshCaptcha();
+        fetchCaptcha();
         setCaptchaInput('');
         return;
       }
@@ -134,10 +156,20 @@ export default function AdminLoginPage() {
                   className="flex-1"
                   autoComplete="off"
                 />
-                <CaptchaDisplay code={code} canvasRef={canvasRef} />
+                {captchaData ? (
+                  <img
+                    src={captchaData.image}
+                    alt="验证码"
+                    className="h-11 w-[140px] rounded border cursor-pointer"
+                    onClick={fetchCaptcha}
+                    title="点击刷新验证码"
+                  />
+                ) : (
+                  <div className="h-11 w-[140px] rounded border bg-slate-100 animate-pulse" />
+                )}
                 <button
                   type="button"
-                  onClick={refreshCaptcha}
+                  onClick={fetchCaptcha}
                   className="p-2 hover:bg-slate-100 rounded-md transition-colors"
                   title="刷新验证码"
                 >

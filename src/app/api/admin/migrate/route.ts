@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/storage/database/supabase-client';
+import { requireAdminAuth } from '@/lib/api-auth';
 
 /**
- * 数据库迁移接口
+ * 数据库迁移接口（需要管理员认证）
  * 用于执行数据库结构变更
  * POST /api/admin/migrate
  * Body: { operation: 'add_device_id' }
  */
 export async function POST(request: Request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) return auth.response;
+
   try {
     const body = await request.json();
     const { operation } = body;
@@ -65,7 +69,10 @@ export async function POST(request: Request) {
  * 获取迁移状态
  * GET /api/admin/migrate
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requireAdminAuth(request);
+  if (!auth.success) return auth.response;
+
   try {
     const client = getSupabaseAdminClient();
     

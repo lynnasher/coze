@@ -14,6 +14,16 @@ export async function POST(request: NextRequest) {
   try {
 // const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
     
+    // 限制文件大小：10MB
+    const contentLength = request.headers.get('content-length');
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    if (contentLength && parseInt(contentLength) > MAX_SIZE) {
+      return NextResponse.json(
+        { error: '文件大小不能超过 10MB' },
+        { status: 413 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     
@@ -21,6 +31,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: '未提供文件' },
         { status: 400 }
+      );
+    }
+    
+    // 二次校验文件大小
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: '文件大小不能超过 10MB' },
+        { status: 413 }
       );
     }
     

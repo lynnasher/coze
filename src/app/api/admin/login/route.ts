@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { checkLoginRateLimit, getClientIP } from '@/lib/admin-auth';
 import { generateToken, verifyPassword, hashPassword, generateDeviceId } from '@/lib/services/user-service';
+import { verifyCaptchaToken } from '../captcha/route';
 
 // 验证密码强度（至少8位，包含大小写字母和数字）
 function validatePasswordStrength(password: string): { valid: boolean; message?: string } {
@@ -34,11 +35,25 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { username, password } = body;
+    const { username, password, captchaToken, captchaInput } = body;
 
     if (!username || !password) {
       return NextResponse.json(
         { error: '请提供用户名和密码' },
+        { status: 400 }
+      );
+    }
+
+    // 后端校验验证码
+    if (!captchaToken || !captchaInput) {
+      return NextResponse.json(
+        { error: '请提供验证码' },
+        { status: 400 }
+      );
+    }
+    if (!verifyCaptchaToken(captchaToken, captchaInput)) {
+      return NextResponse.json(
+        { error: '验证码错误或已过期' },
         { status: 400 }
       );
     }
