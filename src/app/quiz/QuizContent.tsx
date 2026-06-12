@@ -35,6 +35,7 @@ import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
 import { DeviceKickedDialog } from '@/components/DeviceKickedDialog';
 import { getCurrentUser } from '@/components/AuthModal';
+import { AIHelpPanel } from '@/components/AIHelpPanel';
 import Link from 'next/link';
 
 // 题型配置常量
@@ -53,6 +54,46 @@ interface QuizContentProps {
   mode?: 'sequential' | 'random' | 'wrong';
 }
 
+// 构建题目上下文文本，供 AI 答疑使用
+function buildQuestionContext(q: Question): string {
+  const parts: string[] = [];
+  
+  const typeLabels: Record<string, string> = {
+    single: "单选题",
+    multiple: "多选题",
+    "true-false": "判断题",
+    "fill-blank": "填空题",
+    comprehensive: "综合案例题",
+  };
+  
+  parts.push(`【${typeLabels[q.type] || q.type}】`);
+  
+  if (q.caseBackground) {
+    parts.push(`案例背景：${q.caseBackground}`);
+  }
+  
+  parts.push(`题目：${q.content}`);
+  
+  if (q.options && q.options.length > 0) {
+    const optionLabels = ["A", "B", "C", "D", "E", "F", "G", "H"];
+    parts.push("选项：");
+    q.options.forEach((opt, i) => {
+      parts.push(`${optionLabels[i] || i}. ${opt.text}`);
+    });
+  }
+  
+  if (q.answer) {
+    const answerStr = Array.isArray(q.answer) ? q.answer.join(", ") : q.answer;
+    parts.push(`正确答案：${answerStr}`);
+  }
+  
+  if (q.explanation) {
+    parts.push(`官方解析：${q.explanation}`);
+  }
+  
+  return parts.join("\n");
+}
+
 // 客户端组件 - 接收从服务端解析好的参数
 export default function QuizContent({ bankId: initialBankId, mode: initialMode }: QuizContentProps) {
   const router = useRouter();
@@ -66,6 +107,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   const [showResultSheet, setShowResultSheet] = useState(false);
   const [currentChildIndex, setCurrentChildIndex] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [showAIPanel, setShowAIPanel] = useState(false);
   const [resultStats, setResultStats] = useState({ accuracy: 0, total: 0, correct: 0, wrong: 0, unanswered: 0 });
   
   // 权限检查状态
@@ -849,6 +891,13 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     <div className="min-h-screen bg-slate-50 animate-in fade-in duration-300">
       {/* 设备被踢下线提示 */}
       <DeviceKickedDialog open={isKicked} onConfirm={() => router.push('/')} />
+
+      {/* AI 答疑面板 */}
+      <AIHelpPanel
+        open={showAIPanel}
+        onClose={() => setShowAIPanel(false)}
+        questionContext={buildQuestionContext(currentQuestion)}
+      />
       
       {/* 顶部导航 */}
       <div className="bg-white border-b border-slate-200 px-4 py-3">
@@ -1162,6 +1211,19 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             >
               <BookOpen className="w-4 h-4" />
               <span>答案</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowAIPanel(true)}
+              className="h-9 px-3 rounded-xl border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold shadow-sm"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a4 4 0 0 1 4 4v1h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2V6a4 4 0 0 1 4-4z"/>
+                <circle cx="12" cy="13" r="1.5"/>
+                <path d="M10 10.5c.5-1 1.5-1.5 2.5-1.5s2 .5 2.5 1.5"/>
+              </svg>
+              <span>AI答疑</span>
             </Button>
             
             {(() => {
