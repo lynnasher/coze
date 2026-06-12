@@ -1169,6 +1169,19 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                   </div>
                 </div>
               )}
+
+              {/* AI 答疑按钮 - 解析下方 */}
+              <button
+                onClick={() => setShowAIPanel(true)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-purple-200 bg-purple-50/80 hover:bg-purple-100 text-purple-600 font-medium text-sm transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a4 4 0 0 1 4 4v1h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2V6a4 4 0 0 1 4-4z"/>
+                  <circle cx="12" cy="13" r="1.5"/>
+                  <path d="M10 10.5c.5-1 1.5-1.5 2.5-1.5s2 .5 2.5 1.5"/>
+                </svg>
+                <span>AI 答疑 · 不懂就问</span>
+              </button>
             </div>
           )}
         </div>
@@ -1213,20 +1226,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               <span>答案</span>
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => setShowAIPanel(true)}
-              className="h-9 px-3 rounded-xl border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold shadow-sm"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a4 4 0 0 1 4 4v1h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2V6a4 4 0 0 1 4-4z"/>
-                <circle cx="12" cy="13" r="1.5"/>
-                <path d="M10 10.5c.5-1 1.5-1.5 2.5-1.5s2 .5 2.5 1.5"/>
-              </svg>
-              <span>AI答疑</span>
-            </Button>
-            
-            {(() => {
+            {/* 上一题 */}
               const isComprehensive = currentQuestion?.type === 'comprehensive';
               const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
               const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
