@@ -120,11 +120,13 @@ async function handleBuiltinSDK(request: NextRequest, messages: { role: string; 
   const config = new Config();
   const client = new LLMClient(config, customHeaders);
 
+  const typedMessages = messages as { role: 'user' | 'system' | 'assistant'; content: string }[];
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const chatStream = client.stream(messages, {
+        const chatStream = client.stream(typedMessages, {
           model: 'deepseek-v3-2-251201',
           temperature: 0.7,
         });
