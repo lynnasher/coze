@@ -498,23 +498,9 @@ export default function UsersPage() {
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => {
-                                const newCategories = categories.map(c => c.id);
-                                handleCategoriesChange(user.id, newCategories);
-                              }}>
-                                激活所有分类
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => {
-                                handleCategoriesChange(user.id, []);
-                              }}>
-                                清除分类
-                              </DropdownMenuItem>
+                            <DropdownMenuContent align="end"> 
                               <DropdownMenuItem onClick={() => handleStatusToggle(user.id, user.status)}>
                                 {user.status === 'active' ? '禁用账号' : '启用账号'}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleRoleChange(user.id, user.role === 'admin' ? 'user' : 'admin')}>
-                                {user.role === 'admin' ? '设为普通用户' : '设为管理员'}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setResetPasswordUser(user)}>
                                 <Key className="w-4 h-4 mr-1" />
