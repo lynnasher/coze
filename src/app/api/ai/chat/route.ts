@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 // 自定义 API 配置（通过环境变量覆盖）
 const CUSTOM_API_KEY = process.env.AI_API_KEY || '';
@@ -22,8 +23,8 @@ export async function POST(request: NextRequest) {
 5. 不要使用markdown格式，用纯文本`;
 
     const messages = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `请帮我解析这道题：\n\n${questionContext}` },
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: `请帮我解析这道题：\n\n${questionContext}` },
     ];
 
     // 如果配置了自定义 API，使用自定义 API
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 否则使用内置 SDK
-    return handleBuiltinSDK(messages);
+    return handleBuiltinSDK(request, messages);
   } catch (error) {
     console.error('[AI Chat] Error:', error);
     return Response.json({ error: 'AI 服务暂时不可用' }, { status: 500 });
@@ -114,25 +115,23 @@ async function handleCustomAPI(messages: { role: string; content: string }[]) {
   });
 }
 
-async function handleBuiltinSDK(messages: { role: string; content: string }[]) {
-  // 动态导入，避免自定义 API 场景下加载 SDK
-  const { createCozeChatClient } = await import('coze-coding-dev-sdk');
-
-  const client = createCozeChatClient({
-    model: 'doubao-seed-2-0-lite-260215',
-    maxTokens: 300,
-    temperature: 0.7,
-  });
+async function handleBuiltinSDK(request: NextRequest, messages: { role: string; content: string }[]) {
+  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+  const config = new Config();
+  const client = new LLMClient(config, customHeaders);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const chatStream = await client.chat(messages as Parameters<typeof client.chat>[0]);
+        const chatStream = client.stream(messages, {
+          model: 'doubao-seed-2-0-lite-260215',
+          temperature: 0.7,
+        });
         for await (const chunk of chatStream) {
-          const content = chunk?.choices?.[0]?.delta?.content || chunk?.content || '';
-          if (content) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+          if (chunk.content) {
+            const text = typeof chunk.content === 'string' ? chunk.content : String(chunk.content);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`));
           }
         }
       } catch (e) {
