@@ -185,7 +185,7 @@ async function migrateQuestionImages(question: {
 }
 
 // API 路由专用的 Question 类型（包含 images 字段）
-type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
+type QuestionType = 'single' | 'multiple' | 'uncertain-choice' | 'true-false' | 'fill-blank' | 'comprehensive';
 
 interface Question {
   id: string;

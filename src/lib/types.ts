@@ -1,6 +1,6 @@
 // 题库类型定义
 
-export type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
+export type QuestionType = 'single' | 'multiple' | 'uncertain-choice' | 'true-false' | 'fill-blank' | 'comprehensive';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type PracticeMode = 'sequential' | 'random' | 'wrong';
 

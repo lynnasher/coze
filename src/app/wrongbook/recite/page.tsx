@@ -118,7 +118,7 @@ function WrongbookReciteContent() {
         }
 
         // 按题型排序
-        const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
+        const typeOrder = ['single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'];
         foundQuestions.sort((a, b) => {
           const aOrder = typeOrder.indexOf(a.type);
           const bOrder = typeOrder.indexOf(b.type);
@@ -201,8 +201,8 @@ function WrongbookReciteContent() {
     const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
     const sortedGroups: { type: string; typeName: string; questions: Question[] }[] = [];
     const typeNames: Record<string, string> = {
-      'single': '单选题', 'multiple': '多选题', 'true-false': '判断题',
-      'fill-blank': '填空题', 'comprehensive': '综合题'
+      'single': '单选题', 'multiple': '多选题', 'uncertain-choice': '不定项选择题',
+      'true-false': '判断题', 'fill-blank': '填空题', 'comprehensive': '综合题'
     };
     typeOrder.forEach(type => {
       if (groups[type] && groups[type].length > 0) {
@@ -279,6 +279,7 @@ function WrongbookReciteContent() {
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                       group.type === 'single' ? 'bg-indigo-100 text-indigo-700' :
                       group.type === 'multiple' ? 'bg-purple-100 text-purple-700' :
+                      group.type === 'uncertain-choice' ? 'bg-pink-100 text-pink-700' :
                       group.type === 'true-false' ? 'bg-cyan-100 text-cyan-700' :
                       group.type === 'fill-blank' ? 'bg-teal-100 text-teal-700' :
                       'bg-rose-100 text-rose-700'

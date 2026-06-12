@@ -57,6 +57,7 @@ const StatsView = dynamic(() => import('@/components/StatsView'), {
 const QUESTION_TYPE_CONFIG = {
   single: { label: '单选题', color: 'bg-indigo-500' },
   multiple: { label: '多选题', color: 'bg-purple-500' },
+  'uncertain-choice': { label: '不定项', color: 'bg-pink-500' },
   'true-false': { label: '判断题', color: 'bg-cyan-500' },
   'fill-blank': { label: '填空题', color: 'bg-teal-500' },
   comprehensive: { label: '综合题', color: 'bg-rose-500' },

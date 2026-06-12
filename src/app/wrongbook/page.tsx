@@ -37,6 +37,7 @@ import { RichTextWithBreaks } from '@/lib/rich-text';
 const TYPE_LABELS: Record<QuestionType, string> = {
   'single': '单选',
   'multiple': '多选',
+  'uncertain-choice': '不定项',
   'true-false': '判断',
   'fill-blank': '填空',
   'comprehensive': '综合',
@@ -45,6 +46,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 const TYPE_COLORS: Record<QuestionType, { bg: string; text: string; light: string }> = {
   'single': { bg: 'bg-blue-500', text: 'text-blue-600', light: 'bg-blue-50' },
   'multiple': { bg: 'bg-violet-500', text: 'text-violet-600', light: 'bg-violet-50' },
+  'uncertain-choice': { bg: 'bg-pink-500', text: 'text-pink-600', light: 'bg-pink-50' },
   'true-false': { bg: 'bg-cyan-500', text: 'text-cyan-600', light: 'bg-cyan-50' },
   'fill-blank': { bg: 'bg-emerald-500', text: 'text-emerald-600', light: 'bg-emerald-50' },
   'comprehensive': { bg: 'bg-rose-500', text: 'text-rose-600', light: 'bg-rose-50' },
@@ -658,12 +660,7 @@ export default function WrongBookPage() {
               {/* 题干头部 */}
               <div className="px-5 py-3 border-b border-slate-50 bg-gradient-to-r from-slate-50 to-white">
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${
-                    currentReviewQuestion.type === 'single' ? 'bg-indigo-500' :
-                    currentReviewQuestion.type === 'multiple' ? 'bg-purple-500' :
-                    currentReviewQuestion.type === 'true-false' ? 'bg-cyan-500' :
-                    currentReviewQuestion.type === 'comprehensive' ? 'bg-rose-500' : 'bg-teal-500'
-                  }`}>
+                  <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-bold text-white ${TYPE_COLORS[currentReviewQuestion.type]?.bg || 'bg-slate-500'}`}>
                     {TYPE_LABELS[currentReviewQuestion.type]}
                   </span>
                   <span className="text-xs text-slate-500 font-medium">第 {reviewIndex + 1} 题</span>
@@ -705,7 +702,7 @@ export default function WrongBookPage() {
                 ) : (
                   <div className="space-y-2">
                     {currentReviewQuestion.options?.map((option, index) => {
-                      const isMulti = currentReviewQuestion.type === 'multiple';
+                      const isMulti = currentReviewQuestion.type === 'multiple' || currentReviewQuestion.type === 'uncertain-choice';
                       // 标准化为小写比较（处理大小写不一致）
                       const optionIdLower = option.id.toLowerCase();
                       const normalizeAnswer = (ans: string | string[] | undefined): string[] => {
@@ -1049,7 +1046,7 @@ export default function WrongBookPage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
               <p className="text-xs text-gray-400 mb-3">题型筛选</p>
               <div className="flex gap-2.5 flex-wrap">
-                {(['all', 'single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
+                {(['all', 'single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
                   const count = typeCounts[t] || 0;
                   if (t !== 'all' && count === 0) return null;
                   const isActive = typeFilter === t;

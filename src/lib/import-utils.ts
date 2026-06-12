@@ -9,9 +9,10 @@ import type { Question, QuestionType } from './types';
 const typeMap: Record<number, QuestionType> = {
   1: 'single',
   2: 'multiple',
-  3: 'true-false',
-  4: 'fill-blank',
-  5: 'comprehensive',
+  3: 'uncertain-choice',
+  4: 'true-false',
+  5: 'fill-blank',
+  6: 'comprehensive',
 };
 
 // 生成唯一ID
@@ -27,9 +28,11 @@ export function detectQuestionType(qType: unknown): QuestionType {
     const t = qType.toLowerCase().trim();
     if (t === 'single') return 'single';
     else if (t === 'multiple') return 'multiple';
+    else if (t === 'uncertain-choice' || t === 'uncertain') return 'uncertain-choice';
     else if (t === 'true-false' || t === 'truefalse' || t === 'judge') return 'true-false';
     else if (t === 'fill-blank' || t === 'fillblank' || t === 'fill' || t === 'short') return 'fill-blank';
     else if (t === 'comprehensive') return 'comprehensive';
+    else if (t.includes('不定项')) return 'uncertain-choice';
     else if (t.includes('多选')) return 'multiple';
     else if (t.includes('判断')) return 'true-false';
     else if (t.includes('填空') || t.includes('简答') || t.includes('问答')) return 'fill-blank';
@@ -162,7 +165,7 @@ export function processAnswer(
       if (questionType === 'fill-blank') {
         // 填空题：答案保持为完整字符串，不拆分
         answer = ans;
-      } else if (questionType === 'multiple') {
+      } else if (questionType === 'multiple' || questionType === 'uncertain-choice') {
         // 多选题：可能是 "AB" 或 ["A", "B"] 格式
         // 保持答案大小写与选项 id 一致，检查选项 id 的大小写
         if (options && options.length > 0) {

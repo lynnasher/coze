@@ -37,7 +37,7 @@ export interface AdminStats {
 export interface Question {
   id: string;
   parentId?: string;
-  type: 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
+  type: 'single' | 'multiple' | 'uncertain-choice' | 'true-false' | 'fill-blank' | 'comprehensive';
   content: string;
   options?: { id: string; text: string }[];
   answer: string | string[];

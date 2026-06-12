@@ -48,7 +48,7 @@ import {
   FileText,
 } from 'lucide-react';
 
-type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
+type QuestionType = 'single' | 'multiple' | 'uncertain-choice' | 'true-false' | 'fill-blank' | 'comprehensive';
 
 interface Question {
   id: string;
@@ -79,6 +79,7 @@ interface QuestionBank {
 const typeLabels: Record<string, string> = {
   single: '单选题',
   multiple: '多选题',
+  'uncertain-choice': '不定项选择',
   'true-false': '判断题',
   'fill-blank': '填空题',
   comprehensive: '综合题'
@@ -87,6 +88,7 @@ const typeLabels: Record<string, string> = {
 const typeColors: Record<string, string> = {
   single: 'bg-blue-100 text-blue-700',
   multiple: 'bg-purple-100 text-purple-700',
+  'uncertain-choice': 'bg-pink-100 text-pink-700',
   'true-false': 'bg-green-100 text-green-700',
   'fill-blank': 'bg-orange-100 text-orange-700',
   comprehensive: 'bg-red-100 text-red-700'
@@ -281,7 +283,7 @@ export default function BankEditPage() {
               bankId: bankId,
               type: child.type,
               content: child.content || '',
-              options: ['single', 'multiple'].includes(child.type) ? child.options : undefined,
+              options: ['single', 'multiple', 'uncertain-choice'].includes(child.type) ? child.options : undefined,
               answer: child.answer,
               difficulty: child.difficulty || 'medium',
               tags: child.tags || [],
@@ -384,7 +386,7 @@ export default function BankEditPage() {
             bankId: bankId,
             type: child.type,
             content: child.content || '',
-            options: ['single', 'multiple'].includes(child.type) ? child.options : undefined,
+            options: ['single', 'multiple', 'uncertain-choice'].includes(child.type) ? child.options : undefined,
             answer: child.answer,
             difficulty: child.difficulty || 'medium',
             tags: child.tags || [],
@@ -863,7 +865,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
       type,
       content: type === 'comprehensive' ? '' : content,
       caseBackground: type === 'comprehensive' ? content : undefined,
-      options: ['single', 'multiple'].includes(type) ? filteredOptions : undefined,
+      options: ['single', 'multiple', 'uncertain-choice'].includes(type) ? filteredOptions : undefined,
       answer: type === 'fill-blank' ? answer : (Array.isArray(answer) ? answer : answer),
       explanation: explanation || undefined,
       difficulty,
@@ -876,7 +878,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
     onSave(questionData);
   };
 
-  const showOptions = ['single', 'multiple'].includes(type);
+  const showOptions = ['single', 'multiple', 'uncertain-choice'].includes(type);
   const showAnswer = type !== 'comprehensive';
 
   return (
@@ -897,6 +899,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
               <SelectContent>
                 <SelectItem value="single">单选题</SelectItem>
                 <SelectItem value="multiple">多选题</SelectItem>
+                <SelectItem value="uncertain-choice">不定项选择题</SelectItem>
                 <SelectItem value="true-false">判断题</SelectItem>
                 <SelectItem value="fill-blank">填空题</SelectItem>
                 <SelectItem value="comprehensive">综合题</SelectItem>
@@ -959,6 +962,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                             <SelectContent>
                               <SelectItem value="single">单选题</SelectItem>
                               <SelectItem value="multiple">多选题</SelectItem>
+                              <SelectItem value="uncertain-choice">不定项选择题</SelectItem>
                               <SelectItem value="true-false">判断题</SelectItem>
                               <SelectItem value="fill-blank">填空题</SelectItem>
                             </SelectContent>
@@ -975,7 +979,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                         />
                         
                         {/* 子题选项（单选/多选） */}
-                        {['single', 'multiple'].includes(child.type) && (
+                        {['single', 'multiple', 'uncertain-choice'].includes(child.type) && (
                           <div className="space-y-1 mb-2">
                             <div className="flex items-center justify-between">
                               <Label className="text-xs text-slate-500">选项</Label>
@@ -1046,11 +1050,11 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                           <Input
                             value={typeof child.answer === 'string' ? child.answer : child.answer?.join(', ')}
                             onChange={(e) => updateChildQuestion(index, { 
-                              answer: child.type === 'multiple' 
+                              answer: (child.type === 'multiple' || child.type === 'uncertain-choice')
                                 ? e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                                 : e.target.value 
                             })}
-                            placeholder={child.type === 'multiple' ? '多个答案用逗号分隔，如: a,b' : '如: a'}
+                            placeholder={(child.type === 'multiple' || child.type === 'uncertain-choice') ? '多个答案用逗号分隔，如: a,b' : '如: a'}
                             className="h-7 text-sm flex-1"
                           />
                         </div>
@@ -1137,7 +1141,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
                   placeholder="如: a"
                   className="max-w-[200px]"
                 />
-              ) : type === 'multiple' ? (
+              ) : type === 'multiple' || type === 'uncertain-choice' ? (
                 <div className="flex flex-wrap gap-2">
                   {options.filter(opt => opt.text.trim()).map((opt) => (
                     <label key={opt.id} className="flex items-center gap-2 cursor-pointer">

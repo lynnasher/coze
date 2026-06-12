@@ -4,7 +4,7 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { convertQuestionImageKeys } from '@/lib/image-utils';
 import { requireAdminAuth } from '@/lib/api-auth';
 
-type QuestionType = 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive';
+type QuestionType = 'single' | 'multiple' | 'uncertain-choice' | 'true-false' | 'fill-blank' | 'comprehensive';
 
 interface Question {
   id?: string;

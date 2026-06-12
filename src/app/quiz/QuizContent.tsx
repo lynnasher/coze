@@ -41,6 +41,7 @@ import Link from 'next/link';
 const QUESTION_TYPE_CONFIG = {
   single: { label: '单选题', color: 'bg-indigo-500' },
   multiple: { label: '多选题', color: 'bg-purple-500' },
+  'uncertain-choice': { label: '不定项', color: 'bg-pink-500' },
   'true-false': { label: '判断题', color: 'bg-cyan-500' },
   'fill-blank': { label: '填空题', color: 'bg-teal-500' },
   comprehensive: { label: '综合题', color: 'bg-rose-500' },
@@ -60,6 +61,7 @@ function buildQuestionContext(q: Question): string {
   const typeLabels: Record<string, string> = {
     single: "单选题",
     multiple: "多选题",
+    "uncertain-choice": "不定项选择题",
     "true-false": "判断题",
     "fill-blank": "填空题",
     comprehensive: "综合案例题",
@@ -552,7 +554,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
   // eslint-disable-next-line react-hooks/static-components
   const AnswerSheetContent = () => (
     <div className="space-y-4">
-      {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
+      {['single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
         const typeQuestions = quizState.questions
           .map((q, idx) => ({ q, idx }))
           .filter(item => item.q.type === type);
@@ -595,7 +597,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                           key={child.id}
                           onClick={() => { 
                             goToQuestion(idx); 
-                            setCurrentChildIndex(childIdx); // 设置正确的子题索引
+                            setCurrentChildIndex(childIdx);
                             setShowAnswerSheet(false); 
                           }}
                           className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
@@ -710,7 +712,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
         
         {/* 答题卡 */}
         <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-1">
-          {['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
+          {['single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'].map(type => {
             const typeQuestions = quizState.questions
               .map((q, idx) => ({ q, idx }))
               .filter(item => item.q.type === type);
@@ -1040,10 +1042,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
           <div className="sm:px-4 px-3 py-3 border-b border-slate-100 bg-slate-50/50">
             <div className="flex items-center justify-between">
               <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold text-white ${QUESTION_TYPE_CONFIG[displayQuestion?.type as QuestionTypeKey]?.color || 'bg-slate-400'}`}>
-                {displayQuestion?.type === 'single' ? '单选题' :
-                 displayQuestion?.type === 'multiple' ? '多选题' :
-                 displayQuestion?.type === 'true-false' ? '判断题' :
-                 displayQuestion?.type === 'comprehensive' ? '综合题' : '填空题'}
+                {QUESTION_TYPE_CONFIG[displayQuestion?.type as QuestionTypeKey]?.label || '未知题型'}
               </span>
               <span className="text-xs text-slate-500 font-medium">
                 {currentQuestion?.type === 'comprehensive' && currentQuestion.children && currentQuestion.children.length > 0 ? (
@@ -1100,7 +1099,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
             {displayQuestion?.type !== 'fill-blank' && (
               <div className="space-y-2">
                 {displayQuestion?.options?.map((option, index) => {
-                  const isMulti = displayQuestion.type === 'multiple';
+                  const isMulti = displayQuestion.type === 'multiple' || displayQuestion.type === 'uncertain-choice';
                   const isSelected = isMulti
                     ? Array.isArray(displayQuestionAnswer) && displayQuestionAnswer.includes(option.id)
                     : displayQuestionAnswer === option.id;
