@@ -144,6 +144,12 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     clearProgress,
   } = useQuiz();
   
+  // 切换题目时清除 AI 答疑
+  useEffect(() => {
+    setAiAnswer('');
+    setAiLoading(false);
+  }, [quizState.currentIndex, currentChildIndex]);
+  
   // 权限检查和题目加载（合并为一个 effect，并行执行）
   useEffect(() => {
     const initQuiz = async () => {
