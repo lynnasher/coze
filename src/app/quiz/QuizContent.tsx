@@ -1226,7 +1226,8 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
               <span>答案</span>
             </Button>
 
-            {/* 上一题 */}
+            {/* 上一题 / 下一题 / 交卷 */}
+            {(() => {
               const isComprehensive = currentQuestion?.type === 'comprehensive';
               const hasMoreChildren = isComprehensive && currentQuestion.children && currentChildIndex < currentQuestion.children.length - 1;
               const isLastQuestion = quizState.currentIndex === quizState.questions.length - 1;
