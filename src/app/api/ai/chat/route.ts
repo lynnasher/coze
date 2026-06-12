@@ -1,94 +1,153 @@
-import { NextRequest } from "next/server";
-import { LLMClient, Config, HeaderUtils } from "coze-coding-dev-sdk";
-import type { Message } from "coze-coding-dev-sdk";
+import { NextRequest } from 'next/server';
 
-const SYSTEM_PROMPT = `你是一位专业的考试辅导老师，擅长帮助考生理解题目、掌握知识点。你的职责是：
-
-1. **解析题目**：用通俗易懂的语言解释题目在考什么
-2. **讲解知识点**：指出题目涉及的核心考点和关联知识
-3. **解题思路**：给出清晰的解题步骤和推理过程
-4. **举一反三**：提供类似题型的解题技巧
-
-要求：
-- 回答简洁有力，避免冗长
-- 用中文回答
-- 如果题目有选项，逐一分析每个选项为什么对/错
-- 鼓励学生，但不要过度恭维`;
+// 自定义 API 配置（通过环境变量覆盖）
+const CUSTOM_API_KEY = process.env.AI_API_KEY || '';
+const CUSTOM_BASE_URL = process.env.AI_API_BASE_URL || '';
+const CUSTOM_MODEL = process.env.AI_MODEL || '';
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, questionContext } = await request.json();
+    const { questionContext } = await request.json();
 
-    // 构建完整的消息列表
-    const fullMessages: Message[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+    if (!questionContext) {
+      return Response.json({ error: '缺少题目上下文' }, { status: 400 });
+    }
+
+    const systemPrompt = `你是一位专业的考试辅导老师。请用简洁明了的语言解释这道题。
+要求：
+1. 先一句话总结考点
+2. 用通俗易懂的方式解释解题思路（2-4句话）
+3. 如果涉及公式，给出关键计算步骤
+4. 总字数控制在150字以内
+5. 不要使用markdown格式，用纯文本`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `请帮我解析这道题：\n\n${questionContext}` },
     ];
 
-    // 如果有题目上下文，先注入
-    if (questionContext) {
-      fullMessages.push({
-        role: "user" as const,
-        content: `我正在做这道题，请帮我理解：\n\n${questionContext}\n\n请先简要分析这道题，然后等我提问。`,
-      });
-      fullMessages.push({
-        role: "assistant" as const,
-        content: "好的，我已经了解了这道题。请告诉我你哪里不明白，我来帮你解答。",
-      });
+    // 如果配置了自定义 API，使用自定义 API
+    if (CUSTOM_API_KEY && CUSTOM_BASE_URL) {
+      return handleCustomAPI(messages);
     }
 
-    // 追加用户的实际对话
-    for (const msg of messages || []) {
-      fullMessages.push({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      });
-    }
+    // 否则使用内置 SDK
+    return handleBuiltinSDK(messages);
+  } catch (error) {
+    console.error('[AI Chat] Error:', error);
+    return Response.json({ error: 'AI 服务暂时不可用' }, { status: 500 });
+  }
+}
 
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
+async function handleCustomAPI(messages: { role: string; content: string }[]) {
+  const model = CUSTOM_MODEL || 'gpt-3.5-turbo';
+  const url = `${CUSTOM_BASE_URL}/v1/chat/completions`;
 
-    const stream = client.stream(fullMessages, {
-      model: "doubao-seed-2-0-lite-260215",
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${CUSTOM_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: true,
+      max_tokens: 300,
       temperature: 0.7,
-    });
+    }),
+  });
 
-    // 创建 SSE 流
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (chunk.content) {
-              const text = chunk.content.toString();
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`));
+  if (!resp.ok) {
+    const errText = await resp.text();
+    console.error('[AI Chat] Custom API error:', resp.status, errText);
+    return Response.json({ error: `AI 服务返回错误: ${resp.status}` }, { status: 502 });
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const reader = resp.body?.getReader();
+      if (!reader) {
+        controller.close();
+        return;
+      }
+      const decoder = new TextDecoder();
+      let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const data = trimmed.slice(6);
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+              }
+            } catch {
+              // 跳过无法解析的行
             }
           }
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-        } catch (error) {
-          const errMsg = error instanceof Error ? error.message : "Unknown error";
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: errMsg })}\n\n`)
-          );
-          controller.close();
         }
-      },
-    });
+      } catch (e) {
+        console.error('[AI Chat] Stream read error:', e);
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
 
-    return new Response(readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
-      },
-    });
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: errMsg }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+
+async function handleBuiltinSDK(messages: { role: string; content: string }[]) {
+  // 动态导入，避免自定义 API 场景下加载 SDK
+  const { createCozeChatClient } = await import('coze-coding-dev-sdk');
+
+  const client = createCozeChatClient({
+    model: 'doubao-seed-2-0-lite-260215',
+    maxTokens: 300,
+    temperature: 0.7,
+  });
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const chatStream = await client.chat(messages as Parameters<typeof client.chat>[0]);
+        for await (const chunk of chatStream) {
+          const content = chunk?.choices?.[0]?.delta?.content || chunk?.content || '';
+          if (content) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
+          }
+        }
+      } catch (e) {
+        console.error('[AI Chat] SDK error:', e);
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
