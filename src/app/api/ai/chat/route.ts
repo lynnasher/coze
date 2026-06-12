@@ -125,7 +125,7 @@ async function handleBuiltinSDK(request: NextRequest, messages: { role: string; 
     async start(controller) {
       try {
         const chatStream = client.stream(messages, {
-          model: 'doubao-seed-2-0-lite-260215',
+          model: 'deepseek-v3-2-251201',
           temperature: 0.7,
         });
         for await (const chunk of chatStream) {
