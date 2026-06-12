@@ -198,7 +198,7 @@ function WrongbookReciteContent() {
       if (!groups[typeKey]) groups[typeKey] = [];
       groups[typeKey].push(q);
     });
-    const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
+    const typeOrder = ['single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'];
     const sortedGroups: { type: string; typeName: string; questions: Question[] }[] = [];
     const typeNames: Record<string, string> = {
       'single': '单选题', 'multiple': '多选题', 'uncertain-choice': '不定项选择题',
