@@ -11,7 +11,7 @@ import { AlertCircle, Lock, RefreshCw, Shield } from 'lucide-react';
 
 interface CaptchaData {
   token: string;
-  image: string;
+  code: string;
 }
 
 export default function AdminLoginPage() {
@@ -27,8 +27,8 @@ export default function AdminLoginPage() {
     try {
       const res = await fetch('/api/admin/captcha');
       const data = await res.json();
-      if (data.success) {
-        setCaptchaData({ token: data.token, image: data.image });
+      if (data.token && data.code) {
+        setCaptchaData({ token: data.token, code: data.code });
       }
     } catch {
       // ignore
@@ -157,13 +157,48 @@ export default function AdminLoginPage() {
                   autoComplete="off"
                 />
                 {captchaData ? (
-                  <img
-                    src={captchaData.image}
-                    alt="验证码"
-                    className="h-11 w-[140px] rounded border cursor-pointer"
+                  <div
+                    className="h-11 w-[140px] rounded border cursor-pointer bg-slate-50 flex items-center justify-center select-none overflow-hidden"
                     onClick={fetchCaptcha}
                     title="点击刷新验证码"
-                  />
+                  >
+                    <svg width="140" height="44" viewBox="0 0 140 44">
+                      <defs>
+                        <filter id="noise-secure">
+                          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise" />
+                          <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise" />
+                          <feBlend in="SourceGraphic" in2="grayNoise" mode="multiply" />
+                        </filter>
+                      </defs>
+                      <rect width="140" height="44" fill="#f8fafc" rx="4" />
+                      {Array.from({ length: 3 }, (_, i) => (
+                        <line
+                          key={`line-${i}`}
+                          x1={Math.sin(i * 1.7) * 30 + 20}
+                          y1={Math.cos(i * 2.1) * 10 + 12}
+                          x2={Math.cos(i * 1.3) * 30 + 120}
+                          y2={Math.sin(i * 1.9) * 10 + 32}
+                          stroke="#cbd5e1"
+                          strokeWidth="1"
+                          opacity="0.6"
+                        />
+                      ))}
+                      {captchaData.code.split('').map((ch, i) => (
+                        <text
+                          key={i}
+                          x={15 + i * 30 + Math.sin(i * 1.5) * 4}
+                          y={28 + Math.cos(i * 2) * 5}
+                          fontSize="22"
+                          fontWeight="bold"
+                          fill={`hsl(${(i * 60 + 200) % 360}, 60%, ${40 + i * 5}%)`}
+                          transform={`rotate(${(i - 1.5) * 10}, ${15 + i * 30 + 12}, 28)`}
+                          fontFamily="monospace"
+                        >
+                          {ch}
+                        </text>
+                      ))}
+                    </svg>
+                  </div>
                 ) : (
                   <div className="h-11 w-[140px] rounded border bg-slate-100 animate-pulse" />
                 )}
