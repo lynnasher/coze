@@ -878,7 +878,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
     onSave(questionData);
   };
 
-  const showOptions = ['single', 'multiple', 'uncertain-choice'].includes(type);
+  const showOptions = ['single', 'multiple', 'uncertain-choice', 'true-false'].includes(type);
   const showAnswer = type !== 'comprehensive';
 
   return (
