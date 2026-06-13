@@ -13,6 +13,7 @@ import { RichTextWithBreaks } from '@/lib/rich-text';
 const TYPE_LABELS: Record<string, { text: string; color: string }> = {
   single: { text: '单选题', color: 'bg-indigo-100 text-indigo-700' },
   multiple: { text: '多选题', color: 'bg-purple-100 text-purple-700' },
+  'uncertain-choice': { text: '不定项选择', color: 'bg-pink-100 text-pink-700' },
   'true-false': { text: '判断题', color: 'bg-cyan-100 text-cyan-700' },
   'fill-blank': { text: '填空题', color: 'bg-teal-100 text-teal-700' },
   comprehensive: { text: '综合题', color: 'bg-rose-100 text-rose-700' },
@@ -212,7 +213,7 @@ export default function RecitePage() {
     });
     
     // 按题型顺序排序
-    const typeOrder = ['single', 'multiple', 'true-false', 'fill-blank', 'comprehensive'];
+    const typeOrder = ['single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'];
     const sortedGroups: { type: string; typeName: string; questions: Question[] }[] = [];
     
     typeOrder.forEach(type => {
@@ -220,6 +221,7 @@ export default function RecitePage() {
         const typeNames: Record<string, string> = {
           'single': '单选题',
           'multiple': '多选题', 
+          'uncertain-choice': '不定项选择',
           'true-false': '判断题',
           'fill-blank': '填空题',
           'comprehensive': '综合题'
@@ -350,6 +352,7 @@ export default function RecitePage() {
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium print:bg-transparent print:text-black print:font-bold ${
                       group.type === 'single' ? 'bg-indigo-100 text-indigo-700' :
                       group.type === 'multiple' ? 'bg-purple-100 text-purple-700' :
+                      group.type === 'uncertain-choice' ? 'bg-pink-100 text-pink-700' :
                       group.type === 'true-false' ? 'bg-cyan-100 text-cyan-700' :
                       group.type === 'fill-blank' ? 'bg-teal-100 text-teal-700' :
                       'bg-rose-100 text-rose-700'
@@ -518,7 +521,7 @@ function ReciteCard({
         )}
 
         {/* 选择题答案 */}
-        {(question.type === 'single' || question.type === 'multiple') && (
+        {(question.type === 'single' || question.type === 'multiple' || question.type === 'uncertain-choice') && (
           <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200 print:mb-1 print:p-2 print:bg-transparent print:border-gray-400 print:text-sm">
             <div className="flex items-center gap-2 print:gap-1">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 print:hidden" />
@@ -616,7 +619,7 @@ function ReciteItem({
                   <div className="flex-1">
                     <div className="text-gray-800 leading-relaxed print:text-sm print:leading-snug">
                       <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle print:bg-transparent print:text-sm print:text-black print:font-bold">
-                        {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
+                        {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'uncertain-choice' ? '不定项' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
                       </span>
                       <RichTextWithBreaks content={child.content} />
                     </div>
