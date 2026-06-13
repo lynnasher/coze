@@ -614,12 +614,12 @@ function ReciteItem({
                     {childIndex + 1}
                   </span>
                   <div className="flex-1">
-                    <p className="text-gray-800 leading-relaxed print:text-sm print:leading-snug">
+                    <div className="text-gray-800 leading-relaxed print:text-sm print:leading-snug">
                       <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 mr-2 align-middle print:bg-transparent print:text-sm print:text-black print:font-bold">
                         {child.type === 'single' ? '单选' : child.type === 'multiple' ? '多选' : child.type === 'true-false' ? '判断' : child.type === 'fill-blank' ? '填空' : '综合'}
                       </span>
                       <RichTextWithBreaks content={child.content} />
-                    </p>
+                    </div>
                   </div>
                 </div>
 
