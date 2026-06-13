@@ -787,6 +787,31 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
     }
   }, [question, open]);
 
+  // 新增模式下切换题型时自动设置默认选项
+  const handleTypeChange = (v: string) => {
+    setType(v as QuestionType);
+    if (v === 'true-false') {
+      setOptions([
+        { id: 'a', text: '正确' },
+        { id: 'b', text: '错误' },
+      ]);
+      setAnswer('a');
+    } else if (v === 'fill-blank') {
+      setOptions([]);
+      setAnswer('');
+    } else if (v === 'comprehensive') {
+      setOptions([]);
+    } else {
+      setOptions([
+        { id: 'a', text: '' },
+        { id: 'b', text: '' },
+        { id: 'c', text: '' },
+        { id: 'd', text: '' },
+      ]);
+      setAnswer('a');
+    }
+  };
+
   // 处理选项变更
   const handleOptionChange = (id: string, text: string) => {
     setOptions(prev => prev.map(opt => opt.id === id ? { ...opt, text } : opt));
@@ -877,7 +902,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
       type,
       content: type === 'comprehensive' ? '' : content,
       caseBackground: type === 'comprehensive' ? content : undefined,
-      options: ['single', 'multiple', 'uncertain-choice'].includes(type) ? filteredOptions : undefined,
+      options: ['single', 'multiple', 'uncertain-choice', 'true-false'].includes(type) ? filteredOptions : undefined,
       answer: type === 'fill-blank' ? answer : (Array.isArray(answer) ? answer : answer),
       explanation: explanation || undefined,
       difficulty,
@@ -904,25 +929,7 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
           {/* 题型 */}
           <div className="space-y-2">
             <Label>题型</Label>
-            <Select value={type} onValueChange={(v) => {
-              setType(v as QuestionType);
-              // 判断题自动设置正确/错误选项
-              if (v === 'true-false') {
-                setOptions([
-                  { id: 'a', text: '正确' },
-                  { id: 'b', text: '错误' },
-                ]);
-                setAnswer('a');
-              } else if (v !== 'comprehensive' && v !== 'fill-blank') {
-                // 其他选择题恢复默认4选项
-                setOptions([
-                  { id: 'a', text: '' },
-                  { id: 'b', text: '' },
-                  { id: 'c', text: '' },
-                  { id: 'd', text: '' },
-                ]);
-              }
-            }}>
+            <Select value={type} onValueChange={handleTypeChange}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
