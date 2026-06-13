@@ -194,26 +194,9 @@ export default function BankEditPage() {
     }
   }, [isAuthenticated, loadData]);
 
-  // 题型排序权重
-  const typeOrder: Record<string, number> = {
-    'single': 1,
-    'multiple': 2,
-    'uncertain-choice': 3,
-    'true-false': 4,
-    'fill-blank': 5,
-    'comprehensive': 6,
-  };
-
-  // 搜索和筛选 + 题型分组排序
+  // 搜索和筛选
   useEffect(() => {
-    // 先按题型分组排序，组内按 createdAt 排序（新增题目排在该题型末尾）
-    let filtered = [...questions].sort((a, b) => {
-      const orderA = typeOrder[a.type] ?? 99;
-      const orderB = typeOrder[b.type] ?? 99;
-      if (orderA !== orderB) return orderA - orderB;
-      // 同题型内按创建时间排序
-      return (a.createdAt || 0) - (b.createdAt || 0);
-    });
+    let filtered = [...questions];
     
     if (searchTerm) {
       filtered = filtered.filter(q => 

@@ -94,6 +94,26 @@ export async function POST(request: NextRequest) {
     // 支持子题创建（综合题的子题）
     const parentId = (question as { parent_id?: string }).parent_id || (question as { parentId?: string }).parentId || null;
     
+    let supabase;
+    try {
+      supabase = await getSupabaseClient();
+    } catch (e) {
+      supabase = null;
+    }
+    
+    if (!supabase) {
+      return NextResponse.json({ error: '数据库连接失败' }, { status: 500 });
+    }
+
+    // 计算下一个 index_order（新增题目排在最后）
+    const { data: maxOrderData } = await supabase
+      .from('questions')
+      .select('index_order')
+      .eq('bank_id', bankId)
+      .order('index_order', { ascending: false })
+      .limit(1);
+    const nextIndexOrder = (maxOrderData && maxOrderData.length > 0) ? (maxOrderData[0].index_order || 0) + 1 : 1;
+
     const questionData = [{
       id: questionId,
       bank_id: bankId,
@@ -107,18 +127,8 @@ export async function POST(request: NextRequest) {
       tags: question.tags ? JSON.stringify(question.tags) : '[]',
       case_background: question.caseBackground || null,
       case_context: question.caseContext || null,
+      index_order: nextIndexOrder,
     }];
-
-    let supabase;
-    try {
-      supabase = await getSupabaseClient();
-    } catch (e) {
-      supabase = null;
-    }
-    
-    if (!supabase) {
-      return NextResponse.json({ error: '数据库连接失败' }, { status: 500 });
-    }
 
     const { error } = await supabase.from('questions').insert(questionData);
 
