@@ -196,7 +196,19 @@ export default function BankEditPage() {
 
   // 搜索和筛选
   useEffect(() => {
-    let filtered = questions;
+    const typeOrder: Record<string, number> = {
+      'single': 1,
+      'multiple': 2,
+      'uncertain-choice': 3,
+      'true-false': 4,
+      'fill-blank': 5,
+      'comprehensive': 6,
+    };
+    let filtered = [...questions].sort((a, b) => {
+      const orderA = typeOrder[a.type] ?? 99;
+      const orderB = typeOrder[b.type] ?? 99;
+      return orderA - orderB;
+    });
     
     if (searchTerm) {
       filtered = filtered.filter(q => 
@@ -892,7 +904,25 @@ function QuestionEditModal({ open, onClose, question, onSave, mode }: QuestionEd
           {/* 题型 */}
           <div className="space-y-2">
             <Label>题型</Label>
-            <Select value={type} onValueChange={(v) => setType(v as QuestionType)}>
+            <Select value={type} onValueChange={(v) => {
+              setType(v as QuestionType);
+              // 判断题自动设置正确/错误选项
+              if (v === 'true-false') {
+                setOptions([
+                  { id: 'a', text: '正确' },
+                  { id: 'b', text: '错误' },
+                ]);
+                setAnswer('a');
+              } else if (v !== 'comprehensive' && v !== 'fill-blank') {
+                // 其他选择题恢复默认4选项
+                setOptions([
+                  { id: 'a', text: '' },
+                  { id: 'b', text: '' },
+                  { id: 'c', text: '' },
+                  { id: 'd', text: '' },
+                ]);
+              }
+            }}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
