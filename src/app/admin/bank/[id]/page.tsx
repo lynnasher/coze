@@ -196,19 +196,7 @@ export default function BankEditPage() {
 
   // 搜索和筛选
   useEffect(() => {
-    const typeOrder: Record<string, number> = {
-      'single': 1,
-      'multiple': 2,
-      'uncertain-choice': 3,
-      'true-false': 4,
-      'fill-blank': 5,
-      'comprehensive': 6,
-    };
-    let filtered = [...questions].sort((a, b) => {
-      const orderA = typeOrder[a.type] ?? 99;
-      const orderB = typeOrder[b.type] ?? 99;
-      return orderA - orderB;
-    });
+    let filtered = [...questions];
     
     if (searchTerm) {
       filtered = filtered.filter(q => 
