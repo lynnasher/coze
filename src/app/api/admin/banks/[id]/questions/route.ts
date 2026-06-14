@@ -105,20 +105,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '数据库连接失败' }, { status: 500 });
     }
 
-    // 计算下一个 index_order（新增题目排在最后）
+    const newType = question.type || 'single';
+
+    // 计算下一个 index_order：在该题库同题型中排在最后
     const { data: maxOrderData } = await supabase
       .from('questions')
       .select('index_order')
       .eq('bank_id', bankId)
+      .eq('type', newType)
       .order('index_order', { ascending: false })
       .limit(1);
     const nextIndexOrder = (maxOrderData && maxOrderData.length > 0) ? (maxOrderData[0].index_order || 0) + 1 : 1;
+
+    // 如果该位置已被后续题型占用，将后续题目整体后移一位
+    const { data: existingAtPos } = await supabase
+      .from('questions')
+      .select('id')
+      .eq('bank_id', bankId)
+      .eq('index_order', nextIndexOrder)
+      .limit(1);
+    
+    if (existingAtPos && existingAtPos.length > 0) {
+      // 从后往前逐个 +1，避免唯一约束冲突
+      const { data: laterQuestions } = await supabase
+        .from('questions')
+        .select('id, index_order')
+        .eq('bank_id', bankId)
+        .gte('index_order', nextIndexOrder)
+        .order('index_order', { ascending: false });
+      
+      if (laterQuestions) {
+        for (const q of laterQuestions) {
+          await supabase
+            .from('questions')
+            .update({ index_order: q.index_order + 1 })
+            .eq('id', q.id);
+        }
+      }
+    }
 
     const questionData = [{
       id: questionId,
       bank_id: bankId,
       parent_id: parentId,
-      type: question.type || 'single',
+      type: newType,
       content: question.content,
       options: question.options ? JSON.stringify(question.options) : null,
       answer: answerStr,
