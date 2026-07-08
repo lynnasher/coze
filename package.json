@@ -8,7 +8,9 @@
     "preinstall": "npx only-allow pnpm",
     "lint": "eslint",
     "start": "bash ./scripts/start.sh",
-    "ts-check": "tsc -p tsconfig.json"
+    "ts-check": "tsc -p tsconfig.json",
+    "lint:build": "eslint . --quiet",
+    "validate": "pnpm run --parallel '/^(ts-check|lint:build)$/'"
   },
   "dependencies": {
     "@alicloud/dypnsapi20170525": "^2.0.0",
