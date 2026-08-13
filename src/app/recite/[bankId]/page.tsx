@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, CheckCircle2, Lightbulb, ChevronRight, Lock, Alert
 import { Question } from '@/lib/types';
 import { questionStore, bankStore } from '@/lib/quiz-store';
 import { getCurrentUser } from '@/components/AuthModal';
+import AIQuizHelper from '@/components/AIQuizHelper';
 import { Button } from '@/components/ui/button';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 
@@ -547,6 +548,7 @@ function ReciteCard({
             </div>
           </div>
         )}
+        <AIQuizHelper question={question} />
       </div>
     </div>
   );
@@ -673,6 +675,7 @@ function ReciteItem({
                       />
                     </div>
                   )}
+                  <AIQuizHelper question={child} />
                 </div>
               </div>
             );
