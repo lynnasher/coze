@@ -44,12 +44,6 @@ export function CategoryManageDialog({
   const [categoryColor, setCategoryColor] = useState('blue');
   const [categoryParentId, setCategoryParentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [open]);
-
   const resetForm = (closeModal = true) => {
     setEditingCategory(null);
     setCategoryName('');
@@ -59,6 +53,12 @@ export function CategoryManageDialog({
       onOpenChange(false);
     }
   };
+
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   const handleSave = async () => {
     const result = await onSave(categoryName, categoryColor, categoryParentId, editingCategory);
