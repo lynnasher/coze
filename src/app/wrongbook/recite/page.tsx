@@ -7,6 +7,7 @@ import { Question, QuestionType } from '@/lib/types';
 import { questionStore, getWrongQuestionIds, wrongStreakStore, getUserToken, deletedQuestionStore } from '@/lib/quiz-store';
 import { Button } from '@/components/ui/button';
 import { RichTextWithBreaks } from '@/lib/rich-text';
+import AIQuizHelper from '@/components/AIQuizHelper';
 
 const PAGE_SIZE = 20;
 
@@ -393,29 +394,7 @@ function WrongbookReciteContent() {
   );
 }
 
-function buildQuestionContext(q: Question): string {
-  const parts: string[] = [];
-  const typeLabels: Record<string, string> = {
-    single: "单选题", multiple: "多选题",
-    "uncertain-choice": "不定项选择题", "true-false": "判断题",
-    "fill-blank": "填空题", comprehensive: "综合案例题",
-  };
-  parts.push(`【${typeLabels[q.type] || q.type}】`);
-  if (q.caseBackground) parts.push(`案例背景：${q.caseBackground}`);
-  parts.push(`题目：${q.content}`);
-  if (q.options && q.options.length > 0) {
-    const optionLabels = ["A", "B", "C", "D", "E", "F", "G", "H"];
-    parts.push("选项：");
-    q.options.forEach((opt, i) => parts.push(`${optionLabels[i] || i}. ${opt.text}`));
-  }
-  if (q.answer) {
-    parts.push(`正确答案：${Array.isArray(q.answer) ? q.answer.join(", ") : q.answer}`);
-  }
-  if (q.explanation) parts.push(`官方解析：${q.explanation}`);
-  return parts.join("\n");
-}
 
-// 题目卡片组件
 function ReciteCard({
   question,
   index,
@@ -429,54 +408,6 @@ function ReciteCard({
   answerDisplay: string;
   isChild?: boolean;
 }) {
-  const [aiAnswer, setAiAnswer] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-
-  const handleAskAI = useCallback(async () => {
-    if (aiLoading) return;
-    setAiLoading(true);
-    setAiAnswer('');
-    try {
-      const ctx = buildQuestionContext(question);
-      const resp = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionContext: ctx }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json();
-        setAiAnswer(err.error || 'AI 服务暂时不可用');
-        setAiLoading(false);
-        return;
-      }
-      const reader = resp.body?.getReader();
-      if (!reader) { setAiAnswer('无法读取 AI 响应'); setAiLoading(false); return; }
-      const decoder = new TextDecoder();
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-          const data = trimmed.slice(6);
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) setAiAnswer(prev => prev + parsed.content);
-          } catch { /* skip parse errors */ }
-        }
-      }
-    } catch {
-      setAiAnswer('AI 服务请求失败，请稍后重试');
-    } finally {
-      setAiLoading(false);
-    }
-  }, [question, aiLoading]);
-
   return (
     <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${isChild ? 'ml-4' : ''}`}>
       <div className="p-5">
@@ -568,40 +499,7 @@ function ReciteCard({
             </div>
           )}
 
-          {/* AI 答疑 */}
-          <div className="mt-3">
-            <button
-              onClick={handleAskAI}
-              disabled={aiLoading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {aiLoading ? (
-                <>
-                  <span className="inline-block w-3 h-3 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-                  AI 思考中...
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                  </svg>
-                  AI 答疑
-                </>
-              )}
-            </button>
-            {aiAnswer && (
-              <div className="mt-2 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
-                <div className="flex items-start gap-2">
-                  <svg className="w-4 h-4 mt-0.5 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                  </svg>
-                  <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                    {aiAnswer}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <AIQuizHelper question={question} />
         </div>
       </div>
     </div>

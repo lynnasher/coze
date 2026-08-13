@@ -33,6 +33,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserStatus, AuthModal, getCurrentUser as getStoredUser } from '@/components/AuthModal';
 import { RichTextWithBreaks } from '@/lib/rich-text';
+import AIQuizHelper from '@/components/AIQuizHelper';
 
 
 const TYPE_LABELS: Record<QuestionType, string> = {
@@ -75,8 +76,7 @@ export default function WrongBookPage() {
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
-  const [aiAnswer, setAiAnswer] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+  
 
   const checkAuth = useCallback(() => {
     setCurrentUser(getStoredUser());
@@ -605,57 +605,6 @@ export default function WrongBookPage() {
 
   const getOptionLabel = (index: number) => String.fromCharCode(65 + index);
 
-  const buildQuestionContext = useCallback((q: Question) => {
-    const typeLabels: Record<string, string> = {
-      'single': '单选题', 'multiple': '多选题', 'uncertain-choice': '不定项选择题',
-      'true-false': '判断题', 'fill-blank': '填空题', 'comprehensive': '综合案例题',
-    };
-    let ctx = `题型：${typeLabels[q.type] || q.type}\n`;
-    ctx += `题目：${q.content}\n`;
-    if (q.options && q.options.length > 0) {
-      ctx += '选项：\n';
-      q.options.forEach((opt, i) => { ctx += `${String.fromCharCode(65 + i)}. ${opt.text}\n`; });
-    }
-    ctx += `正确答案：${Array.isArray(q.answer) ? q.answer.join(',') : q.answer}\n`;
-    if (q.explanation) ctx += `解析：${q.explanation}\n`;
-    return ctx;
-  }, []);
-
-  const handleAskAI = useCallback(async () => {
-    if (!currentReviewQuestion || aiLoading) return;
-    setAiLoading(true);
-    setAiAnswer('');
-    const context = buildQuestionContext(currentReviewQuestion);
-    try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionContext: context }),
-      });
-      if (!res.ok) throw new Error('AI 服务请求失败');
-      const reader = res.body?.getReader();
-      if (!reader) return;
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const text = decoder.decode(value, { stream: true });
-        const lines = text.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.content) setAiAnswer(prev => prev + data.content);
-            } catch { /* skip */ }
-          }
-        }
-      }
-    } catch (err) {
-      setAiAnswer('AI 服务请求失败，请稍后重试');
-    } finally {
-      setAiLoading(false);
-    }
-  }, [currentReviewQuestion, aiLoading, buildQuestionContext]);
 
   // ============ 复习模式 - 沉浸式做题体验 ============
   if (isReviewing && currentReviewQuestion) {
@@ -870,32 +819,7 @@ export default function WrongBookPage() {
                     </div>
                   )}
 
-                  {/* AI 答疑 */}
-                  <div className="space-y-2">
-                      <button
-                        onClick={handleAskAI}
-                        disabled={aiLoading}
-                        className="w-full flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 border border-violet-200 rounded-xl text-sm font-medium text-violet-700 transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        {aiLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4" />
-                        )}
-                        <span>{aiLoading ? 'AI 思考中...' : (aiAnswer ? 'AI 答疑' : 'AI 答疑')}</span>
-                      </button>
-                      {aiAnswer && (
-                        <div className="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl p-4 border border-violet-200">
-                          <div className="flex items-center gap-2 text-violet-700 mb-2">
-                            <Sparkles className="w-4 h-4" />
-                            <span className="font-semibold text-sm">AI 答疑</span>
-                          </div>
-                          <div className="text-violet-900 text-sm leading-relaxed whitespace-pre-wrap">
-                            {aiAnswer}
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  <AIQuizHelper question={currentReviewQuestion} />
                 </div>
               )}
             </div>
