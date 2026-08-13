@@ -871,8 +871,7 @@ export default function WrongBookPage() {
                   )}
 
                   {/* AI 答疑 */}
-                  {currentReviewQuestion.explanation && (
-                    <div className="space-y-2">
+                  <div className="space-y-2">
                       <button
                         onClick={handleAskAI}
                         disabled={aiLoading}
@@ -897,7 +896,6 @@ export default function WrongBookPage() {
                         </div>
                       )}
                     </div>
-                  )}
                 </div>
               )}
             </div>
