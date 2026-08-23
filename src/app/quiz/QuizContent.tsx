@@ -215,8 +215,11 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     if (!answer) return false;
     if (Array.isArray(question.answer)) {
       if (Array.isArray(answer)) {
-        return answer.length === question.answer.length && 
-               answer.every(a => question.answer.includes(a));
+        const normA = (x: unknown) => String(x).toLowerCase().trim();
+        const correct = question.answer.map(normA);
+        const answered = answer.map(normA);
+        return answered.length === correct.length &&
+               answered.every(a => correct.includes(a));
       }
       return false;
     }
@@ -575,7 +578,7 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
       if (!isUnanswered) {
         const qAnswer = question.answer;
         if (question.type === 'fill-blank') {
-          isCorrect = String(answer) === String(qAnswer);
+          isCorrect = String(answer).trim().toLowerCase() === String(qAnswer).trim().toLowerCase();
         } else if (Array.isArray(qAnswer)) {
           const userAnswer = Array.isArray(answer) ? answer.sort() : [String(answer).toLowerCase()];
           const correctAnswer = qAnswer.map(a => String(a).toLowerCase()).sort();

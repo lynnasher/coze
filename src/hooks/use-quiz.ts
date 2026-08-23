@@ -531,12 +531,16 @@ export function useQuiz() {
       // 内联答案检查逻辑（checkAnswer 此时还未声明）
       let wasCorrect = false;
       if (selectedAns !== undefined) {
-        if (Array.isArray(currentQ.answer)) {
-          wasCorrect = Array.isArray(selectedAns) && 
-            currentQ.answer.length === selectedAns.length && 
-            currentQ.answer.every((a: string) => selectedAns.includes(a));
+        const normA = (v: string | string[]) =>
+          Array.isArray(v) ? v.map(i => i.toLowerCase()) : v.toLowerCase();
+        const cAns = normA(currentQ.answer);
+        const sAns = normA(selectedAns);
+        if (Array.isArray(cAns)) {
+          wasCorrect = Array.isArray(sAns) &&
+            cAns.length === sAns.length &&
+            cAns.every((a: string) => sAns.includes(a));
         } else {
-          wasCorrect = !Array.isArray(selectedAns) && selectedAns === currentQ.answer;
+          wasCorrect = !Array.isArray(sAns) && sAns === cAns;
         }
       }
       
@@ -578,22 +582,27 @@ export function useQuiz() {
   // 检查答案是否正确 - 使用 useCallback 避免重复创建
   const checkAnswer = useCallback((question: Question, selectedAnswer: string | string[] | undefined): boolean => {
     if (!selectedAnswer) return false;
-    
-    if (Array.isArray(question.answer)) {
-      if (Array.isArray(selectedAnswer)) {
+
+    // 标准化答案为小写（处理选项 id 大小写不一致问题）
+    const norm = (v: string | string[]) => (Array.isArray(v) ? v.map(i => i.toLowerCase()) : v.toLowerCase());
+    const correctAnswer = norm(question.answer);
+    const userAnswer = norm(selectedAnswer);
+
+    if (Array.isArray(correctAnswer)) {
+      if (Array.isArray(userAnswer)) {
         return (
-          question.answer.length === selectedAnswer.length &&
-          question.answer.every(a => selectedAnswer.includes(a))
+          correctAnswer.length === userAnswer.length &&
+          correctAnswer.every(a => userAnswer.includes(a))
         );
       }
       return false;
     }
-    
-    if (Array.isArray(selectedAnswer)) {
-      return selectedAnswer.length === 1 && selectedAnswer[0] === question.answer;
+
+    if (Array.isArray(userAnswer)) {
+      return userAnswer.length === 1 && userAnswer[0] === correctAnswer;
     }
-    
-    return selectedAnswer === question.answer;
+
+    return userAnswer === correctAnswer;
   }, []);
 
   // 跳转到指定题目
