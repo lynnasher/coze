@@ -322,11 +322,23 @@ export function useQuiz() {
       const dbQuestions = await loadQuestionsFromDb(bankId);
       if (dbQuestions && dbQuestions.length > 0) {
         questions = dbQuestions;
-        // 更新本地存储：已有题目覆盖（修复旧格式缓存），新题目追加
         const existingQuestions = questionStore.getAll();
         const dbIdSet = new Set(dbQuestions.map(q => q.id));
-        const otherQuestions = existingQuestions.filter(q => !dbIdSet.has(q.id));
-        questionStore.save([...otherQuestions, ...dbQuestions]);
+
+        // 检查缓存中是否有多选题旧格式（答案逗号串而非数组），有则全量覆盖，否则增量追加
+        const hasOldFormat = existingQuestions.some(
+          q => ['multiple', 'uncertain-choice'].includes(q.type) && !Array.isArray(q.answer)
+        );
+
+        if (hasOldFormat) {
+          const otherQuestions = existingQuestions.filter(q => !dbIdSet.has(q.id));
+          questionStore.save([...otherQuestions, ...dbQuestions]);
+        } else {
+          const newQuestions = questions.filter(q => !dbIdSet.has(q.id));
+          if (newQuestions.length > 0) {
+            questionStore.addMultiple(newQuestions);
+          }
+        }
       }
       
       // 如果数据库没有，再从 localStorage 获取
