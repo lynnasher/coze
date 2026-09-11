@@ -446,6 +446,17 @@ export const bankService = {
           } catch {
             // 解析失败，可能是单选/判断题的直接字符串答案
           }
+
+          // 多选题/不定项题：逗号分隔字符串拆分为数组并归一化大小写
+          if (['multiple', 'uncertain-choice'].includes(q.type) && q.answer.includes(',')) {
+            const arr = q.answer.split(',').map(a => a.trim());
+            if (useUpperCase) {
+              return arr.map(a => a.toUpperCase());
+            } else {
+              return arr.map(a => a.toLowerCase());
+            }
+          }
+
           return q.answer;
         })() : '',
         explanation: q.explanation || undefined,
