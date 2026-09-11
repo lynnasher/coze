@@ -329,7 +329,18 @@ export function checkAnswer(question: Question, selectedAnswer: string | string[
   const normalize = (val: string | string[]) =>
     Array.isArray(val) ? val.map(v => v.toLowerCase()) : val.toLowerCase();
 
-  const correctAnswer = normalize(question.answer);
+  // 兜底：多选题/不定项题答案若为逗号分隔字符串，拆分为数组
+  let rawAnswer = question.answer;
+  if (
+    ['multiple', 'uncertain-choice'].includes(question.type) &&
+    typeof rawAnswer === 'string' &&
+    rawAnswer.includes(',') &&
+    !rawAnswer.startsWith('[')
+  ) {
+    rawAnswer = rawAnswer.split(',').map(a => a.trim());
+  }
+
+  const correctAnswer = normalize(rawAnswer);
   const userAnswer = normalize(selectedAnswer);
 
   if (Array.isArray(correctAnswer)) {

@@ -322,13 +322,11 @@ export function useQuiz() {
       const dbQuestions = await loadQuestionsFromDb(bankId);
       if (dbQuestions && dbQuestions.length > 0) {
         questions = dbQuestions;
-        // 保存题目到本地存储，以便错题本等模块能正确匹配题目ID
+        // 更新本地存储：已有题目覆盖（修复旧格式缓存），新题目追加
         const existingQuestions = questionStore.getAll();
-        const existingIds = new Set(existingQuestions.map(q => q.id));
-        const newQuestions = questions.filter(q => !existingIds.has(q.id));
-        if (newQuestions.length > 0) {
-          questionStore.addMultiple(newQuestions);
-        }
+        const dbIdSet = new Set(dbQuestions.map(q => q.id));
+        const otherQuestions = existingQuestions.filter(q => !dbIdSet.has(q.id));
+        questionStore.save([...otherQuestions, ...dbQuestions]);
       }
       
       // 如果数据库没有，再从 localStorage 获取
@@ -585,7 +583,19 @@ export function useQuiz() {
 
     // 标准化答案为小写（处理选项 id 大小写不一致问题）
     const norm = (v: string | string[]) => (Array.isArray(v) ? v.map(i => i.toLowerCase()) : v.toLowerCase());
-    const correctAnswer = norm(question.answer);
+
+    // 兜底：多选题/不定项题答案若为逗号分隔字符串，拆分为数组
+    let rawAnswer = question.answer;
+    if (
+      ['multiple', 'uncertain-choice'].includes(question.type) &&
+      typeof rawAnswer === 'string' &&
+      rawAnswer.includes(',') &&
+      !rawAnswer.startsWith('[')
+    ) {
+      rawAnswer = rawAnswer.split(',').map(a => a.trim());
+    }
+
+    const correctAnswer = norm(rawAnswer);
     const userAnswer = norm(selectedAnswer);
 
     if (Array.isArray(correctAnswer)) {
