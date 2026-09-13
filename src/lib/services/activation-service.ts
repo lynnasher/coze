@@ -114,13 +114,23 @@ export const activationCodeService = {
     return data as ActivationCode | null;
   },
 
-  // 获取所有激活码（包含关联的用户信息）
-  async getAll(): Promise<ActivationCode[]> {
+  // 获取所有激活码（包含关联的用户信息），支持分页
+  async getAll(page?: number, pageSize?: number): Promise<{ codes: ActivationCode[]; total: number }> {
     const client = getSupabaseClient();
-    const { data, error } = await client.from('activation_codes').select('*').order('created_at', { ascending: false });
+    
+    let query = client.from('activation_codes').select('*', { count: 'exact' });
+    
+    if (page !== undefined && pageSize !== undefined) {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      query = query.range(from, to);
+    }
+    
+    const { data, error, count } = await query.order('created_at', { ascending: false });
     if (error) throw new Error(`查询激活码失败: ${error.message}`);
     
     const codes = (data || []) as ActivationCode[];
+    const total = count || codes.length;
     
     // 查询所有用户激活记录和用户信息
     const { data: activations, error: activationsError } = await client
@@ -141,7 +151,6 @@ export const activationCodeService = {
           if (!activationsByCode[code]) {
             activationsByCode[code] = [];
           }
-          // 提取用户信息
           const userInfo = activation.users as { phone?: string; nickname?: string } | null;
           activationsByCode[code].push({
             user_id: activation.user_id,
@@ -159,7 +168,7 @@ export const activationCodeService = {
       code.activated_users = activationsByCode[code.code] || [];
     }
     
-    return codes;
+    return { codes, total };
   },
 
   // 获取某个分类的激活码

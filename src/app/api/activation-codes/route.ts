@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { activationCodeService } from '@/lib/services/activation-service';
 import { requireAdminAuth } from '@/lib/api-auth';
 
-// 获取所有激活码（需要管理员认证）
+// 获取所有激活码（需要管理员认证），支持分页 ?page=1&pageSize=20
 export async function GET(request: Request) {
   // 验证管理员认证
   const auth = await requireAdminAuth(request);
@@ -11,8 +11,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const codes = await activationCodeService.getAll();
-    return NextResponse.json({ success: true, codes });
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '1000');
+    
+    const result = await activationCodeService.getAll(page, pageSize);
+    return NextResponse.json({ success: true, codes: result.codes, total: result.total, page, pageSize });
   } catch (error) {
     const message = error instanceof Error ? error.message : '服务器错误';
     return NextResponse.json({ success: false, error: message }, { status: 500 });

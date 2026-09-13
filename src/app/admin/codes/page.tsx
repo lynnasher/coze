@@ -89,6 +89,7 @@ interface ActivationCode {
 export default function ActivationCodesPage() {
   const router = useRouter();
   const [codes, setCodes] = useState<ActivationCode[]>([]);
+  const [totalCodes, setTotalCodes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
@@ -147,7 +148,7 @@ export default function ActivationCodesPage() {
     }
   };
 
-  const loadCodes = async () => {
+  const loadCodes = async (page: number = 1) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
@@ -157,7 +158,7 @@ export default function ActivationCodesPage() {
         return;
       }
       
-      const response = await fetch('/api/activation-codes', {
+      const response = await fetch(`/api/activation-codes?page=${page}&pageSize=${itemsPerPage}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -166,6 +167,7 @@ export default function ActivationCodesPage() {
         if (text) {
           const data = JSON.parse(text);
           setCodes(data.codes || []);
+          setTotalCodes(data.total || 0);
         }
       } else if (response.status === 401) {
         // token 过期，跳转登录
@@ -180,9 +182,9 @@ export default function ActivationCodesPage() {
 
   useEffect(() => {
     if (currentUser) {
-      loadCodes();
+      loadCodes(currentPage);
     }
-  }, [currentUser]);
+  }, [currentUser, currentPage]);
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -262,7 +264,7 @@ export default function ActivationCodesPage() {
         setExpireDays('30');
         setExpireDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
         setCodeCount('1');
-        loadCodes();
+        loadCodes(currentPage);
         
         if (failCount > 0) {
           alert(`成功创建 ${successCount} 个分类的激活码，${failCount} 个失败`);
@@ -320,7 +322,7 @@ export default function ActivationCodesPage() {
       
       if (data.success) {
         setDeleteConfirm(null);
-        loadCodes();
+        loadCodes(currentPage);
       } else {
         alert(data.error || '删除失败');
       }
@@ -378,12 +380,9 @@ export default function ActivationCodesPage() {
     return matchesSearch;
   });
 
-  // 分页计算
-  const totalPages = Math.ceil(filteredCodes.length / itemsPerPage);
-  const paginatedCodes = filteredCodes.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // 分页计算 - 使用服务端返回的总数
+  const totalPages = Math.max(1, Math.ceil(totalCodes / itemsPerPage));
+  const paginatedCodes = filteredCodes; // 服务端已分页，直接使用
 
   const validCodes = codes.filter(isCodeValid).length;
   const expiredCodes = codes.filter(c => c.expires_at && new Date(c.expires_at) < new Date()).length;
@@ -426,7 +425,7 @@ export default function ActivationCodesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] sm:text-xs text-gray-500">总激活码</p>
-                <p className="text-lg sm:text-2xl font-bold">{codes.length}</p>
+                <p className="text-lg sm:text-2xl font-bold">{totalCodes}</p>
               </div>
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <Key className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
@@ -618,7 +617,7 @@ export default function ActivationCodesPage() {
               {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-200">
                   <div className="text-xs sm:text-sm text-gray-500">
-                    共 {filteredCodes.length} 条，第 {currentPage} / {totalPages} 页
+                    共 {totalCodes} 条，第 {currentPage} / {totalPages} 页
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2">
                     <Button
