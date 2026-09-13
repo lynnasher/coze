@@ -90,6 +90,7 @@ export default function ActivationCodesPage() {
   const router = useRouter();
   const [codes, setCodes] = useState<ActivationCode[]>([]);
   const [totalCodes, setTotalCodes] = useState(0);
+  const [stats, setStats] = useState<{ total: number; valid: number; expired: number; used: number }>({ total: 0, valid: 0, expired: 0, used: 0 });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
@@ -148,7 +149,7 @@ export default function ActivationCodesPage() {
     }
   };
 
-  const loadCodes = async (page: number = 1) => {
+  const loadCodes = async (page: number = 1, search: string = '', status: string = '') => {
     setLoading(true);
     try {
       const token = localStorage.getItem('admin_token');
@@ -157,8 +158,13 @@ export default function ActivationCodesPage() {
         setLoading(false);
         return;
       }
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('pageSize', String(itemsPerPage));
+      if (search) params.set('search', search);
+      if (status) params.set('status', status);
       
-      const response = await fetch(`/api/activation-codes?page=${page}&pageSize=${itemsPerPage}`, {
+      const response = await fetch(`/api/activation-codes?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -168,6 +174,7 @@ export default function ActivationCodesPage() {
           const data = JSON.parse(text);
           setCodes(data.codes || []);
           setTotalCodes(data.total || 0);
+          if (data.stats) setStats(data.stats);
         }
       } else if (response.status === 401) {
         // token 过期，跳转登录
@@ -180,10 +187,21 @@ export default function ActivationCodesPage() {
     }
   };
 
+  // 防抖：搜索词/状态变化时延迟 300ms 重新查询（重置到第1页）
+  useEffect(() => {
+    if (!currentUser) return;
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      loadCodes(1, searchQuery, statusFilter || '');
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, statusFilter]);
+
   useEffect(() => {
     if (currentUser) {
-      loadCodes(currentPage);
+      loadCodes(currentPage, searchQuery, statusFilter || '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, currentPage]);
 
   const handleLogout = () => {
@@ -264,8 +282,8 @@ export default function ActivationCodesPage() {
         setExpireDays('30');
         setExpireDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
         setCodeCount('1');
-        loadCodes(currentPage);
-        
+        loadCodes(currentPage, searchQuery, statusFilter || '');
+
         if (failCount > 0) {
           alert(`成功创建 ${successCount} 个分类的激活码，${failCount} 个失败`);
         }
@@ -322,7 +340,7 @@ export default function ActivationCodesPage() {
       
       if (data.success) {
         setDeleteConfirm(null);
-        loadCodes(currentPage);
+        loadCodes(currentPage, searchQuery, statusFilter || '');
       } else {
         alert(data.error || '删除失败');
       }
@@ -351,42 +369,13 @@ export default function ActivationCodesPage() {
     return expireDate.toLocaleDateString();
   };
 
-  // 判断激活码是否有效
-  const isCodeValid = (code: ActivationCode): boolean => {
-    if (code.status === 'used') return false;
-    if (code.status === 'expired') return false;
-    if (code.expires_at && new Date(code.expires_at) < new Date()) return false;
-    if (code.max_uses > 0 && code.uses >= code.max_uses) return false;
-    return true;
-  };
-
-  const filteredCodes = codes.filter(code => {
-    const query = searchQuery.toLowerCase();
-    const matchesSearch = (
-      code.code.toLowerCase().includes(query) ||
-      code.category_name.toLowerCase().includes(query)
-    );
-    // 状态筛选
-    if (statusFilter === 'valid') return matchesSearch && isCodeValid(code);
-    if (statusFilter === 'expired') {
-      return matchesSearch && (
-        (code.expires_at && new Date(code.expires_at) < new Date()) ||
-        code.status === 'expired'
-      );
-    }
-    if (statusFilter === 'used') {
-      return matchesSearch && (code.status === 'used' || code.uses >= code.max_uses);
-    }
-    return matchesSearch;
-  });
-
-  // 分页计算 - 使用服务端返回的总数
+  // 服务端已分页 + 搜索 + 状态筛选，直接使用
+  const paginatedCodes = codes;
   const totalPages = Math.max(1, Math.ceil(totalCodes / itemsPerPage));
-  const paginatedCodes = filteredCodes; // 服务端已分页，直接使用
 
-  const validCodes = codes.filter(isCodeValid).length;
-  const expiredCodes = codes.filter(c => c.expires_at && new Date(c.expires_at) < new Date()).length;
-  const usedCodes = codes.filter(c => c.status === 'used').length;
+  const validCodes = stats.valid;
+  const expiredCodes = stats.expired;
+  const usedCodes = stats.used;
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -106,6 +106,35 @@ export const activationCodeService = {
     return codes;
   },
 
+  // 获取全局统计（不分页，供统计卡片使用）
+  async getStats(): Promise<{ total: number; valid: number; expired: number; used: number }> {
+    const client = getSupabaseClient();
+    const now = new Date().toISOString();
+
+    const { count: total } = await client.from('activation_codes').select('*', { count: 'exact', head: true });
+    const { count: valid } = await client
+      .from('activation_codes')
+      .select('*', { count: 'exact', head: true })
+      .neq('status', 'expired')
+      .or(`status.eq.active,uses.lt.max_uses`)
+      .gte('expires_at', now);
+    const { count: used } = await client
+      .from('activation_codes')
+      .select('*', { count: 'exact', head: true })
+      .or(`status.eq.used,uses.gte.max_uses`);
+    const { count: expired } = await client
+      .from('activation_codes')
+      .select('*', { count: 'exact', head: true })
+      .or(`status.eq.expired,expires_at.lt.${now}`);
+
+    return {
+      total: total || 0,
+      valid: valid || 0,
+      expired: expired || 0,
+      used: used || 0,
+    };
+  },
+
   // 通过激活码查找
   async findByCode(code: string): Promise<ActivationCode | null> {
     const client = getSupabaseClient();
@@ -114,18 +143,35 @@ export const activationCodeService = {
     return data as ActivationCode | null;
   },
 
-  // 获取所有激活码（包含关联的用户信息），支持分页
-  async getAll(page?: number, pageSize?: number): Promise<{ codes: ActivationCode[]; total: number }> {
+  // 获取所有激活码（包含关联的用户信息），支持分页 + 搜索 + 状态筛选
+  async getAll(options?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<{ codes: ActivationCode[]; total: number }> {
     const client = getSupabaseClient();
-    
+    const { page, pageSize, search, status } = options || {};
+
     let query = client.from('activation_codes').select('*', { count: 'exact' });
-    
+
+    // 搜索：激活码 或 分类名 模糊匹配
+    if (search && search.trim()) {
+      const q = search.trim();
+      query = query.or(`code.ilike.%${q}%,category_name.ilike.%${q}%`);
+    }
+
+    // 状态筛选
+    const now = new Date().toISOString();
+    if (status === 'valid') {
+      query = query.neq('status', 'expired').or(`status.eq.active,uses.lt.max_uses`).gte('expires_at', now);
+    } else if (status === 'expired') {
+      query = query.or(`status.eq.expired,expires_at.lt.${now}`);
+    } else if (status === 'used') {
+      query = query.or(`status.eq.used,uses.gte.max_uses`);
+    }
+
     if (page !== undefined && pageSize !== undefined) {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       query = query.range(from, to);
     }
-    
+
     const { data, error, count } = await query.order('created_at', { ascending: false });
     if (error) throw new Error(`查询激活码失败: ${error.message}`);
     

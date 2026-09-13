@@ -14,9 +14,12 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const pageSize = parseInt(url.searchParams.get('pageSize') || '1000');
+    const search = url.searchParams.get('search') || '';
+    const status = url.searchParams.get('status') || '';
     
-    const result = await activationCodeService.getAll(page, pageSize);
-    return NextResponse.json({ success: true, codes: result.codes, total: result.total, page, pageSize });
+    const result = await activationCodeService.getAll({ page, pageSize, search, status });
+    const stats = await activationCodeService.getStats();
+    return NextResponse.json({ success: true, codes: result.codes, total: result.total, page, pageSize, search, status, stats });
   } catch (error) {
     const message = error instanceof Error ? error.message : '服务器错误';
     return NextResponse.json({ success: false, error: message }, { status: 500 });
