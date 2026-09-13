@@ -115,9 +115,8 @@ export const activationCodeService = {
     const { count: valid } = await client
       .from('activation_codes')
       .select('*', { count: 'exact', head: true })
-      .neq('status', 'expired')
-      .or(`status.eq.active,uses.lt.max_uses`)
-      .gte('expires_at', now);
+      .eq('status', 'active')
+      .or(`expires_at.is.null,expires_at.gte.${now}`);
     const { count: used } = await client
       .from('activation_codes')
       .select('*', { count: 'exact', head: true })
@@ -159,7 +158,7 @@ export const activationCodeService = {
     // 状态筛选
     const now = new Date().toISOString();
     if (status === 'valid') {
-      query = query.neq('status', 'expired').or(`status.eq.active,uses.lt.max_uses`).gte('expires_at', now);
+      query = query.eq('status', 'active').or(`expires_at.is.null,expires_at.gte.${now}`);
     } else if (status === 'expired') {
       query = query.or(`status.eq.expired,expires_at.lt.${now}`);
     } else if (status === 'used') {
