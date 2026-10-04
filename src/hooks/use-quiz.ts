@@ -372,27 +372,8 @@ export function useQuiz() {
       }
     }
 
-    // 保存最近练习记录
-    if (currentBankId && questions.length > 0) {
-      const existingRecord = recentPracticeStore.getAll()
-        .find(p => p.bankId === currentBankId && p.mode === mode);
-      recentPracticeStore.update({
-        bankId: currentBankId,
-        bankName: currentBankName,
-        categoryId: currentCategoryId,
-        categoryName: currentCategoryName,
-        mode,
-        totalCount: questions.length,
-        currentIndex: 0,
-        answeredCount: existingRecord?.answeredCount || 0,
-        correctCount: existingRecord?.correctCount || 0,
-        wrongCount: existingRecord?.wrongCount || 0,
-        startedAt: existingRecord?.startedAt || Date.now(),
-        lastPracticeAt: Date.now(),
-        isCompleted: false,
-      });
-      queueRecentPracticeForSync();
-    }
+    // 注：不在开始练习时预建/同步「最近练习会话」，避免产生全 0 空会话污染列表。
+    // 会话只在真正作答(submitAnswer)或交卷时创建/UPSERT，此时数据已是真实统计。
 
     // 使用初始进度或默认值
     setQuizState({
@@ -503,34 +484,38 @@ export function useQuiz() {
           queueRecordForSync(record);
         }
         
-        // 更新最近练习记录（确定性重算：以已作答案为准）
+        // 更新最近练习记录（UPSERT：无则创建，有则覆盖。确定性重算：以已作答案为准）
         if (prev.bankId) {
           const existingRecord = recentPracticeStore.getAll()
             .find(p => p.bankId === prev.bankId && p.mode === prev.mode);
-          if (existingRecord) {
-            const flatQuestions = prev.questions.flatMap(q =>
-              q.type === 'comprehensive' && q.children?.length ? q.children : [q]
-            );
-            let answeredCount = 0;
-            let correctCount = 0;
-            for (const q of flatQuestions) {
-              const a = prev.answers[q.id];
-              if (a === undefined || a === '' || (Array.isArray(a) && a.length === 0)) continue;
-              answeredCount++;
-              if (checkAnswer(q, a)) correctCount++;
-            }
-            
-            recentPracticeStore.update({
-              ...existingRecord,
-              totalCount: flatQuestions.length,
-              answeredCount,
-              correctCount,
-              wrongCount: answeredCount - correctCount,
-              lastPracticeAt: Date.now(),
-              isCompleted: prev.currentIndex === flatQuestions.length - 1,
-            });
-            queueRecentPracticeForSync();
+          const flatQuestions = prev.questions.flatMap(q =>
+            q.type === 'comprehensive' && q.children?.length ? q.children : [q]
+          );
+          let answeredCount = 0;
+          let correctCount = 0;
+          for (const q of flatQuestions) {
+            const a = prev.answers[q.id];
+            if (a === undefined || a === '' || (Array.isArray(a) && a.length === 0)) continue;
+            answeredCount++;
+            if (checkAnswer(q, a)) correctCount++;
           }
+
+          recentPracticeStore.update({
+            bankId: prev.bankId,
+            bankName: prev.bankName || existingRecord?.bankName || '',
+            categoryId: prev.categoryId || existingRecord?.categoryId,
+            categoryName: prev.categoryName || existingRecord?.categoryName,
+            mode: prev.mode,
+            totalCount: flatQuestions.length,
+            currentIndex: prev.currentIndex,
+            answeredCount,
+            correctCount,
+            wrongCount: answeredCount - correctCount,
+            startedAt: existingRecord?.startedAt || Date.now(),
+            lastPracticeAt: Date.now(),
+            isCompleted: prev.currentIndex === flatQuestions.length - 1,
+          });
+          queueRecentPracticeForSync();
         }
       }
       

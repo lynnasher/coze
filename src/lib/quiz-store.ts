@@ -1178,6 +1178,8 @@ async function flushSyncQueue(): Promise<boolean> {
         mergedRecentMap.set(`${p.bankId}-${p.mode}`, p);
       });
       postBody.recentlyPracticed = Array.from(mergedRecentMap.values())
+        // 丢弃「尚未完成且一条未答」的废弃空会话，避免污染最近练习列表（进行中的会话保留）
+        .filter((p) => p.isCompleted !== false || (p.answeredCount ?? 0) > 0)
         .sort((a, b) => b.lastPracticeAt - a.lastPracticeAt)
         .slice(0, 50);
       
