@@ -242,7 +242,8 @@ export function useQuiz() {
     setHasStarted(true);
     preloadIndexRef.current = -1;
     if (progress.bankId) {
-      const existingRecord = recentPracticeStore.getByBankId(progress.bankId);
+      const existingRecord = recentPracticeStore.getAll()
+        .find(p => p.bankId === progress.bankId && p.mode === progress.mode);
       if (existingRecord) {
         recentPracticeStore.update({
           ...existingRecord,
@@ -373,7 +374,8 @@ export function useQuiz() {
 
     // 保存最近练习记录
     if (currentBankId && questions.length > 0) {
-      const existingRecord = recentPracticeStore.getByBankId(currentBankId);
+      const existingRecord = recentPracticeStore.getAll()
+        .find(p => p.bankId === currentBankId && p.mode === mode);
       recentPracticeStore.update({
         bankId: currentBankId,
         bankName: currentBankName,
@@ -431,7 +433,8 @@ export function useQuiz() {
       
       // 更新最近练习记录
       if (prev.bankId && !isLastQuestion) {
-        const existingRecord = recentPracticeStore.getByBankId(prev.bankId);
+        const existingRecord = recentPracticeStore.getAll()
+          .find(p => p.bankId === prev.bankId && p.mode === prev.mode);
         if (existingRecord) {
           recentPracticeStore.update({
             ...existingRecord,
@@ -500,32 +503,31 @@ export function useQuiz() {
           queueRecordForSync(record);
         }
         
-        // 更新最近练习记录
+        // 更新最近练习记录（确定性重算：以已作答案为准）
         if (prev.bankId) {
-          const existingRecord = recentPracticeStore.getByBankId(prev.bankId);
+          const existingRecord = recentPracticeStore.getAll()
+            .find(p => p.bankId === prev.bankId && p.mode === prev.mode);
           if (existingRecord) {
-            // 计算当前已答数量和正确数量
-            let answeredCount = existingRecord.answeredCount;
-            let correctCount = existingRecord.correctCount;
-            
-            // 检查之前是否已经答过这道题
-            const alreadyAnswered = existingRecord.answeredCount > prev.currentIndex;
-            
-            if (!alreadyAnswered) {
+            const flatQuestions = prev.questions.flatMap(q =>
+              q.type === 'comprehensive' && q.children?.length ? q.children : [q]
+            );
+            let answeredCount = 0;
+            let correctCount = 0;
+            for (const q of flatQuestions) {
+              const a = prev.answers[q.id];
+              if (a === undefined || a === '' || (Array.isArray(a) && a.length === 0)) continue;
               answeredCount++;
-              if (isCorrect) {
-                correctCount++;
-              }
+              if (checkAnswer(q, a)) correctCount++;
             }
             
             recentPracticeStore.update({
               ...existingRecord,
-              totalCount: prev.questions.length,
+              totalCount: flatQuestions.length,
               answeredCount,
               correctCount,
               wrongCount: answeredCount - correctCount,
               lastPracticeAt: Date.now(),
-              isCompleted: prev.currentIndex === prev.questions.length - 1,
+              isCompleted: prev.currentIndex === flatQuestions.length - 1,
             });
             queueRecentPracticeForSync();
           }
@@ -725,7 +727,8 @@ export function useQuiz() {
     
     // 更新最近练习记录
     if (quizState.bankId) {
-      const existingRecord = recentPracticeStore.getByBankId(quizState.bankId);
+      const existingRecord = recentPracticeStore.getAll()
+        .find(p => p.bankId === quizState.bankId && p.mode === quizState.mode);
       if (existingRecord) {
         recentPracticeStore.update({
           ...existingRecord,

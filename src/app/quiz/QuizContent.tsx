@@ -30,7 +30,7 @@ import {
   Grid3X3,
   ArrowLeft,
 } from 'lucide-react';
-import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService, generateId, getWrongQuestionIds } from '@/lib/quiz-store';
+import { recordStore, wrongStreakStore, getCurrentUserId, cloudSyncService, generateId, getWrongQuestionIds, recentPracticeStore, queueRecentPracticeForSync } from '@/lib/quiz-store';
 import { Question } from '@/lib/types';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import { useDeviceValidation } from '@/hooks/use-device-validation';
@@ -377,6 +377,27 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
     
     setResultStats({ accuracy, total, correct, wrong, unanswered });
     setShowResultSheet(true);
+    
+    // 持久化最近练习会话的确定性统计（交卷后结果为准）
+    if (quizState.bankId && quizState.mode) {
+      const existingSession = recentPracticeStore.getAll()
+        .find(p => p.bankId === quizState.bankId && p.mode === quizState.mode);
+      recentPracticeStore.update({
+        ...existingSession,
+        bankId: quizState.bankId,
+        bankName: quizState.bankName || existingSession?.bankName || '',
+        mode: quizState.mode,
+        totalCount: total,
+        answeredCount: correct + wrong,
+        correctCount: correct,
+        wrongCount: wrong,
+        currentIndex: total,
+        startedAt: existingSession?.startedAt || Date.now(),
+        lastPracticeAt: Date.now(),
+        isCompleted: true,
+      });
+      queueRecentPracticeForSync();
+    }
     
     // 保存练习记录到云端
     const userId = getCurrentUserId();
