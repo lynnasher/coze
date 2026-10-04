@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2,
-  XCircle,
   Users,
   BookOpen,
   CalendarDays,
@@ -20,7 +19,6 @@ import {
   AlertTriangle,
   Activity,
   Loader2,
-  History,
   TrendingUp,
 } from 'lucide-react';
 
@@ -64,13 +62,6 @@ interface Session {
   lastPracticeAt?: number | null;
 }
 
-interface RecentRecord {
-  id: string;
-  questionId: string;
-  isCorrect: boolean;
-  timestamp?: number | null;
-}
-
 interface WrongQuestion {
   id: string;
   count: number;
@@ -83,7 +74,6 @@ interface StatsResponse {
   user: StatsUser;
   stats: StatsSummary;
   trend30: TrendPoint[];
-  recentRecords: RecentRecord[];
   sessions: Session[];
   topWrongQuestions: WrongQuestion[];
 }
@@ -317,51 +307,9 @@ export function UserStatsDialog({ open, onOpenChange, userId, userDesc }: UserSt
                 </section>
               )}
 
-              {/* 最近答题记录 */}
-              {data.recentRecords && data.recentRecords.length > 0 && (
-                <section>
-                  <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-800 mb-2">
-                    <History className="w-4 h-4 text-indigo-500" /> 最近答题（最近 {data.recentRecords.length} 条）
-                  </h3>
-                  <div className="rounded-lg border border-gray-200 bg-white overflow-x-auto">
-                    <table className="w-full text-sm min-w-[420px]">
-                      <thead className="bg-gray-50 text-left text-xs text-gray-500">
-                        <tr>
-                          <th className="px-3 py-2 font-medium">题目</th>
-                          <th className="px-3 py-2 font-medium">结果</th>
-                          <th className="px-3 py-2 font-medium">时间</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {data.recentRecords.map((r) => (
-                          <tr key={r.id}>
-                            <td className="px-3 py-2 text-gray-600 max-w-[240px] truncate" title={r.questionId}>
-                              {r.questionId}
-                            </td>
-                            <td className="px-3 py-2">
-                              {r.isCorrect ? (
-                                <span className="inline-flex items-center gap-1 text-green-600">
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> 正确
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-red-500">
-                                  <XCircle className="w-3.5 h-3.5" /> 错误
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-gray-500 text-xs">{formatTime(r.timestamp)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-
               {!data.stats.total &&
                 data.sessions.length === 0 &&
-                data.topWrongQuestions.length === 0 &&
-                data.recentRecords.length === 0 && (
+                data.topWrongQuestions.length === 0 && (
                   <div className="text-center py-12 text-gray-400">该用户暂无做题数据</div>
                 )}
             </div>
