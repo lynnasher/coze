@@ -149,11 +149,21 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
     const trend30 = days.map((date) => ({ date, count: dayMap[date] || 0 }));
 
-    // 5. 学习进度：仅保留最新一条已交卷(isCompleted)的练习会话
+    // 5. 最近答题记录（倒序取 50 条）
+    const recentRecords = [...practiceHistory]
+      .sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0))
+      .slice(0, 50)
+      .map((r) => ({
+        id: r.id,
+        questionId: r.questionId,
+        isCorrect: r.isCorrect === true,
+        timestamp: r.timestamp ?? null,
+      }));
+
+    // 6. 学习进度（历史练习会话，按最近时间倒序去重取若干）
     const sessions = [...recentSessions]
-      .filter((s) => s.isCompleted === true)
       .sort((a, b) => (Number(b.lastPracticeAt) || 0) - (Number(a.lastPracticeAt) || 0))
-      .slice(0, 1)
+      .slice(0, 20)
       .map((s) => ({
         id: s.id,
         bankId: s.bankId,
@@ -217,6 +227,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         lastActive,
       },
       trend30,
+      recentRecords,
       sessions,
       topWrongQuestions,
     });
