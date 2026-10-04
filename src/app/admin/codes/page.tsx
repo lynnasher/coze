@@ -557,7 +557,7 @@ export default function ActivationCodesPage() {
                                   <div key={user.user_id} className="flex items-center gap-1.5 text-sm bg-gray-50 rounded px-2 py-1">
                                     <User className="w-3 h-3 text-gray-400" />
                                     <span className="truncate max-w-[120px]">
-                                      {user.user_nickname || user.user_phone || '未知用户'}
+                                      {user.user_phone || '未知用户'}
                                     </span>
                                     <span className="text-xs text-gray-400 ml-auto">
                                       {new Date(user.activated_at).toLocaleDateString()}
