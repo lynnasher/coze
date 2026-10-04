@@ -46,8 +46,10 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  BarChart2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { UserStatsDialog } from '../components/UserStatsDialog';
 
 interface Activation {
   id: string;
@@ -81,6 +83,7 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState('');
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [statsUser, setStatsUser] = useState<{ id: string; desc: string } | null>(null);
   
   // 分页状态
   const [currentPage, setCurrentPage] = useState(1);
@@ -499,6 +502,10 @@ export default function UsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end"> 
+                              <DropdownMenuItem onClick={() => setStatsUser({ id: user.id, desc: `${user.phone}${user.nickname ? ' · ' + user.nickname : ''}` })}>
+                                <BarChart2 className="w-4 h-4 mr-1 text-indigo-500" />
+                                答题数据
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleStatusToggle(user.id, user.status)}>
                                 {user.status === 'active' ? '禁用账号' : '启用账号'}
                               </DropdownMenuItem>
@@ -681,6 +688,14 @@ export default function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 答题数据详情对话框 */}
+      <UserStatsDialog
+        open={!!statsUser}
+        onOpenChange={(open) => { if (!open) setStatsUser(null); }}
+        userId={statsUser?.id || ''}
+        userDesc={statsUser?.desc || ''}
+      />
     </div>
   );
 }
