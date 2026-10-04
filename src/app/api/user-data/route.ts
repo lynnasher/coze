@@ -96,14 +96,34 @@ export async function POST(request: Request) {
       ? { ...existingStreakData, ...streakData }
       : existingStreakData;
 
-    // 合并 recentlyPracticed
-    let mergedRecentlyPracticed = existingUserData?.recently_practiced || [];
+    // 合并 recentlyPracticed（按 bankId+mode 去重：新数据覆盖旧数据，保证进度/对错能更新）
+    // 并过滤「未完成且 0 答题」的废弃空会话
+    const isEmptySession = (item: any) => {
+      const isCompleted = item?.isCompleted === true || item?.is_completed === true;
+      const answered = Number(item?.answeredCount ?? item?.answered_count ?? 0);
+      return !isCompleted && answered === 0;
+    };
+    let mergedRecentlyPracticed = (existingUserData?.recently_practiced || []).filter(
+      (r: any) => !isEmptySession(r),
+    );
     if (recentlyPracticed !== undefined && Array.isArray(recentlyPracticed)) {
-      const existingIds = new Set(mergedRecentlyPracticed.map((r: any) => r.id).filter(Boolean));
-      const newItems = recentlyPracticed.filter((r: any) => r.id && !existingIds.has(r.id));
-      if (newItems.length > 0) {
-        mergedRecentlyPracticed = [...newItems, ...mergedRecentlyPracticed].slice(0, 50);
+      const byKey = new Map<string, unknown>();
+      for (const item of mergedRecentlyPracticed) {
+        const key = `${item?.bankId ?? item?.bank_id ?? ''}-${item?.mode ?? ''}`;
+        if (key !== '-') byKey.set(key, item);
       }
+      for (const item of recentlyPracticed) {
+        if (isEmptySession(item)) continue;
+        const key = `${item?.bankId ?? item?.bank_id ?? ''}-${item?.mode ?? ''}`;
+        if (key !== '-') byKey.set(key, item);
+      }
+      mergedRecentlyPracticed = Array.from(byKey.values())
+        .sort((a: any, b: any) => {
+          const ta = Number(a?.lastPracticeAt ?? a?.last_practice_at ?? 0);
+          const tb = Number(b?.lastPracticeAt ?? b?.last_practice_at ?? 0);
+          return tb - ta;
+        })
+        .slice(0, 50);
     }
 
     // 构建更新字段（全部基于合并后的数据）
@@ -138,7 +158,7 @@ export async function POST(request: Request) {
           user_id: userId,
           practice_history: practiceHistory || [],
           wrong_questions: wrongQuestions || [],
-          recently_practiced: recentlyPracticed || [],
+          recently_practiced: mergedRecentlyPracticed,
           streak_data: streakData || {},
           quiz_progress: quizProgress || {},
         });
