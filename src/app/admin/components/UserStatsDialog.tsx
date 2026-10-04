@@ -131,7 +131,7 @@ export function UserStatsDialog({ open, onOpenChange, userId, userDesc }: UserSt
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>答题数据</DialogTitle>
           <DialogDescription>{userDesc}</DialogDescription>
