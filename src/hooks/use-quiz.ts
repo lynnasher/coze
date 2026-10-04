@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Question, QuizState, PracticeMode, PracticeRecord } from '@/lib/types';
-import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, queueQuizProgressForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
+import { questionStore, recordStore, bankStore, wrongStreakStore, getWrongQuestionIds, generateId, recentPracticeStore, RecentPractice, preloadQuestions, clearPreloadCache, cloudSyncService, getCurrentUserId, queueRecordForSync, queueStreakForSync, queueQuizProgressForSync, queueRecentPracticeForSync, forceSync, forceSyncBeacon, calculateStats } from '@/lib/quiz-store';
 
 // localStorage key for quiz state persistence (持久化，浏览器关闭后仍存在)
 const QUIZ_PROGRESS_KEY = 'quiz_progress';
@@ -249,6 +249,7 @@ export function useQuiz() {
           currentIndex: progress.currentIndex,
           lastPracticeAt: Date.now(),
         });
+        queueRecentPracticeForSync();
       }
     }
   }, []);
@@ -388,6 +389,7 @@ export function useQuiz() {
         lastPracticeAt: Date.now(),
         isCompleted: false,
       });
+      queueRecentPracticeForSync();
     }
 
     // 使用初始进度或默认值
@@ -436,6 +438,7 @@ export function useQuiz() {
             currentIndex: prev.currentIndex + 1,
             lastPracticeAt: Date.now(),
           });
+          queueRecentPracticeForSync();
         }
       }
       
@@ -524,6 +527,7 @@ export function useQuiz() {
               lastPracticeAt: Date.now(),
               isCompleted: prev.currentIndex === prev.questions.length - 1,
             });
+            queueRecentPracticeForSync();
           }
         }
       }
@@ -732,6 +736,7 @@ export function useQuiz() {
           lastPracticeAt: Date.now(),
           isCompleted: true,
         });
+        queueRecentPracticeForSync();
       }
     }
     
@@ -751,6 +756,7 @@ export function useQuiz() {
     } catch {}
 
     // 交卷后同步数据到云端（检查组件是否已挂载）
+    // 会话数据已在 recentPracticeStore.update 触发 queueRecentPracticeForSync 同步，此处无需重复推送
     if (isMountedRef.current) {
       const userId = getCurrentUserId();
       if (userId) {
@@ -758,12 +764,6 @@ export function useQuiz() {
         const streaks = wrongStreakStore.getAll();
         cloudSyncService.saveRecords(userId, records);
         cloudSyncService.saveStreaks(userId, streaks);
-        if (quizState.bankId) {
-          const recent = recentPracticeStore.getByBankId(quizState.bankId);
-          if (recent) {
-            cloudSyncService.saveRecentPractice(userId, recent);
-          }
-        }
       }
     }
   }, [quizState]);

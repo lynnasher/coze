@@ -988,6 +988,7 @@ interface SyncQueue {
   records: PracticeRecord[];  // 新增的记录
   streaks: Record<string, number>;  // 更新的 streak
   quizProgress: Record<string, unknown> | null;  // 做题进度快照
+  sessionDirty: boolean;  // 最近练习会话是否有变更
   hasChanges: boolean;
 }
 
@@ -996,6 +997,7 @@ const createSyncQueue = (): SyncQueue => ({
   records: [],
   streaks: {},
   quizProgress: null,
+  sessionDirty: false,
   hasChanges: false,
 });
 
@@ -1028,6 +1030,16 @@ export function queueStreakForSync(questionId: string, streak: number): void {
 // 添加做题进度到同步队列（立即同步）
 export function queueQuizProgressForSync(progress: Record<string, unknown>): void {
   syncQueue.quizProgress = progress;
+  syncQueue.hasChanges = true;
+  hasPendingSync = true;
+  // 立即同步
+  flushSyncQueue();
+}
+
+// 标记最近练习会话需要同步（立即同步）
+// 会话数据保存在 recentPracticeStore（localStorage），刷新时直接读取即可，无需入队存储
+export function queueRecentPracticeForSync(): void {
+  syncQueue.sessionDirty = true;
   syncQueue.hasChanges = true;
   hasPendingSync = true;
   // 立即同步
@@ -1131,7 +1143,7 @@ async function flushSyncQueue(): Promise<boolean> {
   
   return withSyncLock(async () => {
     // 再次检查（等待锁期间可能已被清空）
-    if (syncQueue.records.length === 0 && syncQueue.streaks.size === 0 && !syncQueue.quizProgress) return true;
+    if (syncQueue.records.length === 0 && syncQueue.streaks.size === 0 && !syncQueue.quizProgress && !syncQueue.sessionDirty) return true;
     
     try {
       // 先拉取云端最新数据（合并而不是覆盖）
@@ -1158,6 +1170,16 @@ async function flushSyncQueue(): Promise<boolean> {
       if (syncQueue.quizProgress) {
         postBody.quizProgress = syncQueue.quizProgress;
       }
+      
+      // 合并最近练习会话（本地覆盖云端，按 bankId+mode 去重），始终随队列上传
+      const cloudRecent = cloudData?.recentPractices || [];
+      const mergedRecentMap = new Map(cloudRecent.map((p: RecentPractice) => [`${p.bankId}-${p.mode}`, p]));
+      recentPracticeStore.getAll().forEach((p) => {
+        mergedRecentMap.set(`${p.bankId}-${p.mode}`, p);
+      });
+      postBody.recentlyPracticed = Array.from(mergedRecentMap.values())
+        .sort((a, b) => b.lastPracticeAt - a.lastPracticeAt)
+        .slice(0, 50);
       
       // 上传到云端
       const response = await authenticatedFetch('/api/user-data', {
