@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getLoginPath } from '@/lib/admin-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,6 +90,21 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
 
+  // 全局用户统计（供顶部卡片）
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    bannedUsers: 0,
+    adminUsers: 0,
+  });
+  // 活跃用户筛选（点击「活跃用户」卡片后仅显示活跃用户并按最近活跃时间排序）
+  const [activeFilter, setActiveFilter] = useState(false);
+  const activeFilterRef = useRef(false);
+  const applyActiveFilter = (value: boolean) => {
+    activeFilterRef.current = value;
+    setActiveFilter(value);
+  };
+
   // 检查管理员登录状态
   useEffect(() => {
     checkAuth();
@@ -137,13 +152,17 @@ export default function UsersPage() {
     try {
       const token = localStorage.getItem('admin_token');
       const searchParam = search ? `&search=${encodeURIComponent(search)}` : '';
-      const response = await fetch(`/api/admin/users?page=${page}&pageSize=${size}${searchParam}`, {
+      const isFilterActive = activeFilterRef.current;
+      const statusParam = isFilterActive ? '&status=active' : '';
+      const sortParam = isFilterActive ? '&sortBy=lastLogin' : '';
+      const response = await fetch(`/api/admin/users?page=${page}&pageSize=${size}${searchParam}${statusParam}${sortParam}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
         setUsers(data.users || []);
         setTotalCount(data.total || 0);
+        setStats(data.stats || { totalUsers: 0, activeUsers: 0, bannedUsers: 0, adminUsers: 0 });
       }
     } catch (error) {
       console.error('加载用户失败:', error);
@@ -340,7 +359,7 @@ export default function UsersPage() {
 
       {/* 主内容 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* 统计卡片 */}
+        {/* 统计卡片（数值来自后端全局统计，不受分页/搜索影响） */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
           <Card className="p-2 sm:p-3">
             <div className="flex flex-col">
@@ -348,17 +367,28 @@ export default function UsersPage() {
                 <User className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
                 <span className="text-[10px] sm:text-xs text-gray-500">总用户</span>
               </div>
-              <span className="text-base sm:text-xl font-bold">{users.length}</span>
+              <span className="text-base sm:text-xl font-bold">{stats.totalUsers}</span>
             </div>
           </Card>
-          <Card className="p-2 sm:p-3">
+          <Card
+            className={`p-2 sm:p-3 cursor-pointer transition-colors ${
+              activeFilter ? 'ring-2 ring-green-500 bg-green-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => {
+              const next = !activeFilter;
+              applyActiveFilter(next);
+              setCurrentPage(1);
+              loadUsers(1, pageSize, searchQuery);
+            }}
+          >
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5 mb-1">
                 <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                 <span className="text-[10px] sm:text-xs text-gray-500">活跃用户</span>
               </div>
-              <span className="text-base sm:text-xl font-bold">
-                {users.filter(u => u.status === 'active').length}
+              <span className="text-base sm:text-xl font-bold">{stats.activeUsers}</span>
+              <span className="text-[10px] text-gray-400 mt-0.5">
+                {activeFilter ? '已筛选·按最近活跃排序' : '点击筛选'}
               </span>
             </div>
           </Card>
@@ -368,9 +398,7 @@ export default function UsersPage() {
                 <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-amber-600" />
                 <span className="text-[10px] sm:text-xs text-gray-500">管理员</span>
               </div>
-              <span className="text-base sm:text-xl font-bold">
-                {users.filter(u => u.role === 'admin').length}
-              </span>
+              <span className="text-base sm:text-xl font-bold">{stats.adminUsers}</span>
             </div>
           </Card>
         </div>

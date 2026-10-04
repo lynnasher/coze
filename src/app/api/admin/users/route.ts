@@ -11,16 +11,32 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  // 解析分页参数和搜索参数
+  // 解析分页参数、搜索参数、状态筛选与排序
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get('page') || '1', 10);
   const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
   const search = url.searchParams.get('search') || ''; // 搜索关键词
+  const status = url.searchParams.get('status') || ''; // active / banned
+  const sortBy = url.searchParams.get('sortBy') || ''; // lastLogin 表示按最近活跃排序
   const validPageSize = Math.min(Math.max(pageSize, 10), 100); // 限制 10-100
   const offset = (page - 1) * validPageSize;
 
   try {
     const client = getSupabaseAdminClient();
+
+    // 全局统计（供顶部卡片使用，不受搜索/筛选/分页影响）
+    const [totalUsersRes, activeUsersRes, bannedUsersRes, adminUsersRes] = await Promise.all([
+      client.from('users').select('id', { count: 'exact', head: true }).neq('role', 'admin'),
+      client.from('users').select('id', { count: 'exact', head: true }).neq('role', 'admin').eq('status', 'active'),
+      client.from('users').select('id', { count: 'exact', head: true }).neq('role', 'admin').eq('status', 'banned'),
+      client.from('users').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
+    ]);
+    const stats = {
+      totalUsers: totalUsersRes.count || 0,
+      activeUsers: activeUsersRes.count || 0,
+      bannedUsers: bannedUsersRes.count || 0,
+      adminUsers: adminUsersRes.count || 0,
+    };
     
     // 构建基础查询（排除管理员）
     let countQuery = client
@@ -32,6 +48,12 @@ export async function GET(request: Request) {
       .from('users')
       .select('*')
       .neq('role', 'admin');
+    
+    // 状态筛选（活跃 / 禁用）
+    if (status === 'active' || status === 'banned') {
+      countQuery = countQuery.eq('status', status);
+      dataQuery = dataQuery.eq('status', status);
+    }
     
     // 如果有搜索关键词，添加搜索条件
     if (search) {
@@ -48,9 +70,14 @@ export async function GET(request: Request) {
       console.error('获取用户总数失败:', countError);
     }
     
+    // 排序：按最近活跃(last_login_at) 倒序，或默认按注册时间倒序
+    let orderedQuery = dataQuery.order('created_at', { ascending: false });
+    if (sortBy === 'lastLogin') {
+      orderedQuery = dataQuery.order('last_login_at', { ascending: false, nullsFirst: false });
+    }
+    
     // 分页获取用户
-    const { data: usersData, error: usersError } = await dataQuery
-      .order('created_at', { ascending: false })
+    const { data: usersData, error: usersError } = await orderedQuery
       .range(offset, offset + validPageSize - 1);
     
     if (usersError) {
@@ -141,7 +168,8 @@ export async function GET(request: Request) {
       users: safeUsers,
       total: totalCount || 0,
       page,
-      pageSize: validPageSize
+      pageSize: validPageSize,
+      stats
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : '服务器错误';
