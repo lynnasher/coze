@@ -343,9 +343,10 @@ export async function POST(request: Request) {
     }
 
     // 创建题库到数据库
+    const finalBankName = bankName || `题库_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`;
     const newBank = await bankService.createBank(
-      bankName || `题库_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}`,
-      '从 JSON 文件导入',
+      finalBankName,
+      finalBankName,
       undefined,
       categoryId
     );
@@ -410,7 +411,7 @@ export async function POST(request: Request) {
       const localBank = {
         id: newBank.id,
         name: newBank.name,
-        description: '从 JSON 文件导入',
+        description: finalBankName,
         questionIds: questionsWithMigratedImages.map(q => q.id),
         createdAt: Date.now(),
         updatedAt: Date.now()
