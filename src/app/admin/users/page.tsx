@@ -72,6 +72,19 @@ interface AdminUser {
   activations: Activation[];
 }
 
+function formatLastLogin(iso?: string): string {
+  if (!iso) return '从未登录';
+  const diff = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}天前`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function UsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -440,19 +453,20 @@ export default function UsersPage() {
                     <TableHead className="w-[70px]">状态</TableHead>
                     <TableHead>激活码</TableHead>
                     <TableHead className="w-[100px]">注册时间</TableHead>
+                    <TableHead className="w-[110px]">最近活跃</TableHead>
                     <TableHead className="w-[60px] text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         加载中...
                       </TableCell>
                     </TableRow>
                   ) : users.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         暂无用户
                       </TableCell>
                     </TableRow>
@@ -521,6 +535,11 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
                           {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          <span className={user.last_login_at ? 'text-gray-600' : 'text-gray-400'}>
+                            {formatLastLogin(user.last_login_at)}
+                          </span>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
