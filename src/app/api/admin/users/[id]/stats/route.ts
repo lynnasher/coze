@@ -150,7 +150,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const trend30 = days.map((date) => ({ date, count: dayMap[date] || 0 }));
 
     // 6. 学习进度（历史练习会话，按最近时间倒序去重取若干）
-    const sessions = [...recentSessions]
+    // 按 id 去重（重复时保留最近一条），避免渲染 key 冲突
+    const recentMap = new Map<string, (typeof recentSessions)[number]>();
+    for (const s of recentSessions) {
+      const key = String((s?.id as string) ?? `${s?.bankId}_${s?.mode}`);
+      const prev = recentMap.get(key);
+      if (!prev || Number(s?.lastPracticeAt) > Number(prev?.lastPracticeAt)) {
+        recentMap.set(key, s);
+      }
+    }
+    const sessions = [...recentMap.values()]
       .sort((a, b) => (Number(b.lastPracticeAt) || 0) - (Number(a.lastPracticeAt) || 0))
       .slice(0, 20)
       .map((s) => ({

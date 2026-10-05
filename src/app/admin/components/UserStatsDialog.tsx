@@ -256,7 +256,7 @@ export function UserStatsDialog({ open, onOpenChange, userId, userDesc }: UserSt
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {data.sessions.map((s, i) => (
-                          <tr key={s.id || i}>
+                          <tr key={`${s.id}-${s.mode}-${s.bankId}-${i}`}>
                             <td className="px-3 py-2 text-gray-700 max-w-[180px] truncate">{s.bankName}</td>
                             <td className="px-3 py-2 text-gray-600">
                               {s.currentIndex}/{s.totalCount}
