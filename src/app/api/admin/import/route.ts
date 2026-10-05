@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { bankService } from '@/lib/services/bank-service';
 import { getStorage } from '@/lib/image-utils';
 import { requireAdminAuth } from '@/lib/api-auth';
+import { shuffleQuestionsPreservingType } from '@/lib/import-utils';
 
 // 转义正则表达式特殊字符
 function escapeRegExp(string: string): string {
@@ -365,8 +366,11 @@ export async function POST(request: Request) {
       );
     }
 
+    // 打乱题目顺序（保持题型分组）
+    const shuffledQuestions = shuffleQuestionsPreservingType(parsedQuestions);
+
     // 生成题目 ID 并类型转换
-    const questionsWithIds = parsedQuestions.map(q => ({
+    const questionsWithIds = shuffledQuestions.map(q => ({
       ...q,
       id: generateId(),
       type: q.type as 'single' | 'multiple' | 'true-false' | 'fill-blank' | 'comprehensive'

@@ -10,6 +10,7 @@ import {
   processChildOptions,
   processChildAnswer,
   processChildren,
+  shuffleQuestionsPreservingType,
 } from '@/lib/import-utils';
 
 // 转义正则表达式特殊字符
@@ -351,8 +352,11 @@ export async function POST(request: Request) {
       categoryId
     );
 
+    // 打乱题目顺序（保持题型分组，综合题整体不拆）
+    const shuffledQuestions = shuffleQuestionsPreservingType(questions);
+
     // 处理题目
-    const processedQuestions = flattenQuestions(questions, newBank.id);
+    const processedQuestions = flattenQuestions(shuffledQuestions, newBank.id);
 
     if (processedQuestions.length === 0) {
       return NextResponse.json(

@@ -414,3 +414,63 @@ export function flattenQuestions(questions: Record<string, unknown>[], bankId: s
   
   return result;
 }
+
+/**
+ * 打乱题目顺序，同时保持题型分组。
+ * - 同一题型聚在一起、组间按题型原始出现顺序排列（单选不会跑到多选题中间）；
+ * - 组内题目顺序随机打乱；
+ * - 综合题（含 children）整体作为一个单元移动，不会拆散父子结构。
+ */
+export function shuffleQuestionsPreservingType<T>(questions: T[]): T[] {
+  if (!Array.isArray(questions) || questions.length < 2) return questions;
+
+  const typeKey = (q: T): string => {
+    const record = q as Record<string, unknown>;
+    const raw = record.type ?? record.qtype ?? record.questionType;
+    if (typeof raw === 'number') {
+      const map: Record<number, string> = {
+        1: 'single',
+        2: 'multiple',
+        3: 'true-false',
+        4: 'fill-blank',
+        5: 'comprehensive',
+      };
+      return map[raw] ?? `n${raw}`;
+    }
+    const s = String(raw ?? '').toLowerCase().trim();
+    if (s.includes('综合') || s.includes('案例') || s === 'comprehensive') return 'comprehensive';
+    if (s.includes('判断') || s === 'true-false' || s === 'truefalse') return 'true-false';
+    if (s.includes('填空') || s === 'fill-blank' || s.includes('fill')) return 'fill-blank';
+    if (s.includes('多选') || s === 'multiple') return 'multiple';
+    if (s.includes('单选') || s === 'single') return 'single';
+    return s || 'single';
+  };
+
+  // 按题型分组，同时记录题型出现的原始顺序
+  const groups = new Map<string, T[]>();
+  const order: string[] = [];
+  for (const q of questions) {
+    const key = typeKey(q);
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    groups.get(key)!.push(q);
+  }
+
+  // Fisher-Yates 洗牌
+  const shuffle = (arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const result: T[] = [];
+  for (const key of order) {
+    result.push(...shuffle(groups.get(key)!));
+  }
+  return result;
+}
