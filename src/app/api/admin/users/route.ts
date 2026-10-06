@@ -98,7 +98,16 @@ export async function GET(request: Request) {
     if (codesError) {
       console.error('获取激活码失败:', codesError);
     }
-    const codesMap = new Map((codesData || []).map(c => [c.id, c]));
+    // 按分类ID建索引，供"有分类但无激活记录"的用户兜底展示有效期/激活码。
+    // 同一分类可能对应多个激活码，兜底时优先保留带到期时间的那条，避免误显示为永久。
+    const codesMap = new Map<string, { id: string; code: string | null; category_id: string; expires_at: string | null }>();
+    (codesData || []).forEach(c => {
+      const key = c.category_id;
+      const existing = codesMap.get(key);
+      if (!existing || (c.expires_at && !existing.expires_at)) {
+        codesMap.set(key, { id: c.id, code: c.code, category_id: c.category_id, expires_at: c.expires_at });
+      }
+    });
     
     // 获取所有用户激活记录（用于显示用户使用的具体激活码）
     const { data: userActivationsData, error: userActivationsError } = await client
