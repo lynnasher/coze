@@ -93,38 +93,26 @@ export async function GET(request: Request) {
     }
     const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c.name]));
     
-    // 获取所有激活码信息（用于显示激活码详情）
-    const { data: codesData, error: codesError } = await client.from('activation_codes').select('id, code, category_id, expires_at');
-    if (codesError) {
-      console.error('获取激活码失败:', codesError);
-    }
-    // 按分类ID建索引，供"有分类但无激活记录"的用户兜底展示有效期/激活码。
-    // 同一分类可能对应多个激活码，兜底时优先保留带到期时间的那条，避免误显示为永久。
-    const codesMap = new Map<string, { id: string; code: string | null; category_id: string; expires_at: string | null }>();
-    (codesData || []).forEach(c => {
-      const key = c.category_id;
-      const existing = codesMap.get(key);
-      if (!existing || (c.expires_at && !existing.expires_at)) {
-        codesMap.set(key, { id: c.id, code: c.code, category_id: c.category_id, expires_at: c.expires_at });
-      }
-    });
-    
-    // 获取所有用户激活记录（用于显示用户使用的具体激活码）
+    // 获取所有用户激活记录（激活码与到期时间的唯一可信来源）
     const { data: userActivationsData, error: userActivationsError } = await client
       .from('user_activations')
       .select('id, user_id, category_id, activation_code, activated_at, expires_at');
     if (userActivationsError) {
       console.error('获取用户激活记录失败:', userActivationsError);
     }
-    // 按 user_id 和 category_id 建立索引
+    // 按 user_id + category_id 建立索引（同一分类多次激活时取最近一次）
     const userActivationsMap = new Map<string, { code: string | null; activatedAt: string; expiresAt: string | null }>();
     (userActivationsData || []).forEach(ua => {
       const key = `${ua.user_id}-${ua.category_id}`;
-      userActivationsMap.set(key, {
-        code: ua.activation_code,
-        activatedAt: ua.activated_at,
-        expiresAt: ua.expires_at,
-      });
+      const existing = userActivationsMap.get(key);
+      const isNewer = !existing || !existing.activatedAt || (ua.activated_at && new Date(ua.activated_at) > new Date(existing.activatedAt));
+      if (isNewer) {
+        userActivationsMap.set(key, {
+          code: ua.activation_code,
+          activatedAt: ua.activated_at,
+          expiresAt: ua.expires_at,
+        });
+      }
     });
     
     // 返回脱敏的用户信息，并解析 activated_categories
@@ -139,22 +127,20 @@ export async function GET(request: Request) {
       }
       
       // 构建激活详情列表
+      // 激活码与到期时间仅以 user_activations 真实激活记录为准。
+      // 若某分类在 activated_categories 中但无对应激活记录（手动/默认授权），
+      // 则不显示激活码、显示为永久，避免用激活码池里任意一条码张冠李戴。
       const activations = activatedCategories.map((catId, idx) => {
         const categoryName = categoriesMap.get(catId) || catId;
-        // 尝试从用户激活记录中获取具体激活码
         const userActivation = userActivationsMap.get(`${u.id}-${catId}`);
-        const codeInfo = codesMap.get(catId);
-        
-        // 优先使用用户激活记录中的激活码，其次是激活码模板
-        const activationCode = userActivation?.code || codeInfo?.code || null;
         
         return {
           id: `manual-${idx}`,
           category_id: catId,
           category_name: categoryName,
-          activation_code: activationCode,
+          activation_code: userActivation?.code || null,
           activated_at: userActivation?.activatedAt || u.last_login_at || u.created_at,
-          expires_at: userActivation?.expiresAt || codeInfo?.expires_at || null,
+          expires_at: userActivation?.expiresAt || null,
         };
       });
       
