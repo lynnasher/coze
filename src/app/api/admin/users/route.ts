@@ -93,12 +93,31 @@ export async function GET(request: Request) {
     }
     const categoriesMap = new Map((categoriesData || []).map(c => [c.id, c.name]));
     
-    // 获取所有用户激活记录（激活码与到期时间的唯一可信来源）
-    const { data: userActivationsData, error: userActivationsError } = await client
-      .from('user_activations')
-      .select('id, user_id, category_id, activation_code, activated_at, expires_at');
-    if (userActivationsError) {
-      console.error('获取用户激活记录失败:', userActivationsError);
+    // 获取当前页用户的激活记录（激活码与到期时间的唯一可信来源）
+    // 分页拉取，避免 Supabase 默认 1000 条上限截断最新激活记录
+    const pageUserIds = users.map(u => u.id);
+    const userActivationsData: Array<{
+      id: string;
+      user_id: string;
+      category_id: string;
+      activation_code: string | null;
+      activated_at: string;
+      expires_at: string | null;
+    }> = [];
+    const uaPageSize = 1000;
+    for (let uaFrom = 0; pageUserIds.length > 0; uaFrom += uaPageSize) {
+      const { data: uaPage, error: uaError } = await client
+        .from('user_activations')
+        .select('id, user_id, category_id, activation_code, activated_at, expires_at')
+        .in('user_id', pageUserIds)
+        .range(uaFrom, uaFrom + uaPageSize - 1);
+      if (uaError) {
+        console.error('获取用户激活记录失败:', uaError);
+        break;
+      }
+      if (!uaPage || uaPage.length === 0) break;
+      userActivationsData.push(...(uaPage as typeof userActivationsData));
+      if (uaPage.length < uaPageSize) break;
     }
     // 按 user_id + category_id 建立索引（同一分类多次激活时取最近一次）
     const userActivationsMap = new Map<string, { code: string | null; activatedAt: string; expiresAt: string | null }>();
