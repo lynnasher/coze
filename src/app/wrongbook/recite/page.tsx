@@ -10,6 +10,8 @@ import { RichTextWithBreaks } from '@/lib/rich-text';
 import AIQuizHelper from '@/components/AIQuizHelper';
 
 const PAGE_SIZE = 20;
+// 未归入任何分类的题库使用此伪分类 ID
+const UNCATEGORIZED_ID = '__uncategorized__';
 
 export default function WrongbookRecitePage() {
   return (
@@ -24,11 +26,33 @@ function WrongbookReciteContent() {
   const searchParams = useSearchParams();
   const typeFilter = (searchParams.get('type') as QuestionType | null) || 'all';
   const bankFilter = searchParams.get('bank') || 'all';
+  const categoryFilter = searchParams.get('category') || 'all';
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [bankCategoryMap, setBankCategoryMap] = useState<Map<string, string>>(new Map());
+
+  // 加载题库的分类映射（用于按分类筛选）
+  useEffect(() => {
+    const loadBanks = async () => {
+      try {
+        const response = await fetch('/api/banks');
+        if (response.ok) {
+          const data = await response.json();
+          const map = new Map<string, string>();
+          (data.banks as { id: string; category_id?: string }[] | undefined)?.forEach(b => {
+            if (b.category_id) map.set(b.id, b.category_id);
+          });
+          setBankCategoryMap(map);
+        }
+      } catch (error) {
+        console.error('Failed to load banks:', error);
+      }
+    };
+    loadBanks();
+  }, []);
 
   // 加载云端题目（与 wrongbook 一致的数据源）
   const fetchQuestionsFromCloud = useCallback(async (questionIds: string[]) => {
@@ -140,6 +164,12 @@ function WrongbookReciteContent() {
   // 应用筛选
   const filteredQuestions = useMemo(() => {
     let result = questions;
+    if (categoryFilter !== 'all') {
+      result = result.filter(q => {
+        if (!q.bankId) return categoryFilter === UNCATEGORIZED_ID;
+        return (bankCategoryMap.get(q.bankId) || UNCATEGORIZED_ID) === categoryFilter;
+      });
+    }
     if (bankFilter !== 'all') {
       result = result.filter(q => q.bankId === bankFilter);
     }
@@ -147,7 +177,7 @@ function WrongbookReciteContent() {
       result = result.filter(q => q.type === typeFilter);
     }
     return result;
-  }, [questions, typeFilter, bankFilter]);
+  }, [questions, typeFilter, bankFilter, categoryFilter, bankCategoryMap]);
 
   // 分页
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);
@@ -157,7 +187,7 @@ function WrongbookReciteContent() {
   }, [filteredQuestions, currentPage]);
 
   // 筛选条件变化时回到第一页
-  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter]);
+  useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter, categoryFilter]);
 
   // 获取答案显示文本
   const getAnswerDisplay = useCallback((question: Question) => {
@@ -243,7 +273,7 @@ function WrongbookReciteContent() {
               <h1 className="text-base font-semibold text-gray-900">错题快速背题</h1>
               <p className="text-xs text-gray-500">
                 {totalCount} 道错题 · 已掌握 {masteredCount} 题
-                {(typeFilter !== 'all' || bankFilter !== 'all') && ' · 已筛选'}
+                {(typeFilter !== 'all' || bankFilter !== 'all' || categoryFilter !== 'all') && ' · 已筛选'}
               </p>
             </div>
           </div>
