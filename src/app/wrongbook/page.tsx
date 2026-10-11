@@ -56,8 +56,6 @@ const TYPE_COLORS: Record<QuestionType, { bg: string; text: string; light: strin
 
 // 未归入任何分类的题库使用此伪分类 ID
 const UNCATEGORIZED_ID = '__uncategorized__';
-// 含错题的题库数量超过该阈值时，才展示分类筛选，避免小场景多余干扰
-const CATEGORY_FILTER_MIN_BANKS = 8;
 
 export default function WrongBookPage() {
   const [showExplanation, setShowExplanation] = useState(false);
@@ -517,8 +515,8 @@ export default function WrongBookPage() {
     return arr.sort((a, b) => b.count - a.count);
   }, [wrongQuestions, getQuestionCategoryId, categoryNameMap]);
 
-  // 是否展示分类筛选：题库较多且存在多个分类时
-  const showCategoryFilter = bankCounts.length > CATEGORY_FILTER_MIN_BANKS && categoryCounts.length >= 2;
+  // 是否展示分类筛选：错题跨多个分类时
+  const showCategoryFilter = categoryCounts.length >= 2;
 
   const filteredQuestions = useMemo(() => {
     let result = wrongQuestions;
@@ -542,8 +540,8 @@ export default function WrongBookPage() {
 
   useEffect(() => { setCurrentPage(1); }, [typeFilter, bankFilter, categoryFilter]);
 
-  const typeCounts = useMemo(() => {
-    // 根据当前分类/题库筛选计算题型数量
+  // 当前"分类 + 题库"范围内的错题（题型筛选为列表视图维度，不计入该范围）
+  const scopedQuestions = useMemo(() => {
     let base = wrongQuestions;
     if (categoryFilter !== 'all') {
       base = base.filter(q => getQuestionCategoryId(q) === categoryFilter);
@@ -551,10 +549,15 @@ export default function WrongBookPage() {
     if (bankFilter !== 'all') {
       base = base.filter(q => q.bankId === bankFilter);
     }
-    const counts: Record<string, number> = { all: base.length };
-    base.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
-    return counts;
+    return base;
   }, [wrongQuestions, bankFilter, categoryFilter, getQuestionCategoryId]);
+
+  const typeCounts = useMemo(() => {
+    // 根据当前分类/题库筛选计算题型数量
+    const counts: Record<string, number> = { all: scopedQuestions.length };
+    scopedQuestions.forEach(q => { counts[q.type] = (counts[q.type] || 0) + 1; });
+    return counts;
+  }, [scopedQuestions]);
 
   // 当前分类下可见的题库
   const visibleBanks = useMemo(() => {
@@ -1032,9 +1035,9 @@ export default function WrongBookPage() {
           <>
             {/* ========== 错题本卡片方案选择 ========== */}
             {(() => {
-              // 计算统计数据
-              const totalWrong = wrongQuestions.length;
-              const masteredCount = wrongQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
+              // 计算统计数据（随当前分类/题库筛选变化）
+              const totalWrong = scopedQuestions.length;
+              const masteredCount = scopedQuestions.filter(q => (wrongStreakStore.get(q.id) || 0) >= 3).length;
               const needReviewCount = totalWrong - masteredCount;
               const masteryRate = totalWrong > 0 ? Math.round((masteredCount / totalWrong) * 100) : 0;
               
@@ -1134,10 +1137,10 @@ export default function WrongBookPage() {
                 {showCategoryFilter && (
                   <div className="mb-4">
                     <p className="text-xs text-gray-400 mb-3">分类筛选</p>
-                    <div className="flex gap-2.5 flex-wrap">
+                    <div className="flex gap-2.5 flex-nowrap overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible -mx-1 px-1 pb-0.5">
                       <button
                         onClick={() => handleSelectCategory('all')}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                        className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                           categoryFilter === 'all'
                             ? 'bg-gray-900 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -1149,7 +1152,7 @@ export default function WrongBookPage() {
                         <button
                           key={cat.id}
                           onClick={() => handleSelectCategory(cat.id)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                             categoryFilter === cat.id
                               ? 'bg-gray-900 text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -1184,7 +1187,7 @@ export default function WrongBookPage() {
             {/* 题型筛选 */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
               <p className="text-xs text-gray-400 mb-3">题型筛选</p>
-              <div className="flex gap-2.5 flex-wrap">
+              <div className="flex gap-2.5 flex-nowrap overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible -mx-1 px-1 pb-0.5">
                 {(['all', 'single', 'multiple', 'uncertain-choice', 'true-false', 'fill-blank', 'comprehensive'] as const).map(t => {
                   const count = typeCounts[t] || 0;
                   if (t !== 'all' && count === 0) return null;
@@ -1194,7 +1197,7 @@ export default function WrongBookPage() {
                     <button
                       key={t}
                       onClick={() => setTypeFilter(t)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                         isActive 
                           ? 'bg-gray-900 text-white' 
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

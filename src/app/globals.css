@@ -197,3 +197,12 @@
 body {
   @apply font-sans;
 }
+
+/* 移动端 chips 单行横向滚动时隐藏滚动条 */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
