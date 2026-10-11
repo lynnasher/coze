@@ -8,6 +8,7 @@ import { questionStore, getWrongQuestionIds, wrongStreakStore, getUserToken, del
 import { Button } from '@/components/ui/button';
 import { RichTextWithBreaks } from '@/lib/rich-text';
 import AIQuizHelper from '@/components/AIQuizHelper';
+import { getCurrentUser } from '@/components/AuthModal';
 
 const PAGE_SIZE = 20;
 // 未归入任何分类的题库使用此伪分类 ID
@@ -33,6 +34,36 @@ function WrongbookReciteContent() {
   const [cloudQuestions, setCloudQuestions] = useState<Record<string, Question>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [bankCategoryMap, setBankCategoryMap] = useState<Map<string, string>>(new Map());
+  // 当前用户"有效"（未过期）的激活分类ID集合；null 表示未知或管理员（不做过滤）
+  const [validCategoryIds, setValidCategoryIds] = useState<Set<string> | null>(null);
+
+  // 加载有效激活分类（过期分类的错题不进入背题）
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (!user || user.role === 'admin') {
+      setValidCategoryIds(null);
+      return;
+    }
+    const token = getUserToken();
+    if (!token) {
+      setValidCategoryIds(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/user/activations', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setValidCategoryIds(new Set<string>(data.activatedCategories || []));
+      } catch {
+        // 加载失败时保持 null（不锁定），避免误过滤用户可背题的内容
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // 加载题库的分类映射（用于按分类筛选）
   useEffect(() => {
@@ -176,8 +207,16 @@ function WrongbookReciteContent() {
     if (typeFilter !== 'all') {
       result = result.filter(q => q.type === typeFilter);
     }
+    // 过期分类的错题不进入背题（错题本可见，但不可背题）
+    if (validCategoryIds) {
+      result = result.filter(q => {
+        const catId = q.bankId ? (bankCategoryMap.get(q.bankId) || UNCATEGORIZED_ID) : UNCATEGORIZED_ID;
+        if (catId === UNCATEGORIZED_ID) return true;
+        return validCategoryIds.has(catId);
+      });
+    }
     return result;
-  }, [questions, typeFilter, bankFilter, categoryFilter, bankCategoryMap]);
+  }, [questions, typeFilter, bankFilter, categoryFilter, bankCategoryMap, validCategoryIds]);
 
   // 分页
   const totalPages = Math.ceil(filteredQuestions.length / PAGE_SIZE);

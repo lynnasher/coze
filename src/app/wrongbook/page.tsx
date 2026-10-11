@@ -24,6 +24,7 @@ import {
   TrendingUp,
   Sparkles,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import { questionStore, recordStore, bankStore, getWrongQuestionIds, wrongStreakStore, generateId, cloudSyncService, queueRecordForSync, queueStreakForSync, forceSync, forceSyncBeacon, getUserToken, deletedQuestionStore, withSyncLock } from '@/lib/quiz-store';
 import { Question, PracticeRecord, QuestionType } from '@/lib/types';
@@ -81,6 +82,8 @@ export default function WrongBookPage() {
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
   const [banks, setBanks] = useState<{ id: string; name: string; categoryId?: string }[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  // 当前用户"有效"（未过期）的激活分类ID集合；null 表示未知或管理员（不做锁定）
+  const [validCategoryIds, setValidCategoryIds] = useState<Set<string> | null>(null);
   
 
   const checkAuth = useCallback(() => {
@@ -138,6 +141,37 @@ export default function WrongBookPage() {
     };
     loadCategories();
   }, []);
+
+  // 加载当前用户"有效"（未过期）的激活分类，用于标记/锁定已过期分类的错题
+  useEffect(() => {
+    const user = getStoredUser();
+    if (!user || user.role === 'admin') {
+      // 未登录或管理员：不做锁定
+      setValidCategoryIds(null);
+      return;
+    }
+    const token = getUserToken();
+    if (!token) {
+      setValidCategoryIds(null);
+      return;
+    }
+    let cancelled = false;
+    const loadValidCategories = async () => {
+      try {
+        const response = await fetch('/api/auth/user/activations', {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (cancelled) return;
+        setValidCategoryIds(new Set<string>(data.activatedCategories || []));
+      } catch {
+        // 加载失败时保持 null（不锁定），避免误锁用户可复习的内容
+      }
+    };
+    loadValidCategories();
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   const refreshData = useCallback(() => {
     setRefreshKey(k => k + 1);
@@ -570,6 +604,35 @@ export default function WrongBookPage() {
     if (categoryFilter === 'all') return wrongQuestions.length;
     return wrongQuestions.filter(q => getQuestionCategoryId(q) === categoryFilter).length;
   }, [wrongQuestions, categoryFilter, getQuestionCategoryId]);
+
+  // 判断某道错题是否处于"激活已过期"的锁定状态（方案B：仍可见，但不可复习/背题）
+  const isQuestionLocked = useCallback((question: Question): boolean => {
+    // validCategoryIds 为 null：管理员或未知 → 不锁定
+    if (!validCategoryIds) return false;
+    const catId = getQuestionCategoryId(question);
+    // 无分类的题目不做锁定
+    if (catId === UNCATEGORIZED_ID) return false;
+    return !validCategoryIds.has(catId);
+  }, [validCategoryIds, getQuestionCategoryId]);
+
+  // 某分类是否已被锁定（无有效激活）
+  const isCategoryLocked = useCallback((catId: string): boolean => {
+    if (!validCategoryIds) return false;
+    if (catId === UNCATEGORIZED_ID) return false;
+    return !validCategoryIds.has(catId);
+  }, [validCategoryIds]);
+
+  // 当前筛选范围内被锁定的错题数
+  const lockedCount = useMemo(
+    () => filteredQuestions.filter(isQuestionLocked).length,
+    [filteredQuestions, isQuestionLocked]
+  );
+
+  // 当前筛选范围内可复习的错题（排除锁定分类）
+  const reviewableQuestions = useMemo(
+    () => filteredQuestions.filter(q => !isQuestionLocked(q)),
+    [filteredQuestions, isQuestionLocked]
+  );
 
   // 切换分类时重置题库筛选（避免选中他分类的题库）
   const handleSelectCategory = useCallback((id: string | 'all') => {
@@ -1094,15 +1157,25 @@ export default function WrongBookPage() {
                   </div>
                  
                       
+                  {/* 过期锁定提示 */}
+                  {lockedCount > 0 && (
+                    <div className="mt-4 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                      <Lock className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <p className="text-xs leading-relaxed text-amber-700">
+                        有 <span className="font-semibold">{lockedCount}</span> 道错题所属分类的激活已过期，仍可查看，但需重新激活后才能复习。
+                      </p>
+                    </div>
+                  )}
+
                   {/* 开始复习按钮 */}
                   <div className="flex gap-3 mt-5">
                     <Button 
-                      onClick={() => startReview(filteredQuestions)} 
-                      disabled={filteredQuestions.length === 0}
+                      onClick={() => startReview(reviewableQuestions)} 
+                      disabled={reviewableQuestions.length === 0}
                       className="flex-[4] h-12 rounded-2xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-medium"
                     >
                       <BookOpen className="w-4 h-4 mr-2" />
-                      开始复习
+                      开始复习{reviewableQuestions.length > 0 ? ` (${reviewableQuestions.length})` : ''}
                     </Button>
                     <Button 
                       onClick={() => {
@@ -1113,7 +1186,7 @@ export default function WrongBookPage() {
                         const qs = params.toString();
                         router.push('/wrongbook/recite' + (qs ? `?${qs}` : ''));
                       }}
-                      disabled={filteredQuestions.length === 0}
+                      disabled={reviewableQuestions.length === 0}
                       variant="outline"
                       className="flex-[1] h-12 rounded-2xl border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs px-2"
                     >
@@ -1148,19 +1221,24 @@ export default function WrongBookPage() {
                       >
                         全部 {wrongQuestions.length}
                       </button>
-                      {categoryCounts.map(cat => (
-                        <button
-                          key={cat.id}
-                          onClick={() => handleSelectCategory(cat.id)}
-                          className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                            categoryFilter === cat.id
-                              ? 'bg-gray-900 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {cat.name} {cat.count}
-                        </button>
-                      ))}
+                      {categoryCounts.map(cat => {
+                        const locked = isCategoryLocked(cat.id);
+                        const active = categoryFilter === cat.id;
+                        return (
+                          <button
+                            key={cat.id}
+                            onClick={() => handleSelectCategory(cat.id)}
+                            className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-xl text-sm font-medium transition-all inline-flex items-center gap-1.5 ${
+                              active
+                                ? 'bg-gray-900 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {locked && <Lock className="w-3.5 h-3.5 opacity-70" />}
+                            {cat.name} {cat.count}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1215,31 +1293,41 @@ export default function WrongBookPage() {
               {paginatedQuestions.map(question => {
                 const info = getWrongInfo(question.id);
                 const typeColors = TYPE_COLORS[question.type];
+                const locked = isQuestionLocked(question);
                 return (
                   <div 
                     key={question.id} 
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+                    className={`bg-white rounded-2xl p-4 shadow-sm border transition-all ${
+                      locked ? 'border-amber-200' : 'border-gray-100 hover:shadow-md'
+                    }`}
                   >
                     <div className="flex items-start gap-3">
                       <span className={`shrink-0 w-11 h-6 rounded-full text-[11px] font-semibold text-white flex items-center justify-center ${typeColors?.bg || 'bg-gray-500'}`}>
                         {TYPE_LABELS[question.type]}
                       </span>
                       <div className="flex-1 min-w-0 pt-0.5">
-                        <p className="text-[15px] text-gray-800 leading-relaxed line-clamp-2">{question.content}</p>
+                        <p className={`text-[15px] leading-relaxed line-clamp-2 ${locked ? 'text-gray-400' : 'text-gray-800'}`}>{question.content}</p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                           <span>错 {info.wrongCount} 次</span>
                           {info.streak > 0 && (
                             <span className="text-emerald-600 font-medium">连续答对 {info.streak} 次</span>
+                          )}
+                          {locked && (
+                            <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                              <Lock className="w-3 h-3" />
+                              激活已过期
+                            </span>
                           )}
                         </div>
                       </div>
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={locked}
                         onClick={() => startReview([question])}
-                        className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                        className="shrink-0 h-9 px-4 rounded-xl text-xs font-medium border-gray-200 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40"
                       >
-                        复习
+                        {locked ? '已锁定' : '复习'}
                       </Button>
                     </div>
                   </div>
