@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 interface Question {
   type: string;
@@ -15,9 +15,12 @@ interface Question {
 
 interface AIQuizHelperProps {
   question: Question;
+  userAnswer?: string | string[];
 }
 
-function buildQuestionContext(q: Question): string {
+const AI_TIMEOUT_MS = 25000;
+
+function buildQuestionContext(q: Question, userAnswer?: string | string[]): string {
   const parts: string[] = [];
   const typeLabels: Record<string, string> = {
     'single': '单选题',
@@ -39,6 +42,10 @@ function buildQuestionContext(q: Question): string {
     q.options.forEach(opt => parts.push(`${opt.id}. ${opt.text}`));
   }
 
+  // 必做：把考生所选项带给 AI，用于「逐项排雷」重点讲解
+  const formatted = formatUserAnswer(userAnswer, q.options);
+  if (formatted) parts.push(`考生的作答：${formatted}`);
+
   if (q.answer) {
     const answerStr = Array.isArray(q.answer) ? q.answer.join(', ') : q.answer;
     parts.push(`正确答案：${answerStr}`);
@@ -51,59 +58,111 @@ function buildQuestionContext(q: Question): string {
   return parts.join('\n');
 }
 
-export default function AIQuizHelper({ question }: AIQuizHelperProps) {
+function formatUserAnswer(ans: string | string[] | undefined, options?: { id: string; text: string }[]): string {
+  if (ans === undefined || ans === null) return '';
+  const arr = Array.isArray(ans) ? ans : [ans];
+  const parts: string[] = [];
+  arr.forEach(a => {
+    if (a === undefined || a === null) return;
+    const str = String(a);
+    if (!str.trim()) return;
+    const opt = options?.find(o => o.id === str);
+    parts.push(opt ? `${opt.id}. ${opt.text}` : str);
+  });
+  return parts.join('；');
+}
+
+export default function AIQuizHelper({ question, userAnswer }: AIQuizHelperProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiAnswer, setAiAnswer] = useState('');
+  const [aiError, setAiError] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
+
+  // 切换题目时中断未完成请求，避免串题
+  useEffect(() => {
+    setAiAnswer('');
+    setAiError('');
+    setAiLoading(false);
+    abortRef.current?.abort();
+    abortRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question]);
 
   const handleAskAI = useCallback(async () => {
     if (!question || aiLoading) return;
     setAiLoading(true);
     setAiAnswer('');
+    setAiError('');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
+    let serverError = '';
+    let gotContent = false;
+
     try {
-      const ctx = buildQuestionContext(question);
+      const ctx = buildQuestionContext(question, userAnswer);
       const resp = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questionContext: ctx }),
+        signal: controller.signal,
       });
+
       if (!resp.ok) {
-        const err = await resp.json();
-        setAiAnswer(err.error || 'AI 服务暂时不可用');
-        setAiLoading(false);
-        return;
-      }
-      const reader = resp.body?.getReader();
-      if (!reader) {
-        setAiAnswer('无法读取 AI 响应');
-        setAiLoading(false);
-        return;
-      }
-      const decoder = new TextDecoder();
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data: ')) continue;
-          const data = trimmed.slice(6);
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) {
-              setAiAnswer(prev => prev + parsed.content);
+        const err = await resp.json().catch(() => null);
+        serverError = err?.error || `AI 服务暂时不可用 (${resp.status})`;
+      } else {
+        const reader = resp.body?.getReader();
+        if (!reader) {
+          serverError = '无法读取 AI 响应';
+        } else {
+          const decoder = new TextDecoder();
+          let buffer = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data:')) continue;
+              const data = trimmed.slice(5).trim();
+              if (!data || data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.error) {
+                  serverError = parsed.error;
+                  continue;
+                }
+                if (parsed.content) {
+                  gotContent = true;
+                  setAiAnswer(prev => prev + parsed.content);
+                }
+              } catch { /* skip unparseable */ }
             }
-          } catch { /* skip unparseable */ }
+          }
         }
       }
-    } catch {
-      setAiAnswer('AI 服务请求失败，请稍后重试');
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        serverError = (gotContent ? '' : 'AI 响应超时，请重试');
+      } else {
+        serverError = 'AI 服务请求失败，请稍后重试';
+      }
+    } finally {
+      clearTimeout(timer);
+      abortRef.current = null;
     }
+
+    if (serverError) setAiError(serverError);
+    else if (!gotContent) setAiError('AI 未返回任何内容，请重试');
+
     setAiLoading(false);
-  }, [question, aiLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question, userAnswer, aiLoading]);
 
   return (
     <div className="space-y-2 mt-3">
@@ -130,6 +189,20 @@ export default function AIQuizHelper({ question }: AIQuizHelperProps) {
           </>
         )}
       </button>
+
+      {aiError && (
+        <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start justify-between gap-3">
+          <p className="text-sm text-red-600 leading-relaxed flex-1">{aiError}</p>
+          {!aiLoading && !aiAnswer && (
+            <button
+              onClick={handleAskAI}
+              className="shrink-0 text-sm font-medium text-red-600 underline hover:text-red-700"
+            >
+              重试
+            </button>
+          )}
+        </div>
+      )}
 
       {aiAnswer && (
         <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200">

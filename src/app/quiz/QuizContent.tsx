@@ -1149,7 +1149,10 @@ export default function QuizContent({ bankId: initialBankId, mode: initialMode }
                 </div>
               )}
 
-              <AIQuizHelper question={displayQuestion} />
+              <AIQuizHelper
+                question={displayQuestion}
+                userAnswer={quizState.answers[displayQuestion.id]}
+              />
             </div>
           )}
         </div>
