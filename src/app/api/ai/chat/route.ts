@@ -26,16 +26,12 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: '缺少题目上下文' }, { status: 400 });
     }
 
-    // 必做：结构化四段式输出 + 官方解析锚定（抑制幻觉）
-    const systemPrompt = `你是一位专业的银行/金融考试辅导老师，帮助考生真正吃透这道题。
+    // 简洁答疑：一句话考点 + 选它对/错在哪，控制在 100 字以内
+    const systemPrompt = `你是一位专业的银行/金融考试辅导老师。请用简洁、口语化的中文直接讲清这道题。
 要求：
-1. 严格以题目提供的「官方解析」为准，不要编造法条、数据或不确定的信息；若你的补充超出官方解析，请以「补充:」开头标注。
-2. 按以下四段结构输出，纯文本，不要使用任何 markdown 标记：
-【考点】一句话点明本题考查什么。
-【解题关键】2-4 句讲清思路（如有公式给出计算步骤）。
-【逐项排雷】若是选择题逐项说明对错原因；若题目提供了考生的作答，重点说明考生所选为什么对/错。
-【易错提醒】一句话提醒最容易踩的坑。
-3. 总字数控制在 250 字以内，条理清晰、口语化。`;
+1. 严格以题目提供的「官方解析」为准，不要编造法条、数据或不确定信息。
+2. 先用一句话点明考点，再用 1-2 句说明正确答案为什么对；若是选择题且题目给了「考生的作答」，用一句话点出考生所选项的对错即可。
+3. 全文控制在 100 字以内，纯文本，不要 markdown，不要分点标题，不要输出任何思考过程或英文。`;
 
     const messages = [
       { role: 'system' as const, content: systemPrompt },
@@ -125,9 +121,9 @@ async function handleCustomAPI(messages: { role: string; content: string }[]) {
         if (!data || data === '[DONE]') return;
         try {
           const parsed = JSON.parse(data);
-          // 兼容 reasoning 模型，推理内容与正文都作为内容下发
+          // 只取正文内容，忽略 reasoning_content，避免模型英文思考过程泄漏到答案里
           const delta = parsed.choices?.[0]?.delta;
-          const content = delta?.content ?? delta?.reasoning_content;
+          const content = delta?.content;
           if (content && typeof content === 'string' && content.trim()) {
             hasContent = true;
             send({ content });
